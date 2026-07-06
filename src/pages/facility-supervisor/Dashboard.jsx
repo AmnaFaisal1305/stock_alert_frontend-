@@ -48,12 +48,18 @@ export default function FacilityDashboard() {
   if (isError)   return <p className="text-danger">Failed to load dashboard.</p>
 
   const rows = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+  const facilityName = rows[0]?.facilityName
+  const districtName = rows[0]?.districtName
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold text-text">Facility Dashboard — Stock Levels</h1>
-        <p className="text-sm text-text-muted mt-0.5">Current vaccine stock at your facility</p>
+        <p className="text-sm text-text-muted mt-0.5">
+          {facilityName
+            ? `${facilityName}${districtName ? ` · ${districtName}` : ''}`
+            : 'Current vaccine stock at your facility'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

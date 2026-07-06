@@ -15,12 +15,15 @@ export default function WorkerStatusView() {
   if (isError)   return <p className="text-danger text-sm pt-4">Failed to load status.</p>
 
   const rows = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
+  const facilityName = rows[0]?.facilityName
 
   return (
     <div className="flex flex-col gap-6 max-w-sm mx-auto pt-4">
       <div>
         <h1 className="text-xl font-bold text-text">Stock Status</h1>
-        <p className="text-sm text-text-muted mt-0.5">Current stock at your facility — read only</p>
+        <p className="text-sm text-text-muted mt-0.5">
+          {facilityName ? `${facilityName} — read only` : 'Current stock at your facility — read only'}
+        </p>
       </div>
 
       <div className="flex flex-col gap-3">

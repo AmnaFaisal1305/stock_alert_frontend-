@@ -40,6 +40,7 @@ async function request(method, path, body) {
     const error = new Error(err.error ?? 'Request failed')
     error.status = res.status
     error.fields = err.fields ?? null
+    error.body = err
     throw error
   }
 
@@ -99,6 +100,14 @@ export async function createFacility(payload) {
 
 export async function getVaccines() {
   return request('GET', '/api/vaccines')
+}
+
+export async function createVaccine(payload) {
+  return request('POST', '/api/vaccines', payload)
+}
+
+export async function updateVaccine(id, name) {
+  return request('PUT', `/api/vaccines/${id}`, { name })
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────

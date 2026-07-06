@@ -19,6 +19,7 @@ import FacilityDashboard      from './pages/facility-supervisor/Dashboard'
 import RecordStock            from './pages/facility-supervisor/RecordStock'
 import ThresholdManagement    from './pages/facility-supervisor/ThresholdManagement'
 import WorkerManagement       from './pages/facility-supervisor/WorkerManagement'
+import FacilityAuditLog       from './pages/facility-supervisor/AuditLog'
 
 import StockEntry             from './pages/facility-worker/StockEntry'
 import WorkerStatusView       from './pages/facility-worker/StatusView'
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/facility/record-stock" element={<RecordStock />} />
               <Route path="/facility/thresholds"   element={<ThresholdManagement />} />
               <Route path="/facility/workers"      element={<WorkerManagement />} />
+              <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
 
               <Route path="/worker/stock-entry" element={<StockEntry />} />
               <Route path="/worker/status"      element={<WorkerStatusView />} />

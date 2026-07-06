@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Syringe, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getVaccines, createStockEntry } from '../../lib/api'
+import { getVaccines, getDashboard, createStockEntry } from '../../lib/api'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
@@ -12,7 +12,14 @@ export default function StockEntry() {
   const [submitted, setSubmitted] = useState(false)
 
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
-  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: v.name }))
+  const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
+  const stockByVaccineId = new Map(
+    (dashboardData?.facilities ?? []).map((r) => [r.vaccineId, r.quantity])
+  )
+  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => {
+    const qty = stockByVaccineId.get(v.id)
+    return { value: v.id, label: `${v.name} (${qty ?? 0} left)` }
+  })
 
   const mutation = useMutation({
     mutationFn: () => createStockEntry(form.vaccineId, parseInt(form.quantity, 10)),
@@ -21,6 +28,11 @@ export default function StockEntry() {
       setSubmitted(true)
     },
   })
+
+  const insufficientAvailable =
+    mutation.error?.status === 400 && mutation.error?.body?.available != null
+      ? mutation.error.body.available
+      : null
 
   function handleAgain() {
     setForm({ vaccineId: '', quantity: '' })
@@ -49,7 +61,7 @@ export default function StockEntry() {
           <Syringe size={26} className="text-primary" />
         </div>
         <h1 className="text-xl font-bold text-text">Stock Entry</h1>
-        <p className="text-sm text-text-muted">Record vaccines received at your facility</p>
+        <p className="text-sm text-text-muted">Record vaccines used at your facility</p>
       </div>
 
       <div className="bg-surface rounded-xl border border-surface-border p-6">
@@ -60,7 +72,11 @@ export default function StockEntry() {
             placeholder="Enter number of doses"
             value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} required />
           {mutation.isError && (
-            <p className="text-xs text-danger">{mutation.error?.message}</p>
+            <p className="text-xs text-danger">
+              {insufficientAvailable != null
+                ? `Only ${insufficientAvailable} left in stock.`
+                : mutation.error?.message}
+            </p>
           )}
           <Button type="submit" size="lg" className="w-full mt-1" disabled={mutation.isPending}>
             {mutation.isPending ? 'Submitting…' : 'Submit'}

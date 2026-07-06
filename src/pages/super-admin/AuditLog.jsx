@@ -19,7 +19,7 @@ const columns = [
   },
 ]
 
-export default function AuditLog() {
+export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide activity history' }) {
   const [dateFilter,   setDateFilter]   = useState('')
   const [actionFilter, setActionFilter] = useState('')
 
@@ -39,8 +39,8 @@ export default function AuditLog() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold text-text">Audit Log</h1>
-        <p className="text-sm text-text-muted mt-0.5">System-wide activity history</p>
+        <h1 className="text-xl font-bold text-text">{title}</h1>
+        <p className="text-sm text-text-muted mt-0.5">{subtitle}</p>
       </div>
 
       <div className="flex flex-wrap gap-4">

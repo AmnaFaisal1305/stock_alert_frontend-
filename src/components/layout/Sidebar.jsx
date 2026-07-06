@@ -21,8 +21,9 @@ const NAV = {
   facility_supervisor: [
     { to: '/facility/dashboard',     label: 'Dashboard',          icon: LayoutDashboard },
     { to: '/facility/record-stock',  label: 'Record Stock',       icon: PackagePlus     },
-    { to: '/facility/thresholds',    label: 'Thresholds',         icon: Settings        },
+    { to: '/facility/thresholds',    label: 'Vaccines',           icon: Settings        },
     { to: '/facility/workers',       label: 'Worker Management',  icon: UserCog         },
+    { to: '/facility/audit-log',     label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
     { to: '/worker/stock-entry',     label: 'Stock Entry',        icon: Syringe         },
