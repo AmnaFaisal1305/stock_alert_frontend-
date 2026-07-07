@@ -36,7 +36,7 @@ export default function RecordStock() {
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="flex flex-col gap-5">
           <Select id="vaccine" label="Vaccine" options={vaccineOptions}
             value={form.vaccineId} onChange={(e) => setForm({ ...form, vaccineId: e.target.value })} required />
-          <Input id="quantity" label="Quantity (doses)" type="number" min="0" placeholder="e.g. 100"
+          <Input id="quantity" label="Quantity (doses)" type="number" min="0" step="1" placeholder="e.g. 100"
             value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} required />
           <Button type="submit" size="lg" className="w-full" disabled={mutation.isPending}>
             <PackageCheck size={16} />

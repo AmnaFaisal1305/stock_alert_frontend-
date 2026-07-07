@@ -33,13 +33,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="bg-surface rounded-2xl shadow-sm border border-surface-border p-8">
+        <div className="bg-surface rounded-xl border border-surface-border p-8">
           <div className="flex flex-col items-center gap-3 mb-8">
             <div className="bg-primary/10 p-3 rounded-xl">
               <Syringe size={28} className="text-primary" />
             </div>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-text">Vaccine Stock Alert</h1>
+              <h1 className="text-xl font-bold text-text">Vaccine Stock Alert System</h1>
               <p className="text-sm text-text-muted mt-0.5">Sign in to your account</p>
             </div>
           </div>

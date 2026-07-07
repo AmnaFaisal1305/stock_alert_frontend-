@@ -77,7 +77,7 @@ export default function ThresholdManagement() {
     { key: 'vaccineName',  label: 'Vaccine'         },
     { key: 'quantity',     label: 'Current (doses)', render: (row) => row.quantity ?? '—' },
     { key: 'minQuantity',  label: 'Min Threshold'   },
-    { key: 'status',       label: 'Status',          render: (row) => <StatusBadge status={row.status === 'no_data' ? 'amber' : row.status} /> },
+    { key: 'status',       label: 'Status',          render: (row) => <StatusBadge status={row.status} /> },
     {
       key: 'actions',
       label: '',
@@ -108,11 +108,13 @@ export default function ThresholdManagement() {
 
       {isLoading && <p className="text-text-muted">Loading…</p>}
       {isError   && <p className="text-danger">Failed to load data.</p>}
-      {!isLoading && !isError && <Table columns={columns} rows={rows} />}
+      {!isLoading && !isError && (
+        <Table columns={columns} rows={rows} emptyMessage="No vaccines added yet — add your first vaccine to start tracking thresholds." />
+      )}
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit Threshold — ${editing?.vaccineName ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <Input id="min-qty" label="Minimum Quantity (doses)" type="number" min="0"
+          <Input id="min-qty" label="Minimum Quantity (doses)" type="number" min="0" step="1"
             value={minQty} onChange={(e) => { setMinQty(e.target.value); setFormError('') }} required />
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
@@ -142,7 +144,7 @@ export default function ThresholdManagement() {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createVaccineMutation.mutate() }}>
           <Input id="new-vaccine-name" label="Vaccine Name"
             value={newVaccine.name} onChange={(e) => { setNewVaccine({ ...newVaccine, name: e.target.value }); setAddError('') }} required />
-          <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" placeholder="Defaults to 0"
+          <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" step="1" placeholder="Defaults to 0"
             value={newVaccine.minQuantity} onChange={(e) => setNewVaccine({ ...newVaccine, minQuantity: e.target.value })} />
           {addError && <p className="text-xs text-danger">{addError}</p>}
           <div className="flex justify-end gap-3 pt-2">

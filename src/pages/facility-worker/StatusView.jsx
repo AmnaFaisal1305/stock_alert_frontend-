@@ -26,20 +26,24 @@ export default function WorkerStatusView() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {rows.map((row) => (
-          <div
-            key={`${row.facilityId}-${row.vaccineId}`}
-            className="bg-surface rounded-xl border border-surface-border px-4 py-3 flex items-center justify-between"
-          >
-            <div>
-              <p className="font-medium text-sm text-text">{row.vaccineName}</p>
-              <p className="text-xs text-text-muted">{row.quantity ?? '—'} doses</p>
+      {rows.length === 0 ? (
+        <p className="text-text-muted text-sm">No vaccines configured for this facility yet.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {rows.map((row) => (
+            <div
+              key={`${row.facilityId}-${row.vaccineId}`}
+              className="bg-surface rounded-xl border border-surface-border px-4 py-3 flex items-center justify-between"
+            >
+              <div>
+                <p className="font-medium text-sm text-text">{row.vaccineName}</p>
+                <p className="text-xs text-text-muted">{row.quantity ?? '—'} doses</p>
+              </div>
+              <StatusBadge status={row.status} />
             </div>
-            <StatusBadge status={row.status === 'no_data' ? 'amber' : row.status} />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

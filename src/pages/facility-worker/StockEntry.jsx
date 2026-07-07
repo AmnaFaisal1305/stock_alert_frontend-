@@ -68,7 +68,7 @@ export default function StockEntry() {
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="flex flex-col gap-5">
           <Select id="vaccine" label="Vaccine" options={vaccineOptions}
             value={form.vaccineId} onChange={(e) => setForm({ ...form, vaccineId: e.target.value })} required />
-          <Input id="qty" label="Quantity (doses)" type="number" inputMode="numeric" min="0"
+          <Input id="qty" label="Quantity (doses)" type="number" inputMode="numeric" min="0" step="1"
             placeholder="Enter number of doses"
             value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} required />
           {mutation.isError && (

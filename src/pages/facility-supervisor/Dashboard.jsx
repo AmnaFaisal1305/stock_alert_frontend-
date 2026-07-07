@@ -9,8 +9,9 @@ function StockRow({ row }) {
     : 100
 
   const barColor =
-    row.status === 'red'   ? 'bg-danger'  :
-    row.status === 'amber' ? 'bg-warning' : 'bg-success'
+    row.status === 'red'     ? 'bg-danger'   :
+    row.status === 'amber'   ? 'bg-warning'  :
+    row.status === 'no_data' ? 'bg-secondary' : 'bg-success'
 
   return (
     <div className="bg-surface rounded-xl border border-surface-border p-4 flex flex-col gap-3">
@@ -18,7 +19,7 @@ function StockRow({ row }) {
         <div>
           <p className="font-semibold text-text text-sm">{row.vaccineName}</p>
         </div>
-        <StatusBadge status={row.status === 'no_data' ? 'amber' : row.status} />
+        <StatusBadge status={row.status} />
       </div>
       <div className="flex flex-col gap-1">
         <div className="flex justify-between text-xs text-text-muted">
@@ -62,11 +63,15 @@ export default function FacilityDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {rows.map((row) => (
-          <StockRow key={`${row.facilityId}-${row.vaccineId}`} row={row} />
-        ))}
-      </div>
+      {rows.length === 0 ? (
+        <p className="text-text-muted text-sm">No vaccines configured for this facility yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {rows.map((row) => (
+            <StockRow key={`${row.facilityId}-${row.vaccineId}`} row={row} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

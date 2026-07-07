@@ -1,23 +1,41 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getAuditLog } from '../../lib/api'
+import { getAuditLog, getVaccines } from '../../lib/api'
 import Table from '../../components/shared/Table'
 import Input from '../../components/ui/Input'
 
-const columns = [
-  { key: 'createdAt', label: 'Date / Time', render: (row) => new Date(row.createdAt).toLocaleString() },
-  { key: 'action',    label: 'Action',      render: (row) => (
-      <span className="font-mono text-xs bg-surface-alt px-2 py-0.5 rounded">{row.action}</span>
-    )
-  },
-  { key: 'entityType',  label: 'Entity'      },
-  { key: 'details',     label: 'Details',    render: (row) => (
-      <span className="text-xs text-text-muted">
-        {row.details ? JSON.stringify(row.details) : '—'}
-      </span>
-    )
-  },
-]
+function humanizeKey(key) {
+  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+}
+
+function formatDetails(row, vaccineNameById) {
+  const d = row.details
+  if (!d) return '—'
+
+  const vaccineName = (id) => vaccineNameById[id] ?? (id ? `vaccine ${String(id).slice(0, 8)}…` : 'unknown vaccine')
+
+  switch (row.action) {
+    case 'STOCK_ENTRY': {
+      const verb = d.entryType === 'used' ? 'used' : d.entryType === 'legacy' ? 'recorded (legacy)' : 'received'
+      return `${d.quantity} doses ${verb} — ${vaccineName(d.vaccineId)}`
+    }
+    case 'SET_THRESHOLD':
+      return `Minimum set to ${d.minQuantity} — ${vaccineName(d.vaccineId)}`
+    case 'CREATE_VACCINE':
+      return `Added "${d.name ?? vaccineName(d.vaccineId)}"`
+    case 'EDIT_VACCINE': {
+      const newName = d.newName ?? d.name ?? vaccineName(d.vaccineId)
+      return d.oldName ? `Renamed "${d.oldName}" → "${newName}"` : `Renamed to "${newName}"`
+    }
+    case 'CREATE_USER':
+      return `${(d.role ?? '').replace(/_/g, ' ')} — ${d.email}`
+    case 'CREATE_DISTRICT':
+    case 'CREATE_FACILITY':
+      return `"${d.name}"`
+    default:
+      return Object.entries(d).map(([k, v]) => `${humanizeKey(k)}: ${v}`).join(', ')
+  }
+}
 
 export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide activity history' }) {
   const [dateFilter,   setDateFilter]   = useState('')
@@ -27,14 +45,30 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     queryKey: ['audit-log'],
     queryFn: getAuditLog,
   })
+  const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
+  const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name]))
 
   const logs = data?.auditLog ?? []
+  const hasFilters = !!(dateFilter || actionFilter)
 
   const filtered = logs.filter((l) => {
     const matchDate   = !dateFilter   || l.createdAt?.startsWith(dateFilter)
     const matchAction = !actionFilter || l.action?.toLowerCase().includes(actionFilter.toLowerCase())
     return matchDate && matchAction
   })
+
+  const columns = [
+    { key: 'createdAt', label: 'Date / Time', render: (row) => new Date(row.createdAt).toLocaleString() },
+    { key: 'action',    label: 'Action',      render: (row) => (
+        <span className="font-mono text-xs bg-surface-alt px-2 py-0.5 rounded">{row.action}</span>
+      )
+    },
+    { key: 'entityType',  label: 'Entity'      },
+    { key: 'details',     label: 'Details',    render: (row) => (
+        <span className="text-xs text-text-muted">{formatDetails(row, vaccineNameById)}</span>
+      )
+    },
+  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,7 +91,11 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       {isLoading && <p className="text-text-muted">Loading…</p>}
       {isError   && <p className="text-danger">Failed to load audit log.</p>}
       {!isLoading && !isError && (
-        <Table columns={columns} rows={filtered} emptyMessage="No log entries match your filters." />
+        <Table
+          columns={columns}
+          rows={filtered}
+          emptyMessage={hasFilters ? 'No log entries match your filters.' : 'No activity recorded yet.'}
+        />
       )}
     </div>
   )

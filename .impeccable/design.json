@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-07T12:00:00.000Z",
+  "title": "Design System: Vaccine Stock Alert System",
+  "extensions": {
+    "colorMeta": {
+      "clinical-blue": { "role": "primary", "displayName": "Clinical Blue", "canonical": "#1F6FEB", "tonalRamp": ["#0B2E66", "#123F82", "#1558C0", "#1F6FEB", "#3B82F6", "#6BA3F5", "#9CC2FA", "#D6E6FD"] },
+      "slate": { "role": "secondary", "displayName": "Slate", "canonical": "#6B7280", "tonalRamp": ["#1F2430", "#374151", "#4B5563", "#6B7280", "#9CA3AF", "#C3C9D1", "#E1E4E8", "#F3F4F6"] },
+      "status-green": { "role": "status", "displayName": "Status Green", "canonical": "#16A34A", "tonalRamp": ["#0F5132", "#15803D", "#16A34A", "#22C55E", "#4ADE80", "#86EFAC", "#BBF7D0", "#F0FDF4"] },
+      "status-amber": { "role": "status", "displayName": "Status Amber", "canonical": "#D97706", "tonalRamp": ["#78350F", "#B45309", "#D97706", "#F59E0B", "#FBBF24", "#FCD34D", "#FDE68A", "#FFFBEB"] },
+      "status-red": { "role": "status", "displayName": "Status Red", "canonical": "#DC2626", "tonalRamp": ["#7F1D1D", "#B91C1C", "#DC2626", "#EF4444", "#F87171", "#FCA5A5", "#FECACA", "#FEF2F2"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#FFFFFF", "tonalRamp": ["#111827", "#374151", "#6B7280", "#9CA3AF", "#D1D5DB", "#E5E7EB", "#F9FAFB", "#FFFFFF"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#111827", "tonalRamp": ["#000000", "#111827", "#1F2937", "#374151", "#4B5563", "#6B7280", "#9CA3AF", "#D1D5DB"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page titles only, one per screen (e.g. \"Facility Dashboard — Stock Levels\")." },
+      "title": { "displayName": "Title", "purpose": "Card titles, modal titles, vaccine names within a status card." },
+      "body": { "displayName": "Body", "purpose": "Form labels, table cells, button text, paragraph copy — the workhorse size." },
+      "label": { "displayName": "Label", "purpose": "Uppercase table headers, status-pill text, section captions." }
+    },
+    "shadows": [
+      { "name": "hover-lift", "value": "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", "purpose": "Reserved for a card that is itself a click target. No card in the current app uses it — every card today is a static display surface." },
+      { "name": "modal-overlay", "value": "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)", "purpose": "Separates the Modal from the dimmed backdrop behind it — one of two floating, untethered elements allowed a resting shadow." },
+      { "name": "toast-shadow", "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)", "purpose": "Separates the fixed-position Toast from whatever page content happens to sit beneath it — the other floating, untethered element allowed a resting shadow." }
+    ],
+    "motion": [
+      { "name": "transition-shadow", "value": "box-shadow 150ms ease", "purpose": "Reserved for a future clickable card's hover-lift transition." },
+      { "name": "transition-colors", "value": "background-color 150ms ease, color 150ms ease, border-color 150ms ease", "purpose": "Default state-change transition for buttons, nav links, table rows." },
+      { "name": "toast-in", "value": "toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Toast entrance: fade + 8px rise. Disabled under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action on a screen — Sign In, Save, Record Stock.",
+      "html": "<button class=\"ds-btn-primary\">Record Stock</button>",
+      "css": ".ds-btn-primary { background: #1F6FEB; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease; } .ds-btn-primary:hover { background: #1558C0; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #1F6FEB; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Inline row actions — Edit, Rename, Reset — no border, no fill at rest.",
+      "html": "<button class=\"ds-btn-ghost\">Edit</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #1F6FEB; padding: 6px 12px; border-radius: 8px; border: none; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease; } .ds-btn-ghost:hover { background: rgba(31, 111, 235, 0.1); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge-green",
+      "description": "Dot + label pill for stock status: OK / Low / Critical / No Data. Color and text always paired, never color-only; unrecognized values fall back to the neutral No Data treatment, never to green.",
+      "html": "<span class=\"ds-status-badge ds-status-badge--green\"><span class=\"ds-status-dot\"></span>OK</span>",
+      "css": ".ds-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; } .ds-status-badge--green { background: #F0FDF4; color: #15803D; } .ds-status-badge--no-data { background: #F9FAFB; color: #6B7280; } .ds-status-dot { width: 6px; height: 6px; border-radius: 9999px; background: #16A34A; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat container with a hairline border. No resting or hover shadow — every card in the current app is a static display surface, not a click target.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card__title\">BCG</h3><p class=\"ds-card__meta\">81 doses · min 77</p></div>",
+      "css": ".ds-card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; } .ds-card__title { font-size: 0.875rem; font-weight: 600; color: #111827; margin: 0; } .ds-card__meta { font-size: 0.75rem; color: #6B7280; margin: 0; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text input with label, hairline border at rest, blue ring on focus, red on error.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field__label\">Quantity (doses)</span><input class=\"ds-field__input\" type=\"number\" placeholder=\"e.g. 100\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; } .ds-field__label { font-size: 0.875rem; font-weight: 500; color: #111827; } .ds-field__input { width: 100%; border-radius: 8px; border: 1px solid #E5E7EB; padding: 8px 12px; font-size: 0.875rem; color: #111827; background: #FFFFFF; transition: border-color 150ms ease, box-shadow 150ms ease; } .ds-field__input:focus-visible { outline: none; border-color: #1F6FEB; box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.4); }"
+    },
+    {
+      "name": "Sidebar Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Active route gets a soft blue wash; inactive rows are muted with a paper-alt hover. Below the lg breakpoint this lives inside an off-canvas drawer triggered by a hamburger button, since the app is used on phones (Facility Worker role especially).",
+      "html": "<a class=\"ds-nav-link ds-nav-link--active\" href=\"#\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/></svg>Dashboard</a>",
+      "css": ".ds-nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; color: #6B7280; text-decoration: none; transition: background-color 150ms ease, color 150ms ease; } .ds-nav-link:hover { background: #F9FAFB; color: #111827; } .ds-nav-link--active { background: rgba(31, 111, 235, 0.1); color: #1F6FEB; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ward Status Board",
+    "overview": "Picture the board at the nurses' station: color-coded, glanceable, no wasted words, built to be read correctly in the two seconds someone has between other tasks. That's the system. Every screen exists to answer one question fast — is this facility's vaccine stock fine, low, or critical — and everything else is the supporting record for that one glance.\n\nThe system is clinical, trustworthy, and efficient by design, not by accident. It explicitly rejects the consumer/marketing-app register: no gradients, no playful illustration, no decorative motion. This is hospital-grade software used under time pressure — the interface should get out of the way of the actual task.",
+    "keyCharacteristics": [
+      "Flat surfaces, 1px hairline borders, shadow only as a response to interaction or on the two floating elements (Modal, Toast)",
+      "One functional accent (clinical blue) reserved for actions and links; saturated color elsewhere is reserved for status meaning only",
+      "System font stack — no custom webfont",
+      "Status is always paired with a text label, never color alone, with a distinct neutral treatment for \"no data yet\"",
+      "Small, calm, forgiving surfaces — generous enough for a phone (the nav collapses to a drawer below the lg breakpoint), restrained enough for a dense table"
+    ],
+    "rules": [
+      { "name": "The Status-Only Saturation Rule", "body": "Saturated color means one of two things: an action (clinical blue) or a stock status (red/amber/green). If a new element wants a bright color for any other reason, it's wrong — make it gray or make it blue.", "section": "colors" },
+      { "name": "The System Font Rule", "body": "No webfont is ever loaded. The interface should render instantly and disappear into the OS, not announce itself as designed.", "section": "typography" },
+      { "name": "The Border-at-Rest Rule", "body": "Every surface that's part of the page layout is flat with a hairline border when nothing is happening to it. Shadow only appears as a response to hover, or on the two floating elements (Modal, Toast) that sit outside the page's own layout.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do treat the red/amber/green/no-data quartet as sacred — always paired with a text label, and no-data never silently reads as OK or Low.",
+      "Do keep every laid-out surface flat with a hairline border; reserve shadow for hover feedback and the two floating elements (Modal, Toast).",
+      "Do size touch targets generously on Facility Worker screens — used on a phone, often one-handed, in a clinical setting.",
+      "Do write error messages that state the current true value (\"Only 12 left\"), not just that something failed."
+    ],
+    "donts": [
+      "Don't introduce a second accent color.",
+      "Don't add gradients, glassmorphism, playful illustration, or any decorative motion.",
+      "Don't let a static (non-clickable) card carry a shadow.",
+      "Don't load a custom webfont."
+    ]
+  }
+}

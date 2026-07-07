@@ -15,6 +15,15 @@ export default {
         surface:   { DEFAULT: '#FFFFFF', alt: '#F9FAFB', border: '#E5E7EB' },
         text:      { DEFAULT: '#111827', muted: '#6B7280', inverse: '#FFFFFF' },
       },
+      keyframes: {
+        'toast-in': {
+          '0%':   { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'toast-in': 'toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+      },
     },
   },
   plugins: [],
