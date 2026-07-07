@@ -1,4 +1,4 @@
-export default function Table({ columns, rows, emptyMessage = 'No records found.' }) {
+export default function Table({ columns, rows, emptyMessage = 'No records found.', rowClassName }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-surface-border bg-surface">
       <table className="w-full text-sm text-left">
@@ -23,7 +23,7 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
             </tr>
           ) : (
             rows.map((row, i) => (
-              <tr key={i} className="hover:bg-surface-alt transition-colors">
+              <tr key={i} className={`hover:bg-surface-alt transition-colors ${rowClassName ? rowClassName(row) : ''}`}>
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3 whitespace-nowrap">
                     {col.render ? col.render(row) : row[col.key]}

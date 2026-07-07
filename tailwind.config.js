@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary:   { DEFAULT: '#1F6FEB', light: '#3B82F6', dark: '#1558C0' },
+        primary:   { DEFAULT: '#0F766E', light: '#14B8A6', dark: '#0D6B63' },
         secondary: { DEFAULT: '#6B7280', light: '#9CA3AF', dark: '#374151' },
         success:   { DEFAULT: '#16A34A', light: '#22C55E', dark: '#15803D', bg: '#F0FDF4' },
         warning:   { DEFAULT: '#D97706', light: '#F59E0B', dark: '#B45309', bg: '#FFFBEB' },
