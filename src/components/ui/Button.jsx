@@ -1,8 +1,8 @@
 const variants = {
-  primary:   'bg-primary text-text-inverse hover:bg-primary-dark focus:ring-primary',
-  secondary: 'bg-surface border border-surface-border text-text hover:bg-surface-alt focus:ring-secondary',
-  danger:    'bg-danger text-text-inverse hover:bg-danger-dark focus:ring-danger',
-  ghost:     'text-primary hover:bg-primary/10 focus:ring-primary',
+  primary:   'bg-primary text-text-inverse hover:bg-primary-dark focus-visible:ring-primary',
+  secondary: 'bg-surface border border-surface-border text-text hover:bg-surface-alt focus-visible:ring-secondary',
+  danger:    'bg-danger text-text-inverse hover:bg-danger-dark focus-visible:ring-danger',
+  ghost:     'text-primary hover:bg-primary/10 focus-visible:ring-primary',
 }
 
 const sizes = {
@@ -28,7 +28,7 @@ export default function Button({
       onClick={onClick}
       className={[
         'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
-        'transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+        'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variants[variant],
         sizes[size],

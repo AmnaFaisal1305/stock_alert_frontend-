@@ -7,14 +7,18 @@ import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import Badge from '../../components/ui/Badge'
+import Toast from '../../components/ui/Toast'
 
 export default function UserManagement() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
+  const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', districtId: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
+  const [toast, setToast] = useState(null)
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
@@ -30,18 +34,29 @@ export default function UserManagement() {
       setCreateOpen(false)
       setForm({ email: '', password: '', districtId: '' })
       setFormError('')
+      setToast({ message: 'District supervisor created.', type: 'success' })
     },
     onError: (err) => setFormError(err.message),
   })
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => deactivateUser(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setToast({ message: `${deactivateTarget?.email} deactivated.`, type: 'success' })
+      setDeactivateTarget(null)
+    },
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
   })
 
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
-    onSuccess: () => { setResetTarget(null); setNewPassword(''); setFormError('') },
+    onSuccess: () => {
+      setResetTarget(null)
+      setNewPassword('')
+      setFormError('')
+      setToast({ message: 'Password reset.', type: 'success' })
+    },
     onError: (err) => setFormError(err.message),
   })
 
@@ -50,9 +65,7 @@ export default function UserManagement() {
     { key: 'districtId', label: 'District', render: (row) => districtMap[row.districtId] ?? '—' },
     {
       key: 'isActive', label: 'Status', render: (row) => (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${row.isActive ? 'bg-success/10 text-success' : 'bg-surface-alt text-text-muted'}`}>
-          {row.isActive ? 'Active' : 'Inactive'}
-        </span>
+        <Badge type={row.isActive ? 'active' : 'inactive'} />
       ),
     },
     {
@@ -62,8 +75,7 @@ export default function UserManagement() {
             <RotateCcw size={13} /> Reset
           </Button>
           {row.isActive && (
-            <Button variant="ghost" size="sm" onClick={() => deactivateMutation.mutate(row.id)}
-              disabled={deactivateMutation.isPending}>
+            <Button variant="ghost" size="sm" onClick={() => setDeactivateTarget(row)}>
               <UserX size={13} /> Deactivate
             </Button>
           )}
@@ -95,10 +107,10 @@ export default function UserManagement() {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
           <Input id="sup-email" label="Email" type="email" placeholder="user@akuh.org"
             value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          <Input id="sup-password" label="Password (min 8 chars)" type="password"
+          <Input id="sup-password" label="Password (min 8 chars)" type="password" minLength={8}
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           <Select id="sup-district" label="Assign District" options={districtOptions}
-            value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} />
+            value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} required />
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -112,7 +124,7 @@ export default function UserManagement() {
       {/* Reset password modal */}
       <Modal open={!!resetTarget} onClose={() => setResetTarget(null)} title={`Reset Password — ${resetTarget?.email ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); resetMutation.mutate() }}>
-          <Input id="reset-password" label="New Password (min 8 chars)" type="password"
+          <Input id="reset-password" label="New Password (min 8 chars)" type="password" minLength={8}
             value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
@@ -123,6 +135,23 @@ export default function UserManagement() {
           </div>
         </form>
       </Modal>
+
+      {/* Deactivate confirmation */}
+      <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate account" maxWidth="max-w-sm">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-text">
+            Deactivate <span className="font-medium">{deactivateTarget?.email}</span>? Their session ends immediately and there is no way to reactivate from here.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
+              {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

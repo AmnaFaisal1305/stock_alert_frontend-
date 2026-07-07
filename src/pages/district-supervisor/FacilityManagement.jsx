@@ -3,7 +3,6 @@ import { Plus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, createFacility } from '../../lib/api'
 import Table from '../../components/shared/Table'
-import StatusBadge from '../../components/shared/StatusBadge'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -51,7 +50,9 @@ export default function FacilityManagement() {
 
       {isLoading && <p className="text-text-muted">Loading…</p>}
       {isError   && <p className="text-danger">Failed to load facilities.</p>}
-      {!isLoading && !isError && <Table columns={columns} rows={facilities} />}
+      {!isLoading && !isError && (
+        <Table columns={columns} rows={facilities} emptyMessage="No facilities yet — add your first facility to get started." />
+      )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Create Facility">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>

@@ -268,7 +268,7 @@ export default function ThresholdManagement() {
       {/* Edit Threshold Modal */}
       <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit Threshold — ${editing?.vaccineName ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-          <Input id="min-qty" label="Minimum Quantity (doses)" type="number" min="0"
+          <Input id="min-qty" label="Minimum Quantity (doses)" type="number" min="0" step="1"
             value={minQty} onChange={(e) => { setMinQty(e.target.value); setFormError('') }} required />
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">

@@ -45,14 +45,10 @@ export default function TopBar() {
       {/* Right: bell + role + user */}
       {user && (
         <div className="flex items-center gap-3">
-          {/* Notification bell */}
           <button className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface-alt hover:text-text transition-colors" aria-label="Notifications">
             <Bell size={16} />
           </button>
-
-          {/* Divider */}
           <div className="h-5 w-px bg-surface-border" />
-
           <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full tracking-wide">
             {ROLE_LABELS[user.role] ?? user.role}
           </span>

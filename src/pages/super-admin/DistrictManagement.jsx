@@ -50,7 +50,9 @@ export default function DistrictManagement() {
 
       {isLoading && <p className="text-text-muted">Loading…</p>}
       {isError   && <p className="text-danger">Failed to load districts.</p>}
-      {!isLoading && !isError && <Table columns={columns} rows={districts} />}
+      {!isLoading && !isError && (
+        <Table columns={columns} rows={districts} emptyMessage="No districts yet — add your first district to get started." />
+      )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Create District">
         <form
