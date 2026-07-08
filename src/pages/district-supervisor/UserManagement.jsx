@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Plus, RotateCcw, UserX } from 'lucide-react'
+import { Plus, RotateCcw, UserX, UserCheck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, getFacilities, createUser, deactivateUser, resetPassword } from '../../lib/api'
+import { getUsers, getFacilities, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -15,7 +15,7 @@ export default function DistrictUserManagement() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
-  const [form, setForm] = useState({ email: '', password: '', facilityId: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', facilityId: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -28,11 +28,11 @@ export default function DistrictUserManagement() {
   const users = userData?.users ?? []
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ email: form.email, password: form.password, role: 'facility_supervisor', facilityId: form.facilityId }),
+    mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'facility_supervisor', facilityId: form.facilityId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setCreateOpen(false)
-      setForm({ email: '', password: '', facilityId: '' })
+      setForm({ name: '', email: '', password: '', facilityId: '' })
       setFormError('')
       setToast({ message: 'Facility supervisor created.', type: 'success' })
     },
@@ -49,6 +49,16 @@ export default function DistrictUserManagement() {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   })
 
+  const activateMutation = useMutation({
+    mutationFn: (id) => activateUser(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      const target = users.find((u) => u.id === id)
+      setToast({ message: `${target?.email ?? 'Account'} activated.`, type: 'success' })
+    },
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
+  })
+
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
     onSuccess: () => {
@@ -61,6 +71,7 @@ export default function DistrictUserManagement() {
   })
 
   const columns = [
+    { key: 'name', label: 'Name', render: (row) => row.name ?? '—' },
     { key: 'email', label: 'Email' },
     { key: 'facilityId', label: 'Facility', render: (row) => facilityMap[row.facilityId] ?? '—' },
     {
@@ -74,9 +85,13 @@ export default function DistrictUserManagement() {
           <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}>
             <RotateCcw size={13} /> Reset
           </Button>
-          {row.isActive && (
+          {row.isActive ? (
             <Button variant="ghost" size="sm" onClick={() => setDeactivateTarget(row)}>
               <UserX size={13} /> Deactivate
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
+              <UserCheck size={13} /> Activate
             </Button>
           )}
         </div>
@@ -104,6 +119,8 @@ export default function DistrictUserManagement() {
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Facility Supervisor">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+          <Input id="fs-name" label="Name" placeholder="Display name"
+            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           <Input id="fs-email" label="Email" type="email"
             value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <Input id="fs-password" label="Password (min 8 chars)" type="password" minLength={8}
@@ -137,7 +154,7 @@ export default function DistrictUserManagement() {
       <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate account" maxWidth="max-w-sm">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-text">
-            Deactivate <span className="font-medium">{deactivateTarget?.email}</span>? Their session ends immediately and there is no way to reactivate from here.
+            Deactivate <span className="font-medium">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>

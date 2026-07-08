@@ -1,49 +1,20 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
-import { getAuditLog, getUsers } from '../../lib/api'
+import { getAuditLog, getUsers, getVaccines } from '../../lib/api'
 import {
   Clock, Package, Settings, Syringe, Tag,
-  UserPlus, UserX, ClipboardList, ShieldCheck,
+  UserPlus, UserX, ClipboardList, KeyRound,
   UserCheck, Search, Shield, ArrowUp, ArrowDown, Users,
 } from 'lucide-react'
-
-// ─── Dummy data ───────────────────────────────────────────────────────────────
-const DUMMY_SUPERVISOR_LOGS = [
-  { action: 'CREATE_VACCINE',   details: { name: 'Polio Drops' },                              createdAt: '2026-07-07T09:00:00Z' },
-  { action: 'UPDATE_THRESHOLD', details: { vaccineName: 'Hepatitis B', minQuantity: 150 },     createdAt: '2026-07-06T11:15:00Z' },
-  { action: 'CREATE_USER',      details: { email: 'worker2.akuh@pilot' },                      createdAt: '2026-07-05T14:30:00Z' },
-  { action: 'UPDATE_VACCINE',   details: { oldName: 'BCG', name: 'BCG Vaccine' },              createdAt: '2026-07-04T10:00:00Z' },
-  { action: 'UPDATE_THRESHOLD', details: { vaccineName: 'Polio Drops', minQuantity: 200 },     createdAt: '2026-07-03T15:45:00Z' },
-  { action: 'CREATE_USER',      details: { email: 'worker1.akuh@pilot' },                      createdAt: '2026-07-02T08:20:00Z' },
-  { action: 'CREATE_VACCINE',   details: { name: 'MMR Vaccine' },                              createdAt: '2026-07-01T09:30:00Z' },
-]
-
-const DUMMY_WORKER_LOGS = [
-  [
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'Hepatitis B', quantity: 200, entryType: 'received' }, createdAt: '2026-07-07T10:23:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'Polio Drops', quantity: 45,  entryType: 'used'     }, createdAt: '2026-07-06T14:10:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'BCG Vaccine', quantity: 100, entryType: 'received' }, createdAt: '2026-07-05T09:45:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'MMR Vaccine', quantity: 60,  entryType: 'used'     }, createdAt: '2026-07-03T13:00:00Z' },
-  ],
-  [
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'Hepatitis B', quantity: 75,  entryType: 'used'     }, createdAt: '2026-07-07T11:30:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'MMR Vaccine', quantity: 150, entryType: 'received' }, createdAt: '2026-07-04T16:20:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'Polio Drops', quantity: 90,  entryType: 'received' }, createdAt: '2026-07-02T12:00:00Z' },
-  ],
-  [
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'Polio Drops', quantity: 30,  entryType: 'used'     }, createdAt: '2026-07-03T08:55:00Z' },
-    { action: 'STOCK_ENTRY', details: { vaccineName: 'BCG Vaccine', quantity: 50,  entryType: 'received' }, createdAt: '2026-07-01T11:10:00Z' },
-  ],
-]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   'bg-teal-500', 'bg-violet-500', 'bg-amber-500',
   'bg-sky-500',  'bg-pink-500',   'bg-emerald-500',
 ]
-function avatarBg(email = '') {
-  return AVATAR_COLORS[email ? email.charCodeAt(0) % AVATAR_COLORS.length : 0]
+function avatarBg(key = '') {
+  return AVATAR_COLORS[key ? key.charCodeAt(0) % AVATAR_COLORS.length : 0]
 }
 
 function formatFullDate(isoStr) {
@@ -56,43 +27,46 @@ function formatFullDate(isoStr) {
 
 const ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
-  CREATE_VACCINE:   { label: 'Vaccine Added',      pill: 'bg-success-bg text-success-dark', icon: Syringe  },
-  UPDATE_VACCINE:   { label: 'Vaccine Renamed',    pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
-  UPDATE_THRESHOLD: { label: 'Threshold Updated',  pill: 'bg-warning-bg text-warning-dark', icon: Settings },
-  CREATE_USER:      { label: 'Worker Added',       pill: 'bg-primary/10 text-primary',      icon: UserPlus },
-  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',        icon: UserX    },
+  CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
+  EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
+  SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark', icon: Settings },
+  CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
+  ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
+  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',       icon: UserX    },
+  RESET_PASSWORD:   { label: 'Password Reset',    pill: 'bg-surface-alt text-text-muted',  icon: KeyRound },
 }
 
-function parseEntry(action, details) {
+function parseEntry(action, details, vaccineNameById) {
   if (!details) return { subject: null, quantity: null, qtyType: null }
+  const vaccineName = (id) => vaccineNameById?.[id] ?? null
   switch (action) {
     case 'STOCK_ENTRY': {
-      const { vaccineName, quantity, entryType } = details
+      const { vaccineId, quantity, entryType } = details
       return {
-        subject:  vaccineName ?? null,
+        subject:  vaccineName(vaccineId),
         quantity: quantity != null ? `${quantity} doses` : null,
         qtyType:  entryType === 'used' ? 'out' : 'in',
       }
     }
-    case 'UPDATE_THRESHOLD': {
-      const { vaccineName, minQuantity } = details
+    case 'SET_THRESHOLD': {
+      const { vaccineId, minQuantity } = details
       return {
-        subject:  vaccineName ?? null,
+        subject:  vaccineName(vaccineId),
         quantity: minQuantity != null ? `Min: ${minQuantity}` : null,
         qtyType:  'neutral',
       }
     }
     case 'CREATE_VACCINE':
-      return { subject: details.name ?? null, quantity: null, qtyType: null }
-    case 'UPDATE_VACCINE': {
-      const { oldName, name } = details
+      return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
+    case 'EDIT_VACCINE': {
+      const { oldName, newName, name, vaccineId } = details
+      const resolvedName = newName ?? name ?? vaccineName(vaccineId)
       return {
-        subject:  oldName && name ? `${oldName} → ${name}` : (name ?? null),
+        subject:  oldName && resolvedName ? `${oldName} → ${resolvedName}` : (resolvedName ?? null),
         quantity: null, qtyType: null,
       }
     }
     case 'CREATE_USER':
-    case 'DEACTIVATE_USER':
       return { subject: details.email ?? null, quantity: null, qtyType: null }
     default: {
       const first = Object.entries(details).find(([k]) => !k.toLowerCase().includes('id'))
@@ -114,10 +88,10 @@ function ColumnHeaders() {
 }
 
 // ─── Entry Row ────────────────────────────────────────────────────────────────
-function EntryRow({ entry }) {
+function EntryRow({ entry, vaccineNameById }) {
   const meta    = ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-surface-alt text-text-muted', icon: ClipboardList }
   const IconCmp = meta.icon
-  const { subject, quantity, qtyType } = parseEntry(entry.action, entry.details)
+  const { subject, quantity, qtyType } = parseEntry(entry.action, entry.details, vaccineNameById)
 
   const qtyColor = qtyType === 'in'
     ? 'text-success-dark'
@@ -155,17 +129,18 @@ function EntryRow({ entry }) {
 }
 
 // ─── Supervisor Tab Content ───────────────────────────────────────────────────
-function SupervisorTab({ email, entries }) {
+function SupervisorTab({ name, email, entries, vaccineNameById }) {
+  const displayName = name ?? email
   return (
     <div className="bg-surface rounded-xl border border-primary/20 overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 bg-primary/5 border-b border-primary/15 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-            {email ? email[0].toUpperCase() : 'S'}
+            {displayName ? displayName[0].toUpperCase() : 'S'}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-text truncate">{email ?? '—'}</p>
+            <p className="text-sm font-semibold text-text truncate">{displayName ?? '—'}</p>
             <p className="text-[10px] text-primary uppercase tracking-widest font-semibold mt-0.5">Facility Supervisor</p>
           </div>
         </div>
@@ -188,7 +163,7 @@ function SupervisorTab({ email, entries }) {
         <>
           <ColumnHeaders />
           <div className="divide-y divide-surface-border">
-            {entries.map((entry, i) => <EntryRow key={i} entry={entry} />)}
+            {entries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} />)}
           </div>
         </>
       )}
@@ -197,9 +172,9 @@ function SupervisorTab({ email, entries }) {
 }
 
 // ─── Workers Tab Content ──────────────────────────────────────────────────────
-function WorkersTab({ workers, workerEntriesFn, search, setSearch }) {
+function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameById }) {
   const filteredWorkers = workers.filter((w) =>
-    !search || w.email.toLowerCase().includes(search.toLowerCase())
+    !search || (w.name ?? w.email).toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -210,7 +185,7 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch }) {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search worker email…"
+            placeholder="Search worker name…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-surface-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-text-muted"
@@ -238,16 +213,17 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch }) {
       {/* Worker cards */}
       {filteredWorkers.map((worker) => {
         const entries = workerEntriesFn(worker)
+        const workerName = worker.name ?? worker.email
         return (
           <div key={worker.id} className="bg-surface rounded-xl border border-surface-border overflow-hidden">
             {/* Worker header */}
             <div className="px-4 py-3 bg-surface-alt border-b border-surface-border flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-8 h-8 rounded-full ${avatarBg(worker.email)} text-white flex items-center justify-center text-sm font-bold flex-shrink-0`}>
-                  {worker.email[0].toUpperCase()}
+                <div className={`w-8 h-8 rounded-full ${avatarBg(workerName)} text-white flex items-center justify-center text-sm font-bold flex-shrink-0`}>
+                  {workerName[0].toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-text truncate">{worker.email}</p>
+                  <p className="text-sm font-semibold text-text truncate">{workerName}</p>
                   <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">Facility Worker</p>
                 </div>
               </div>
@@ -277,7 +253,7 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch }) {
               <>
                 <ColumnHeaders />
                 <div className="divide-y divide-surface-border">
-                  {entries.map((entry, i) => <EntryRow key={i} entry={entry} />)}
+                  {entries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} />)}
                 </div>
               </>
             )}
@@ -296,27 +272,22 @@ export default function FacilitySupervisorAuditLog() {
 
   const { data: userData, isLoading: loadingUsers } = useQuery({ queryKey: ['users'],     queryFn: getUsers    })
   const { data: logData,  isLoading: loadingLog, isError } = useQuery({ queryKey: ['audit-log'], queryFn: getAuditLog })
+  const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
 
   const workers = (userData?.users ?? []).filter((u) => u.role === 'facility_worker')
   const logs    = logData?.auditLog ?? []
+  const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name]))
 
-  const logsByEmail = {}
+  const logsByActorId = {}
   logs.forEach((log) => {
-    if (log.userEmail) {
-      if (!logsByEmail[log.userEmail]) logsByEmail[log.userEmail] = []
-      logsByEmail[log.userEmail].push(log)
-    }
+    if (!logsByActorId[log.actorId]) logsByActorId[log.actorId] = []
+    logsByActorId[log.actorId].push(log)
   })
-  const hasUserEmail = logs.some((l) => !!l.userEmail)
 
-  const supervisorEntries = hasUserEmail
-    ? (logsByEmail[user?.email] ?? [])
-    : DUMMY_SUPERVISOR_LOGS
+  const supervisorEntries = logsByActorId[user?.id] ?? []
 
   function workerEntries(worker) {
-    if (hasUserEmail) return logsByEmail[worker.email] ?? []
-    const idx = workers.indexOf(worker)
-    return DUMMY_WORKER_LOGS[idx] ?? []
+    return logsByActorId[worker.id] ?? []
   }
 
   const workerTotal = workers.reduce((sum, w) => sum + workerEntries(w).length, 0)
@@ -331,11 +302,6 @@ export default function FacilitySupervisorAuditLog() {
           <h1 className="text-xl font-bold text-text">Activity Log</h1>
           <p className="text-sm text-text-muted mt-0.5">Your actions and your workers' stock entries</p>
         </div>
-        {!isLoading && !hasUserEmail && (
-          <span className="text-[10px] font-semibold text-warning-dark bg-warning-bg px-2.5 py-1 rounded-full self-start">
-            Preview data
-          </span>
-        )}
       </div>
 
       {/* Tab bar */}
@@ -400,7 +366,7 @@ export default function FacilitySupervisorAuditLog() {
       {!isLoading && !isError && (
         <>
           {tab === 'supervisor' && (
-            <SupervisorTab email={user?.email} entries={supervisorEntries} />
+            <SupervisorTab name={user?.name} email={user?.email} entries={supervisorEntries} vaccineNameById={vaccineNameById} />
           )}
           {tab === 'workers' && (
             <WorkersTab
@@ -408,21 +374,10 @@ export default function FacilitySupervisorAuditLog() {
               workerEntriesFn={workerEntries}
               search={search}
               setSearch={setSearch}
+              vaccineNameById={vaccineNameById}
             />
           )}
         </>
-      )}
-
-      {/* Preview notice */}
-      {!isLoading && !isError && !hasUserEmail && (
-        <div className="flex items-start gap-3 bg-warning-bg border border-warning/20 rounded-xl px-4 py-3">
-          <ShieldCheck size={15} className="text-warning-dark flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-warning-dark leading-relaxed">
-            <span className="font-semibold">Showing preview data.</span> The backend does not yet include{' '}
-            <code className="bg-warning/10 px-1 rounded text-[10px]">userEmail</code> per audit entry.
-            Once added, real activity will replace this preview automatically.
-          </p>
-        </div>
       )}
     </div>
   )

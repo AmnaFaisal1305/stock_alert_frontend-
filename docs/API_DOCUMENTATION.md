@@ -34,15 +34,18 @@ Full details, code samples, and JSON shapes: `docs/api-reference.md` §1–3.
 | View user accounts | ✅ everyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Create a user account | ✅ → district supervisor | ✅ → facility supervisor | ✅ → facility worker | ❌ |
 | Deactivate a user | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
+| Activate (reverse a deactivation) | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Force-reset a password | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Record stock **received** from district | ❌ | ❌ | ✅ own facility | ❌ |
 | Record stock **used** | ❌ | ❌ | ❌ | ✅ own facility |
 | Edit a threshold | ❌ | ❌ | ✅ own facility | ❌ |
-| View the audit log | ✅ everything | ✅ own district | ✅ **own facility_workers' actions only** | ❌ |
+| View the audit log | ✅ everything | ✅ own district | ✅ **own actions + own facility_workers' actions** | ❌ |
 
 ✅ = allowed at the scope shown. ❌ = the backend rejects with `403` before any data is touched — never just hidden in the UI. Treat these as a guide for what to *show*, not the actual security boundary; the backend re-checks everything server-side regardless of what the frontend does.
 
 **Vaccines are facility-scoped, not one shared list** — each facility manages its own independent set. **Stock entries are typed** — a Facility Supervisor's submission is always recorded as `received` (adds to stock); a Facility Worker's is always recorded as `used` (subtracts) and is rejected server-side if it would exceed what's currently on hand. Neither role sends the type themselves — it's derived from who's logged in.
+
+**Every account now requires a `name`, alongside email and password, at creation — for every role.** It's a plain display string (1–120 characters, no uniqueness check) returned in the login response, `POST`/`GET /api/users`, and every deactivate/activate/reset-password response, so the frontend can show a real name instead of just an email in the sidebar/dashboard and any user-listing screen. **This is a breaking change to every existing create-user form** — a request missing `name` now gets `400`.
 
 ---
 
@@ -55,7 +58,7 @@ Endpoints with no role requirement — either public, or the entry point before 
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/api/health` | Liveness check. Returns `{ "status": "ok" }`. No auth needed. |
-| `POST` | `/api/auth/login` | Log in with email + password. Returns the user's profile (`role`, `districtId`, `facilityId`) and a `csrfToken`, and sets the session cookie. Rate-limited (10 attempts / 15 min / IP). |
+| `POST` | `/api/auth/login` | Log in with email + password. Returns the user's profile (`name`, `role`, `districtId`, `facilityId`) and a `csrfToken`, and sets the session cookie. Rate-limited (10 attempts / 15 min / IP). |
 | `POST` | `/api/auth/logout` | Ends the session. Requires an existing session + CSRF token (it's the one "public" route that still needs both, since a session must exist first). Invalidates the session server-side immediately — not just a client-side cookie clear. |
 
 ---
@@ -78,6 +81,7 @@ Endpoints with no role requirement — either public, or the entry point before 
 | `GET` | `/api/users` | Lists **every** user account in the system, of every role. |
 | `POST` | `/api/users` | Creates a `district_supervisor` account for any district (`districtId` required in the body). This is the only role a super_admin can create directly. |
 | `PUT` | `/api/users/:id/deactivate` | Deactivates **any** user account, unscoped. Takes effect immediately — the target's session stops working on their very next request. |
+| `PUT` | `/api/users/:id/activate` | Reactivates **any** user account, unscoped — reverses a deactivation. The user must log in again to get a working session. |
 | `PUT` | `/api/users/:id/reset-password` | Force-resets **any** user's password, unscoped. Also invalidates their current session immediately. |
 | `GET` | `/api/vaccines` | Every vaccine in the system, unscoped. Vaccines are facility-scoped, not one shared list — this row set spans every facility's own independent list. |
 | `GET` | `/api/dashboard` | Stock dashboard rows across **every** facility and district, all at once. |
@@ -103,6 +107,7 @@ Endpoints with no role requirement — either public, or the entry point before 
 | `GET` | `/api/users` | Lists the `facility_supervisor`s they've created (filtered by `districtId` — does **not** include `facility_worker`s two levels down). |
 | `POST` | `/api/users` | Creates a `facility_supervisor` account — only for a facility that already belongs to their own district (checked server-side, `400` otherwise). |
 | `PUT` | `/api/users/:id/deactivate` | Deactivates a `facility_supervisor` **within their own district only**. `403` on a peer, a facility_supervisor elsewhere, or any facility_worker. |
+| `PUT` | `/api/users/:id/activate` | Reactivates a `facility_supervisor` within their own district only — same scope rule as deactivate. |
 | `PUT` | `/api/users/:id/reset-password` | Force-resets a `facility_supervisor`'s password, same scope rule as deactivate. |
 | `GET` | `/api/vaccines` | Vaccines belonging to any facility in their own district. |
 | `GET` | `/api/dashboard` | Stock dashboard rows for every facility **within their own district**, all at once. |
@@ -119,14 +124,15 @@ Endpoints with no role requirement — either public, or the entry point before 
 - **Never records "used" stock** — that's the Facility Worker's job. A Facility Supervisor's `POST /api/stock-entries` is always recorded as `received` (adds to the running balance), regardless of what the request body says.
 - Manages their own facility's vaccine catalog: can add a new vaccine type or rename an existing one. This is **facility-scoped** — it only ever affects their own facility's list, never another facility's, even if the vaccine name is the same.
 - Account management authority reaches **only** `facility_worker`s whose `facilityId` matches their own.
-- Visibility is limited to their own facility: the dashboard for it (which also shows the facility's own name and its owning district's name), the `facility_worker`s they've created, and — new — an audit trail of **their own workers'** actions (not their own). No visibility into districts, other facilities, or anyone else's audit log.
-- **Cannot** create a district, facility, `district_supervisor`, or another `facility_supervisor` account. Cannot deactivate/reset a `facility_worker` from a different facility, or anyone at their own level or above. Cannot view any district or facility list — denied at the role-check layer before any query runs. Cannot edit a threshold or rename a vaccine belonging to a different facility, even knowing its id. Cannot see their own actions in the audit log — only their workers'.
+- Visibility is limited to their own facility: the dashboard for it (which also shows the facility's own name and its owning district's name), the `facility_worker`s they've created, and an audit trail covering **their own actions and their workers'** actions at that facility. No visibility into districts, other facilities, or anyone else's audit log.
+- **Cannot** create a district, facility, `district_supervisor`, or another `facility_supervisor` account. Cannot deactivate/reset a `facility_worker` from a different facility, or anyone at their own level or above. Cannot view any district or facility list — denied at the role-check layer before any query runs. Cannot edit a threshold or rename a vaccine belonging to a different facility, even knowing its id. Cannot see a district_supervisor's own upstream actions on their facility (e.g. its creation) in the audit log — only facility-level staff's actions.
 
 | Method | Endpoint | What it does for Facility Supervisor |
 |---|---|---|
 | `GET` | `/api/users` | Lists the `facility_worker`s they've created, filtered to their own `facilityId`. |
 | `POST` | `/api/users` | Creates a `facility_worker` account — `facilityId` forced to their own; the new account's `districtId` stays `null` by design. |
 | `PUT` | `/api/users/:id/deactivate` | Deactivates a `facility_worker` **within their own facility only**. `403` on a worker from another facility, or anyone at/above their own level. |
+| `PUT` | `/api/users/:id/activate` | Reactivates a `facility_worker` within their own facility only — same scope rule as deactivate. |
 | `PUT` | `/api/users/:id/reset-password` | Force-resets a `facility_worker`'s password, same scope rule as deactivate. |
 | `POST` | `/api/stock-entries` | Records stock **received** from the district, for their own facility. **Append-only** — no update/delete route exists; a mistaken entry is corrected with a new one, never by editing the old one. |
 | `PUT` | `/api/thresholds/:id` | Edits the minimum-quantity threshold for a vaccine — but only a threshold row belonging to their own facility (`403` otherwise). **The only role that can do this.** |
@@ -134,7 +140,7 @@ Endpoints with no role requirement — either public, or the entry point before 
 | `POST` | `/api/vaccines` | Adds a new vaccine to their own facility (auto-provisions a threshold row). **409** on a duplicate name at the same facility. |
 | `PUT` | `/api/vaccines/:id` | Renames a vaccine belonging to their own facility (`403` otherwise). |
 | `GET` | `/api/dashboard` | Stock dashboard rows for their **one facility only**, including its own name and its district's name. |
-| `GET` | `/api/audit-log` | **New.** Only rows whose actor is one of their own `facility_worker`s — not their own actions, and not another facility's. |
+| `GET` | `/api/audit-log` | Rows whose actor is facility-level staff at their own facility — themselves or one of their own `facility_worker`s — never another facility's, and never a district_supervisor's upstream actions on this facility. Rows include the actor's name/role and the owning district's/facility's name, not just raw ids. |
 
 ---
 
@@ -161,7 +167,7 @@ Endpoints with no role requirement — either public, or the entry point before 
 - **Every mutating request (`POST`/`PUT`/`DELETE`) needs a valid session cookie *and* the `x-csrf-token` header.** No role is exempt. `GET` requests only need the session cookie.
 - **A request body can never grant more than the caller's own role allows.** Submitting `"role": "super_admin"` in a `POST /api/users` body from a facility_supervisor session just gets rejected — the creatable role and scope (`districtId`/`facilityId`) always come from the caller's own verified session, never from what the client sends. The same rule applies to `POST /api/stock-entries`'s `entryType`: it's derived from the caller's role (`facility_supervisor` → `received`, `facility_worker` → `used`), not read from the body at all.
 - **Deactivation and password reset always follow the same one-level-down cascade as account creation** — enforced server-side after loading the target row, never inferred from the request URL alone.
-- **Every write, from every role, produces exactly one audit log row.** `super_admin`/`district_supervisor` read it back unscoped/district-scoped via `GET /api/audit-log`; `facility_supervisor` can now read back **only their own facility_workers'** rows (not their own actions); `facility_worker` still can't read it at all — but every role's writes are logged regardless of who can read them back.
+- **Every write, from every role, produces exactly one audit log row.** `super_admin`/`district_supervisor` read it back unscoped/district-scoped via `GET /api/audit-log`; `facility_supervisor` reads back **their own actions plus their own facility_workers'** rows; `facility_worker` still can't read it at all — but every role's writes are logged regardless of who can read them back. Every row also surfaces the actor's name/role and the owning district's/facility's name, not just raw ids.
 - **No self-serve anything** — no signup, no "forgot password" flow, no self-deactivation. Every account is created by exactly one role above it in the cascade.
 - Common error codes across all endpoints: `400` (validation/bad id), `401` (no/expired/revoked session — re-authenticate, don't retry), `403` (wrong role, wrong scope, or missing/invalid CSRF token), `404` (not found), `409` (duplicate, e.g. email already in use), `429` (rate limited).
 

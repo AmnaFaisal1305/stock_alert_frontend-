@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, AlertTriangle, CheckCircle2, Syringe } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Syringe } from 'lucide-react'
 import { getDashboard } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -15,25 +15,41 @@ function SummaryPill({ icon: Icon, label, count, colorClass }) {
 }
 
 function StockCard({ row }) {
-  const status      = row.status === 'no_data' ? 'amber' : row.status
+  const hasData     = row.quantity !== null
+  const outOfStock  = row.quantity === 0
   const pct         = row.minQuantity > 0
     ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
-    : 100
-  const borderColor = status === 'red' ? 'border-l-danger'  : status === 'amber' ? 'border-l-warning'  : 'border-l-success'
-  const barColor    = status === 'red' ? 'bg-danger'         : status === 'amber' ? 'bg-warning'         : 'bg-success'
+    : (hasData ? 100 : 0)
+  const borderColor = row.status === 'no_data' ? 'border-l-secondary'
+    : row.status === 'red'   ? 'border-l-danger'
+    : row.status === 'amber' ? 'border-l-warning'
+    :                          'border-l-success'
+  const barColor    = row.status === 'red'   ? 'bg-danger'
+    : row.status === 'amber' ? 'bg-warning'
+    :                          'bg-success'
 
   return (
     <div className={`bg-surface rounded-xl border border-surface-border border-l-4 ${borderColor} px-4 py-3 flex flex-col gap-2`}>
       <div className="flex items-center justify-between">
         <p className="font-semibold text-sm text-text">{row.vaccineName}</p>
-        <StatusBadge status={status} />
+        <StatusBadge status={row.status} />
       </div>
       <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
-        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+        {hasData ? (
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+        ) : (
+          <div className="h-full rounded-full border border-dashed border-surface-border" />
+        )}
       </div>
-      <div className="flex justify-between text-xs text-text-muted">
-        <span>{row.quantity ?? '—'} doses</span>
-        <span>min {row.minQuantity}</span>
+      <div className="flex justify-between text-xs">
+        {!hasData ? (
+          <span className="italic text-text-muted">Not recorded yet</span>
+        ) : outOfStock ? (
+          <span className="font-semibold text-danger">Out of stock</span>
+        ) : (
+          <span className="text-text-muted">{row.quantity} doses</span>
+        )}
+        <span className="text-text-muted">min {row.minQuantity}</span>
       </div>
     </div>
   )
@@ -49,16 +65,20 @@ export default function WorkerStatusView() {
 
   const rows          = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
   const facilityName  = rows[0]?.facilityName
+  const districtName  = rows[0]?.districtName
   const okCount       = rows.filter((r) => r.status === 'green').length
-  const lowCount      = rows.filter((r) => r.status === 'amber' || r.status === 'no_data').length
+  const lowCount      = rows.filter((r) => r.status === 'amber').length
   const criticalCount = rows.filter((r) => r.status === 'red').length
+  const noDataCount   = rows.filter((r) => r.status === 'no_data').length
 
   return (
     <div className="flex flex-col gap-6 max-w-sm mx-auto pt-4">
       <div>
         <h1 className="text-xl font-bold text-text">Stock Status</h1>
         <p className="text-sm text-text-muted mt-0.5">
-          {facilityName ? `${facilityName} — read only` : 'Current stock at your facility — read only'}
+          {facilityName
+            ? `${facilityName}${districtName ? `, ${districtName} District` : ''} — read only`
+            : 'Current stock at your facility — read only'}
         </p>
       </div>
 
@@ -72,6 +92,8 @@ export default function WorkerStatusView() {
             colorClass="bg-warning-bg border-warning/30 text-warning-dark" />
           <SummaryPill icon={AlertCircle} label="Critical" count={criticalCount}
             colorClass="bg-danger-bg border-danger/30 text-danger" />
+          <SummaryPill icon={HelpCircle} label="No data" count={noDataCount}
+            colorClass="bg-surface-alt border-surface-border text-text-muted" />
         </div>
       )}
 

@@ -72,6 +72,10 @@ export async function deactivateUser(id) {
   return request('PUT', `/api/users/${id}/deactivate`, {})
 }
 
+export async function activateUser(id) {
+  return request('PUT', `/api/users/${id}/activate`, {})
+}
+
 export async function resetPassword(id, password) {
   return request('PUT', `/api/users/${id}/reset-password`, { password })
 }

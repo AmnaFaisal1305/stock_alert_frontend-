@@ -70,6 +70,7 @@ export default function RecordStock() {
   const [vaccineId, setVaccineId] = useState('')
   const [quantity, setQuantity]   = useState('')
   const [done, setDone]           = useState(false)
+  const [result, setResult]       = useState(null)
 
   const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines  })
   const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
@@ -95,13 +96,14 @@ export default function RecordStock() {
   const mutation = useMutation({
     mutationFn: () => createStockEntry(vaccineId, parseInt(quantity, 10)),
     onSuccess: () => {
+      setResult({ vaccineName: selectedVaccine?.name, addedQty: addQty, newTotal })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setDone(true)
     },
   })
 
   function reset() {
-    setStep(1); setVaccineId(''); setQuantity(''); setDone(false); mutation.reset()
+    setStep(1); setVaccineId(''); setQuantity(''); setDone(false); setResult(null); mutation.reset()
   }
 
   function adjustQty(delta) {
@@ -123,11 +125,11 @@ export default function RecordStock() {
           <div>
             <h2 className="text-xl font-bold text-text">Stock Recorded!</h2>
             <p className="text-sm text-text-muted mt-2">
-              <span className="font-semibold text-text">{addQty} doses</span> of{' '}
-              <span className="font-semibold text-text">{selectedVaccine?.name}</span> added.
+              <span className="font-semibold text-text">{result?.addedQty} doses</span> of{' '}
+              <span className="font-semibold text-text">{result?.vaccineName}</span> added.
             </p>
             <p className="text-sm text-text-muted mt-1">
-              New total: <span className="font-bold text-success">{newTotal} doses</span>
+              New total: <span className="font-bold text-success">{result?.newTotal} doses</span>
             </p>
           </div>
           <div className="flex gap-3 w-full pt-2">

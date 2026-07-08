@@ -30,7 +30,7 @@ const PAGE_TITLES = {
 export default function TopBar() {
   const { user } = useAuth()
   const { pathname } = useLocation()
-  const initial = user?.email?.[0]?.toUpperCase() ?? '?'
+  const initial = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
   const pageTitle = PAGE_TITLES[pathname] ?? ''
 
   return (
@@ -52,7 +52,7 @@ export default function TopBar() {
           <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full tracking-wide">
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
-          <span className="text-sm text-text-muted hidden sm:block">{user.email}</span>
+          <span className="text-sm text-text-muted hidden sm:block">{user.name ?? user.email}</span>
           <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
             {initial}
           </div>

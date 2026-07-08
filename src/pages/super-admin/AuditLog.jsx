@@ -59,11 +59,22 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
 
   const columns = [
     { key: 'createdAt', label: 'Date / Time', render: (row) => new Date(row.createdAt).toLocaleString() },
+    { key: 'actor', label: 'Actor', render: (row) => (
+        <div className="flex flex-col">
+          <span className="text-sm text-text">{row.actorName ?? '—'}</span>
+          {row.actorRole && (
+            <span className="text-[10px] text-text-muted uppercase tracking-wide">{row.actorRole.replace(/_/g, ' ')}</span>
+          )}
+        </div>
+      )
+    },
     { key: 'action',    label: 'Action',      render: (row) => (
         <span className="font-mono text-xs bg-surface-alt px-2 py-0.5 rounded">{row.action}</span>
       )
     },
     { key: 'entityType',  label: 'Entity'      },
+    { key: 'districtName', label: 'District', render: (row) => row.districtName ?? '—' },
+    { key: 'facilityName', label: 'Facility', render: (row) => row.facilityName ?? '—' },
     { key: 'details',     label: 'Details',    render: (row) => (
         <span className="text-xs text-text-muted">{formatDetails(row, vaccineNameById)}</span>
       )

@@ -5,7 +5,7 @@ import {
   AlertTriangle, AlertCircle, Syringe, CheckCircle2,
   RefreshCw, Users, PackagePlus, Clock, Activity,
   TrendingUp, TrendingDown, ArrowRight, Settings, UserCog,
-  Package, Tag, UserPlus, UserX, ArrowUp, ArrowDown,
+  Package, Tag, UserPlus, ArrowUp, ArrowDown, UserX, UserCheck, KeyRound,
 } from 'lucide-react'
 import { getDashboard, getUsers, getAuditLog } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -212,41 +212,43 @@ function StatCard({ icon: Icon, label, value, iconBg, iconColor, valueColor = 't
 // ─── Activity Feed ─────────────────────────────────────────────────────────────
 const FEED_ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
-  CREATE_VACCINE:   { label: 'Vaccine Added',      pill: 'bg-success-bg text-success-dark', icon: Syringe  },
-  UPDATE_VACCINE:   { label: 'Vaccine Renamed',    pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
-  UPDATE_THRESHOLD: { label: 'Threshold Updated',  pill: 'bg-warning-bg text-warning-dark', icon: Settings },
-  CREATE_USER:      { label: 'Worker Added',       pill: 'bg-primary/10 text-primary',      icon: UserPlus },
-  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',        icon: UserX    },
+  CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
+  EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
+  SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark', icon: Settings },
+  CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
+  ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
+  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',       icon: UserX    },
+  RESET_PASSWORD:   { label: 'Password Reset',    pill: 'bg-surface-alt text-text-muted',  icon: KeyRound },
 }
 
 const DUMMY_RECENT = [
-  { action: 'STOCK_ENTRY',      details: { vaccineName: 'Hepatitis B', quantity: 200, entryType: 'received' }, createdAt: new Date(Date.now() - 35 * 60000).toISOString()      },
-  { action: 'UPDATE_THRESHOLD', details: { vaccineName: 'Polio Drops', minQuantity: 200 },                     createdAt: new Date(Date.now() - 2  * 3600000).toISOString()     },
-  { action: 'STOCK_ENTRY',      details: { vaccineName: 'BCG Vaccine', quantity: 100, entryType: 'received' }, createdAt: new Date(Date.now() - 5  * 3600000).toISOString()     },
-  { action: 'CREATE_USER',      details: { email: 'worker2.akuh@pilot' },                                      createdAt: new Date(Date.now() - 2  * 86400000).toISOString()    },
-  { action: 'STOCK_ENTRY',      details: { vaccineName: 'MMR Vaccine', quantity: 45,  entryType: 'used' },     createdAt: new Date(Date.now() - 3  * 86400000).toISOString()    },
+  { action: 'STOCK_ENTRY',     details: { vaccineName: 'Hepatitis B', quantity: 200, entryType: 'received' }, createdAt: new Date(Date.now() - 35 * 60000).toISOString()      },
+  { action: 'SET_THRESHOLD',   details: { vaccineName: 'Polio Drops', minQuantity: 200 },                     createdAt: new Date(Date.now() - 2  * 3600000).toISOString()     },
+  { action: 'STOCK_ENTRY',     details: { vaccineName: 'BCG Vaccine', quantity: 100, entryType: 'received' }, createdAt: new Date(Date.now() - 5  * 3600000).toISOString()     },
+  { action: 'CREATE_USER',     details: { email: 'worker2.akuh@pilot' },                                      createdAt: new Date(Date.now() - 2  * 86400000).toISOString()    },
+  { action: 'STOCK_ENTRY',     details: { vaccineName: 'MMR Vaccine', quantity: 45,  entryType: 'used' },     createdAt: new Date(Date.now() - 3  * 86400000).toISOString()    },
 ]
 
-function parseFeedEntry(action, details) {
+function parseFeedEntry(action, details, vaccineNameById) {
   if (!details) return { subject: null, quantity: null, qtyType: null }
+  const vaccineName = (id) => vaccineNameById?.[id] ?? details.vaccineName ?? null
   switch (action) {
     case 'STOCK_ENTRY': {
-      const { vaccineName, quantity, entryType } = details
-      return { subject: vaccineName ?? null, quantity: quantity != null ? `${quantity} doses` : null, qtyType: entryType === 'used' ? 'out' : 'in' }
+      const { vaccineId, quantity, entryType } = details
+      return { subject: vaccineName(vaccineId), quantity: quantity != null ? `${quantity} doses` : null, qtyType: entryType === 'used' ? 'out' : 'in' }
     }
-    case 'UPDATE_THRESHOLD': {
-      const { vaccineName, minQuantity } = details
-      return { subject: vaccineName ?? null, quantity: minQuantity != null ? `Min: ${minQuantity}` : null, qtyType: 'neutral' }
+    case 'SET_THRESHOLD': {
+      const { vaccineId, minQuantity } = details
+      return { subject: vaccineName(vaccineId), quantity: minQuantity != null ? `Min: ${minQuantity}` : null, qtyType: 'neutral' }
     }
-    case 'CREATE_VACCINE':   return { subject: details.name ?? null,  quantity: null, qtyType: null }
-    case 'UPDATE_VACCINE':   return { subject: details.oldName && details.name ? `${details.oldName} → ${details.name}` : (details.name ?? null), quantity: null, qtyType: null }
-    case 'CREATE_USER':
-    case 'DEACTIVATE_USER':  return { subject: details.email ?? null, quantity: null, qtyType: null }
+    case 'CREATE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
+    case 'EDIT_VACCINE':     return { subject: details.oldName && (details.newName ?? details.name) ? `${details.oldName} → ${details.newName ?? details.name}` : (details.newName ?? details.name ?? vaccineName(details.vaccineId)), quantity: null, qtyType: null }
+    case 'CREATE_USER':      return { subject: details.email ?? null, quantity: null, qtyType: null }
     default:                 return { subject: null, quantity: null, qtyType: null }
   }
 }
 
-function ActivityFeed({ logs }) {
+function ActivityFeed({ logs, vaccineNameById }) {
   const hasData = (logs ?? []).length > 0
   const entries = hasData ? logs.slice(0, 5) : DUMMY_RECENT
 
@@ -281,7 +283,7 @@ function ActivityFeed({ logs }) {
         {entries.map((entry, i) => {
           const meta    = FEED_ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-surface-alt text-text-muted', icon: Activity }
           const IconCmp = meta.icon
-          const { subject, quantity, qtyType } = parseFeedEntry(entry.action, entry.details)
+          const { subject, quantity, qtyType } = parseFeedEntry(entry.action, entry.details, vaccineNameById)
           const qtyColor = qtyType === 'in' ? 'text-success-dark' : qtyType === 'out' ? 'text-warning-dark' : 'text-text-muted'
 
           return (
@@ -345,6 +347,7 @@ export default function FacilityDashboard() {
   }, [dataUpdatedAt])
 
   const rawRows = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+  const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, r.vaccineName]))
 
   const demoChange  = { red: -12, amber: -5, no_data: 0, green: 50 }
   const demoAgeDays = { red: 12, amber: 4, no_data: null, green: 1 }
@@ -511,7 +514,7 @@ export default function FacilityDashboard() {
       )}
 
       {/* ── Recent Activity ── */}
-      {!isLoading && <ActivityFeed logs={allLogs} />}
+      {!isLoading && <ActivityFeed logs={allLogs} vaccineNameById={vaccineNameById} />}
 
     </div>
   )

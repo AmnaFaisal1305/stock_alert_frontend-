@@ -58,7 +58,7 @@ Four roles, strictly cascading: `super_admin` → `district_supervisor` → `fac
 |---|---|---|---|---|---|
 | `super_admin` | `null` | `null` | everything, unscoped | everything, unscoped | `district_supervisor` |
 | `district_supervisor` | set | `null` | own district only | own district only | `facility_supervisor` |
-| `facility_supervisor` | set | set | own facility only | **only their own `facility_worker`s' actions** (not their own) | `facility_worker` |
+| `facility_supervisor` | set | set | own facility only | **own actions + their own `facility_worker`s' actions** | `facility_worker` |
 | `facility_worker` | `null` | set | own facility only | no access — `403` | nothing |
 
 Vaccines are also scoped, not a shared global list: each facility has its own independent set (see `GET/POST/PUT /api/vaccines` below). A `facility_supervisor` manages their own facility's list; `facility_worker` only reads it (to populate the stock-entry form's vaccine dropdown).
@@ -104,6 +104,7 @@ Public. Rate-limited: 10 attempts / 15 min / IP. Email is case-insensitive (norm
   "user": {
     "id": "uuid",
     "email": "user@example.com",
+    "name": "Display Name",
     "role": "super_admin | district_supervisor | facility_supervisor | facility_worker",
     "districtId": "uuid | null",
     "facilityId": "uuid | null"
@@ -137,7 +138,7 @@ Requires auth only (no CSRF for GET). Not part of the original locked spec — a
 ```json
 {
   "users": [
-    { "id": "uuid", "email": "user@example.com", "role": "facility_worker", "districtId": null, "facilityId": "uuid", "isActive": true }
+    { "id": "uuid", "email": "user@example.com", "name": "Display Name", "role": "facility_worker", "districtId": null, "facilityId": "uuid", "isActive": true }
   ]
 }
 ```
@@ -153,6 +154,7 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `faci
 {
   "email": "new.user@example.com",
   "password": "min 8 characters",
+  "name": "Display Name", // required, 1-120 chars — a plain display name, not validated for uniqueness
   "role": "district_supervisor | facility_supervisor | facility_worker", // must match exactly what the caller may create
   "districtId": "uuid",   // required only when caller is super_admin creating a district_supervisor
   "facilityId": "uuid"    // required only when caller is district_supervisor creating a facility_supervisor
@@ -166,6 +168,7 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `faci
   "user": {
     "id": "uuid",
     "email": "new.user@example.com",
+    "name": "Display Name",
     "role": "facility_worker",
     "districtId": null,
     "facilityId": "uuid"
@@ -173,7 +176,7 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `faci
 }
 ```
 
-**Errors:** `403` if `role` doesn't match what the caller may create; `400` if a required `districtId`/`facilityId` is missing, or references a district/facility outside the caller's own scope (e.g. a `district_supervisor` naming a facility in another district); `409` if the email is already in use.
+**Errors:** `403` if `role` doesn't match what the caller may create; `400` if `name` is missing/empty, or a required `districtId`/`facilityId` is missing, or references a district/facility outside the caller's own scope (e.g. a `district_supervisor` naming a facility in another district); `409` if the email is already in use.
 
 ---
 
@@ -198,6 +201,7 @@ No body needed (send `{}` or an empty body).
   "user": {
     "id": "uuid",
     "email": "user@example.com",
+    "name": "Display Name",
     "role": "facility_worker",
     "districtId": null,
     "facilityId": "uuid",
@@ -207,6 +211,16 @@ No body needed (send `{}` or an empty body).
 ```
 
 Deactivation takes effect immediately — the user's existing session (if any) is invalidated on their very next request, not just on their next login attempt. **404** if the user id doesn't exist.
+
+---
+
+### `PUT /api/users/:id/activate`
+
+Requires auth + CSRF. **Same caller/target rules as `PUT /:id/deactivate` above** — reverses it. No body needed (send `{}` or an empty body).
+
+**200:** same shape as deactivate's response, with `"isActive": true`.
+
+Unlike deactivate/reset-password, this does **not** bump `tokenVersion` — deactivation already bumped it, so any JWT issued before the deactivation stays permanently invalid regardless of reactivation. The user simply logs in again and gets a fresh token matching the current `tokenVersion`. **404** if the user id doesn't exist. **403** if the target is outside the caller's cascade (same rule as deactivate).
 
 ---
 
@@ -418,7 +432,7 @@ Requires auth only (no CSRF for GET). All four roles may call this — scope dif
 
 ### `GET /api/audit-log`
 
-Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (unscoped — every row), `district_supervisor` (only rows tagged with their own district), **`facility_supervisor`** (only rows whose actor is one of their own `facility_worker`s — **not their own actions**, even ones tagged with their facility). `facility_worker` gets `403` — no access to this endpoint at all, denied before any query runs.
+Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (unscoped — every row), `district_supervisor` (only rows tagged with their own district), **`facility_supervisor`** (rows whose actor is facility-level staff at their own facility — themselves or one of their own `facility_worker`s; a district_supervisor's own upstream actions on their facility, e.g. `CREATE_FACILITY`, are still excluded even though those rows carry the same facilityId). `facility_worker` gets `403` — no access to this endpoint at all, denied before any query runs.
 
 **200:**
 ```json
@@ -427,11 +441,15 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (unscoped —
     {
       "id": "uuid",
       "actorId": "uuid",
+      "actorName": "string",
+      "actorRole": "super_admin | district_supervisor | facility_supervisor | facility_worker",
       "action": "CREATE_USER | CREATE_DISTRICT | CREATE_FACILITY | CREATE_VACCINE | EDIT_VACCINE | STOCK_ENTRY | SET_THRESHOLD",
       "entityType": "user | district | facility | vaccine | stock_entry | threshold",
       "entityId": "uuid | null",
       "districtId": "uuid | null",
+      "districtName": "string | null",
       "facilityId": "uuid | null",
+      "facilityName": "string | null",
       "details": { "...": "action-specific, e.g. { role, email } for CREATE_USER, or { vaccineId, quantity, entryType } for STOCK_ENTRY" },
       "createdAt": "ISO 8601"
     }
@@ -440,7 +458,9 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (unscoped —
 }
 ```
 
-For a `facility_supervisor`'s view specifically: this is how they see what their workers have been doing — each `STOCK_ENTRY` row's `details.entryType` will always be `"used"` here, since a facility_supervisor's own `"received"` entries are their own actions and are filtered out.
+`actorName`/`actorRole` reflect the actor's *current* name/role (there's no role-change endpoint, so this is effectively historical too). `districtName`/`facilityName` are resolved from the row's own `districtId`/`facilityId` — the event's owning district/facility, not necessarily the actor's own — so a row can have a `facilityName` even for an action recorded by a `district_supervisor`, and `facilityName` is `null` for district-level actions like `CREATE_DISTRICT`.
+
+For a `facility_supervisor`'s view specifically: this now includes their own writes (e.g. their own `"received"` `STOCK_ENTRY` rows) alongside their workers' `"used"` entries — previously their own actions were filtered out.
 
 ---
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, RotateCcw, UserX, Users, UserCheck, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, createUser, deactivateUser, resetPassword } from '../../lib/api'
+import { getUsers, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -12,14 +12,15 @@ const AVATAR_COLORS = [
   'bg-amber-500', 'bg-pink-500', 'bg-sky-500',
 ]
 
-function getAvatarColor(email) {
-  return AVATAR_COLORS[(email?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
+function getAvatarColor(key) {
+  return AVATAR_COLORS[(key?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 }
 
 // ─── Worker Card ──────────────────────────────────────────────────────────────
-function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm, onDeactivate, onResetPassword, isDeactivating }) {
-  const initial = (worker.email?.[0] ?? '?').toUpperCase()
-  const avatarColor = getAvatarColor(worker.email)
+function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm, onDeactivate, onActivate, onResetPassword, isDeactivating, isActivating }) {
+  const displayName = worker.name ?? worker.email
+  const initial = (displayName?.[0] ?? '?').toUpperCase()
+  const avatarColor = getAvatarColor(displayName)
   const isActive = worker.isActive
 
   return (
@@ -38,7 +39,8 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
         </div>
 
         <div className="min-w-0 w-full">
-          <p className="text-sm font-semibold text-text truncate" title={worker.email}>{worker.email}</p>
+          <p className="text-sm font-semibold text-text truncate" title={displayName}>{displayName}</p>
+          <p className="text-xs text-text-muted truncate" title={worker.email}>{worker.email}</p>
           <span className={`inline-flex items-center gap-1 mt-1 text-xs font-semibold px-2.5 py-0.5 rounded-full ${
             isActive ? 'bg-success-bg text-success-dark' : 'bg-surface-alt text-text-muted'
           }`}>
@@ -57,7 +59,7 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
           <RotateCcw size={13} /> Reset Password
         </Button>
 
-        {isActive && (
+        {isActive ? (
           confirmingId === worker.id ? (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs text-center text-text-muted font-medium">Deactivate this worker?</p>
@@ -82,6 +84,14 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
               <UserX size={13} /> Deactivate
             </Button>
           )
+        ) : (
+          <Button
+            variant="ghost" size="sm" className="w-full justify-center text-text-muted hover:text-success-dark hover:bg-success-bg"
+            onClick={() => onActivate(worker.id)}
+            disabled={isActivating}
+          >
+            <UserCheck size={13} /> {isActivating ? 'Activating…' : 'Activate'}
+          </Button>
         )}
       </div>
     </div>
@@ -90,7 +100,7 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
 
 // ─── Step Dots ────────────────────────────────────────────────────────────────
 function StepDots({ step }) {
-  const labels = ['Email', 'Password']
+  const labels = ['Details', 'Password']
   return (
     <div className="flex items-center justify-center gap-2 mb-6">
       {[1, 2].map((n) => (
@@ -119,7 +129,7 @@ export default function WorkerManagement() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [addStep, setAddStep]       = useState(1)
-  const [form, setForm]             = useState({ email: '', password: '' })
+  const [form, setForm]             = useState({ name: '', email: '', password: '' })
   const [formError, setFormError]   = useState('')
 
   const [resetTarget, setResetTarget] = useState(null)
@@ -134,10 +144,10 @@ export default function WorkerManagement() {
   const inactiveCount = workers.filter((w) => !w.isActive).length
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ email: form.email, password: form.password, role: 'facility_worker' }),
+    mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'facility_worker' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setCreateOpen(false); setAddStep(1); setForm({ email: '', password: '' }); setFormError('')
+      setCreateOpen(false); setAddStep(1); setForm({ name: '', email: '', password: '' }); setFormError('')
     },
     onError: (err) => setFormError(err.message),
   })
@@ -147,6 +157,11 @@ export default function WorkerManagement() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); setConfirmingId(null) },
   })
 
+  const activateMutation = useMutation({
+    mutationFn: (id) => activateUser(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }) },
+  })
+
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
     onSuccess: () => { setResetTarget(null); setNewPassword(''); setResetError('') },
@@ -154,7 +169,7 @@ export default function WorkerManagement() {
   })
 
   function openCreate() {
-    setCreateOpen(true); setAddStep(1); setForm({ email: '', password: '' }); setFormError('')
+    setCreateOpen(true); setAddStep(1); setForm({ name: '', email: '', password: '' }); setFormError('')
   }
 
   return (
@@ -218,8 +233,10 @@ export default function WorkerManagement() {
               onConfirmDeactivate={setConfirmingId}
               onCancelConfirm={() => setConfirmingId(null)}
               onDeactivate={(id) => deactivateMutation.mutate(id)}
+              onActivate={(id) => activateMutation.mutate(id)}
               onResetPassword={(w) => { setResetTarget(w); setResetError('') }}
               isDeactivating={deactivateMutation.isPending}
+              isActivating={activateMutation.isPending}
             />
           ))}
         </div>
@@ -232,16 +249,19 @@ export default function WorkerManagement() {
         {addStep === 1 && (
           <form className="flex flex-col gap-4"
             onSubmit={(e) => { e.preventDefault(); setFormError(''); setAddStep(2) }}>
-            <div>
-              <p className="text-sm font-semibold text-text mb-1">Enter worker email address</p>
-              <p className="text-xs text-text-muted mb-4">This will be their login email for the system.</p>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm font-semibold text-text mb-1">Enter worker details</p>
+              <p className="text-xs text-text-muted -mt-3">Their name and login email for the system.</p>
+              <Input id="w-name" label="Name" placeholder="Display name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               <Input id="w-email" label="Email" type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div className="flex justify-end gap-3 pt-1">
               <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!form.email}>Next →</Button>
+              <Button type="submit" disabled={!form.email || !form.name}>Next →</Button>
             </div>
           </form>
         )}
