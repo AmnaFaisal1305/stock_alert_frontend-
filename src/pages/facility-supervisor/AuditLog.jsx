@@ -6,6 +6,7 @@ import {
   Clock, Package, Settings, Syringe, Tag,
   UserPlus, UserX, ClipboardList, KeyRound,
   UserCheck, Search, Shield, ArrowUp, ArrowDown, Users,
+  RefreshCcw, Trash2,
 } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -27,8 +28,10 @@ function formatFullDate(isoStr) {
 
 const ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
+  ADJUST_STOCK:     { label: 'Stock Correction',  pill: 'bg-primary/10 text-primary',      icon: RefreshCcw },
   CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
   EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
+  DELETE_VACCINE:   { label: 'Vaccine Deleted',   pill: 'bg-danger-bg text-danger',        icon: Trash2   },
   SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark', icon: Settings },
   CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
   ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
@@ -48,6 +51,14 @@ function parseEntry(action, details, vaccineNameById) {
         qtyType:  entryType === 'used' ? 'out' : 'in',
       }
     }
+    case 'ADJUST_STOCK': {
+      const { vaccineId, delta } = details
+      return {
+        subject:  vaccineName(vaccineId),
+        quantity: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null,
+        qtyType:  delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral',
+      }
+    }
     case 'SET_THRESHOLD': {
       const { vaccineId, minQuantity } = details
       return {
@@ -57,6 +68,8 @@ function parseEntry(action, details, vaccineNameById) {
       }
     }
     case 'CREATE_VACCINE':
+      return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
+    case 'DELETE_VACCINE':
       return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
     case 'EDIT_VACCINE': {
       const { oldName, newName, name, vaccineId } = details

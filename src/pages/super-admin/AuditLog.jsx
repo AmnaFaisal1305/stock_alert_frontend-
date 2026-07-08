@@ -19,10 +19,14 @@ function formatDetails(row, vaccineNameById) {
       const verb = d.entryType === 'used' ? 'used' : d.entryType === 'legacy' ? 'recorded (legacy)' : 'received'
       return `${d.quantity} doses ${verb} — ${vaccineName(d.vaccineId)}`
     }
+    case 'ADJUST_STOCK':
+      return `Stock corrected ${d.delta > 0 ? '+' : ''}${d.delta} (${d.previousBalance} → ${d.newBalance}) — ${vaccineName(d.vaccineId)}`
     case 'SET_THRESHOLD':
       return `Minimum set to ${d.minQuantity} — ${vaccineName(d.vaccineId)}`
     case 'CREATE_VACCINE':
       return `Added "${d.name ?? vaccineName(d.vaccineId)}"`
+    case 'DELETE_VACCINE':
+      return `Deleted "${d.name ?? vaccineName(d.vaccineId)}"`
     case 'EDIT_VACCINE': {
       const newName = d.newName ?? d.name ?? vaccineName(d.vaccineId)
       return d.oldName ? `Renamed "${d.oldName}" → "${newName}"` : `Renamed to "${newName}"`
@@ -30,7 +34,13 @@ function formatDetails(row, vaccineNameById) {
     case 'CREATE_USER':
       return `${(d.role ?? '').replace(/_/g, ' ')} — ${d.email}`
     case 'CREATE_DISTRICT':
+    case 'EDIT_DISTRICT':
+    case 'DEACTIVATE_DISTRICT':
+    case 'ACTIVATE_DISTRICT':
     case 'CREATE_FACILITY':
+    case 'EDIT_FACILITY':
+    case 'DEACTIVATE_FACILITY':
+    case 'ACTIVATE_FACILITY':
       return `"${d.name}"`
     default:
       return Object.entries(d).map(([k, v]) => `${humanizeKey(k)}: ${v}`).join(', ')

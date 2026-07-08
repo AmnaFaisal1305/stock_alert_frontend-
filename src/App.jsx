@@ -7,6 +7,7 @@ import LoginPage from './pages/Login/LoginPage'
 
 import SuperAdminDashboard    from './pages/super-admin/Dashboard'
 import DistrictManagement     from './pages/super-admin/DistrictManagement'
+import DistrictDetail         from './pages/super-admin/DistrictDetail'
 import SuperAdminUsers        from './pages/super-admin/UserManagement'
 import SuperAdminAuditLog     from './pages/super-admin/AuditLog'
 
@@ -14,6 +15,8 @@ import DistrictDashboard      from './pages/district-supervisor/Dashboard'
 import FacilityManagement     from './pages/district-supervisor/FacilityManagement'
 import DistrictUsers          from './pages/district-supervisor/UserManagement'
 import DistrictAuditLog       from './pages/district-supervisor/AuditLog'
+
+import FacilityDetail         from './pages/shared/FacilityDetail'
 
 import FacilityDashboard      from './pages/facility-supervisor/Dashboard'
 import RecordStock            from './pages/facility-supervisor/RecordStock'
@@ -64,15 +67,18 @@ export default function App() {
             <Route element={<AuthLayout />}>
               <Route path="/" element={<RoleRedirect />} />
 
-              <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
-              <Route path="/super-admin/districts"  element={<DistrictManagement />} />
-              <Route path="/super-admin/users"      element={<SuperAdminUsers />} />
-              <Route path="/super-admin/audit-log"  element={<SuperAdminAuditLog />} />
+              <Route path="/super-admin/dashboard"        element={<SuperAdminDashboard />} />
+              <Route path="/super-admin/districts"        element={<DistrictManagement />} />
+              <Route path="/super-admin/districts/:id"    element={<DistrictDetail />} />
+              <Route path="/super-admin/facilities/:id"   element={<FacilityDetail />} />
+              <Route path="/super-admin/users"            element={<SuperAdminUsers />} />
+              <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
 
-              <Route path="/district/dashboard"  element={<DistrictDashboard />} />
-              <Route path="/district/facilities" element={<FacilityManagement />} />
-              <Route path="/district/users"      element={<DistrictUsers />} />
-              <Route path="/district/audit-log"  element={<DistrictAuditLog />} />
+              <Route path="/district/dashboard"     element={<DistrictDashboard />} />
+              <Route path="/district/facilities"    element={<FacilityManagement />} />
+              <Route path="/district/facilities/:id" element={<FacilityDetail />} />
+              <Route path="/district/users"         element={<DistrictUsers />} />
+              <Route path="/district/audit-log"     element={<DistrictAuditLog />} />
 
               <Route path="/facility/dashboard"    element={<FacilityDashboard />} />
               <Route path="/facility/record-stock" element={<RecordStock />} />

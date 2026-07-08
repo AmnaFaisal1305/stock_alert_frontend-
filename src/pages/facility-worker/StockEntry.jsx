@@ -7,6 +7,7 @@ import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
+import { statusConfig } from '../../lib/status'
 
 const STEP_LABELS = ['Select', 'Record']
 
@@ -64,11 +65,11 @@ export default function StockEntry() {
   const useQty          = parseInt(quantity, 10) || 0
   const remaining       = currentQty - useQty
   const wouldGoNegative = useQty > currentQty
-  const status          = currentStock ? (currentStock.status === 'no_data' ? 'amber' : currentStock.status) : null
+  const status          = currentStock ? currentStock.status : null
   const pct             = currentStock?.minQuantity > 0
     ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
     : 100
-  const barColor = status === 'red' ? 'bg-danger' : status === 'amber' ? 'bg-warning' : 'bg-success'
+  const barColor = statusConfig(status).dot
 
   const mutation = useMutation({
     mutationFn: () => createStockEntry(vaccineId, useQty),
@@ -145,7 +146,7 @@ export default function StockEntry() {
               </div>
             )}
 
-            {status === 'red' && (
+            {status === 'critical' && (
               <div className="bg-warning-bg border border-warning/20 rounded-lg px-3 py-2.5 flex items-center gap-2">
                 <AlertTriangle size={14} className="text-warning flex-shrink-0" />
                 <p className="text-xs text-warning-dark font-medium">Stock is critically low — proceed carefully</p>

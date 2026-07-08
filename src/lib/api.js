@@ -90,6 +90,22 @@ export async function createDistrict(name) {
   return request('POST', '/api/districts', { name })
 }
 
+export async function getDistrict(id) {
+  return request('GET', `/api/districts/${id}`)
+}
+
+export async function updateDistrict(id, name) {
+  return request('PUT', `/api/districts/${id}`, { name })
+}
+
+export async function deleteDistrict(id) {
+  return request('DELETE', `/api/districts/${id}`, {})
+}
+
+export async function activateDistrict(id) {
+  return request('PUT', `/api/districts/${id}/activate`, {})
+}
+
 // ── Facilities ────────────────────────────────────────────────────────────────
 
 export async function getFacilities() {
@@ -98,6 +114,22 @@ export async function getFacilities() {
 
 export async function createFacility(payload) {
   return request('POST', '/api/facilities', payload)
+}
+
+export async function getFacility(id) {
+  return request('GET', `/api/facilities/${id}`)
+}
+
+export async function updateFacility(id, name) {
+  return request('PUT', `/api/facilities/${id}`, { name })
+}
+
+export async function deleteFacility(id) {
+  return request('DELETE', `/api/facilities/${id}`, {})
+}
+
+export async function activateFacility(id) {
+  return request('PUT', `/api/facilities/${id}/activate`, {})
 }
 
 // ── Vaccines ──────────────────────────────────────────────────────────────────
@@ -112,6 +144,14 @@ export async function createVaccine(payload) {
 
 export async function updateVaccine(id, name) {
   return request('PUT', `/api/vaccines/${id}`, { name })
+}
+
+export async function deleteVaccine(id) {
+  return request('DELETE', `/api/vaccines/${id}`, {})
+}
+
+export async function updateVaccineStock(id, quantity) {
+  return request('PUT', `/api/vaccines/${id}/stock`, { quantity })
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────

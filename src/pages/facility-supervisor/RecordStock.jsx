@@ -8,6 +8,7 @@ import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
+import { gaugeHex } from '../../lib/status'
 
 const STEP_LABELS = ['Select Vaccine', 'Enter Quantity', 'Confirm Entry']
 
@@ -15,7 +16,7 @@ const STEP_LABELS = ['Select Vaccine', 'Enter Quantity', 'Confirm Entry']
 function RingGauge({ pct, status, size = 80 }) {
   const r = (size / 2) - 8
   const circ = 2 * Math.PI * r
-  const fillColor = status === 'red' ? '#DC2626' : status === 'amber' ? '#D97706' : '#16A34A'
+  const fillColor = gaugeHex(status)
   return (
     <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
@@ -88,7 +89,7 @@ export default function RecordStock() {
   const currentQty      = currentStock?.quantity ?? 0
   const addQty          = parseInt(quantity, 10) || 0
   const newTotal        = currentQty + addQty
-  const status          = currentStock ? (currentStock.status === 'no_data' ? 'amber' : currentStock.status) : null
+  const status          = currentStock ? currentStock.status : null
   const pct             = currentStock && currentStock.minQuantity > 0
     ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
     : 100

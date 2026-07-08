@@ -24,7 +24,9 @@ export default function DistrictUserManagement() {
   const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
 
   const facilityMap = Object.fromEntries((facilityData?.facilities ?? []).map((f) => [f.id, f.name]))
-  const facilityOptions = (facilityData?.facilities ?? []).map((f) => ({ value: f.id, label: f.name }))
+  const facilityOptions = (facilityData?.facilities ?? [])
+    .filter((f) => f.isActive)
+    .map((f) => ({ value: f.id, label: f.facilitySupervisorId ? `${f.name} (staffed)` : f.name }))
   const users = userData?.users ?? []
 
   const createMutation = useMutation({

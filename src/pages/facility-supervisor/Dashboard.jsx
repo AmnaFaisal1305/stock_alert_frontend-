@@ -4,15 +4,15 @@ import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle, AlertCircle, Syringe, CheckCircle2,
   RefreshCw, Users, PackagePlus, Clock, Activity,
-  TrendingUp, TrendingDown, ArrowRight, Settings, UserCog,
+  ArrowRight, Settings, UserCog,
   Package, Tag, UserPlus, ArrowUp, ArrowDown, UserX, UserCheck, KeyRound,
+  RefreshCcw, Trash2,
 } from 'lucide-react'
 import { getDashboard, getUsers, getAuditLog } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-
-const SEVERITY = { red: 0, amber: 1, no_data: 2, green: 3 }
+import { statusConfig, gaugeHex, STATUS_RANK } from '../../lib/status'
 
 const AVATAR_COLORS = [
   'bg-teal-500', 'bg-violet-500', 'bg-amber-500',
@@ -35,7 +35,7 @@ function RingGauge({ pct, status, size = 72 }) {
   const r = (size / 2) - 7
   const circ = 2 * Math.PI * r
   const trackColor = '#E5E7EB'
-  const fillColor = status === 'red' ? '#DC2626' : status === 'amber' ? '#D97706' : '#16A34A'
+  const fillColor = gaugeHex(status)
   return (
     <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
@@ -53,7 +53,7 @@ function RingGauge({ pct, status, size = 72 }) {
 
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
 function StockCard({ row }) {
-  const status = row.status === 'no_data' ? 'amber' : row.status
+  const status = row.status
   const noThreshold = row.minQuantity === 0
   const hasQty = row.quantity != null
   const pct = !noThreshold
@@ -61,15 +61,11 @@ function StockCard({ row }) {
     : 100
   const dosesShort = !noThreshold && hasQty ? Math.max(0, row.minQuantity - row.quantity) : 0
 
-  const borderColor = status === 'red' ? 'border-l-danger' : status === 'amber' ? 'border-l-warning' : 'border-l-success'
-  const ringClass   = status === 'red' ? 'ring-1 ring-danger/20' : ''
+  const cfg         = statusConfig(status)
+  const borderColor = cfg.borderL
+  const ringClass   = cfg.ring
 
-  const hasTrend      = row.weeklyChange != null
-  const hasRecordedAt = 'lastRecordedAt' in row
-  const daysStale     = hasRecordedAt && row.lastRecordedAt
-    ? Math.floor((Date.now() - new Date(row.lastRecordedAt).getTime()) / 86400000) : null
-  const isStale       = daysStale !== null && daysStale > 7
-  const neverRecorded = hasRecordedAt && row.lastRecordedAt === null
+  const neverRecorded = row.recordedAt === null
 
   return (
     <Link
@@ -92,13 +88,13 @@ function StockCard({ row }) {
         {/* Title + badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            {status === 'red' && (
+            {status === 'critical' && (
               <div className="relative flex-shrink-0">
                 <span className="absolute inline-flex h-2.5 w-2.5 rounded-full bg-danger/40 animate-ping" />
                 <AlertCircle size={13} className="relative text-danger flex-shrink-0" />
               </div>
             )}
-            {status === 'amber' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
+            {status === 'low' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
             <p className="font-semibold text-text text-base truncate">{row.vaccineName}</p>
           </div>
           <StatusBadge status={status} />
@@ -113,30 +109,19 @@ function StockCard({ row }) {
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 text-xs">
           {dosesShort > 0 ? (
-            <span className={`font-bold ${status === 'red' ? 'text-danger' : 'text-warning-dark'}`}>
+            <span className={`font-bold ${status === 'critical' ? 'text-danger' : 'text-warning-dark'}`}>
               {dosesShort} doses short
             </span>
           ) : noThreshold ? (
             <span className="text-primary font-medium group-hover:underline">Set threshold →</span>
           ) : (
-            hasTrend ? (
-              <span className={`flex items-center gap-1 font-semibold ${
-                row.weeklyChange > 0 ? 'text-success-dark' :
-                row.weeklyChange < 0 ? (status === 'red' ? 'text-danger' : 'text-warning-dark') : 'text-text-muted'
-              }`}>
-                {row.weeklyChange > 0 && <TrendingUp size={10} />}
-                {row.weeklyChange < 0 && <TrendingDown size={10} />}
-                {row.weeklyChange === 0 ? 'No change' : row.weeklyChange > 0 ? `+${row.weeklyChange} this week` : `${row.weeklyChange} this week`}
-              </span>
-            ) : <span />
+            <span />
           )}
 
-          {hasRecordedAt && (
-            <span className={`flex items-center gap-1 ${isStale || neverRecorded ? 'text-warning-dark font-semibold' : 'text-text-muted'}`}>
-              {(isStale || neverRecorded) && <AlertTriangle size={10} />}
-              {neverRecorded ? 'Never recorded' : isStale ? `Stale · ${daysStale}d ago` : timeAgo(row.lastRecordedAt)}
-            </span>
-          )}
+          <span className={`flex items-center gap-1 ${neverRecorded ? 'text-warning-dark font-semibold' : 'text-text-muted'}`}>
+            {neverRecorded && <AlertTriangle size={10} />}
+            {neverRecorded ? 'Never recorded' : `Last recorded ${timeAgo(row.recordedAt)}`}
+          </span>
         </div>
       </div>
     </Link>
@@ -212,22 +197,16 @@ function StatCard({ icon: Icon, label, value, iconBg, iconColor, valueColor = 't
 // ─── Activity Feed ─────────────────────────────────────────────────────────────
 const FEED_ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
+  ADJUST_STOCK:     { label: 'Stock Correction',  pill: 'bg-primary/10 text-primary',      icon: RefreshCcw },
   CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
   EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
+  DELETE_VACCINE:   { label: 'Vaccine Deleted',   pill: 'bg-danger-bg text-danger',        icon: Trash2   },
   SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark', icon: Settings },
   CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
   ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
   DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',       icon: UserX    },
   RESET_PASSWORD:   { label: 'Password Reset',    pill: 'bg-surface-alt text-text-muted',  icon: KeyRound },
 }
-
-const DUMMY_RECENT = [
-  { action: 'STOCK_ENTRY',     details: { vaccineName: 'Hepatitis B', quantity: 200, entryType: 'received' }, createdAt: new Date(Date.now() - 35 * 60000).toISOString()      },
-  { action: 'SET_THRESHOLD',   details: { vaccineName: 'Polio Drops', minQuantity: 200 },                     createdAt: new Date(Date.now() - 2  * 3600000).toISOString()     },
-  { action: 'STOCK_ENTRY',     details: { vaccineName: 'BCG Vaccine', quantity: 100, entryType: 'received' }, createdAt: new Date(Date.now() - 5  * 3600000).toISOString()     },
-  { action: 'CREATE_USER',     details: { email: 'worker2.akuh@pilot' },                                      createdAt: new Date(Date.now() - 2  * 86400000).toISOString()    },
-  { action: 'STOCK_ENTRY',     details: { vaccineName: 'MMR Vaccine', quantity: 45,  entryType: 'used' },     createdAt: new Date(Date.now() - 3  * 86400000).toISOString()    },
-]
 
 function parseFeedEntry(action, details, vaccineNameById) {
   if (!details) return { subject: null, quantity: null, qtyType: null }
@@ -237,20 +216,24 @@ function parseFeedEntry(action, details, vaccineNameById) {
       const { vaccineId, quantity, entryType } = details
       return { subject: vaccineName(vaccineId), quantity: quantity != null ? `${quantity} doses` : null, qtyType: entryType === 'used' ? 'out' : 'in' }
     }
+    case 'ADJUST_STOCK': {
+      const { vaccineId, delta } = details
+      return { subject: vaccineName(vaccineId), quantity: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null, qtyType: delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral' }
+    }
     case 'SET_THRESHOLD': {
       const { vaccineId, minQuantity } = details
       return { subject: vaccineName(vaccineId), quantity: minQuantity != null ? `Min: ${minQuantity}` : null, qtyType: 'neutral' }
     }
     case 'CREATE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
     case 'EDIT_VACCINE':     return { subject: details.oldName && (details.newName ?? details.name) ? `${details.oldName} → ${details.newName ?? details.name}` : (details.newName ?? details.name ?? vaccineName(details.vaccineId)), quantity: null, qtyType: null }
+    case 'DELETE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
     case 'CREATE_USER':      return { subject: details.email ?? null, quantity: null, qtyType: null }
     default:                 return { subject: null, quantity: null, qtyType: null }
   }
 }
 
 function ActivityFeed({ logs, vaccineNameById }) {
-  const hasData = (logs ?? []).length > 0
-  const entries = hasData ? logs.slice(0, 5) : DUMMY_RECENT
+  const entries = (logs ?? []).slice(0, 5)
 
   return (
     <div className="bg-surface rounded-xl border border-surface-border overflow-hidden">
@@ -261,15 +244,19 @@ function ActivityFeed({ logs, vaccineNameById }) {
             <Activity size={13} className="text-primary" />
           </div>
           <h2 className="text-sm font-semibold text-text">Recent Activity</h2>
-          {!hasData && (
-            <span className="text-[10px] font-semibold text-warning-dark bg-warning-bg px-2 py-0.5 rounded-full">Preview</span>
-          )}
         </div>
         <Link to="/facility/audit-log" className="text-xs text-primary hover:underline font-medium flex items-center gap-1">
           Full log <ArrowRight size={11} />
         </Link>
       </div>
 
+      {entries.length === 0 ? (
+        <div className="text-center py-10 text-text-muted">
+          <Activity size={28} className="mx-auto mb-2 opacity-20" />
+          <p className="text-sm font-medium">No activity recorded yet</p>
+        </div>
+      ) : (
+      <>
       {/* Column headers */}
       <div className="grid grid-cols-[150px_1fr_100px_90px] gap-3 px-5 py-2 bg-surface-alt/70 border-b border-surface-border">
         <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</span>
@@ -310,6 +297,8 @@ function ActivityFeed({ logs, vaccineNameById }) {
           )
         })}
       </div>
+      </>
+      )}
     </div>
   )
 }
@@ -349,30 +338,17 @@ export default function FacilityDashboard() {
   const rawRows = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
   const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, r.vaccineName]))
 
-  const demoChange  = { red: -12, amber: -5, no_data: 0, green: 50 }
-  const demoAgeDays = { red: 12, amber: 4, no_data: null, green: 1 }
-  const withDemoFields = rawRows.map((row) => {
-    const ageDays = demoAgeDays[row.status] ?? 2
-    return {
-      ...row,
-      weeklyChange:   'weeklyChange'   in row ? row.weeklyChange   : (demoChange[row.status] ?? 0),
-      lastRecordedAt: 'lastRecordedAt' in row ? row.lastRecordedAt
-        : ageDays === null ? null
-        : new Date(Date.now() - ageDays * 86400000).toISOString(),
-    }
-  })
-
-  const rows         = [...withDemoFields].sort((a, b) => SEVERITY[a.status] - SEVERITY[b.status])
+  const rows         = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
   const facilityName = rows[0]?.facilityName
   const districtName = rows[0]?.districtName
 
-  const criticalCount = rows.filter((r) => r.status === 'red').length
-  const lowCount      = rows.filter((r) => r.status === 'amber' || r.status === 'no_data').length
-  const healthyCount  = rows.filter((r) => r.status === 'green').length
+  const criticalCount = rows.filter((r) => r.status === 'critical').length
+  const lowCount      = rows.filter((r) => r.status === 'low' || r.status === 'no_data').length
+  const healthyCount  = rows.filter((r) => r.status === 'adequate').length
   const activeWorkers = (userData?.users ?? []).filter((u) => u.isActive).length
 
-  const urgentRows  = rows.filter((r) => r.status === 'red' || r.status === 'amber' || r.status === 'no_data')
-  const healthyRows = rows.filter((r) => r.status === 'green')
+  const urgentRows  = rows.filter((r) => r.status === 'critical' || r.status === 'low' || r.status === 'no_data')
+  const healthyRows = rows.filter((r) => r.status === 'adequate')
   const allLogs     = auditData?.auditLog ?? []
 
   return (

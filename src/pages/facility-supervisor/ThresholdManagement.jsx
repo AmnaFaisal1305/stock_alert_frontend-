@@ -1,19 +1,20 @@
 import { useState } from 'react'
-import { Pencil, Plus, Tag, Syringe, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Pencil, Plus, Tag, Syringe, AlertCircle, CheckCircle2, AlertTriangle, Trash2, RefreshCcw } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDashboard, updateThreshold, createVaccine, updateVaccine } from '../../lib/api'
+import { getDashboard, updateThreshold, createVaccine, updateVaccine, deleteVaccine, updateVaccineStock } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import { statusConfig, gaugeHex, FILTERS as STATUS_FILTERS } from '../../lib/status'
 
 // ─── Ring Gauge ───────────────────────────────────────────────────────────────
 function RingGauge({ pct, status, size = 80 }) {
   const r = (size / 2) - 8
   const circ = 2 * Math.PI * r
-  const fillColor = status === 'red' ? '#DC2626' : status === 'amber' ? '#D97706' : '#16A34A'
+  const fillColor = gaugeHex(status)
   return (
     <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
@@ -30,29 +31,31 @@ function RingGauge({ pct, status, size = 80 }) {
 }
 
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
-function VaccineCard({ row, onEdit, onRename }) {
-  const status      = row.status === 'no_data' ? 'amber' : row.status
+function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {
+  const status      = row.status
+  const canDelete   = row.recordedAt == null
   const noThreshold = row.minQuantity === 0
   const pct         = noThreshold
     ? 100
     : Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
   const dosesShort  = !noThreshold ? Math.max(0, row.minQuantity - (row.quantity ?? 0)) : 0
 
-  const borderColor = status === 'red' ? 'border-l-danger' : status === 'amber' ? 'border-l-warning' : 'border-l-success'
-  const ringClass   = status === 'red' ? 'ring-1 ring-danger/20' : ''
+  const cfg         = statusConfig(status)
+  const borderColor = cfg.borderL
+  const ringClass    = cfg.ring
 
   return (
     <div className={`bg-surface rounded-xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-4 flex flex-col gap-3 hover:shadow-md transition-shadow duration-200`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          {status === 'red' && (
+          {status === 'critical' && (
             <div className="relative flex-shrink-0">
               <span className="absolute inline-flex h-2.5 w-2.5 rounded-full bg-danger/40 animate-ping" />
               <AlertCircle size={13} className="relative text-danger flex-shrink-0" />
             </div>
           )}
-          {status === 'amber' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
+          {status === 'low' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
           <p className="font-bold text-text text-base truncate">{row.vaccineName}</p>
         </div>
         <StatusBadge status={status} />
@@ -72,7 +75,7 @@ function VaccineCard({ row, onEdit, onRename }) {
             <div className="mt-1.5 space-y-0.5">
               <p className="text-xs text-text-muted">Min: <span className="font-semibold text-text">{row.minQuantity}</span></p>
               {dosesShort > 0 && (
-                <p className={`text-xs font-bold ${status === 'red' ? 'text-danger' : 'text-warning-dark'}`}>
+                <p className={`text-xs font-bold ${status === 'critical' ? 'text-danger' : 'text-warning-dark'}`}>
                   {dosesShort} doses short
                 </p>
               )}
@@ -82,7 +85,7 @@ function VaccineCard({ row, onEdit, onRename }) {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-1 border-t border-surface-border">
+      <div className="flex gap-2 pt-1 border-t border-surface-border flex-wrap">
         <Button
           variant="ghost" size="sm" className="flex-1 justify-center"
           onClick={() => onRename(row)}
@@ -95,6 +98,20 @@ function VaccineCard({ row, onEdit, onRename }) {
         >
           <Pencil size={13} /> Edit Threshold
         </Button>
+        <Button
+          variant="ghost" size="sm" className="flex-1 justify-center"
+          onClick={() => onCorrectStock(row)}
+        >
+          <RefreshCcw size={13} /> Correct Stock
+        </Button>
+        {canDelete && (
+          <Button
+            variant="ghost" size="sm" className="flex-1 justify-center text-danger hover:bg-danger-bg"
+            onClick={() => onDelete(row)}
+          >
+            <Trash2 size={13} /> Delete
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -104,7 +121,8 @@ function duplicateNameMessage(err) {
   return err.status === 409 ? 'A vaccine with that name already exists at your facility.' : err.message
 }
 
-const FILTERS = ['All', 'Critical', 'Low', 'OK']
+const FILTERS = STATUS_FILTERS.map((f) => f.label)
+const filterMatch = Object.fromEntries(STATUS_FILTERS.map((f) => [f.label, f.match]))
 
 export default function ThresholdManagement() {
   const { user } = useAuth()
@@ -122,6 +140,14 @@ export default function ThresholdManagement() {
   const [addOpen, setAddOpen]       = useState(false)
   const [newVaccine, setNewVaccine] = useState({ name: '', minQuantity: '' })
   const [addError, setAddError]     = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteError, setDeleteError]   = useState('')
+
+  const [correcting, setCorrecting]         = useState(null)
+  const [correctQty, setCorrectQty]         = useState('')
+  const [correctError, setCorrectError]     = useState('')
+  const [correctResult, setCorrectResult]   = useState(null)
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
 
@@ -154,23 +180,47 @@ export default function ThresholdManagement() {
     onError: (err) => setAddError(duplicateNameMessage(err)),
   })
 
-  const allRows     = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
-  const criticalCount = allRows.filter((r) => r.status === 'red').length
-  const lowCount      = allRows.filter((r) => r.status === 'amber' || r.status === 'no_data').length
-  const healthyCount  = allRows.filter((r) => r.status === 'green').length
-
-  const filteredRows = allRows.filter((r) => {
-    if (filter === 'All') return true
-    if (filter === 'Critical') return r.status === 'red'
-    if (filter === 'Low') return r.status === 'amber' || r.status === 'no_data'
-    if (filter === 'OK') return r.status === 'green'
-    return true
+  const deleteMutation = useMutation({
+    mutationFn: (vaccineId) => deleteVaccine(vaccineId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vaccines'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setDeleteTarget(null)
+      setDeleteError('')
+    },
+    onError: (err) => setDeleteError(
+      err.status === 409 ? 'This vaccine has recorded stock history and can no longer be deleted.' : err.message
+    ),
   })
+
+  const correctStockMutation = useMutation({
+    mutationFn: () => updateVaccineStock(correcting.vaccineId, parseInt(correctQty, 10)),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setCorrectResult(result)
+      setCorrectError('')
+    },
+    onError: (err) => setCorrectError(err.message),
+  })
+
+  const allRows     = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+  const criticalCount = allRows.filter((r) => filterMatch.Critical(r.status)).length
+  const lowCount      = allRows.filter((r) => filterMatch.Low(r.status)).length
+  const healthyCount  = allRows.filter((r) => filterMatch.OK(r.status)).length
+
+  const filteredRows = allRows.filter((r) => filterMatch[filter](r.status))
 
   const filterCount = { All: allRows.length, Critical: criticalCount, Low: lowCount, OK: healthyCount }
 
   function openEdit(row) { setEditing(row); setMinQty(String(row.minQuantity)); setFormError('') }
   function openRename(row) { setRenaming(row); setRenameValue(row.vaccineName); setRenameError('') }
+  function openDelete(row) { setDeleteTarget(row); setDeleteError('') }
+  function openCorrectStock(row) {
+    setCorrecting(row); setCorrectQty(String(row.quantity ?? 0)); setCorrectError(''); setCorrectResult(null)
+  }
+  function closeCorrectStock() {
+    setCorrecting(null); setCorrectQty(''); setCorrectError(''); setCorrectResult(null); correctStockMutation.reset()
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -258,6 +308,8 @@ export default function ThresholdManagement() {
                   row={row}
                   onEdit={openEdit}
                   onRename={openRename}
+                  onDelete={openDelete}
+                  onCorrectStock={openCorrectStock}
                 />
               ))}
             </div>
@@ -309,6 +361,52 @@ export default function ThresholdManagement() {
             <Button type="submit" disabled={createVaccineMutation.isPending}>
               {createVaccineMutation.isPending ? 'Adding…' : 'Add Vaccine'}
             </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete confirmation */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete vaccine" maxWidth="max-w-sm">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-text">
+            Permanently delete <span className="font-medium">{deleteTarget?.vaccineName}</span>? This cannot be undone.
+          </p>
+          {deleteError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deleteError}</p>}
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={() => deleteMutation.mutate(deleteTarget.vaccineId)} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Correct Stock Modal */}
+      <Modal open={!!correcting} onClose={closeCorrectStock} title={`Correct Stock — ${correcting?.vaccineName ?? ''}`}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); correctStockMutation.mutate() }}>
+          <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
+            Enter the actual current stock count. This records a correction against the difference from what's currently tracked ({correcting?.quantity ?? 0} doses).
+          </p>
+          <Input id="correct-qty" label="Actual Current Stock (doses)" type="number" min="0" step="1"
+            value={correctQty} onChange={(e) => { setCorrectQty(e.target.value); setCorrectError(''); setCorrectResult(null) }} required />
+          {correctError && <p className="text-xs text-danger">{correctError}</p>}
+          {correctResult && !correctResult.entry && (
+            <p className="text-xs text-success-dark bg-success-bg rounded-lg px-3 py-2">No change — stock already matched.</p>
+          )}
+          {correctResult?.entry && (
+            <p className="text-xs text-success-dark bg-success-bg rounded-lg px-3 py-2">
+              Correction recorded: new balance {correctResult.balance} doses.
+            </p>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" type="button" onClick={closeCorrectStock}>
+              {correctResult ? 'Close' : 'Cancel'}
+            </Button>
+            {!correctResult && (
+              <Button type="submit" disabled={correctStockMutation.isPending}>
+                {correctStockMutation.isPending ? 'Saving…' : 'Save Correction'}
+              </Button>
+            )}
           </div>
         </form>
       </Modal>

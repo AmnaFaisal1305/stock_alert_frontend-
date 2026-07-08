@@ -1,8 +1,8 @@
 # Frontend Handoff — Backend Changes
 
-For the Claude Code session working on the **frontend** repo. This is a focused changelog for backend changes across three rounds of work, not a general API doc — read `API_DOCUMENTATION.md` and `docs/api-reference.md` in this backend repo for the full contract; this doc only covers what's *different* from what you may have already built against.
+For the Claude Code session working on the **frontend** repo. This is a focused changelog for backend changes across five rounds of work, not a general API doc — read `API_DOCUMENTATION.md` and `docs/api-reference.md` in this backend repo for the full contract; this doc only covers what's *different* from what you may have already built against.
 
-**Status as of this doc:** all three rounds below are implemented, passing the full backend test suite (61/61), committed, and **deployed and verified live** on `https://smart-stock-alert-be.vercel.app`. Safe to build against now.
+**Status as of this doc:** Rounds 1–3 are implemented, passing the full backend test suite, committed, and **deployed and verified live** on `https://smart-stock-alert-be.vercel.app`. **Rounds 4 and 5 (below) are implemented and test-passing but not yet deployed** — check with Ahmed before building against either if you need it live rather than just locally correct.
 
 ---
 
@@ -11,6 +11,10 @@ For the Claude Code session working on the **frontend** repo. This is a focused 
 Manual role-by-role testing of the Facility Supervisor screens surfaced that the original spec (Facility Supervisor records one kind of "stock count") didn't match the real intended workflow: a Facility Supervisor logs *stock received from the district*, and a Facility Worker separately logs *stock used/administered* — two different movements on the same running balance, not one. That, plus three related asks (Facility Supervisor manages their own facility's vaccine list, sees their own workers' audit trail, and the dashboard shows which facility/district a user belongs to), drove **Round 1** below.
 
 Continued role-by-role testing then surfaced two more rounds: every account needs a display `name` and a way to reactivate a deactivated one (**Round 2**), and the audit log needed human-readable actor/scope info instead of raw ids, plus a small widening of what a Facility Supervisor can see there (**Round 3**).
+
+The next round of testing asked for delete/rename on every entity in the hierarchy (vaccines, facilities, districts) and a way to correct a facility's stock count directly, plus three smaller gaps: a Facility Worker's own district wasn't visible, `GET /api/users` only returned ids not names, and some audit log rows were missing enough detail to be useful (**Round 4**).
+
+District Supervisor/Super Admin testing then surfaced that `GET /api/dashboard` had no aggregation — a District Supervisor scanning for trouble had to eyeball every facility/vaccine row instead of seeing at a glance which facility needed attention, and there was no drill-down from an overview into one facility's (or one district's) full detail. That, plus `GET /api/facilities` not showing who's staffing each facility, and a real gap where nothing stopped two active Facility Supervisor accounts existing for the same facility, drove **Round 5** below.
 
 ---
 
@@ -39,7 +43,7 @@ Use `available` to tell the user how many doses are actually left, rather than a
 
 #### 2. `GET /api/dashboard` — `quantity` is now a running balance
 
-Same field name, different meaning: `quantity` is now `SUM(received) − SUM(used)` for that facility/vaccine, not "the last entry." If your UI treated it as a point-in-time snapshot, no change needed — it still represents "current stock," just computed differently server-side. `status` (`red`/`amber`/`green`/`no_data`) is unaffected.
+Same field name, different meaning: `quantity` is now `SUM(received) − SUM(used)` for that facility/vaccine, not "the last entry." If your UI treated it as a point-in-time snapshot, no change needed — it still represents "current stock," just computed differently server-side. `status` (`red`/`amber`/`green`/`no_data`) is unaffected by this specific change — **but see Round 5 below, which renames these values entirely.** Don't build against `red`/`amber`/`green` for new code; that's stale as of Round 5.
 
 **New field:** `districtName` (string), alongside the existing `facilityName`. Use both to show a Facility Supervisor/Worker which facility and district they're part of — this was one of the explicit asks.
 
@@ -151,21 +155,201 @@ If you built the Facility Supervisor's audit screen assuming "only my workers, n
 - **Sidebar/header/dashboard**: show the logged-in user's `name` (from the login response), not just email.
 - **User-management list/table**: add a "Name" column; add an "Activate" action next to "Deactivate", toggled by `isActive`.
 
+### Super Admin (Round 5)
+- **District list/overview**: `GET /api/districts` stays a flat list — for a per-district health view (facility count + status breakdown), use the new `GET /api/districts/:id` drill-down instead of computing it client-side.
+- **District detail screen**: new — `GET /api/districts/:id` gives you the facility list (with supervisor names) and status rollup for one district in a single call. This is also the one place that shows a facility with zero vaccines configured yet (the dashboard's `summary.byFacility` silently omits those).
+- **Facility detail screen**: same idea, one level down — `GET /api/facilities/:id`.
+- **Dashboard**: `status` values changed (`critical`/`low`/`adequate`, not `red`/`amber`/`green`) — update any hardcoded string comparisons or color-mapping switch statements.
+
+### District Supervisor (Round 5)
+- **District dashboard/overview**: `GET /api/dashboard`'s new `summary` block (`facilityCount`, `statusCounts`, `byFacility`) is what a top-of-page "state of my district" summary should be built from, instead of aggregating the flat `facilities` array yourself.
+- **Facility list**: `GET /api/facilities` now includes `facilitySupervisorId`/`facilitySupervisorName` — show a "staffed/unstaffed" indicator without a second lookup.
+- **Facility detail screen**: new — `GET /api/facilities/:id` for a drill-down from the list/overview into one facility's full vaccine/stock detail.
+- **Creating/reassigning a Facility Supervisor**: check `facilitySupervisorId` isn't already set before offering "create" for a facility — creating a second one now `409`s (see below). Offer "replace" (deactivate current, then create) instead of a raw create action when one already exists.
+- **Facility/district management (Round 4)**: rename, soft-delete ("Deactivate"), and reactivate actions for facilities they manage — `PUT /api/facilities/:id`, `DELETE /api/facilities/:id`, `PUT /api/facilities/:id/activate`.
+
 ### Facility Supervisor
 - **Stock entry form**: reframe as "Record stock received" — no type selector needed, the backend already knows this caller only ever adds stock. Remove any UI that let a Facility Supervisor pick "received vs. used."
-- **Vaccine management.** A screen (or section of the existing threshold-management screen) to add a new vaccine and rename an existing one, scoped to their own facility. `POST`/`PUT /api/vaccines` above.
+- **Vaccine management.** A screen (or section of the existing threshold-management screen) to add, rename, or **delete** (Round 4) a vaccine, scoped to their own facility. `POST`/`PUT`/`DELETE /api/vaccines`, plus `PUT /api/vaccines/:id/stock` (Round 4) for a direct stock correction ("edit current count" rather than logging another received/used entry).
 - **Audit log view.** Now shows their own actions plus their Facility Workers' (Round 3) — same response shape as the district_supervisor's view, just narrower scope, and now enriched with `actorName`/`actorRole`/`districtName`/`facilityName`.
-- **Dashboard**: display `facilityName` and `districtName`.
+- **Dashboard**: display `facilityName` and `districtName`. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green`.
 
 ### Facility Worker
 - **Stock entry form**: reframe as "Record stock used." The vaccine dropdown should be populated from `GET /api/vaccines` (their own facility's list, set by their supervisor) and, for each option, show the current remaining stock — pull that from `GET /api/dashboard`'s per-vaccine `quantity` for this facility and join it into the dropdown display.
 - **Handle the insufficient-stock error**: if `POST /api/stock-entries` returns `400` with `{ "error": "Insufficient stock", "available": N }`, show the user "only N left" rather than a generic failure message.
-- **Dashboard/login screen**: already shows `facilityName` and current stock per vaccine (this didn't change) — no districtName needed here, a Facility Worker's token has no `districtId` by design.
+- **Dashboard/login screen**: already shows `facilityName` and current stock per vaccine (this didn't change). `districtId`/`districtName` is now also populated for new Facility Worker accounts (Round 4) — see below — so it's fine to show it here now too if useful, though it was never required. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green` — update if this screen renders a status badge.
 - No change to account/threshold/vaccine-management/audit-log access — still none of that, unchanged.
+
+---
+
+## Round 4 — delete/rename for vaccines, facilities, districts; stock correction; smaller gaps
+
+**Not deployed yet as of this doc** — implemented and test-passing against the shared dev DB, but confirm with Ahmed before relying on any of this against the live URL.
+
+### New endpoints — Facility Supervisor: vaccines
+
+#### `DELETE /api/vaccines/:id`
+Real delete — the vaccine row is actually removed, not soft-deleted. `204` with no body on success. **`409` if the vaccine has any recorded stock history** (any `POST /api/stock-entries` or stock-correction entry ever made against it) — stock history is permanent and append-only, so a vaccine that's ever had activity can't be deleted, only left alone. `403` if it belongs to another facility, `404` if unknown.
+
+Practical effect: only offer a delete action for vaccines with no stock activity yet (e.g. freshly added, never used) — for anything else, disable/hide the delete button. There's no way to force it from the frontend; the 409 is authoritative.
+
+#### `PUT /api/vaccines/:id/stock` — "edit current stock"
+```jsonc
+// request — the NEW total, not a delta
+{ "quantity": 47 }
+// 200 response, correction actually applied
+{ "vaccineId": "uuid", "balance": 47, "entry": { "id": "uuid", "entryType": "adjustment_increase" | "adjustment_decrease", "quantity": 12, /* ... */ } }
+// 200 response, submitted quantity equals the current balance — no-op, no `entry` key
+{ "vaccineId": "uuid", "balance": 47 }
+```
+You send the number the stock *should* be; the backend computes the difference against the live balance and records it as a correction. `entryType` will be one of two new values (`adjustment_increase`/`adjustment_decrease`) alongside the existing `received`/`used`/`legacy` — if you have any UI that renders/labels `entryType` (e.g. the audit log), handle these two as well, probably as "Stock correction (+)" / "Stock correction (−)". `403` cross-facility, `404` unknown vaccine. `quantity` must be a non-negative integer (same validation as everywhere else stock quantities appear).
+
+This also means `GET /api/dashboard`'s `quantity` and any insufficient-stock check now factor in corrections automatically — nothing else to change there.
+
+### New endpoints — District Supervisor / Super Admin: facilities and districts
+
+Facilities and districts are **soft-deleted**, not actually removed — real history (vaccines, thresholds, stock entries, users) hangs off them and can't just disappear. "Delete" flips an `isActive` flag to `false`; "activate" flips it back. Both objects now include `isActive` (boolean) in every response that returns them.
+
+#### `PUT /api/facilities/:id` (super_admin, district_supervisor — own district only)
+```jsonc
+// request
+{ "name": "New Facility Name" }
+// 200 response
+{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "isActive": true, "createdAt": "ISO 8601" } }
+```
+`403` if a district_supervisor targets a facility outside their own district. `404` unknown id.
+
+#### `DELETE /api/facilities/:id` (super_admin, district_supervisor — own district only)
+Soft-delete. `200` with the updated (now `isActive: false`) facility on success. **`409` if the facility still has any active user** (facility_supervisor or facility_worker) — deactivate them first via the existing `PUT /api/users/:id/deactivate`, then retry. `403`/`404` same as above.
+
+A soft-deleted facility **disappears from `GET /api/dashboard`** (it's an operational view — no reason to monitor something deleted) but **still appears in `GET /api/facilities`** (that list intentionally returns everything, active or not — same as `GET /api/users` already does — so it can be reactivated, and so history/reporting screens aren't missing rows). **Filter any facility picker (e.g. choosing a facility when creating a district_supervisor-scoped user) to `isActive === true`** — the backend will otherwise reject creating a new user against an inactive facility with a `400`, but a picker shouldn't offer it in the first place.
+
+#### `PUT /api/facilities/:id/activate` (super_admin, district_supervisor — own district only)
+Reverses the soft-delete. Same shape/response as deactivate, `isActive: true` again. `403`/`404` same rules.
+
+#### `PUT /api/districts/:id` (super_admin only)
+```jsonc
+// request
+{ "name": "New District Name" }
+// 200 response
+{ "district": { "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601" } }
+```
+`403` for any non-super_admin. `404` unknown id. `409` if the new name collides with another district's name (district names are globally unique).
+
+#### `DELETE /api/districts/:id` (super_admin only)
+Soft-delete. `200` on success. **`409` if the district still has any active facility, or any active user** (its own district_supervisor accounts) — clear those first (deactivate the users, soft-delete the facilities). Same `GET` visibility rules as facilities: gone from anything scoped through an active-facilities filter, still listed by `GET /api/districts`.
+
+#### `PUT /api/districts/:id/activate` (super_admin only)
+Reverses the soft-delete.
+
+### Smaller fixes bundled into this round
+
+#### 1. Facility Worker accounts now have a real `districtId`
+**Before:** a new Facility Worker's `districtId` was always `null` (by original design — "not needed at this scope"). **Now:** it's set to their facility's owning district at creation time, same as every other role — appears in the `POST /api/users` response, the login response, and `GET /api/users` rows. Accounts created before this shipped were backfilled on the shared dev DB, so you shouldn't see stray nulls there, but don't rely on it being non-null for logic that predates this change (defensive `?? null` handling is still fine).
+
+#### 2. `GET /api/users` now includes `districtName`/`facilityName`
+Same enrichment the audit log already got in Round 3, now on the user list too:
+```jsonc
+{ "id": "uuid", "email": "...", "name": "...", "role": "...", "districtId": "uuid | null", "districtName": "string | null", "facilityId": "uuid | null", "facilityName": "string | null", "isActive": true }
+```
+Use these instead of a separate district/facility lookup anywhere you render a user list/table.
+
+#### 3. Audit log `details` is now more useful for two existing action types
+- **`DEACTIVATE_USER` / `ACTIVATE_USER` / `RESET_PASSWORD`**: `details` now includes `{ "email": "...", "name": "..." }` for the affected user — previously `null`. Use this to render "Jane Doe (jane@...) was deactivated" instead of just an opaque entity id.
+- **`STOCK_ENTRY`**: `details` now includes `vaccineName` alongside the existing `vaccineId`/`quantity`/`entryType`. New **`ADJUST_STOCK`** action (from the stock-correction endpoint above) has `details: { vaccineId, vaccineName, previousBalance, newBalance, delta }`.
+
+---
+
+## Round 5 — dashboard status rename + summary, facility drill-down endpoints, one-supervisor-per-facility
+
+**Not deployed yet as of this doc** — implemented and test-passing against the shared dev DB, but confirm with Ahmed before relying on any of this against the live URL.
+
+### Breaking change: `GET /api/dashboard`'s `status` values
+
+**Before:** `"red" | "amber" | "green" | "no_data"`.
+**Now:** `"critical" | "low" | "adequate" | "no_data"` — same banding logic (`no_data` if `quantity` is `null`, `critical` if under `minQuantity`, `low` if under `minQuantity * 1.2`, else `adequate`), just relabeled to domain vocabulary instead of a color, so the frontend owns the color mapping instead of the backend baking one in. **If you render/compare these strings anywhere (status badges, filters, tests), update them** — `red`/`amber`/`green` will simply never appear again.
+
+### New: `GET /api/dashboard` returns a `summary` block
+
+Additive — the existing `facilities` array is completely unchanged in shape, this is a new sibling key:
+```jsonc
+{
+  "facilities": [ /* unchanged */ ],
+  "summary": {
+    "districtCount": 1,        // always 1 for a district_supervisor (their own district)
+    "facilityCount": 6,        // facilities that have at least one dashboard row — see note below
+    "statusCounts": { "critical": 3, "low": 5, "adequate": 18, "no_data": 2 },
+    "byFacility": [
+      { "facilityId": "uuid", "facilityName": "...", "districtId": "uuid", "statusCounts": { "critical": 1, "low": 0, "adequate": 3, "no_data": 1 } }
+    ]
+  }
+}
+```
+This is what answers "which facility has low/critical stock" — use `summary.byFacility` instead of grouping the flat `facilities` array yourself. **Caveat:** `summary.facilityCount`/`byFacility` are derived from the same rows as `facilities`, so a facility with zero vaccines configured yet won't appear in `byFacility` at all (it contributes zero rows). If you need every facility to show up regardless — e.g. a district overview that shouldn't silently omit a brand-new, unconfigured facility — use the new `GET /api/districts/:id` below instead, which doesn't have this blind spot.
+
+### New endpoint: `GET /api/facilities/:id` — Super Admin / District Supervisor (own district)
+
+Drill-down for one facility: metadata + its full vaccine/stock list + a status rollup, in one call — instead of fetching the whole scoped dashboard and filtering client-side to one `facilityId`.
+```jsonc
+// 200
+{
+  "facility": {
+    "id": "uuid", "name": "AKUH Main Campus",
+    "districtId": "uuid", "districtName": "Karachi Central",
+    "isActive": true, "createdAt": "ISO 8601",
+    "facilitySupervisorId": "uuid | null", "facilitySupervisorName": "string | null",
+    "statusCounts": { "critical": 1, "low": 0, "adequate": 3, "no_data": 1 },
+    "vaccines": [
+      { "thresholdId": "uuid", "vaccineId": "uuid", "vaccineName": "BCG", "minQuantity": 20, "quantity": 8, "recordedAt": "ISO 8601 | null", "status": "critical" }
+      // same row shape as GET /api/dashboard's facilities array, scoped to this one facility
+    ]
+  }
+}
+```
+`403` if a district_supervisor targets a facility outside their own district, `404` if unknown. No `isActive` filtering — a soft-deleted facility is still fully viewable here (same as `GET /api/facilities`'s list). Not available to facility_supervisor/facility_worker — their own `GET /api/dashboard` already covers their one facility.
+
+### New endpoint: `GET /api/districts/:id` — Super Admin only
+
+Drill-down for one district: metadata + **every** facility in it (active and inactive, including ones with zero vaccines configured — this is the fix for the blind spot noted above) + a status rollup per facility + a district-wide rollup.
+```jsonc
+// 200
+{
+  "district": {
+    "id": "uuid", "name": "Karachi Central", "isActive": true, "createdAt": "ISO 8601",
+    "facilityCount": 6,
+    "statusCounts": { "critical": 3, "low": 5, "adequate": 18, "no_data": 2 },
+    "facilities": [
+      { "id": "uuid", "name": "...", "isActive": true, "facilitySupervisorId": "uuid | null", "facilitySupervisorName": "string | null", "statusCounts": { "critical": 0, "low": 0, "adequate": 0, "no_data": 0 } }
+      // a facility with statusCounts all zero has no vaccines configured yet — not an error, just unstaffed/unconfigured
+    ]
+  }
+}
+```
+`403` for any non-super_admin (a district_supervisor already gets this same data for their own district via `GET /api/dashboard`'s `summary.byFacility`), `404` if unknown.
+
+### New: `GET /api/facilities` now includes who's staffing each facility
+
+```jsonc
+{ "id": "uuid", "name": "...", "districtId": "uuid", "isActive": true, "createdAt": "ISO 8601", "facilitySupervisorId": "uuid | null", "facilitySupervisorName": "string | null" }
+```
+Both `null` if the facility currently has no active supervisor. Use this to show a "staffed / unstaffed" indicator in a facility list without a second lookup.
+
+### New business rule: one active Facility Supervisor per facility, enforced server-side
+
+**Before:** nothing stopped a District Supervisor creating multiple active `facility_supervisor` accounts for the same facility (this happened by accident during testing — 18 duplicate test accounts on the shared dev DB were cleaned up as part of shipping this).
+**Now:** enforced at the database level. Two places can return a new `409`:
+
+```jsonc
+// POST /api/users (creating a facility_supervisor for a facility that already has an active one)
+// PUT /api/users/:id/activate (reactivating one while a different one is now active at that facility)
+{ "error": "Facility already has an active supervisor" }
+```
+
+**Practical UI implication:** when offering "create a Facility Supervisor" for a facility, check whether `GET /api/facilities`/`GET /api/facilities/:id` already shows a non-null `facilitySupervisorId` for it first — if so, either hide the create action or make clear the flow is "replace" (deactivate the current one, then create/reactivate the new one), rather than letting the user hit a raw `409`.
 
 ---
 
 ## Reference
 
-- `API_DOCUMENTATION.md` (backend repo root) — full role-grouped capability list, now updated to match this doc.
+- `API_DOCUMENTATION.md` (backend repo root) — full role-grouped capability list with inline request/response payloads, now updated to match this doc.
 - `docs/api-reference.md` (backend repo) — the concrete JSON contract for every endpoint, including the ones above.

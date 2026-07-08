@@ -4,6 +4,7 @@ import { getDashboard } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
+import { statusConfig } from '../../lib/status'
 
 function SummaryPill({ icon: Icon, label, count, colorClass }) {
   return (
@@ -20,13 +21,8 @@ function StockCard({ row }) {
   const pct         = row.minQuantity > 0
     ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
     : (hasData ? 100 : 0)
-  const borderColor = row.status === 'no_data' ? 'border-l-secondary'
-    : row.status === 'red'   ? 'border-l-danger'
-    : row.status === 'amber' ? 'border-l-warning'
-    :                          'border-l-success'
-  const barColor    = row.status === 'red'   ? 'bg-danger'
-    : row.status === 'amber' ? 'bg-warning'
-    :                          'bg-success'
+  const borderColor = statusConfig(row.status).borderL
+  const barColor    = statusConfig(row.status).dot
 
   return (
     <div className={`bg-surface rounded-xl border border-surface-border border-l-4 ${borderColor} px-4 py-3 flex flex-col gap-2`}>
@@ -66,9 +62,9 @@ export default function WorkerStatusView() {
   const rows          = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
   const facilityName  = rows[0]?.facilityName
   const districtName  = rows[0]?.districtName
-  const okCount       = rows.filter((r) => r.status === 'green').length
-  const lowCount      = rows.filter((r) => r.status === 'amber').length
-  const criticalCount = rows.filter((r) => r.status === 'red').length
+  const okCount       = rows.filter((r) => r.status === 'adequate').length
+  const lowCount      = rows.filter((r) => r.status === 'low').length
+  const criticalCount = rows.filter((r) => r.status === 'critical').length
   const noDataCount   = rows.filter((r) => r.status === 'no_data').length
 
   return (
