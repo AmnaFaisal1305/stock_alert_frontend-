@@ -61,13 +61,18 @@ export default function DistrictDetail() {
                   <Link
                     key={f.id}
                     to={`/super-admin/facilities/${f.id}`}
-                    className="bg-surface rounded-xl border border-surface-border p-4 flex flex-col gap-2 hover:shadow-md transition-shadow duration-200"
+                    className="bg-white rounded-2xl border border-surface-border p-5 flex flex-col gap-3.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-text truncate">{f.name}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <div className="p-2 rounded-lg bg-red-50 text-primary mt-0.5">
+                          <Building2 size={16} />
+                        </div>
+                        <p className="font-bold text-text truncate text-sm leading-tight">{f.name}</p>
+                      </div>
                       <StatusBadge status={worstStatus(f.statusCounts)} />
                     </div>
-                    <div className="flex items-center justify-between text-xs text-text-muted">
+                    <div className="flex items-center justify-between text-xs text-text-muted border-t border-slate-50 pt-2.5 mt-1 font-medium">
                       <span>{f.facilitySupervisorName ?? 'Unstaffed'}</span>
                       <Badge type={f.isActive ? 'active' : 'inactive'} />
                     </div>

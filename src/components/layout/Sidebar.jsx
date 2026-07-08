@@ -38,64 +38,87 @@ const ROLE_SECTION_LABELS = {
   facility_worker:     'My Workspace',
 }
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, onClose }) {
   const { user, logout } = useAuth()
   const links = NAV[user?.role] ?? []
   const sectionLabel = ROLE_SECTION_LABELS[user?.role] ?? 'Navigation'
 
   return (
-    <aside className="w-64 min-h-screen bg-surface border-r border-surface-border flex flex-col">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-surface-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Syringe size={17} className="text-white" />
+    <>
+      {/* Mobile Drawer Overlay */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={[
+        'w-64 h-screen bg-white border-r border-surface-border flex flex-col flex-shrink-0',
+        'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-transform duration-300 ease-in-out',
+        mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:shadow-none'
+      ].join(' ')}>
+        {/* Logo */}
+        <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/akuh-icon.png" alt="AKUH Logo" className="w-8 h-8 object-contain flex-shrink-0" />
+            <div>
+              <p className="font-extrabold text-text text-xs leading-none tracking-tight uppercase">Smart Stock</p>
+              <p className="font-semibold text-primary text-[10px] leading-tight tracking-tight mt-0.5 uppercase">Stock Alert</p>
+              <p className="text-[9px] font-bold text-text-muted/70 mt-0.5 uppercase tracking-wider">AKUH Network</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-text text-sm leading-tight">VaxAlert</p>
-            <p className="text-[11px] text-text-muted leading-tight">Stock Management</p>
-          </div>
+          {mobileOpen && (
+            <button onClick={onClose} className="lg:hidden text-text-muted hover:text-text p-1 rounded-lg">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-3 mb-3">
-          {sectionLabel}
-        </p>
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              [
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group',
-                isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary pl-[10px]'
-                  : 'text-secondary hover:bg-surface-alt hover:text-text border-l-2 border-transparent pl-[10px]',
-              ].join(' ')
-            }
+        {/* Nav */}
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          <p className="text-[10px] font-bold text-text-muted/65 uppercase tracking-widest px-3 mb-4">
+            {sectionLabel}
+          </p>
+          <div className="space-y-1">
+            {links.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  [
+                    'flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-150 group border-l-4',
+                    isActive
+                      ? 'bg-primary/5 text-primary border-primary'
+                      : 'text-secondary border-transparent hover:bg-slate-50 hover:text-text',
+                  ].join(' ')
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon size={17} className={isActive ? 'text-primary' : 'text-text-muted group-hover:text-text transition-colors'} />
+                    {label}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+
+        {/* Activity indicator + Sign out */}
+        <div className="px-4 pb-6 pt-3 border-t border-surface-border">
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-secondary hover:bg-danger/5 hover:text-danger transition-all duration-150 w-full border-l-4 border-transparent group"
           >
-            {({ isActive }) => (
-              <>
-                <Icon size={16} className={isActive ? 'text-primary' : 'text-text-muted group-hover:text-text transition-colors'} />
-                {label}
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Activity indicator + Sign out */}
-      <div className="px-3 pb-4 pt-2 border-t border-surface-border space-y-0.5">
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 pl-[10px] rounded-lg text-sm font-medium text-secondary hover:bg-danger/5 hover:text-danger transition-all duration-150 w-full border-l-2 border-transparent group"
-        >
-          <LogOut size={16} className="text-text-muted group-hover:text-danger transition-colors" />
-          Sign Out
-        </button>
-      </div>
-    </aside>
+            <LogOut size={17} className="text-text-muted group-hover:text-danger transition-colors" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }

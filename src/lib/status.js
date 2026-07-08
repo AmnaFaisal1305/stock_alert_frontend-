@@ -4,19 +4,19 @@
 export const STATUS_CONFIG = {
   critical: {
     dot: 'bg-danger', text: 'text-danger-dark', bg: 'bg-danger-bg', label: 'Critical',
-    borderL: 'border-l-danger', ring: 'ring-1 ring-danger/20', gaugeHex: '#DC2626',
+    borderL: 'border-l-danger', ring: 'ring-1 ring-danger/20', gaugeHex: '#EF4444',
   },
   low: {
     dot: 'bg-warning', text: 'text-warning-dark', bg: 'bg-warning-bg', label: 'Low',
-    borderL: 'border-l-warning', ring: '', gaugeHex: '#D97706',
+    borderL: 'border-l-warning', ring: 'ring-1 ring-warning/20', gaugeHex: '#F59E0B',
   },
   adequate: {
     dot: 'bg-success', text: 'text-success-dark', bg: 'bg-success-bg', label: 'OK',
-    borderL: 'border-l-success', ring: '', gaugeHex: '#16A34A',
+    borderL: 'border-l-success', ring: 'ring-1 ring-success/20', gaugeHex: '#10B981',
   },
   no_data: {
     dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-alt', label: 'No data',
-    borderL: 'border-l-secondary', ring: '', gaugeHex: '#9CA3AF',
+    borderL: 'border-l-secondary', ring: 'ring-1 ring-secondary/20', gaugeHex: '#64748B',
   },
 }
 

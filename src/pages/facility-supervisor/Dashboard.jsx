@@ -12,6 +12,7 @@ import { getDashboard, getUsers, getAuditLog } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
+import StatCard from '../../components/shared/StatCard'
 import { statusConfig, gaugeHex, STATUS_RANK } from '../../lib/status'
 
 const AVATAR_COLORS = [
@@ -175,24 +176,6 @@ function AlertBanner({ criticalCount, lowCount, total }) {
 }
 
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, iconBg, iconColor, valueColor = 'text-text', subtitle, accentColor }) {
-  return (
-    <div className="bg-surface rounded-xl border border-surface-border overflow-hidden">
-      {accentColor && <div className={`h-0.5 w-full ${accentColor}`} />}
-      <div className="px-4 py-3 flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
-          <Icon size={16} className={iconColor} />
-        </div>
-        <div className="min-w-0">
-          <p className={`text-2xl font-bold leading-none ${valueColor}`}>{value}</p>
-          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mt-1">{label}</p>
-          {subtitle && <p className="text-[10px] text-text-muted mt-0.5">{subtitle}</p>}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Activity Feed ─────────────────────────────────────────────────────────────
 const FEED_ACTION_META = {
@@ -409,30 +392,22 @@ export default function FacilityDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard
             icon={Syringe} label="Total Vaccines" value={rows.length}
-            iconBg="bg-primary/10" iconColor="text-primary"
-            accentColor="bg-primary"
+            colorClass="text-primary"
             subtitle={`${healthyCount} healthy`}
           />
           <StatCard
             icon={AlertCircle} label="Critical" value={criticalCount}
-            iconBg={criticalCount > 0 ? 'bg-danger-bg' : 'bg-surface-alt'}
-            iconColor={criticalCount > 0 ? 'text-danger' : 'text-text-muted'}
-            valueColor={criticalCount > 0 ? 'text-danger' : 'text-text-muted'}
-            accentColor={criticalCount > 0 ? 'bg-danger' : 'bg-surface-border'}
+            colorClass={criticalCount > 0 ? 'text-danger' : 'text-text-muted'}
             subtitle={criticalCount > 0 ? 'Needs immediate action' : 'All clear'}
           />
           <StatCard
             icon={AlertTriangle} label="Low Stock" value={lowCount}
-            iconBg={lowCount > 0 ? 'bg-warning-bg' : 'bg-surface-alt'}
-            iconColor={lowCount > 0 ? 'text-warning-dark' : 'text-text-muted'}
-            valueColor={lowCount > 0 ? 'text-warning' : 'text-text-muted'}
-            accentColor={lowCount > 0 ? 'bg-warning' : 'bg-surface-border'}
+            colorClass={lowCount > 0 ? 'text-warning-dark' : 'text-text-muted'}
             subtitle={lowCount > 0 ? 'Plan restocking soon' : 'Levels healthy'}
           />
           <StatCard
             icon={Users} label="Active Workers" value={userData ? activeWorkers : '—'}
-            iconBg="bg-success-bg" iconColor="text-success-dark"
-            accentColor="bg-success"
+            colorClass="text-success-dark"
             subtitle="Currently active"
           />
         </div>

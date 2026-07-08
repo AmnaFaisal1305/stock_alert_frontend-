@@ -7,13 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary:   { DEFAULT: '#0F766E', light: '#14B8A6', dark: '#0D6B63' },
-        secondary: { DEFAULT: '#6B7280', light: '#9CA3AF', dark: '#374151' },
-        success:   { DEFAULT: '#16A34A', light: '#22C55E', dark: '#15803D', bg: '#F0FDF4' },
-        warning:   { DEFAULT: '#D97706', light: '#F59E0B', dark: '#B45309', bg: '#FFFBEB' },
-        danger:    { DEFAULT: '#DC2626', light: '#EF4444', dark: '#B91C1C', bg: '#FEF2F2' },
-        surface:   { DEFAULT: '#FFFFFF', alt: '#F9FAFB', border: '#E5E7EB' },
-        text:      { DEFAULT: '#111827', muted: '#6B7280', inverse: '#FFFFFF' },
+        primary:   { DEFAULT: '#A30014', light: '#C21A2E', dark: '#7A000D', bg: '#FFF5F5' }, // AKUH Crimson Brand Red
+        secondary: { DEFAULT: '#64748B', light: '#94A3B8', dark: '#334155' }, // Slate neutrals
+        success:   { DEFAULT: '#10B981', light: '#34D399', dark: '#065F46', bg: '#ECFDF5' }, // Emerald-based success
+        warning:   { DEFAULT: '#F59E0B', light: '#FBBF24', dark: '#92400E', bg: '#FFFBEB' }, // Amber-based warning
+        danger:    { DEFAULT: '#EF4444', light: '#F87171', dark: '#991B1B', bg: '#FEF2F2' }, // Red-based alert/danger
+        surface:   { DEFAULT: '#FFFFFF', alt: '#F8FAFC', border: '#E2E8F0' }, // Slate-50 background, Slate-200 border
+        text:      { DEFAULT: '#0F172A', muted: '#475569', inverse: '#FFFFFF' }, // Slate-900 and Slate-600
+      },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'toast-in': {

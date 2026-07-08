@@ -13,15 +13,15 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   }, [onClose, duration])
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3 bg-surface shadow-lg rounded-xl px-4 py-3 border border-surface-border min-w-[260px] max-w-sm animate-toast-in motion-reduce:animate-none">
-      {icons[type]}
-      <p className="text-sm text-text flex-1">{message}</p>
+    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3.5 bg-white shadow-xl rounded-xl px-4 py-3.5 border border-surface-border min-w-[280px] max-w-sm animate-toast-in motion-reduce:animate-none">
+      <div className="flex-shrink-0 mt-0.5">{icons[type]}</div>
+      <p className="text-sm text-text font-medium flex-1">{message}</p>
       <button
         onClick={onClose}
         aria-label="Dismiss"
-        className="w-11 h-11 -m-2.5 -mt-1.5 flex items-center justify-center text-text-muted hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+        className="w-8 h-8 flex items-center justify-center text-text-muted hover:bg-slate-50 hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
       >
-        <X size={16} />
+        <X size={15} />
       </button>
     </div>
   )

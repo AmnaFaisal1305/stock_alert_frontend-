@@ -31,25 +31,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="bg-surface rounded-xl border border-surface-border p-8">
-          <div className="flex flex-col items-center gap-3 mb-8">
-            <div className="bg-primary/10 p-3 rounded-xl">
-              <Syringe size={28} className="text-primary" />
-            </div>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px]">
+        <div className="bg-white rounded-2xl border border-surface-border p-8 sm:p-10 shadow-xl">
+          {/* Brand Logo & Header */}
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <img src="/akuh-logo-urdu.png" alt="Aga Khan University Hospital Logo" className="h-16 object-contain" />
+            <div className="h-px w-full bg-slate-100 my-1" />
             <div className="text-center">
-              <h1 className="text-xl font-bold text-text">Vaccine Stock Alert System</h1>
-              <p className="text-sm text-text-muted mt-0.5">Sign in to your account</p>
+              <h1 className="text-lg font-bold text-text tracking-tight">Smart Stock Alert</h1>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-1">AKUH Network Portal</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <Input
               id="email"
-              label="Email"
+              label="Email Address"
               type="email"
-              placeholder="you@akuh.org"
+              placeholder="username@akuh.pilot"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -65,30 +65,35 @@ export default function LoginPage() {
             />
 
             {error && (
-              <p className="text-sm text-danger bg-danger-bg px-3 py-2 rounded-lg">{error}</p>
+              <p className="text-xs font-semibold text-danger bg-danger-bg border border-danger/10 px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {error}
+              </p>
             )}
 
             <Button
               type="submit"
               size="lg"
-              className="w-full mt-1"
+              className="w-full font-bold uppercase tracking-wider text-xs py-3"
               disabled={loading}
             >
               {loading ? (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Signing in…
+                  Verifying Credentials…
                 </span>
               ) : 'Sign In'}
             </Button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-text-muted mt-4">
-          Aga Khan University Hospital — Internal System
+        <p className="text-center text-[10px] uppercase font-bold tracking-wider text-text-muted/80 mt-6">
+          Official System — Aga Khan University Hospital Network
         </p>
       </div>
     </div>

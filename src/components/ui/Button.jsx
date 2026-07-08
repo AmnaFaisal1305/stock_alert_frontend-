@@ -1,14 +1,14 @@
 const variants = {
-  primary:   'bg-primary text-text-inverse hover:bg-primary-dark focus-visible:ring-primary',
-  secondary: 'bg-surface border border-surface-border text-text hover:bg-surface-alt focus-visible:ring-secondary',
-  danger:    'bg-danger text-text-inverse hover:bg-danger-dark focus-visible:ring-danger',
-  ghost:     'text-primary hover:bg-primary/10 focus-visible:ring-primary',
+  primary:   'bg-primary text-white shadow-sm hover:bg-primary-light focus-visible:ring-primary active:scale-[0.98]',
+  secondary: 'bg-surface border border-surface-border text-text shadow-sm hover:bg-surface-alt hover:text-text focus-visible:ring-secondary active:scale-[0.98]',
+  danger:    'bg-danger text-white shadow-sm hover:bg-danger-light focus-visible:ring-danger active:scale-[0.98]',
+  ghost:     'text-primary hover:bg-primary/5 focus-visible:ring-primary',
 }
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-2.5 text-base',
+  sm: 'px-3 py-1.5 text-xs rounded-md',
+  md: 'px-4 py-2 text-sm rounded-lg',
+  lg: 'px-5 py-2.5 text-sm font-semibold rounded-lg',
 }
 
 export default function Button({

@@ -60,16 +60,16 @@ export default function FacilityDetail() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {facility.vaccines.map((v) => (
-                  <div key={v.vaccineId} className="bg-surface rounded-xl border border-surface-border p-4 flex flex-col gap-2">
+                  <div key={v.vaccineId} className="bg-white rounded-2xl border border-surface-border p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-text truncate">{v.vaccineName}</p>
+                      <p className="font-bold text-text truncate text-sm">{v.vaccineName}</p>
                       <StatusBadge status={v.status} />
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xl font-bold text-text">{v.quantity ?? '—'}</span>
-                      <span className="text-xs text-text-muted">/ {v.minQuantity || '∞'} doses</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-2xl font-extrabold text-text tracking-tight">{v.quantity ?? '—'}</span>
+                      <span className="text-xs text-text-muted font-medium">/ {v.minQuantity || '∞'} doses</span>
                     </div>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-[11px] text-text-muted/80 mt-1 font-semibold uppercase tracking-wider">
                       {v.recordedAt ? `Last recorded ${new Date(v.recordedAt).toLocaleDateString()}` : 'Never recorded'}
                     </p>
                   </div>
