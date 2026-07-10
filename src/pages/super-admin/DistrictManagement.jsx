@@ -1,33 +1,169 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Map as MapIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Plus, Pencil, UserX, UserCheck, Search, Map as MapIcon,
+  ChevronLeft, ChevronRight, ChevronDown, Building2, User, Mail, Loader2,
+} from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDistricts, createDistrict, updateDistrict, deleteDistrict, activateDistrict } from '../../lib/api'
-import Table from '../../components/shared/Table'
+import {
+  getDistricts, getDistrict,
+  createDistrict, updateDistrict, deleteDistrict, activateDistrict,
+} from '../../lib/api'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
+import StatusBadge from '../../components/shared/StatusBadge'
+import { worstStatus, statusConfig } from '../../lib/status'
 
+// ── Inline facility sub-table — rendered below each expanded district row ────
+function DistrictExpandedPanel({ districtId }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['district', districtId],
+    queryFn: () => getDistrict(districtId),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="border-t border-primary/10 bg-slate-50 px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
+        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+        Loading facilities…
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="border-t border-primary/10 bg-slate-50 px-8 py-4 text-xs font-semibold text-danger">
+        Failed to load facilities.
+      </div>
+    )
+  }
+
+  const facilities = data?.district?.facilities ?? []
+
+  return (
+    <div className="border-t border-primary/10 bg-slate-50/80">
+      {/* Sub-panel header */}
+      <div className="px-8 pt-4 pb-3 flex items-center gap-3">
+        <div className="w-0.5 h-4 bg-primary rounded-full flex-shrink-0" />
+        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+          {facilities.length} {facilities.length === 1 ? 'Facility' : 'Facilities'}
+        </span>
+      </div>
+
+      {facilities.length === 0 ? (
+        <div className="px-8 pb-5 flex items-center gap-3 text-text-muted">
+          <Building2 size={16} className="opacity-30 flex-shrink-0" />
+          <p className="text-sm font-medium">No facilities registered under this district.</p>
+        </div>
+      ) : (
+        <div className="mx-6 mb-5 rounded-xl border border-surface-border overflow-hidden bg-white shadow-sm">
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[2fr_1.4fr_1.8fr_90px_1fr] px-5 py-2.5 bg-slate-50 border-b border-surface-border gap-5 items-center">
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility Name</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility Supervisor</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">Vaccines</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock Status</span>
+          </div>
+
+          {/* Facility rows */}
+          {facilities.map((f) => {
+            const fStatus     = worstStatus(f.statusCounts)
+            const cfg         = statusConfig(fStatus)
+            const sc          = f.statusCounts ?? {}
+            const totalTypes  = (sc.critical ?? 0) + (sc.low ?? 0) + (sc.adequate ?? 0) + (sc.no_data ?? 0)
+            const hasAny      = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
+
+            return (
+              <Link
+                key={f.id}
+                to={`/super-admin/facilities/${f.id}`}
+                className="grid grid-cols-[2fr_1.4fr_1.8fr_90px_1fr] px-5 py-3.5 gap-5 items-center border-b border-surface-border last:border-b-0 hover:bg-primary/[0.03] transition-colors duration-100 group"
+              >
+                {/* Facility name + status accent dot */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
+                    <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
+                  </div>
+                  <span
+                    className="font-semibold text-sm text-text truncate group-hover:text-primary transition-colors"
+                    title={f.name}
+                  >
+                    {f.name}
+                  </span>
+                </div>
+
+                {/* Supervisor name */}
+                <span className={`text-sm truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
+                  {f.facilitySupervisorName ?? '—'}
+                </span>
+
+                {/* Supervisor email */}
+                <span className={`text-sm truncate ${f.facilitySupervisorEmail ? 'text-text' : 'text-text-muted italic'}`}>
+                  {f.facilitySupervisorEmail ?? '—'}
+                </span>
+
+                {/* Total vaccine types */}
+                <div className="text-center">
+                  <span className="text-sm font-bold text-text tabular-nums">{totalTypes}</span>
+                  <p className="text-[10px] text-text-muted font-medium leading-none mt-0.5">types</p>
+                </div>
+
+                {/* Stock status chips */}
+                <div className="flex flex-wrap gap-1">
+                  {sc.critical > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
+                      {sc.critical} Critical
+                    </span>
+                  )}
+                  {sc.low > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
+                      {sc.low} Low
+                    </span>
+                  )}
+                  {sc.adequate > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
+                      {sc.adequate} OK
+                    </span>
+                  )}
+                  {!hasAny && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
+                      No Data
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function DistrictManagement() {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
+
+  const [open, setOpen]           = useState(false)
+  const [name, setName]           = useState('')
   const [formError, setFormError] = useState('')
 
-  const [renaming, setRenaming]       = useState(null)
-  const [renameValue, setRenameValue] = useState('')
-  const [renameError, setRenameError] = useState('')
+  const [renaming, setRenaming]         = useState(null)
+  const [renameValue, setRenameValue]   = useState('')
+  const [renameError, setRenameError]   = useState('')
 
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [deactivateError, setDeactivateError]   = useState('')
 
-  const [toast, setToast] = useState(null)
-
-  // Filters & Pagination State
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [toast, setToast]       = useState(null)
+  const [searchQuery, setSearch] = useState('')
+  const [currentPage, setPage]  = useState(1)
+  const [expandedId, setExpandedId] = useState(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['districts'],
@@ -38,9 +174,7 @@ export default function DistrictManagement() {
     mutationFn: () => createDistrict(name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
-      setOpen(false)
-      setName('')
-      setFormError('')
+      setOpen(false); setName(''); setFormError('')
       setToast({ message: 'District created successfully.', type: 'success' })
     },
     onError: (err) => setFormError(err.message),
@@ -50,8 +184,7 @@ export default function DistrictManagement() {
     mutationFn: () => updateDistrict(renaming.id, renameValue),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
-      setRenaming(null)
-      setRenameError('')
+      setRenaming(null); setRenameError('')
       setToast({ message: 'District renamed.', type: 'success' })
     },
     onError: (err) => setRenameError(err.message),
@@ -62,8 +195,7 @@ export default function DistrictManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       setToast({ message: `${deactivateTarget?.name} deactivated.`, type: 'success' })
-      setDeactivateTarget(null)
-      setDeactivateError('')
+      setDeactivateTarget(null); setDeactivateError('')
     },
     onError: (err) => setDeactivateError(err.message),
   })
@@ -79,112 +211,59 @@ export default function DistrictManagement() {
   })
 
   const districts = data?.districts ?? []
-
-  // Filtration logic
-  const filteredDistricts = districts.filter((d) =>
+  const filtered  = districts.filter((d) =>
     d.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Pagination logic
-  const itemsPerPage = 10
-  const totalPages = Math.ceil(filteredDistricts.length / itemsPerPage)
-  const paginatedDistricts = filteredDistricts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const ITEMS_PER_PAGE = 10
+  const totalPages     = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated      = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-  function openRename(row) { setRenaming(row); setRenameValue(row.name); setRenameError('') }
-  function openDeactivate(row) { setDeactivateTarget(row); setDeactivateError('') }
-
-  const columns = [
-    {
-      key: 'name',
-      label: 'District Name',
-      render: (row) => (
-        <Link to={`/super-admin/districts/${row.id}`} className="font-bold text-text hover:text-primary transition-colors flex items-center gap-2">
-          <MapIcon size={14} className="text-text-muted/70 flex-shrink-0" />
-          <span>{row.name}</span>
-        </Link>
-      ),
-    },
-    {
-      key: 'createdAt',
-      label: 'Date Created',
-      render: (row) => (
-        <span className="text-xs font-semibold text-text-muted">
-          {new Date(row.createdAt).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-          })}
-        </span>
-      )
-    },
-    {
-      key: 'isActive',
-      label: 'Status',
-      render: (row) => (
-        <Badge type={row.isActive ? 'active' : 'inactive'} />
-      ),
-    },
-    {
-      key: 'actions',
-      label: '',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <Link
-            to={`/super-admin/districts/${row.id}`}
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2.5 py-1.5"
-          >
-            View Details <ArrowRight size={13} strokeWidth={2.2} />
-          </Link>
-          <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
-            <Pencil size={12} /> Rename
-          </Button>
-          {row.isActive ? (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}>
-              <UserX size={12} /> Deactivate
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-              <UserCheck size={12} /> Activate
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ]
+  function toggleExpand(id) {
+    setExpandedId((prev) => (prev === id ? null : id))
+  }
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+
+      {/* ── Maroon banner header ─────────────────────────────────────── */}
+      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-text tracking-tight">District Management</h1>
-          <p className="text-sm text-text-muted mt-0.5">
-            {!isLoading && `${districts.length} ${districts.length === 1 ? 'district' : 'districts'} registered under system`}
-            {isLoading && 'Loading districts list...'}
+          <h1 className="text-xl font-bold text-white tracking-tight">District Management</h1>
+          <p className="text-sm text-white/70 mt-0.5">
+            {!isLoading
+              ? `${districts.length} ${districts.length === 1 ? 'district' : 'districts'} registered under system`
+              : 'Loading districts list…'}
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus size={16} /> Add District
-        </Button>
+        <button
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 bg-white text-primary font-bold text-sm px-4 py-2 rounded-lg shadow-sm hover:bg-white/90 active:scale-[0.98] transition-all flex-shrink-0"
+        >
+          <Plus size={15} strokeWidth={2.5} /> Add District
+        </button>
       </div>
 
-      {/* Search Bar */}
+      {/* ── Search ───────────────────────────────────────────────────── */}
       {!isLoading && !isError && districts.length > 0 && (
         <div className="relative w-80">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search district by name..."
+            placeholder="Search district by name…"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
           />
         </div>
       )}
 
-      {/* Loading Skeletons */}
+      {/* ── Loading skeleton ─────────────────────────────────────────── */}
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />
+          ))}
         </div>
       )}
 
@@ -194,74 +273,157 @@ export default function DistrictManagement() {
         </div>
       )}
 
-      {/* Table & Pagination */}
+      {/* ── Districts table ──────────────────────────────────────────── */}
       {!isLoading && !isError && (
         <div className="flex flex-col gap-3">
-          <Table
-            columns={columns}
-            rows={paginatedDistricts}
-            emptyMessage={searchQuery ? `No districts match "${searchQuery}"` : 'No districts yet.'}
-          />
+          <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
 
-          {/* Pagination bar */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
-              <div className="flex flex-1 justify-between sm:hidden">
-                <Button variant="secondary" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
-                  Previous
-                </Button>
-                <Button variant="secondary" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
-                  Next
-                </Button>
+            {/* Column headers */}
+            <div className="grid grid-cols-[2.5fr_1.4fr_2fr_240px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-6 items-center">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Name</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Supervisor</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Actions</span>
+            </div>
+
+            {paginated.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-text-muted">
+                {searchQuery ? `No districts match "${searchQuery}"` : 'No districts registered yet.'}
               </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-text-muted font-semibold">
-                    Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-                    <span className="font-extrabold text-text">{totalPages}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    {Array.from({ length: totalPages }).map((_, i) => {
-                      const p = i + 1
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => setCurrentPage(p)}
-                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                            p === currentPage
-                              ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                              : 'text-text-muted hover:bg-white'
-                          }`}
+            )}
+
+            {/* Data rows */}
+            {paginated.map((row) => {
+              const isExpanded = expandedId === row.id
+              return (
+                <div key={row.id} className="border-b border-surface-border last:border-b-0">
+
+                  {/* Main row */}
+                  <div className={[
+                    'grid grid-cols-[2.5fr_1.4fr_2fr_240px] px-6 py-4 gap-6 items-center transition-colors duration-150',
+                    isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-slate-50/60',
+                  ].join(' ')}>
+
+                    {/* District name + active badge + date */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-text text-sm truncate">{row.name}</p>
+                          <Badge type={row.isActive ? 'active' : 'inactive'} />
+                        </div>
+                        <p className="text-[10px] text-text-muted font-medium mt-0.5">
+                          {new Date(row.createdAt).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`text-sm truncate ${row.supervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
+                      {row.supervisorName ?? '—'}
+                    </span>
+
+                    <span className={`text-sm truncate ${row.supervisorEmail ? 'text-text' : 'text-text-muted italic'}`}>
+                      {row.supervisorEmail ?? '—'}
+                    </span>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => toggleExpand(row.id)}
+                        className={[
+                          'inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150',
+                          isExpanded
+                            ? 'bg-primary text-white'
+                            : 'text-primary hover:bg-primary/5',
+                        ].join(' ')}
+                      >
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={2.5}
+                          className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                        {isExpanded ? 'Collapse' : 'View Details'}
+                      </button>
+
+                      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
+                        <Pencil size={12} /> Rename
+                      </Button>
+
+                      {row.isActive ? (
+                        <Button
+                          variant="ghost" size="sm"
+                          className="text-text-muted hover:text-danger hover:bg-danger/5"
+                          onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}
                         >
-                          {p}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </nav>
+                          <UserX size={12} />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost" size="sm"
+                          className="text-text-muted hover:text-success-dark hover:bg-success-bg"
+                          onClick={() => activateMutation.mutate(row.id)}
+                          disabled={activateMutation.isPending}
+                        >
+                          <UserCheck size={12} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Inline expanded facilities panel */}
+                  {isExpanded && <DistrictExpandedPanel districtId={row.id} />}
                 </div>
-              </div>
+              )
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
+              <p className="text-xs text-text-muted font-semibold hidden sm:block">
+                Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
+                <span className="font-extrabold text-text">{totalPages}</span>
+              </p>
+              <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+                <button
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const p = i + 1
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                        p === currentPage
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-muted hover:bg-white'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </nav>
             </div>
           )}
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* ── Create modal ─────────────────────────────────────────────── */}
       <Modal open={open} onClose={() => setOpen(false)} title="Create District">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <Input
@@ -272,7 +434,11 @@ export default function DistrictManagement() {
             onChange={(e) => { setName(e.target.value); setFormError('') }}
             required
           />
-          {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
+          {formError && (
+            <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">
+              {formError}
+            </p>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
@@ -282,29 +448,46 @@ export default function DistrictManagement() {
         </form>
       </Modal>
 
-      {/* Rename Modal */}
+      {/* ── Rename modal ─────────────────────────────────────────────── */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
-          <Input id="rename-district" label="District Name"
-            value={renameValue} onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }} required />
-          {renameError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{renameError}</p>}
+          <Input
+            id="rename-district"
+            label="District Name"
+            value={renameValue}
+            onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }}
+            required
+          />
+          {renameError && (
+            <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">
+              {renameError}
+            </p>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
-            <Button type="submit" disabled={renameMutation.isPending}>{renameMutation.isPending ? 'Saving…' : 'Save'}</Button>
+            <Button type="submit" disabled={renameMutation.isPending}>
+              {renameMutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Deactivate modal */}
+      {/* ── Deactivate modal ─────────────────────────────────────────── */}
       <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate District" maxWidth="max-w-sm">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-text">
-            Deactivate <span className="font-bold text-text">{deactivateTarget?.name}</span>? Facility supervisors and staff under this district will be blocked until reactivated.
+            Deactivate <span className="font-bold">{deactivateTarget?.name}</span>? Facility supervisors and staff under this district will be blocked until reactivated.
           </p>
-          {deactivateError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deactivateError}</p>}
+          {deactivateError && (
+            <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deactivateError}</p>
+          )}
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
+            <Button
+              variant="danger"
+              onClick={() => deactivateMutation.mutate(deactivateTarget.id)}
+              disabled={deactivateMutation.isPending}
+            >
               {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
             </Button>
           </div>

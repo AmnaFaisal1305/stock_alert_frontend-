@@ -19,8 +19,9 @@ export default function Select({
   // Find selected option
   const selectedOption = options.find((opt) => opt.value === value)
 
-  // Handle click outside to close dropdown
+  // Only attach listener while dropdown is open
   useEffect(() => {
+    if (!isOpen) return
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false)
@@ -28,7 +29,7 @@ export default function Select({
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [isOpen])
 
   const handleSelect = (val) => {
     if (disabled) return

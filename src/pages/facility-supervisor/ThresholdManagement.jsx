@@ -8,27 +8,8 @@ import SkeletonCard from '../../components/shared/SkeletonCard'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import { statusConfig, gaugeHex, FILTERS as STATUS_FILTERS } from '../../lib/status'
-
-// ─── Ring Gauge ───────────────────────────────────────────────────────────────
-function RingGauge({ pct, status, size = 80 }) {
-  const r = (size / 2) - 8
-  const circ = 2 * Math.PI * r
-  const fillColor = gaugeHex(status)
-  return (
-    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E5E7EB" strokeWidth={6} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={fillColor} strokeWidth={6}
-          strokeDasharray={`${(pct / 100) * circ} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.5s ease' }}
-        />
-      </svg>
-      <span className="absolute text-xs font-bold text-text">{pct}%</span>
-    </div>
-  )
-}
+import { statusConfig, FILTERS as STATUS_FILTERS } from '../../lib/status'
+import RingGauge from '../../components/shared/RingGauge'
 
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
 function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {

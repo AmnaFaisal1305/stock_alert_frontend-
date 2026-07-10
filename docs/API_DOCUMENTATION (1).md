@@ -27,9 +27,9 @@ Full details, code samples: `docs/api-reference.md` §1–3.
 |---|---|---|---|---|
 | Log in / log out | ✅ | ✅ | ✅ | ✅ |
 | View dashboard (+ status summary 🆕) | ✅ everything | ✅ own district | ✅ own facility | ✅ own facility |
-| View / create a district | ✅ | ✅ view own only | ❌ | ❌ |
+| View / create a district (+ supervisor name/email 🆕) | ✅ | ✅ view own only | ❌ | ❌ |
 | Rename / delete / reactivate a district 🆕 | ✅ | ❌ | ❌ | ❌ |
-| View district detail (facilities + status) 🆕 | ✅ | ❌ (own dashboard covers it) | ❌ | ❌ |
+| View district detail (facilities + status, + facility supervisor email 🆕) | ✅ | ❌ (own dashboard covers it) | ❌ | ❌ |
 | View / create a facility | ✅ all | ✅ own district | ❌ | ❌ |
 | Rename / delete / reactivate a facility 🆕 | ✅ | ✅ own district | ❌ | ❌ |
 | View facility detail (vaccines + status) 🆕 | ✅ | ✅ own district | ❌ (own dashboard covers it) | ❌ |
@@ -37,14 +37,14 @@ Full details, code samples: `docs/api-reference.md` §1–3.
 | Add / rename / delete a vaccine 🆕 | ❌ | ❌ | ✅ own facility | ❌ |
 | Correct a vaccine's current stock 🆕 | ❌ | ❌ | ✅ own facility | ❌ |
 | View user accounts (+ names 🆕) | ✅ everyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
-| Create a user account | ✅ → district supervisor | ✅ → facility supervisor (max one active per facility 🆕) | ✅ → facility worker | ❌ |
+| Create a user account | ✅ → district supervisor (max one active per district 🆕) | ✅ → facility supervisor (max one active per facility) | ✅ → facility worker | ❌ |
 | Deactivate a user | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Activate (reverse a deactivation) | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Force-reset a password | ✅ anyone | ✅ own district's facility supervisors | ✅ own facility's workers | ❌ |
 | Record stock **received** from district | ❌ | ❌ | ✅ own facility | ❌ |
 | Record stock **used** | ❌ | ❌ | ❌ | ✅ own facility |
 | Edit a threshold | ❌ | ❌ | ✅ own facility | ❌ |
-| View the audit log | ✅ everything | ✅ own district | ✅ **own actions + own facility_workers' actions** | ❌ |
+| View the audit log (`?limit=N` to cap results 🆕) | ✅ everything | ✅ own district | ✅ **own actions + own facility_workers' actions** | ❌ |
 
 ✅ = allowed at the scope shown. ❌ = the backend rejects with `403` before any data is touched — never just hidden in the UI. Treat these as a guide for what to *show*, not the actual security boundary; the backend re-checks everything server-side regardless of what the frontend does.
 
@@ -53,6 +53,8 @@ Full details, code samples: `docs/api-reference.md` §1–3.
 **Districts and facilities are soft-deleted, never actually removed** — "delete" flips an `isActive` flag to `false`; "activate" reverses it. Both now appear in every response with an `isActive` field, and both are blocked from deletion (`409`) while they still have active children (users, or for a district, active facilities too).
 
 **A facility can have at most one active Facility Supervisor at a time — enforced at the database level.** Creating or reactivating a second one for the same facility gets `409 { "error": "Facility already has an active supervisor" }`. Deactivate the current one first to replace them.
+
+**Same rule, one level up, for District Supervisors 🆕.** A district can have at most one active District Supervisor at a time. Creating or reactivating a second one for the same district gets `409 { "error": "District already has an active supervisor" }`.
 
 **Dashboard status values are `critical` / `low` / `adequate` / `no_data`** (previously `red`/`amber`/`green`/`no_data`) — domain words, not colors; the frontend owns the color mapping.
 
@@ -111,8 +113,9 @@ Requires auth + CSRF (the one mutating route that runs on the public `authRouter
 ### `GET /api/districts`
 ```json
 // 200 — every district, including soft-deleted ones
-{ "districts": [{ "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601" }] }
+{ "districts": [{ "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601", "supervisorName": "string | null", "supervisorEmail": "string | null" }] }
 ```
+`supervisorName`/`supervisorEmail` 🆕 — both `null` if the district has no active `district_supervisor` yet.
 
 ### `GET /api/districts/:id` 🆕
 Drill-down: the district plus every facility in it (even ones with zero vaccines configured), each with a status rollup.
@@ -124,12 +127,13 @@ Drill-down: the district plus every facility in it (even ones with zero vaccines
     "facilityCount": 6,
     "statusCounts": { "critical": 3, "low": 5, "adequate": 18, "no_data": 2 },
     "facilities": [
-      { "id": "uuid", "name": "AKUH Main Campus", "isActive": true, "facilitySupervisorId": "uuid | null", "facilitySupervisorName": "string | null", "statusCounts": { "critical": 1, "low": 0, "adequate": 3, "no_data": 1 } }
+      { "id": "uuid", "name": "AKUH Main Campus", "isActive": true, "facilitySupervisorId": "uuid | null", "facilitySupervisorName": "string | null", "facilitySupervisorEmail": "string | null", "statusCounts": { "critical": 1, "low": 0, "adequate": 3, "no_data": 1 } }
     ]
   }
 }
 // 404 — unknown id
 ```
+`facilitySupervisorEmail` 🆕 — alongside the existing `facilitySupervisorId`/`facilitySupervisorName`, same `null`-if-unstaffed rule.
 
 ### `PUT /api/districts/:id` 🆕
 ```jsonc
@@ -173,6 +177,8 @@ Creates a `district_supervisor` account for any district. This is the only role 
 { "user": { "id": "uuid", "email": "...", "name": "...", "role": "district_supervisor", "districtId": "uuid", "facilityId": null, "isActive": true } }
 // 409
 { "error": "Email already in use" }
+// 409 🆕 — that district already has a different active district_supervisor
+{ "error": "District already has an active supervisor" }
 ```
 
 ### `PUT /api/users/:id/deactivate`
@@ -183,7 +189,7 @@ Deactivates **any** user account, unscoped. Takes effect immediately.
 ```
 
 ### `PUT /api/users/:id/activate`
-Reactivates **any** user account, unscoped — reverses a deactivation. Same shape as deactivate, `isActive: true`. **409 `{ "error": "Facility already has an active supervisor" }`** 🆕 if reactivating a `facility_supervisor` whose facility now has a different active one.
+Reactivates **any** user account, unscoped — reverses a deactivation. Same shape as deactivate, `isActive: true`. **409 `{ "error": "Facility already has an active supervisor" }`** if reactivating a `facility_supervisor` whose facility now has a different active one. **409 `{ "error": "District already has an active supervisor" }`** 🆕 — same case, one level up, for a `district_supervisor`.
 
 ### `PUT /api/users/:id/reset-password`
 ```jsonc
@@ -202,7 +208,7 @@ Reactivates **any** user account, unscoped — reverses a deactivation. Same sha
 Stock dashboard rows and a status summary across **every** facility and district, all at once — see §Facility Supervisor below for the full row/summary shape, identical across roles, just scoped differently.
 
 ### `GET /api/audit-log`
-The entire audit log, unscoped — every mutation any user has ever made. Row shape: see §Facility Supervisor below.
+The entire audit log, unscoped — every mutation any user has ever made. Row shape: see §Facility Supervisor below. Accepts an optional `?limit=N` query param 🆕 (positive integer, max 500) to cap the response to the `N` most recent rows instead of the entire log — see §District Supervisor's `GET /api/audit-log` below for the full note (applies identically to every role that can call this endpoint).
 
 ---
 
@@ -215,8 +221,9 @@ The entire audit log, unscoped — every mutation any user has ever made. Row sh
 ### `GET /api/districts`
 ```json
 // 200 — a one-item list: just their own district
-{ "districts": [{ "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601" }] }
+{ "districts": [{ "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601", "supervisorName": "string | null", "supervisorEmail": "string | null" }] }
 ```
+`supervisorName`/`supervisorEmail` 🆕 — reflects themselves (the caller), since it's their own district's active supervisor.
 
 ### `POST /api/facilities`
 `districtId` is forced server-side to their own — never taken from the request. Clones the default starter vaccine set (BCG, OPV, Pentavalent, Measles, PCV) into the new facility, each with a threshold row defaulted to `minQuantity: 0`.
@@ -322,6 +329,7 @@ Same shapes as Super Admin's above — scoped to a `facility_supervisor` whose `
 // 200 — every mutation whose owning district matches theirs, newest first
 { "auditLog": [{ "id": "uuid", "actorId": "uuid", "actorName": "...", "actorRole": "...", "action": "...", "entityType": "...", "entityId": "uuid | null", "districtId": "uuid | null", "districtName": "string | null", "facilityId": "uuid | null", "facilityName": "string | null", "details": {}, "createdAt": "ISO 8601" }] }
 ```
+**`?limit=N` query param 🆕** — e.g. `GET /api/audit-log?limit=5` returns only the 5 most recent rows in this role's scope, instead of the whole thing. Useful for a "recent activity" widget that doesn't need to fetch and slice the full log client-side. `N` must be a positive integer (max 500) or the request is rejected with `400`. Omitting it keeps the old unlimited behavior.
 
 ---
 
@@ -424,6 +432,7 @@ Send the new total, not a delta — the server computes and records the correcti
 // 200 — their own actions plus their own facility_workers', at their own facility only
 { "auditLog": [{ "id": "uuid", "actorId": "uuid", "actorName": "...", "actorRole": "...", "action": "STOCK_ENTRY", "entityType": "stock_entry", "entityId": "uuid", "districtId": "uuid", "districtName": "...", "facilityId": "uuid", "facilityName": "...", "details": { "vaccineId": "uuid", "vaccineName": "BCG", "quantity": 50, "entryType": "received" }, "createdAt": "ISO 8601" }] }
 ```
+For a Recent Activity widget showing the last 5 entries: `GET /api/audit-log?limit=5` 🆕 — caps server-side instead of fetching everything and slicing client-side.
 
 ---
 
@@ -460,7 +469,7 @@ Same shape as Facility Supervisor's above — one facility, `facilities` + `summ
 - **Every mutating request (`POST`/`PUT`/`DELETE`) needs a valid session cookie *and* the `x-csrf-token` header.** No role is exempt. `GET` requests only need the session cookie.
 - **A request body can never grant more than the caller's own role allows.** Submitting `"role": "super_admin"` in a `POST /api/users` body from a facility_supervisor session just gets rejected — the creatable role and scope (`districtId`/`facilityId`) always come from the caller's own verified session, never from what the client sends. The same rule applies to `POST /api/stock-entries`'s `entryType`, forced from the caller's role.
 - **Deactivation and password reset always follow the same one-level-down cascade as account creation** — enforced server-side after loading the target row, never inferred from the request URL alone.
-- **A facility's active Facility Supervisor is unique, enforced at the DB level** — any attempt to have two produces a `409`, whether via `POST /api/users` or `PUT /api/users/:id/activate`.
+- **A facility's active Facility Supervisor is unique, enforced at the DB level** — any attempt to have two produces a `409`, whether via `POST /api/users` or `PUT /api/users/:id/activate`. **Same rule for a district's active District Supervisor 🆕.**
 - **Districts and facilities soft-delete, never hard-delete** — `isActive: false`, blocked with `409` while active children exist. Deleted rows keep appearing in their own `GET`/list endpoints (unfiltered by design) but disappear from `GET /api/dashboard`.
 - **Every write, from every role, produces exactly one audit log row.**
 - **No self-serve anything** — no signup, no "forgot password" flow, no self-deactivation. Every account is created by exactly one role above it in the cascade.

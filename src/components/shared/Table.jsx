@@ -1,4 +1,4 @@
-export default function Table({ columns, rows, emptyMessage = 'No records found.', rowClassName }) {
+export default function Table({ columns, rows, emptyMessage = 'No records found.', rowClassName, rowKey }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-surface-border bg-white shadow-sm">
       <table className="w-full text-sm text-left">
@@ -23,7 +23,7 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
             </tr>
           ) : (
             rows.map((row, i) => (
-              <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}>
+              <tr key={rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i)} className={`hover:bg-slate-50/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}>
                 {columns.map((col) => (
                   <td key={col.key} className="px-6 py-4 whitespace-nowrap text-text font-medium">
                     {col.render ? col.render(row) : row[col.key]}

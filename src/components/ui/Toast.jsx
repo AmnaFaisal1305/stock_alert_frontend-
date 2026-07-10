@@ -13,7 +13,11 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   }, [onClose, duration])
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3.5 bg-white shadow-xl rounded-xl px-4 py-3.5 border border-surface-border min-w-[280px] max-w-sm animate-toast-in motion-reduce:animate-none">
+    <div
+      role="alert"
+      aria-live="polite"
+      className="fixed bottom-6 right-6 z-50 flex items-start gap-3.5 bg-white shadow-xl rounded-xl px-4 py-3.5 border border-surface-border min-w-[280px] max-w-sm animate-toast-in motion-reduce:animate-none"
+    >
       <div className="flex-shrink-0 mt-0.5">{icons[type]}</div>
       <p className="text-sm text-text font-medium flex-1">{message}</p>
       <button

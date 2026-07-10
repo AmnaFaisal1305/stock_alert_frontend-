@@ -7,13 +7,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary:   { DEFAULT: '#A30014', light: '#C21A2E', dark: '#7A000D', bg: '#FFF5F5' }, // AKUH Crimson Brand Red
-        secondary: { DEFAULT: '#64748B', light: '#94A3B8', dark: '#334155' }, // Slate neutrals
-        success:   { DEFAULT: '#10B981', light: '#34D399', dark: '#065F46', bg: '#ECFDF5' }, // Emerald-based success
-        warning:   { DEFAULT: '#F59E0B', light: '#FBBF24', dark: '#92400E', bg: '#FFFBEB' }, // Amber-based warning
-        danger:    { DEFAULT: '#EF4444', light: '#F87171', dark: '#991B1B', bg: '#FEF2F2' }, // Red-based alert/danger
-        surface:   { DEFAULT: '#FFFFFF', alt: '#F8FAFC', border: '#E2E8F0' }, // Slate-50 background, Slate-200 border
-        text:      { DEFAULT: '#0F172A', muted: '#475569', inverse: '#FFFFFF' }, // Slate-900 and Slate-600
+        primary:      { DEFAULT: '#E07848', light: '#ED9060', dark: '#B85A28', bg: '#FFF8F4' },
+        secondary:    { DEFAULT: '#64748B', light: '#94A3B8', dark: '#334155' },
+        success:      { DEFAULT: '#10B981', light: '#34D399', dark: '#065F46', bg: '#ECFDF5' },
+        warning:      { DEFAULT: '#F59E0B', light: '#FBBF24', dark: '#92400E', bg: '#FFFBEB' },
+        danger:       { DEFAULT: '#EF4444', light: '#F87171', dark: '#991B1B', bg: '#FEF2F2' },
+        surface:      { DEFAULT: '#FFFFFF', alt: '#F8FAFC', border: '#E2E8F0' },
+        text:         { DEFAULT: '#0F172A', muted: '#475569', inverse: '#FFFFFF' },
+        'akuh-maroon': { DEFAULT: '#E07848', dark: '#B85A28' },
+        'akuh-navy':   '#1B2A5E',
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -23,9 +25,14 @@ export default {
           '0%':   { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'ken-burns': {
+          '0%':   { transform: 'scale(1.0)' },
+          '100%': { transform: 'scale(1.08)' },
+        },
       },
       animation: {
-        'toast-in': 'toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        'toast-in':  'toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        'ken-burns': 'ken-burns 5s ease-in-out forwards',
       },
     },
   },

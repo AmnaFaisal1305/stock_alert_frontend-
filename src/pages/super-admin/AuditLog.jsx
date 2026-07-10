@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -83,23 +83,40 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
   const [actionFilter, setActionFilter] = useState('')
   const [currentPage, setCurrentPage]   = useState(1)
 
-  // Auto set tab on mount/role changes
-  useEffect(() => {
-    setActiveTab(isDistrictSup ? 'district_supervisor' : 'super_admin')
-    setCurrentPage(1)
-  }, [user?.role])
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ['audit-log'],
     queryFn: getAuditLog,
   })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
-  const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name]))
 
-  const logs = data?.auditLog ?? []
+  const vaccineNameById = useMemo(
+    () => Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name])),
+    [vaccineData]
+  )
+
   const hasFilters = !!(dateFilter || actionFilter)
 
-  // Tabs configuration
+  const filtered = useMemo(() => {
+    const tabLogs = (data?.auditLog ?? []).filter((l) => l.actorRole === activeTab)
+    return tabLogs.filter((l) => {
+      if (dateFilter) {
+        const lDate = l.createdAt?.split('T')[0]
+        if (lDate !== dateFilter) return false
+      }
+      if (actionFilter && l.action !== actionFilter) return false
+      return true
+    })
+  }, [data, activeTab, dateFilter, actionFilter])
+
+  const itemsPerPage = 10
+  const totalPages   = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
+    [filtered, currentPage]
+  )
+
+  const logs = data?.auditLog ?? []
+
   const tabs = isDistrictSup
     ? [
         { id: 'district_supervisor', label: 'District Supervisor', icon: Shield },
@@ -112,24 +129,6 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
         { id: 'facility_worker', label: 'Workers', icon: Users },
       ]
-
-  // Filter logs by active tab role type
-  const tabLogs = logs.filter((l) => l.actorRole === activeTab)
-
-  // Apply Action & Date filters
-  const filtered = tabLogs.filter((l) => {
-    if (dateFilter) {
-      const lDate = l.createdAt?.split('T')[0]
-      if (lDate !== dateFilter) return false
-    }
-    if (actionFilter && l.action !== actionFilter) return false
-    return true
-  })
-
-  // Pagination bounds
-  const itemsPerPage = 10
-  const totalPages = Math.ceil(filtered.length / itemsPerPage)
-  const paginatedRows = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const columns = [
     {
@@ -153,7 +152,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       render: (row) => (
         <div className="flex flex-col min-w-[120px]">
           <span className="text-sm text-text font-bold">{row.actorName ?? '—'}</span>
-          <span className="text-[9px] text-text-muted font-bold tracking-wider mt-0.5">{row.actorEmail}</span>
+          <span className="text-[9px] text-text-muted font-bold tracking-wider mt-0.5">
+            {row.actorRole ? row.actorRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '—'}
+          </span>
         </div>
       )
     },
@@ -195,9 +196,22 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">{title}</h1>
-        <p className="text-sm text-text-muted mt-0.5">{subtitle}</p>
+
+      {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
+      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
+          <p className="text-sm text-white/70 mt-0.5">{subtitle}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+          </span>
+          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest hidden sm:block">
+            Live · Auto-refreshing
+          </span>
+        </div>
       </div>
 
       {/* Tabs list */}

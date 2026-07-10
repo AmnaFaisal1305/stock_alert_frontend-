@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PackageCheck, CheckCircle2, ChevronRight, ChevronLeft, Minus, Plus, LayoutDashboard, Syringe } from 'lucide-react'
+import { CheckCircle2, PackageCheck, ChevronRight, ChevronLeft, Minus, Plus, LayoutDashboard, Syringe } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getDashboard, createStockEntry } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -8,60 +8,10 @@ import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
-import { gaugeHex } from '../../lib/status'
+import RingGauge from '../../components/shared/RingGauge'
+import StepIndicator from '../../components/shared/StepIndicator'
 
 const STEP_LABELS = ['Select Vaccine', 'Enter Quantity', 'Confirm Entry']
-
-// ─── Ring Gauge ───────────────────────────────────────────────────────────────
-function RingGauge({ pct, status, size = 80 }) {
-  const r = (size / 2) - 8
-  const circ = 2 * Math.PI * r
-  const fillColor = gaugeHex(status)
-  return (
-    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E2E8F0" strokeWidth={6} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={fillColor} strokeWidth={6}
-          strokeDasharray={`${(pct / 100) * circ} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.5s ease' }}
-        />
-      </svg>
-      <span className="absolute text-xs font-extrabold text-text">{pct}%</span>
-    </div>
-  )
-}
-
-// ─── Step Indicator ───────────────────────────────────────────────────────────
-function StepIndicator({ step, total }) {
-  return (
-    <div className="flex items-center justify-center gap-0 mb-8">
-      {Array.from({ length: total }).map((_, i) => (
-        <div key={i} className="flex items-center">
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-200 ${
-                i + 1 < step   ? 'bg-primary text-white shadow-sm shadow-primary/20' :
-                i + 1 === step ? 'bg-primary text-white ring-4 ring-primary/10 shadow-sm shadow-primary/20' :
-                                 'bg-slate-50 text-text-muted border border-surface-border'
-              }`}
-            >
-              {i + 1 < step ? <CheckCircle2 size={15} strokeWidth={2.2} /> : i + 1}
-            </div>
-            <span className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
-              i + 1 === step ? 'text-primary' : 'text-text-muted/70'
-            }`}>
-              {STEP_LABELS[i]}
-            </span>
-          </div>
-          {i < total - 1 && (
-            <div className={`w-10 h-0.5 mb-5 mx-2 transition-colors duration-300 ${i + 1 < step ? 'bg-primary' : 'bg-surface-border'}`} />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export default function RecordStock() {
   const { user } = useAuth()
@@ -158,7 +108,7 @@ export default function RecordStock() {
       </div>
 
       <div className="bg-white rounded-2xl border border-surface-border p-6 sm:p-8 shadow-xl">
-        <StepIndicator step={step} total={3} />
+        <StepIndicator step={step} labels={STEP_LABELS} />
 
         {/* ── Step 1: Select vaccine ── */}
         {step === 1 && (

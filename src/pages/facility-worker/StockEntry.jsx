@@ -8,36 +8,9 @@ import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
 import { statusConfig } from '../../lib/status'
+import StepIndicator from '../../components/shared/StepIndicator'
 
 const STEP_LABELS = ['Select Vaccine', 'Enter Doses']
-
-function StepIndicator({ step, total }) {
-  return (
-    <div className="flex items-center justify-center gap-1 mb-8">
-      {Array.from({ length: total }).map((_, i) => (
-        <div key={i} className="flex items-center gap-1">
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-200 ${
-                i + 1 < step   ? 'bg-primary text-white shadow-sm shadow-primary/20' :
-                i + 1 === step ? 'bg-primary text-white ring-4 ring-primary/10 shadow-sm shadow-primary/20' :
-                                 'bg-slate-50 text-text-muted border border-surface-border'
-              }`}
-            >
-              {i + 1 < step ? '✓' : i + 1}
-            </div>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${i + 1 === step ? 'text-primary' : 'text-text-muted/70'}`}>
-              {STEP_LABELS[i]}
-            </span>
-          </div>
-          {i < total - 1 && (
-            <div className={`w-10 h-0.5 mb-4 transition-colors duration-300 ${i + 1 < step ? 'bg-primary' : 'bg-surface-border'}`} />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export default function StockEntry() {
   const { user } = useAuth()
@@ -127,7 +100,7 @@ export default function StockEntry() {
             </div>
           ) : (
             <div>
-              <StepIndicator step={step} total={2} />
+              <StepIndicator step={step} labels={STEP_LABELS} />
 
               {step === 1 && (
                 <div className="flex flex-col gap-6">
@@ -324,7 +297,7 @@ export default function StockEntry() {
                     </div>
                     <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
                       {hasData ? (
-                        <div className={`h-full rounded-full transition-all duration-350 ${cfg.dot}`} style={{ width: `${pct}%` }} />
+                        <div className={`h-full rounded-full transition-all duration-300 ${cfg.dot}`} style={{ width: `${pct}%` }} />
                       ) : (
                         <div className="h-full rounded-full border border-dashed border-slate-200" />
                       )}

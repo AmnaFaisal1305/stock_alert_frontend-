@@ -62,9 +62,13 @@ export default function TopBar({ onMenuClick }) {
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
           <span className="text-sm font-semibold text-text-muted hidden md:block">{user.name ?? user.email}</span>
-          <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm border border-primary/20 hover:bg-primary-light cursor-pointer transition-colors">
+          <button
+            type="button"
+            aria-label={`Signed in as ${user.name ?? user.email}`}
+            className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm border border-primary/20 hover:bg-primary-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
             {initial}
-          </div>
+          </button>
         </div>
       )}
     </header>

@@ -16,21 +16,22 @@ const CSRF_KEY    = 'sst_csrf'
 
 function loadSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
+    const raw  = sessionStorage.getItem(SESSION_KEY)
     const csrf = sessionStorage.getItem(CSRF_KEY)
-    if (raw && csrf) {
-      return { user: JSON.parse(raw), csrf }
-    }
+    if (raw && csrf) return { user: JSON.parse(raw), csrf }
   } catch {}
   return null
 }
 
 export function AuthProvider({ children }) {
-  const saved = loadSession()
-  const [user, setUser] = useState(saved?.user ?? null)
-  const navigate = useNavigate()
+  // useState initializer runs once — safe place to call the side-effectful setCsrfToken
+  const [user, setUser] = useState(() => {
+    const session = loadSession()
+    if (session?.csrf) api.setCsrfToken(session.csrf)
+    return session?.user ?? null
+  })
 
-  if (saved?.csrf) api.setCsrfToken(saved.csrf)
+  const navigate = useNavigate()
 
   const login = useCallback((userData, csrfToken) => {
     api.setCsrfToken(csrfToken)

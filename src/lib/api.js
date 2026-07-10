@@ -174,6 +174,7 @@ export async function updateThreshold(id, minQuantity) {
 
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
-export async function getAuditLog() {
-  return request('GET', '/api/audit-log')
+export async function getAuditLog({ limit } = {}) {
+  const qs = limit != null ? `?limit=${limit}` : ''
+  return request('GET', `/api/audit-log${qs}`)
 }

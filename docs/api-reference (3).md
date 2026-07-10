@@ -65,6 +65,8 @@ Vaccines are also scoped, not a shared global list: each facility has its own in
 
 **A `facility_supervisor` account is unique per facility, enforced at the database level.** `POST /api/users` (district_supervisor creating a facility_supervisor) and `PUT /api/users/:id/activate` (reactivating one) both return `409 { "error": "Facility already has an active supervisor" }` if the target facility already has a different active supervisor. To replace one, deactivate the old account first.
 
+**A `district_supervisor` account is unique per district, same rule, same enforcement — new.** `POST /api/users` (super_admin creating a district_supervisor) and `PUT /api/users/:id/activate` (reactivating one) both return `409 { "error": "District already has an active supervisor" }` if the target district already has a different active supervisor. To replace one, deactivate the old account first.
+
 **Note on `facility_worker`'s `districtId`:** new accounts get it populated at creation time from the creating `facility_supervisor`'s own district — it is **not** `null` for accounts created after this shipped (a reversal of the original design). Accounts created before that change were backfilled on the shared dev DB; don't assume it's always non-null in code that might run against older/self-hosted data.
 
 ---
@@ -196,7 +198,8 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `faci
 - `403` if `role` doesn't match what the caller may create
 - `400` if `name` is missing/empty, a required `districtId`/`facilityId` is missing, references a district/facility outside the caller's own scope, or references a **soft-deleted** (`isActive: false`) district/facility
 - `409 { "error": "Email already in use" }` on a duplicate email
-- `409 { "error": "Facility already has an active supervisor" }` — **new** — creating a `facility_supervisor` for a facility that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the facility.
+- `409 { "error": "Facility already has an active supervisor" }` — creating a `facility_supervisor` for a facility that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the facility.
+- `409 { "error": "District already has an active supervisor" }` — **new** — creating a `district_supervisor` for a district that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the district.
 
 ---
 
@@ -242,7 +245,7 @@ Requires auth + CSRF. **Same caller/target rules as `PUT /:id/deactivate` above*
 
 Unlike deactivate/reset-password, this does **not** bump `tokenVersion` — deactivation already bumped it, so any JWT issued before the deactivation stays permanently invalid regardless of reactivation. The user simply logs in again and gets a fresh token matching the current `tokenVersion`.
 
-**Errors:** `404` if the user id doesn't exist. `403` if the target is outside the caller's cascade (same rule as deactivate). `409 { "error": "Facility already has an active supervisor" }` — **new** — reactivating a `facility_supervisor` whose facility now has a different active supervisor (e.g. one was created to replace them while they were deactivated).
+**Errors:** `404` if the user id doesn't exist. `403` if the target is outside the caller's cascade (same rule as deactivate). `409 { "error": "Facility already has an active supervisor" }` — reactivating a `facility_supervisor` whose facility now has a different active supervisor (e.g. one was created to replace them while they were deactivated). `409 { "error": "District already has an active supervisor" }` — **new** — same case, one level up, for a `district_supervisor`.
 
 ---
 
@@ -262,7 +265,22 @@ Resetting the password also invalidates the user's current session immediately (
 
 Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (all districts), `district_supervisor` (their own district only — a one-item array). `facility_supervisor`/`facility_worker` get `403`.
 
-**200:** `{ "districts": [{ "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601" }] }`
+**200:**
+```json
+{
+  "districts": [
+    {
+      "id": "uuid",
+      "name": "...",
+      "isActive": true,
+      "createdAt": "ISO 8601",
+      "supervisorName": "string | null",
+      "supervisorEmail": "string | null"
+    }
+  ]
+}
+```
+`supervisorName`/`supervisorEmail` are **new** — both `null` if the district currently has no active `district_supervisor`. A district can have at most one active `district_supervisor` at a time (enforced at the DB level — see §2), so this is never ambiguous.
 
 Includes soft-deleted (`isActive: false`) districts — this list is unfiltered by design so a deleted district can still be found and reactivated.
 
@@ -303,12 +321,14 @@ Drill-down detail: the district plus every facility in it (active **and** inacti
         "isActive": true,
         "facilitySupervisorId": "uuid | null",
         "facilitySupervisorName": "string | null",
+        "facilitySupervisorEmail": "string | null",
         "statusCounts": { "critical": 1, "low": 0, "adequate": 3, "no_data": 1 }
       }
     ]
   }
 }
 ```
+`facilitySupervisorEmail` is **new**, alongside the existing `facilitySupervisorId`/`facilitySupervisorName` — `null` under the same condition (no active supervisor).
 A facility with zero vaccines configured yet still appears in `facilities`, with all-zero `statusCounts` — it isn't silently dropped. `statusCounts` values are `critical`/`low`/`adequate`/`no_data` — see `GET /api/dashboard` below for what each means.
 
 **404** if the district id doesn't exist.
@@ -678,6 +698,13 @@ Requires auth only (no CSRF for GET). All four roles may call this — scope dif
 ### `GET /api/audit-log`
 
 Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (unscoped — every row), `district_supervisor` (only rows tagged with their own district), **`facility_supervisor`** (rows whose actor is facility-level staff at their own facility — themselves or one of their own `facility_worker`s; a district_supervisor's own upstream actions on their facility, e.g. `CREATE_FACILITY`, are still excluded even though those rows carry the same facilityId). `facility_worker` gets `403` — no access to this endpoint at all, denied before any query runs.
+
+**Optional `?limit=N` query param — new.** Caps the response to the `N` most recent rows (already ordered newest-first) instead of returning the whole scoped log. Applies identically across all three allowed roles' scoping — it only caps row count, never widens what's visible. `N` must be a positive integer, max `500`; anything else (`0`, negative, non-numeric) returns:
+```json
+// 400
+{ "error": "Validation failed", "fields": { /* zod issue tree */ } }
+```
+Omit `limit` entirely to keep the previous unlimited behavior.
 
 **200:**
 ```json

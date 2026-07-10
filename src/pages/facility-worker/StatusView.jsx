@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Syringe } from 'lucide-react'
 import { getDashboard } from '../../lib/api'
@@ -70,15 +71,21 @@ export default function WorkerStatusView() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 20_000,
+    staleTime: 10_000,
   })
 
-  const rows          = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
-  const facilityName  = rows[0]?.facilityName
-  const districtName  = rows[0]?.districtName
-  const okCount       = rows.filter((r) => r.status === 'adequate').length
-  const lowCount      = rows.filter((r) => r.status === 'low').length
-  const criticalCount = rows.filter((r) => r.status === 'critical').length
-  const noDataCount   = rows.filter((r) => r.status === 'no_data').length
+  const { rows, facilityName, districtName, okCount, lowCount, criticalCount, noDataCount } = useMemo(() => {
+    const rows = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
+    return {
+      rows,
+      facilityName:  rows[0]?.facilityName,
+      districtName:  rows[0]?.districtName,
+      okCount:       rows.filter((r) => r.status === 'adequate').length,
+      lowCount:      rows.filter((r) => r.status === 'low').length,
+      criticalCount: rows.filter((r) => r.status === 'critical').length,
+      noDataCount:   rows.filter((r) => r.status === 'no_data').length,
+    }
+  }, [data, user?.facilityId])
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto pt-6 px-1">

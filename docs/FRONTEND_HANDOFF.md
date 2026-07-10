@@ -1,8 +1,8 @@
 # Frontend Handoff — Backend Changes
 
-For the Claude Code session working on the **frontend** repo. This is a focused changelog for backend changes across five rounds of work, not a general API doc — read `API_DOCUMENTATION.md` and `docs/api-reference.md` in this backend repo for the full contract; this doc only covers what's *different* from what you may have already built against.
+For the Claude Code session working on the **frontend** repo. This is a focused changelog for backend changes across six rounds of work, not a general API doc — read `API_DOCUMENTATION.md` and `docs/api-reference.md` in this backend repo for the full contract; this doc only covers what's *different* from what you may have already built against.
 
-**Status as of this doc:** Rounds 1–3 are implemented, passing the full backend test suite, committed, and **deployed and verified live** on `https://smart-stock-alert-be.vercel.app`. **Rounds 4 and 5 (below) are implemented and test-passing but not yet deployed** — check with Ahmed before building against either if you need it live rather than just locally correct.
+**Status as of this doc:** Rounds 1–5 are committed, passing the full backend test suite, and deployed/verified live on `https://smart-stock-alert-be.vercel.app`. **Round 6 is implemented and the full backend test suite (92/92) passes locally, but it is not yet committed or deployed** — see Round 6 below before building against it, and note that the live deployed backend does not yet have these changes.
 
 ---
 
@@ -184,7 +184,7 @@ If you built the Facility Supervisor's audit screen assuming "only my workers, n
 
 ## Round 4 — delete/rename for vaccines, facilities, districts; stock correction; smaller gaps
 
-**Not deployed yet as of this doc** — implemented and test-passing against the shared dev DB, but confirm with Ahmed before relying on any of this against the live URL.
+**Deployed and verified live.**
 
 ### New endpoints — Facility Supervisor: vaccines
 
@@ -262,7 +262,7 @@ Use these instead of a separate district/facility lookup anywhere you render a u
 
 ## Round 5 — dashboard status rename + summary, facility drill-down endpoints, one-supervisor-per-facility
 
-**Not deployed yet as of this doc** — implemented and test-passing against the shared dev DB, but confirm with Ahmed before relying on any of this against the live URL.
+**Deployed and verified live.**
 
 ### Breaking change: `GET /api/dashboard`'s `status` values
 
@@ -346,6 +346,46 @@ Both `null` if the facility currently has no active supervisor. Use this to show
 ```
 
 **Practical UI implication:** when offering "create a Facility Supervisor" for a facility, check whether `GET /api/facilities`/`GET /api/facilities/:id` already shows a non-null `facilitySupervisorId` for it first — if so, either hide the create action or make clear the flow is "replace" (deactivate the current one, then create/reactivate the new one), rather than letting the user hit a raw `409`.
+
+---
+
+## Round 6 — district supervisor email/name on district endpoints, audit-log `?limit=N`, facility detail confirmation
+
+Driven by your `docs/api-requirement.md` (four asks). One of the four was already done before you asked (see #3 below); the other three are new.
+
+#### 1. `GET /api/districts` — new `supervisorName`/`supervisorEmail` fields
+
+```jsonc
+{
+  "id": "uuid", "name": "North District", "createdAt": "ISO 8601", "isActive": true,
+  "supervisorName": "Dr. Fatima Malik",   // null if the district has no active district_supervisor
+  "supervisorEmail": "f.malik@akuh.pilot" // null if the district has no active district_supervisor
+}
+```
+
+**One behind-the-scenes change this required, worth knowing about:** the backend now enforces at most one active `district_supervisor` per district (mirrors the existing one-active-`facility_supervisor`-per-facility rule from Round 5). If your dev/test data ever had two active district_supervisors for the same district, one was deactivated during this rollout — check with Ahmed if a district_supervisor login you were using stops working. Going forward, creating or reactivating a second one for the same district now returns:
+```jsonc
+// 409
+{ "error": "District already has an active supervisor" }
+```
+same shape as the existing facility_supervisor version of this error.
+
+#### 2. `GET /api/districts/:id` — new `facilitySupervisorEmail` field per facility
+
+Added alongside the existing `facilitySupervisorName` in each `district.facilities[]` item. `null` when that facility has no active supervisor.
+
+#### 3. `GET /api/facilities/:id` — already open to `district_supervisor`, no change shipped
+
+This was already implemented in Round 5 (`assertCanManageFacility` scope enforcement) and already covered by a passing test. **One correction to your doc:** the 403 body for a district_supervisor requesting a facility outside their district is `{ "error": "Forbidden" }`, not `{ "error": "Access denied" }` — kept as `"Forbidden"` for consistency with every other 403 in this API rather than special-casing this one route. Update any code checking the exact error string.
+
+#### 4. `GET /api/audit-log?limit=N` — new optional query param
+
+```
+GET /api/audit-log?limit=5
+```
+Caps the response to the `N` most recent rows (already ordered newest-first). Applies to all three roles that can call this endpoint (`super_admin`, `district_supervisor`, `facility_supervisor`). Omit it and you get today's unlimited behavior — no change needed if you don't adopt this right away. `limit` must be a positive integer (max 500); anything else (`0`, negative, non-numeric) returns `400`.
+
+**Practical UI implication for `facility-supervisor/Dashboard.jsx`'s Recent Activity feed:** switch from `getAuditLog()` + `logs.slice(0, 5)` to `getAuditLog({ limit: 5 })` (or a new `getRecentActivity(limit)` helper) — saves transferring the whole log on every dashboard poll.
 
 ---
 

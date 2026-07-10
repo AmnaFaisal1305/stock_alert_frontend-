@@ -1,17 +1,25 @@
 import { useState } from 'react'
-import { Syringe } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import * as api from '../../lib/api'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import HeroCarousel from './HeroCarousel'
+
+const HERO_IMAGES = [
+  '/images/hospital-1.webp',
+  '/images/hospital-2.webp',
+  '/images/hospital-3.webp',
+  '/images/hospital-4.webp',
+]
 
 export default function LoginPage() {
   const { login } = useAuth()
 
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -19,31 +27,50 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await api.login(email, password)
-      // Set auth state — LoginRoute's <Navigate> handles the redirect once re-rendered
       login(data.user, data.csrfToken)
     } catch (err) {
-      if (err.status === 401) setError('Invalid email or password.')
+      if (err.status === 401)      setError('Invalid email or password.')
       else if (err.status === 429) setError('Too many login attempts. Please wait a few minutes and try again.')
-      else setError('Something went wrong. Please try again.')
+      else                         setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px]">
-        <div className="bg-white rounded-2xl border border-surface-border p-8 sm:p-10 shadow-xl">
-          {/* Brand Logo & Header */}
-          <div className="flex flex-col items-center gap-4 mb-8">
-            <img src="/akuh-logo-urdu.png" alt="Aga Khan University Hospital Logo" className="h-16 object-contain" />
-            <div className="h-px w-full bg-slate-100 my-1" />
+    <div className="min-h-screen flex flex-col md:flex-row">
+
+      {/* ── Hero panel ──────────────────────────────────────────────── */}
+      <div className="h-[30vh] md:h-auto md:w-[55%] flex-shrink-0 relative">
+        <HeroCarousel images={HERO_IMAGES} />
+      </div>
+
+      {/* ── Form panel ──────────────────────────────────────────────── */}
+      <div className="flex-1 bg-white flex flex-col items-center justify-center px-8 py-10">
+        <div className="w-full max-w-[480px]">
+
+          {/* Brand header */}
+          <div className="flex flex-col items-center gap-4 mb-5">
+            <img
+              src="/akuh-logo-urdu.png"
+              alt="Aga Khan University Hospital Logo"
+              className="h-16 object-contain"
+            />
+            <div className="h-px w-full bg-slate-100" />
             <div className="text-center">
-              <h1 className="text-lg font-bold text-text tracking-tight">Smart Stock Alert</h1>
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-1">AKUH Network Portal</p>
+              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1">
+                The Aga Khan University Hospital
+              </p>
+              <h1 className="text-xl font-bold text-text tracking-tight leading-tight">
+                Smart Stock Alert
+              </h1>
+              <p className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mt-1">
+                Vaccine Inventory · AKUH Network Portal
+              </p>
             </div>
           </div>
 
+          {/* Login form — state and handlers unchanged */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <Input
               id="email"
@@ -52,6 +79,7 @@ export default function LoginPage() {
               placeholder="username@akuh.pilot"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoFocus
               required
             />
             <Input
@@ -90,12 +118,18 @@ export default function LoginPage() {
               ) : 'Sign In'}
             </Button>
           </form>
-        </div>
 
-        <p className="text-center text-[10px] uppercase font-bold tracking-wider text-text-muted/80 mt-6">
-          Official System — Aga Khan University Hospital Network
-        </p>
+          {/* Footer */}
+          <div className="flex items-center justify-center gap-1.5 mt-6">
+            <Shield size={11} className="text-text-muted/50 flex-shrink-0" aria-hidden="true" />
+            <p className="text-[10px] uppercase font-bold tracking-wider text-text-muted/60">
+              Official System — Aga Khan University Hospital Network
+            </p>
+          </div>
+
+        </div>
       </div>
+
     </div>
   )
 }

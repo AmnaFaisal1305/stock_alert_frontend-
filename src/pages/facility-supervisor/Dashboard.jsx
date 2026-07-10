@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,7 +13,8 @@ import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import StatCard from '../../components/shared/StatCard'
-import { statusConfig, gaugeHex, STATUS_RANK } from '../../lib/status'
+import RingGauge from '../../components/shared/RingGauge'
+import { statusConfig, STATUS_RANK } from '../../lib/status'
 
 const AVATAR_COLORS = [
   'bg-teal-500', 'bg-violet-500', 'bg-amber-500',
@@ -31,23 +32,20 @@ function timeAgo(isoStr) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-// ─── Ring Gauge ───────────────────────────────────────────────────────────────
-function RingGauge({ pct, status, size = 72 }) {
-  const r = (size / 2) - 7
-  const circ = 2 * Math.PI * r
-  const trackColor = '#E5E7EB'
-  const fillColor = gaugeHex(status)
+// ─── Refresh Clock (isolated so its interval doesn't re-render the whole page) ─
+function RefreshClock({ dataUpdatedAt, isFetching }) {
+  const [secondsAgo, setSecondsAgo] = useState(0)
+  useEffect(() => {
+    if (!dataUpdatedAt) return
+    const tick = () => setSecondsAgo(Math.round((Date.now() - dataUpdatedAt) / 1000))
+    tick()
+    const id = setInterval(tick, 5000)
+    return () => clearInterval(id)
+  }, [dataUpdatedAt])
   return (
-    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={6} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={fillColor} strokeWidth={6}
-          strokeDasharray={`${(pct / 100) * circ} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.6s ease' }}
-        />
-      </svg>
-      <span className="absolute text-[11px] font-bold text-text">{pct}%</span>
+    <div className="flex items-center gap-1.5 text-xs text-text-muted mt-1.5">
+      <RefreshCw size={10} className={isFetching ? 'animate-spin text-primary' : ''} />
+      <span>{secondsAgo < 10 ? 'Just refreshed' : `Refreshed ${secondsAgo}s ago`}</span>
     </div>
   )
 }
@@ -216,7 +214,7 @@ function parseFeedEntry(action, details, vaccineNameById) {
 }
 
 function ActivityFeed({ logs, vaccineNameById }) {
-  const entries = (logs ?? []).slice(0, 5)
+  const entries = logs ?? []
 
   return (
     <div className="bg-surface rounded-xl border border-surface-border overflow-hidden">
@@ -300,39 +298,38 @@ function SectionHeading({ icon: Icon, label, color = 'text-text-muted' }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function FacilityDashboard() {
   const { user } = useAuth()
-  const [secondsAgo, setSecondsAgo] = useState(0)
 
   const { data, isLoading, isError, dataUpdatedAt, isFetching } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 15_000,
+    staleTime: 10_000,
   })
   const { data: userData  } = useQuery({ queryKey: ['users'],     queryFn: getUsers    })
-  const { data: auditData } = useQuery({ queryKey: ['audit-log'], queryFn: getAuditLog })
+  const { data: auditData } = useQuery({ queryKey: ['audit-log', 5], queryFn: () => getAuditLog({ limit: 5 }) })
 
-  useEffect(() => {
-    if (!dataUpdatedAt) return
-    const tick = () => setSecondsAgo(Math.round((Date.now() - dataUpdatedAt) / 1000))
-    tick()
-    const id = setInterval(tick, 5000)
-    return () => clearInterval(id)
-  }, [dataUpdatedAt])
-
-  const rawRows = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
-  const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, r.vaccineName]))
-
-  const rows         = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
-  const facilityName = rows[0]?.facilityName
-  const districtName = rows[0]?.districtName
-
-  const criticalCount = rows.filter((r) => r.status === 'critical').length
-  const lowCount      = rows.filter((r) => r.status === 'low' || r.status === 'no_data').length
-  const healthyCount  = rows.filter((r) => r.status === 'adequate').length
-  const activeWorkers = (userData?.users ?? []).filter((u) => u.isActive).length
-
-  const urgentRows  = rows.filter((r) => r.status === 'critical' || r.status === 'low' || r.status === 'no_data')
-  const healthyRows = rows.filter((r) => r.status === 'adequate')
-  const allLogs     = auditData?.auditLog ?? []
+  const {
+    rows, vaccineNameById, facilityName, districtName,
+    criticalCount, lowCount, healthyCount, activeWorkers,
+    urgentRows, healthyRows, allLogs,
+  } = useMemo(() => {
+    const rawRows       = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+    const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, r.vaccineName]))
+    const rows          = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
+    return {
+      rows,
+      vaccineNameById,
+      facilityName:  rows[0]?.facilityName,
+      districtName:  rows[0]?.districtName,
+      criticalCount: rows.filter((r) => r.status === 'critical').length,
+      lowCount:      rows.filter((r) => r.status === 'low' || r.status === 'no_data').length,
+      healthyCount:  rows.filter((r) => r.status === 'adequate').length,
+      activeWorkers: (userData?.users ?? []).filter((u) => u.isActive).length,
+      urgentRows:    rows.filter((r) => r.status === 'critical' || r.status === 'low' || r.status === 'no_data'),
+      healthyRows:   rows.filter((r) => r.status === 'adequate'),
+      allLogs:       auditData?.auditLog ?? [],
+    }
+  }, [data, userData, auditData, user.facilityId])
 
   return (
     <div className="flex flex-col gap-6">
@@ -347,10 +344,7 @@ export default function FacilityDashboard() {
             {districtName ? `${districtName} District` : 'Current vaccine stock at your facility'}
           </p>
           {!isLoading && (
-            <div className="flex items-center gap-1.5 text-xs text-text-muted mt-1.5">
-              <RefreshCw size={10} className={isFetching ? 'animate-spin text-primary' : ''} />
-              <span>{secondsAgo < 10 ? 'Just refreshed' : `Refreshed ${secondsAgo}s ago`}</span>
-            </div>
+            <RefreshClock dataUpdatedAt={dataUpdatedAt} isFetching={isFetching} />
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">

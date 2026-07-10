@@ -28,7 +28,9 @@ export default function UserManagement() {
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
 
   const districtMap = Object.fromEntries((districtData?.districts ?? []).map((d) => [d.id, d.name]))
-  const districtOptions = (districtData?.districts ?? []).map((d) => ({ value: d.id, label: d.name }))
+  const districtOptions = (districtData?.districts ?? [])
+    .filter((d) => d.isActive)
+    .map((d) => ({ value: d.id, label: d.supervisorName ? `${d.name} (staffed)` : d.name }))
   const users = userData?.users ?? []
 
   const createMutation = useMutation({
@@ -40,7 +42,11 @@ export default function UserManagement() {
       setFormError('')
       setToast({ message: 'District supervisor created successfully.', type: 'success' })
     },
-    onError: (err) => setFormError(err.message),
+    onError: (err) => setFormError(
+      err.status === 409 && err.body?.error?.includes('active supervisor')
+        ? 'This district already has an active supervisor. Deactivate them first before assigning a new one.'
+        : err.message
+    ),
   })
 
   const deactivateMutation = useMutation({
@@ -140,18 +146,22 @@ export default function UserManagement() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
       
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
+      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-text tracking-tight">User Management</h1>
-          <p className="text-sm text-text-muted mt-0.5">
+          <h1 className="text-xl font-bold text-white tracking-tight">User Management</h1>
+          <p className="text-sm text-white/70 mt-0.5">
             {!isLoading && `${users.length} ${users.length === 1 ? 'district supervisor' : 'district supervisors'} registered under system`}
-            {isLoading && 'Loading supervisors list...'}
+            {isLoading && 'Loading supervisors list…'}
           </p>
         </div>
-        <Button onClick={() => { setCreateOpen(true); setFormError('') }}>
-          <Plus size={16} /> Add District Supervisor
-        </Button>
+        <button
+          onClick={() => { setCreateOpen(true); setFormError('') }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
+        >
+          <Plus size={15} strokeWidth={2.5} />
+          Add District Supervisor
+        </button>
       </div>
 
       {/* Search Input Box */}

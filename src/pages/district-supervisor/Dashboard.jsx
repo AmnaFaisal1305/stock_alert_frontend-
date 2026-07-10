@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Building2, AlertCircle } from 'lucide-react'
 import { getDashboard } from '../../lib/api'
@@ -13,7 +14,24 @@ export default function DistrictDashboard() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 15_000,
+    staleTime: 10_000,
   })
+
+  const { districtName, facilities, counts } = useMemo(() => {
+    const myRows = (data?.facilities ?? []).filter((r) => r.districtId === user.districtId)
+    const districtName = myRows[0]?.districtName ?? 'Your District'
+    const facilities = (data?.summary?.byFacility ?? []).map((f) => ({
+      id: f.facilityId, name: f.facilityName,
+      status: worstStatus(f.statusCounts), statusCounts: f.statusCounts,
+    }))
+    const counts = {
+      total:    facilities.length,
+      adequate: facilities.filter((f) => f.status === 'adequate').length,
+      low:      facilities.filter((f) => f.status === 'low' || f.status === 'no_data').length,
+      critical: facilities.filter((f) => f.status === 'critical').length,
+    }
+    return { districtName, facilities, counts }
+  }, [data, user.districtId])
 
   if (isLoading) {
     return (
@@ -35,24 +53,6 @@ export default function DistrictDashboard() {
         Failed to load district dashboard. Please try refreshing.
       </div>
     )
-  }
-
-  const myRows = (data?.facilities ?? []).filter((r) => r.districtId === user.districtId)
-  const districtName = myRows[0]?.districtName ?? 'Your District'
-
-  // summary.byFacility contains the rollups scoped to the user
-  const facilities = (data?.summary?.byFacility ?? []).map((f) => ({
-    id: f.facilityId,
-    name: f.facilityName,
-    status: worstStatus(f.statusCounts),
-    statusCounts: f.statusCounts,
-  }))
-
-  const counts = {
-    total:    facilities.length,
-    adequate: facilities.filter((f) => f.status === 'adequate').length,
-    low:      facilities.filter((f) => f.status === 'low' || f.status === 'no_data').length,
-    critical: facilities.filter((f) => f.status === 'critical').length,
   }
 
   return (

@@ -43,14 +43,20 @@ export default function DistrictDetail() {
 
       {!isLoading && !isError && district && (
         <>
-          {/* Header Info */}
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+          {/* ── Page Header — AKUH maroon banner ─────────────────────── */}
+          <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-text tracking-tight">{district.name}</h1>
-                <Badge type={district.isActive ? 'active' : 'inactive'} />
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl font-bold text-white tracking-tight">{district.name}</h1>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  district.isActive
+                    ? 'bg-white/20 text-white border border-white/30'
+                    : 'bg-white/10 text-white/60 border border-white/20'
+                }`}>
+                  {district.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <p className="text-sm text-text-muted mt-0.5">
+              <p className="text-sm text-white/70 mt-0.5">
                 {district.facilityCount} {district.facilityCount === 1 ? 'facility' : 'facilities'} registered
               </p>
             </div>

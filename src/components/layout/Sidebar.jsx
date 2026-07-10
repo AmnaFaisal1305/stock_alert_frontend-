@@ -1,7 +1,8 @@
+import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, Settings, UserCog, LogOut, Activity,
+  Syringe, PackagePlus, UserCog, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -38,18 +39,32 @@ const ROLE_SECTION_LABELS = {
   facility_worker:     'My Workspace',
 }
 
-export default function Sidebar({ mobileOpen, onClose }) {
+const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
   const { user, logout } = useAuth()
-  const links = NAV[user?.role] ?? []
+  const links       = NAV[user?.role] ?? []
   const sectionLabel = ROLE_SECTION_LABELS[user?.role] ?? 'Navigation'
+
+  // Close on Escape when mobile drawer is open
+  useEffect(() => {
+    if (!mobileOpen) return
+    function onKey(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mobileOpen, onClose])
 
   return (
     <>
       {/* Mobile Drawer Overlay */}
       {mobileOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
+        <div
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden transition-opacity"
           onClick={onClose}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close navigation"
         />
       )}
 
@@ -69,7 +84,11 @@ export default function Sidebar({ mobileOpen, onClose }) {
             </div>
           </div>
           {mobileOpen && (
-            <button onClick={onClose} className="lg:hidden text-text-muted hover:text-text p-1 rounded-lg">
+            <button
+              onClick={onClose}
+              aria-label="Close navigation"
+              className="lg:hidden text-text-muted hover:text-text p-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -78,7 +97,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto" aria-label="Main navigation">
           <p className="text-[10px] font-bold text-text-muted/65 uppercase tracking-widest px-3 mb-4">
             {sectionLabel}
           </p>
@@ -108,11 +127,11 @@ export default function Sidebar({ mobileOpen, onClose }) {
           </div>
         </nav>
 
-        {/* Activity indicator + Sign out */}
+        {/* Sign out */}
         <div className="px-4 pb-6 pt-3 border-t border-surface-border">
           <button
             onClick={logout}
-            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-secondary hover:bg-danger/5 hover:text-danger transition-all duration-150 w-full border-l-4 border-transparent group"
+            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-secondary hover:bg-danger/5 hover:text-danger transition-all duration-150 w-full border-l-4 border-transparent group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <LogOut size={17} className="text-text-muted group-hover:text-danger transition-colors" />
             Sign Out
@@ -121,4 +140,6 @@ export default function Sidebar({ mobileOpen, onClose }) {
       </aside>
     </>
   )
-}
+})
+
+export default Sidebar
