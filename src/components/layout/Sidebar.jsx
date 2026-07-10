@@ -76,7 +76,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
         {/* Logo */}
         <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/akuh-icon.png" alt="AKUH Logo" className="w-8 h-8 object-contain flex-shrink-0" />
+            <img src="/images/akuh-icon.png" alt="AKUH Logo" className="w-8 h-8 object-contain flex-shrink-0" />
             <div>
               <p className="font-extrabold text-text text-xs leading-none tracking-tight uppercase">Smart Stock</p>
               <p className="font-semibold text-primary text-[10px] leading-tight tracking-tight mt-0.5 uppercase">Stock Alert</p>

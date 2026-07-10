@@ -52,7 +52,7 @@ export default function LoginPage() {
           {/* Brand header */}
           <div className="flex flex-col items-center gap-4 mb-5">
             <img
-              src="/akuh-logo-urdu.png"
+              src="/images/akuh-logo-urdu.png"
               alt="Aga Khan University Hospital Logo"
               className="h-16 object-contain"
             />
