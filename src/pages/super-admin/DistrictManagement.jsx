@@ -72,7 +72,7 @@ function DistrictExpandedPanel({ districtId }) {
 
           {/* Facility rows */}
           {facilities.map((f) => {
-            const fStatus     = worstStatus(f.statusCounts)
+            const fStatus     = facilityStatus(f.statusCounts)
             const cfg         = statusConfig(fStatus)
             const sc          = f.statusCounts ?? {}
             const totalTypes  = (sc.critical ?? 0) + (sc.low ?? 0) + (sc.adequate ?? 0) + (sc.no_data ?? 0)
