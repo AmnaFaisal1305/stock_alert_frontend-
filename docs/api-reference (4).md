@@ -505,7 +505,7 @@ Requires auth + CSRF. **`facility_supervisor` only.** Adds a new vaccine to the 
 
 **Body:**
 ```jsonc
-{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional, defaults to 0
+{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional; omitted means "not yet configured" (null), an explicit 0 is a deliberate choice — see the threshold type note below
 ```
 
 **201:**
@@ -661,7 +661,7 @@ Requires auth only (no CSRF for GET). All four roles may call this — scope dif
       "districtName": "Karachi Central",
       "vaccineId": "uuid",
       "vaccineName": "BCG",
-      "minQuantity": 20,
+      "minQuantity": 20,            // null if a supervisor has never configured this threshold — see status note below
       "quantity": 15,               // running balance; null if no stock entry has ever been recorded for this pair
       "recordedAt": "ISO 8601 | null", // most recent stock-entry timestamp contributing to this pair, if any
       "status": "critical | low | adequate | no_data"
@@ -684,7 +684,7 @@ Requires auth only (no CSRF for GET). All four roles may call this — scope dif
 }
 ```
 
-**`status` values changed — breaking change if you render these literally.** Was `red`/`amber`/`green`/`no_data`; now `critical`/`low`/`adequate`/`no_data` — domain vocabulary instead of a color, so the frontend owns the color mapping instead of the backend baking one in. Banding logic is unchanged, just relabeled: `no_data` if `quantity` is `null`, `critical` if `quantity < minQuantity`, `low` if `quantity < minQuantity * 1.2`, else `adequate`.
+**`status` values changed — breaking change if you render these literally.** Was `red`/`amber`/`green`/`no_data`; now `critical`/`low`/`adequate`/`no_data` — domain vocabulary instead of a color, so the frontend owns the color mapping instead of the backend baking one in. Banding logic: `no_data` if `quantity` is `null` (no stock entry ever recorded) **or** `minQuantity` is `null` (threshold never configured — this is the default state for every newly-provisioned facility/vaccine pair, until a `facility_supervisor` sets a real value via `PUT /api/thresholds/:id`); otherwise `critical` if `quantity < minQuantity`, `low` if `quantity < minQuantity * 1.2`, else `adequate`. An explicitly-set `minQuantity` of `0` is a deliberate choice (distinct from the unconfigured `null` default) and is evaluated normally — since `quantity` can never be negative, it always reports `adequate`.
 
 **`summary` is new — additive, doesn't change the existing `facilities` array.** Derived from the same rows already returned, no extra request needed:
 - `districtCount` / `facilityCount`: distinct counts across rows in scope. For a `district_supervisor` this is always `districtCount: 1` (their own district). A facility with zero vaccines configured yet contributes no rows and so isn't counted in `facilityCount` here — use `GET /api/districts/:id` or `GET /api/facilities/:id` if you need a facility to show up even with nothing configured.
@@ -765,7 +765,8 @@ Public, unauthenticated. `{ "status": "ok" }` — not part of the app's data API
 | any `*Id` field | UUID string | or `null` where noted above |
 | any `*At` field | ISO 8601 timestamp string | UTC |
 | `quantity` (stock entry) | non-negative integer | the magnitude of one received/used/adjustment movement, not a running total — see `POST /api/stock-entries` and `PUT /api/vaccines/:id/stock` |
-| `quantity` (dashboard/detail row), `minQuantity` | non-negative integer, or `null` for `quantity` | dashboard `quantity` is a computed running balance, not stored directly |
+| `quantity` (dashboard/detail row) | non-negative integer, or `null` | dashboard `quantity` is a computed running balance, not stored directly; `null` means no stock entry has ever been recorded for this pair |
+| `minQuantity` | non-negative integer, or `null` | `null` means this threshold has never been configured (the default for every newly-provisioned facility/vaccine pair) — distinct from an explicit `0`, which is a deliberate supervisor choice |
 | `statusCounts` | object | `{ critical, low, adequate, no_data }`, each a non-negative integer count — appears in `GET /api/dashboard`'s `summary`, `GET /api/facilities/:id`, and `GET /api/districts/:id` |
 
 `password_hash` and `tokenVersion` are internal-only and never appear in any API response.

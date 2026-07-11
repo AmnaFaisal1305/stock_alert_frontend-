@@ -15,7 +15,7 @@ import RingGauge from '../../components/shared/RingGauge'
 function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {
   const status      = row.status
   const canDelete   = row.recordedAt == null
-  const noThreshold = row.minQuantity === 0
+  const noThreshold = row.minQuantity == null
   const pct         = noThreshold
     ? 100
     : Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
@@ -193,7 +193,7 @@ export default function ThresholdManagement() {
 
   const filterCount = { All: allRows.length, Critical: criticalCount, Low: lowCount, OK: healthyCount }
 
-  function openEdit(row) { setEditing(row); setMinQty(String(row.minQuantity)); setFormError('') }
+  function openEdit(row) { setEditing(row); setMinQty(String(row.minQuantity ?? '')); setFormError('') }
   function openRename(row) { setRenaming(row); setRenameValue(row.vaccineName); setRenameError('') }
   function openDelete(row) { setDeleteTarget(row); setDeleteError('') }
   function openCorrectStock(row) {
@@ -333,7 +333,7 @@ export default function ThresholdManagement() {
           <Input id="new-vaccine-name" label="Vaccine Name"
             value={newVaccine.name}
             onChange={(e) => { setNewVaccine({ ...newVaccine, name: e.target.value }); setAddError('') }} required />
-          <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" placeholder="Defaults to 0"
+          <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" placeholder="Leave blank to set later"
             value={newVaccine.minQuantity}
             onChange={(e) => setNewVaccine({ ...newVaccine, minQuantity: e.target.value })} />
           {addError && <p className="text-xs text-danger">{addError}</p>}

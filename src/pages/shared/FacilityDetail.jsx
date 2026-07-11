@@ -5,7 +5,7 @@ import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { statusConfig, worstStatus } from '../../lib/status'
+import { statusConfig } from '../../lib/status'
 
 function VaccineCard({ v }) {
   const cfg        = statusConfig(v.status)

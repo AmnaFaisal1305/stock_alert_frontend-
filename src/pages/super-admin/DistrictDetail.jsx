@@ -6,7 +6,7 @@ import StatusBadge from '../../components/shared/StatusBadge'
 import StatCard from '../../components/shared/StatCard'
 import Badge from '../../components/ui/Badge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { worstStatus } from '../../lib/status'
+import { facilityStatus } from '../../lib/status'
 
 export default function DistrictDetail() {
   const { id } = useParams()
@@ -129,7 +129,7 @@ export default function DistrictDetail() {
                           </div>
                         </div>
                         <div className="flex-shrink-0">
-                          <StatusBadge status={worstStatus(f.statusCounts)} />
+                          <StatusBadge status={facilityStatus(f.statusCounts)} />
                         </div>
                       </div>
 

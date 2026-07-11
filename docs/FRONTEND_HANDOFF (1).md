@@ -2,7 +2,7 @@
 
 For the Claude Code session working on the **frontend** repo. This is a focused changelog for backend changes across six rounds of work, not a general API doc — read `API_DOCUMENTATION.md` and `docs/api-reference.md` in this backend repo for the full contract; this doc only covers what's *different* from what you may have already built against.
 
-**Status as of this doc:** Rounds 1–5 are committed, passing the full backend test suite, and deployed/verified live on `https://smart-stock-alert-be.vercel.app`. **Round 6 is implemented and the full backend test suite (92/92) passes locally, but it is not yet committed or deployed** — see Round 6 below before building against it, and note that the live deployed backend does not yet have these changes.
+**Status as of this doc:** Rounds 1–5 are committed, passing the full backend test suite, and deployed/verified live on `https://smart-stock-alert-be.vercel.app`. **Rounds 6 and 7 are committed to `main` locally (commit `9c6e898`) and the full backend test suite passes, but neither has been pushed/deployed yet** — see Round 6 and Round 7 below before building against them, and note that the live deployed backend does not yet have either.
 
 ---
 
@@ -63,11 +63,11 @@ Scope as originally shipped: a Facility Supervisor saw only their own Facility W
 #### `POST /api/vaccines`
 ```jsonc
 // request
-{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional, defaults to 0
+{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional
 // 201 response
 { "vaccine": { "id": "uuid", "name": "Rotavirus", "facilityId": "uuid", "createdAt": "ISO 8601" } }
 ```
-`409` if a vaccine with this name already exists **at this facility** (same name at a different facility is fine — no collision).
+`409` if a vaccine with this name already exists **at this facility** (same name at a different facility is fine — no collision). **What "optional, defaults to 0" meant has since changed — see Round 7 below, which is the current, correct behavior.** Omitting `minQuantity` now means "not yet configured" (`null`), not an implicit `0`; don't build against the old assumption that an omitted value behaves identically to an explicit `0`.
 
 #### `PUT /api/vaccines/:id`
 ```jsonc
@@ -155,29 +155,32 @@ If you built the Facility Supervisor's audit screen assuming "only my workers, n
 - **Sidebar/header/dashboard**: show the logged-in user's `name` (from the login response), not just email.
 - **User-management list/table**: add a "Name" column; add an "Activate" action next to "Deactivate", toggled by `isActive`.
 
-### Super Admin (Round 5)
-- **District list/overview**: `GET /api/districts` stays a flat list — for a per-district health view (facility count + status breakdown), use the new `GET /api/districts/:id` drill-down instead of computing it client-side.
-- **District detail screen**: new — `GET /api/districts/:id` gives you the facility list (with supervisor names) and status rollup for one district in a single call. This is also the one place that shows a facility with zero vaccines configured yet (the dashboard's `summary.byFacility` silently omits those).
-- **Facility detail screen**: same idea, one level down — `GET /api/facilities/:id`.
-- **Dashboard**: `status` values changed (`critical`/`low`/`adequate`, not `red`/`amber`/`green`) — update any hardcoded string comparisons or color-mapping switch statements.
+### Super Admin (Round 5, plus Round 6/7 below)
+- **District list/overview**: `GET /api/districts` stays a flat list — for a per-district health view (facility count + status breakdown), use the new `GET /api/districts/:id` drill-down instead of computing it client-side. **Round 6:** each district row now also includes `supervisorName`/`supervisorEmail` (`null` if unstaffed) — show alongside the district name, same pattern as the existing facility-supervisor display.
+- **District detail screen**: new — `GET /api/districts/:id` gives you the facility list (with supervisor names) and status rollup for one district in a single call. This is also the one place that shows a facility with zero vaccines configured yet (the dashboard's `summary.byFacility` silently omits those). **Round 6:** each facility item now also includes `facilitySupervisorEmail` alongside the existing `facilitySupervisorName`.
+- **Facility detail screen**: same idea, one level down — `GET /api/facilities/:id`. **Round 7:** each vaccine row's `minQuantity` can now be `null` ("not yet configured") — render that as "Not set," not a literal `0` or blank.
+- **Dashboard**: `status` values changed (`critical`/`low`/`adequate`, not `red`/`amber`/`green`) — update any hardcoded string comparisons or color-mapping switch statements. **Round 7:** `no_data` now also covers "threshold never configured," not just "no stock ever recorded" — no code change needed if you already just render the label, but don't assume `no_data` only ever means the latter.
+- **Audit log (any screen showing it):** **Round 6** — `?limit=N` is now supported here too; adopt it if this view ever fetches the full log.
 
-### District Supervisor (Round 5)
+### District Supervisor (Round 5, plus Round 6/7 below)
 - **District dashboard/overview**: `GET /api/dashboard`'s new `summary` block (`facilityCount`, `statusCounts`, `byFacility`) is what a top-of-page "state of my district" summary should be built from, instead of aggregating the flat `facilities` array yourself.
 - **Facility list**: `GET /api/facilities` now includes `facilitySupervisorId`/`facilitySupervisorName` — show a "staffed/unstaffed" indicator without a second lookup.
-- **Facility detail screen**: new — `GET /api/facilities/:id` for a drill-down from the list/overview into one facility's full vaccine/stock detail.
+- **Facility detail screen**: new — `GET /api/facilities/:id` for a drill-down from the list/overview into one facility's full vaccine/stock detail. **(Round 6 confirmed this endpoint's access for this role was already correct since Round 5 — no change needed here, just don't build a `403` workaround for it.)** **Round 7:** handle `minQuantity: null` the same way as the Super Admin screen above.
 - **Creating/reassigning a Facility Supervisor**: check `facilitySupervisorId` isn't already set before offering "create" for a facility — creating a second one now `409`s (see below). Offer "replace" (deactivate current, then create) instead of a raw create action when one already exists.
 - **Facility/district management (Round 4)**: rename, soft-delete ("Deactivate"), and reactivate actions for facilities they manage — `PUT /api/facilities/:id`, `DELETE /api/facilities/:id`, `PUT /api/facilities/:id/activate`.
+- **Own profile / header, if `GET /api/districts` is ever called by this role**: **Round 6** — the response reflects the caller themselves as `supervisorName`/`supervisorEmail` for their own district.
+- **Audit log view**: **Round 6** — `?limit=N` supported; adopt it for any "recent activity" style feed.
 
 ### Facility Supervisor
 - **Stock entry form**: reframe as "Record stock received" — no type selector needed, the backend already knows this caller only ever adds stock. Remove any UI that let a Facility Supervisor pick "received vs. used."
-- **Vaccine management.** A screen (or section of the existing threshold-management screen) to add, rename, or **delete** (Round 4) a vaccine, scoped to their own facility. `POST`/`PUT`/`DELETE /api/vaccines`, plus `PUT /api/vaccines/:id/stock` (Round 4) for a direct stock correction ("edit current count" rather than logging another received/used entry).
-- **Audit log view.** Now shows their own actions plus their Facility Workers' (Round 3) — same response shape as the district_supervisor's view, just narrower scope, and now enriched with `actorName`/`actorRole`/`districtName`/`facilityName`.
-- **Dashboard**: display `facilityName` and `districtName`. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green`.
+- **Vaccine management.** A screen (or section of the existing threshold-management screen) to add, rename, or **delete** (Round 4) a vaccine, scoped to their own facility. `POST`/`PUT`/`DELETE /api/vaccines`, plus `PUT /api/vaccines/:id/stock` (Round 4) for a direct stock correction ("edit current count" rather than logging another received/used entry). **Round 7, important for this screen specifically:** when setting a threshold via `PUT /api/thresholds/:id`, `minQuantity` is always required and always a real number — this endpoint's behavior is unchanged; it's only the *unconfigured/never-set* state (shown as `null` before this supervisor ever touches it) that's new. Render `null` as "Not set" rather than `0`, and don't let the UI imply `0` is the same as "not configured" — they're different now.
+- **Audit log view.** Now shows their own actions plus their Facility Workers' (Round 3) — same response shape as the district_supervisor's view, just narrower scope, and now enriched with `actorName`/`actorRole`/`districtName`/`facilityName`. **Round 6:** adopt `?limit=N` for the Recent Activity feed (`facility-supervisor/Dashboard.jsx`) instead of fetching everything and slicing client-side.
+- **Dashboard**: display `facilityName` and `districtName`. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green`. **Round 7:** a vaccine with `no_data` status may now mean "threshold never configured" rather than "no stock recorded" — if this screen distinguishes those two cases anywhere (e.g. a tooltip), you can no longer infer which one from `status` alone; check `minQuantity`/`quantity` directly if it matters.
 
 ### Facility Worker
 - **Stock entry form**: reframe as "Record stock used." The vaccine dropdown should be populated from `GET /api/vaccines` (their own facility's list, set by their supervisor) and, for each option, show the current remaining stock — pull that from `GET /api/dashboard`'s per-vaccine `quantity` for this facility and join it into the dropdown display.
 - **Handle the insufficient-stock error**: if `POST /api/stock-entries` returns `400` with `{ "error": "Insufficient stock", "available": N }`, show the user "only N left" rather than a generic failure message.
-- **Dashboard/login screen**: already shows `facilityName` and current stock per vaccine (this didn't change). `districtId`/`districtName` is now also populated for new Facility Worker accounts (Round 4) — see below — so it's fine to show it here now too if useful, though it was never required. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green` — update if this screen renders a status badge.
+- **Dashboard/login screen**: already shows `facilityName` and current stock per vaccine (this didn't change). `districtId`/`districtName` is now also populated for new Facility Worker accounts (Round 4) — see below — so it's fine to show it here now too if useful, though it was never required. `status` values changed (Round 5) — `critical`/`low`/`adequate`, not `red`/`amber`/`green` — update if this screen renders a status badge. **Round 7:** if this screen ever renders `minQuantity` (most Facility Worker screens don't), handle `null` the same as the other roles above.
 - No change to account/threshold/vaccine-management/audit-log access — still none of that, unchanged.
 
 ---
@@ -386,6 +389,31 @@ GET /api/audit-log?limit=5
 Caps the response to the `N` most recent rows (already ordered newest-first). Applies to all three roles that can call this endpoint (`super_admin`, `district_supervisor`, `facility_supervisor`). Omit it and you get today's unlimited behavior — no change needed if you don't adopt this right away. `limit` must be a positive integer (max 500); anything else (`0`, negative, non-numeric) returns `400`.
 
 **Practical UI implication for `facility-supervisor/Dashboard.jsx`'s Recent Activity feed:** switch from `getAuditLog()` + `logs.slice(0, 5)` to `getAuditLog({ limit: 5 })` (or a new `getRecentActivity(limit)` helper) — saves transferring the whole log on every dashboard poll.
+
+---
+
+## Round 7 — threshold semantics change (affects dashboard status), JSON 404s
+
+A pragmatic hardening pass, not frontend-driven asks — but one of these changes the *content* of a field you already render, so read the first item even if you skip everything else in this round.
+
+#### 1. `minQuantity` can now be `null`, meaning "never configured" — this changes what `no_data` means
+
+**Before:** every facility/vaccine pair's threshold was auto-provisioned at `minQuantity: 0` and never distinguished from a real, deliberately-set `0`. A pair nobody had ever configured a threshold for could show `status: "adequate"` once any stock existed, even though nothing meaningful had actually been set up for it.
+
+**Now:** `minQuantity: null` means "a `facility_supervisor` has never touched this threshold via `PUT /api/thresholds/:id`." An explicit `0` (something a supervisor actually submits) is a deliberate choice and is evaluated normally. Concretely:
+
+| `quantity` | `minQuantity` | `status` |
+|---|---|---|
+| `null` (no stock ever recorded) | anything | `no_data` |
+| any number | `null` (never configured) | `no_data` — **new**, previously this could show `adequate` |
+| `0` | `0` (explicitly set) | `adequate` — quantity can never go negative, so an explicit `0` floor is never violated |
+| any number | a real positive number | `critical`/`low`/`adequate`, unchanged |
+
+**Practical UI implication:** if your dashboard/facility-detail screens ever rendered `minQuantity` directly (e.g. "Threshold: {minQuantity}"), handle `null` explicitly — e.g. "Not set" — rather than rendering the literal value or assuming it's always a number. A backfill migration converted every existing unconfigured `minQuantity: 0` row (811 of them in the shared dev DB) to `null`, so expect **more `no_data` rows on the shared dev database than before**, not a regression — those pairs were never actually configured, they just used to lie about it.
+
+#### 2. Unmatched routes now return JSON, not HTML
+
+Hitting a path this API doesn't recognize (a typo, an old/removed endpoint) now returns `404 { "error": "Not found" }` instead of Express's default HTML error page. Only matters if your error-handling ever tried to `.json()` parse a 404 response before and had a fallback for when that failed — that fallback is no longer needed, but leaving it won't break anything either.
 
 ---
 

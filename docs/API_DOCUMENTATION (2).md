@@ -226,7 +226,7 @@ The entire audit log, unscoped — every mutation any user has ever made. Row sh
 `supervisorName`/`supervisorEmail` 🆕 — reflects themselves (the caller), since it's their own district's active supervisor.
 
 ### `POST /api/facilities`
-`districtId` is forced server-side to their own — never taken from the request. Clones the default starter vaccine set (BCG, OPV, Pentavalent, Measles, PCV) into the new facility, each with a threshold row defaulted to `minQuantity: 0`.
+`districtId` is forced server-side to their own — never taken from the request. Clones the default starter vaccine set (BCG, OPV, Pentavalent, Measles, PCV) into the new facility, each with a threshold row left unconfigured (`minQuantity: null`) until a `facility_supervisor` sets a real value via `PUT /api/thresholds/:id`.
 ```jsonc
 // request
 { "name": "AKUH Main Campus" }
@@ -322,7 +322,7 @@ Same shapes as Super Admin's above — scoped to a `facility_supervisor` whose `
   }
 }
 ```
-`summary` 🆕 — additive, alongside the unchanged `facilities` array. `districtCount` is always `1` for this role. Use `summary.byFacility` to show which facility needs attention at a glance instead of deriving it from the flat row list yourself. `status` values changed 🆕: `critical`/`low`/`adequate` (was `red`/`amber`/`green`), `no_data` unchanged.
+`summary` 🆕 — additive, alongside the unchanged `facilities` array. `districtCount` is always `1` for this role. Use `summary.byFacility` to show which facility needs attention at a glance instead of deriving it from the flat row list yourself. `status` values changed 🆕: `critical`/`low`/`adequate` (was `red`/`amber`/`green`), `no_data` unchanged. `no_data` now covers two cases: no stock entry ever recorded for that facility/vaccine pair, **or** `minQuantity` is `null` (threshold never configured — see `docs/api-reference.md` for the full banding logic).
 
 ### `GET /api/audit-log`
 ```json
@@ -384,7 +384,7 @@ The only role that can do this — only a threshold row belonging to their own f
 ### `POST /api/vaccines`
 ```jsonc
 // request
-{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional
+{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional; omitted = "not yet configured" (null), an explicit 0 is a deliberate choice
 // 201
 { "vaccine": { "id": "uuid", "name": "Rotavirus", "facilityId": "uuid", "createdAt": "ISO 8601" } }
 // 409 — duplicate name at this facility

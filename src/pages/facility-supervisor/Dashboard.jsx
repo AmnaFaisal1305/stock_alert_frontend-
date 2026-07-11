@@ -53,7 +53,7 @@ function RefreshClock({ dataUpdatedAt, isFetching }) {
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
 function StockCard({ row }) {
   const status = row.status
-  const noThreshold = row.minQuantity === 0
+  const noThreshold = row.minQuantity == null
   const hasQty = row.quantity != null
   const pct = !noThreshold
     ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)

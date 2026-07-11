@@ -345,11 +345,11 @@ export default function DistrictManagement() {
           <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
 
             {/* Column headers */}
-            <div className="grid grid-cols-[2.5fr_1.4fr_2fr_240px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-6 items-center">
+            <div className="grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-6 items-center">
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Name</span>
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Supervisor</span>
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Actions</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right pr-10">Actions</span>
             </div>
 
             {paginated.length === 0 && (
@@ -368,7 +368,7 @@ export default function DistrictManagement() {
 
                   {/* Main row */}
                   <div className={[
-                    'grid grid-cols-[2.5fr_1.4fr_2fr_240px] px-6 py-4 gap-6 items-center transition-colors duration-150',
+                    'grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-4 gap-6 items-center transition-colors duration-150',
                     isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-slate-50/60',
                   ].join(' ')}>
 
@@ -380,30 +380,11 @@ export default function DistrictManagement() {
                           <p className="font-bold text-text text-sm truncate">{row.name}</p>
                           <Badge type={row.isActive ? 'active' : 'inactive'} />
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-[10px] text-text-muted font-medium">
-                            {new Date(row.createdAt).toLocaleDateString('en-US', {
-                              month: 'short', day: 'numeric', year: 'numeric',
-                            })}
-                          </p>
-                          <span className="text-text-muted/30 text-[10px]">·</span>
-                          {row.isActive ? (
-                            <button
-                              onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}
-                              className="text-[10px] font-bold text-danger hover:underline"
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => activateMutation.mutate(row.id)}
-                              disabled={activateMutation.isPending}
-                              className="text-[10px] font-bold text-success-dark hover:underline disabled:opacity-50"
-                            >
-                              Activate
-                            </button>
-                          )}
-                        </div>
+                        <p className="text-[10px] text-text-muted font-medium mt-0.5">
+                          {new Date(row.createdAt).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                          })}
+                        </p>
                       </div>
                     </div>
 
@@ -437,6 +418,16 @@ export default function DistrictManagement() {
                       <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
                         <Pencil size={12} /> Rename
                       </Button>
+
+                      {row.isActive ? (
+                        <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
+                          Activate
+                        </Button>
+                      )}
                     </div>
                   </div>
 
