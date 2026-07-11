@@ -1,12 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Map as MapIcon, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react'
 import { getDashboard, getDistricts } from '../../lib/api'
 import DistrictCard from '../../components/shared/DistrictCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { worstStatus } from '../../lib/status'
+import { worstStatus, FILTERS } from '../../lib/status'
 
 export default function SuperAdminDashboard() {
+  const [statusFilter, setStatusFilter] = useState(0)
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
@@ -236,13 +238,43 @@ export default function SuperAdminDashboard() {
 
       {/* ── Districts Grid ───────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">
             Districts Status
           </h2>
-          <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
-            {districts.length} {districts.length === 1 ? 'district' : 'districts'} registered
-          </span>
+
+          <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+            {FILTERS.map((f, i) => {
+              const active = statusFilter === i
+              const count =
+                f.label === 'Critical' ? counts.critical :
+                f.label === 'Low'      ? counts.low :
+                f.label === 'OK'       ? counts.adequate :
+                counts.total
+              const colorClass =
+                f.label === 'Critical' ? (active ? 'bg-danger text-white' : 'text-danger hover:bg-danger/5') :
+                f.label === 'Low'      ? (active ? 'bg-warning text-white' : 'text-warning-dark hover:bg-warning/5') :
+                f.label === 'OK'       ? (active ? 'bg-success text-white' : 'text-success-dark hover:bg-success/5') :
+                (active ? 'bg-primary text-white' : 'text-text-muted hover:bg-slate-50')
+              const badgeClass =
+                f.label === 'Critical' ? (active ? 'bg-white/20 text-white' : 'bg-danger/10 text-danger') :
+                f.label === 'Low'      ? (active ? 'bg-white/20 text-white' : 'bg-warning/10 text-warning-dark') :
+                f.label === 'OK'       ? (active ? 'bg-white/20 text-white' : 'bg-success/10 text-success-dark') :
+                (active ? 'bg-white/20 text-white' : 'bg-slate-100 text-text-muted')
+              return (
+                <button
+                  key={f.label}
+                  onClick={() => setStatusFilter(i)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${colorClass}`}
+                >
+                  {f.label}
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${badgeClass}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {districts.length === 0 ? (
@@ -254,11 +286,19 @@ export default function SuperAdminDashboard() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {districts.map((d) => (
-              <DistrictCard key={d.id} district={d} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {districts.filter((d) => FILTERS[statusFilter].match(d.status)).map((d) => (
+                <DistrictCard key={d.id} district={d} />
+              ))}
+            </div>
+            {districts.filter((d) => FILTERS[statusFilter].match(d.status)).length === 0 && (
+              <div className="text-center py-12 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+                <p className="font-bold text-text text-sm">No {FILTERS[statusFilter].label} districts</p>
+                <p className="text-xs mt-1">No districts currently match this status filter.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

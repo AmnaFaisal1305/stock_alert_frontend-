@@ -22,7 +22,15 @@ export default function UserManagement() {
 
   // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
+
+  const ROLE_FILTERS = [
+    { label: 'All',                  value: null },
+    { label: 'District Supervisor',  value: 'district_supervisor' },
+    { label: 'Facility Supervisor',  value: 'facility_supervisor' },
+    { label: 'Facility Worker',      value: 'facility_worker' },
+  ]
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
@@ -80,39 +88,73 @@ export default function UserManagement() {
     onError: (err) => setFormError(err.message),
   })
 
-  // Filter users by name or email
-  const filteredUsers = users.filter((u) =>
-    (u.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+  const roleCounts = ROLE_FILTERS.map((f) =>
+    f.value ? users.filter((u) => u.role === f.value).length : users.length
   )
+
+  // Filter users by name/email and role
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      (u.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesRole = !ROLE_FILTERS[roleFilter].value || u.role === ROLE_FILTERS[roleFilter].value
+    return matchesSearch && matchesRole
+  })
 
   // Pagination logic
   const itemsPerPage = 10
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
+  const ROLE_LABELS = {
+    district_supervisor: 'District Supervisor',
+    facility_supervisor: 'Facility Supervisor',
+    facility_worker:     'Facility Worker',
+  }
+
+  const activeRole = ROLE_FILTERS[roleFilter].value
+  const nameColLabel       = activeRole ? `${ROLE_LABELS[activeRole]} Name` : 'Name'
+  const assignmentColLabel =
+    activeRole === 'district_supervisor' ? 'District Name' :
+    activeRole === 'facility_supervisor' ? 'Facility Name' :
+    activeRole === 'facility_worker'     ? 'Facility Name' :
+    'Assignment'
+
   const columns = [
     {
       key: 'name',
-      label: 'Supervisor Name',
+      label: nameColLabel,
       render: (row) => (
         <div className="flex items-center gap-2 font-bold text-text">
           <div className="w-6 h-6 rounded bg-slate-100 text-text-muted flex items-center justify-center flex-shrink-0">
             <User size={12} />
           </div>
-          <span>{row.name ?? '—'}</span>
+          <div className="min-w-0">
+            <p className="truncate">{row.name ?? '—'}</p>
+            {!activeRole && (
+              <p className="text-[10px] font-semibold text-text-muted normal-case">{ROLE_LABELS[row.role] ?? row.role}</p>
+            )}
+          </div>
         </div>
       )
     },
     { key: 'email', label: 'Email Address', render: (row) => <span className="text-xs text-text-muted font-medium">{row.email}</span> },
     {
-      key: 'districtId',
-      label: 'Assigned District',
-      render: (row) => (
-        <span className="text-xs font-semibold text-text">
-          {districtMap[row.districtId] ?? <span className="text-text-muted italic text-[11px] font-normal">Unassigned</span>}
-        </span>
-      )
+      key: 'assignment',
+      label: assignmentColLabel,
+      render: (row) => {
+        const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker'
+        const primary = isFacilityRole ? row.facilityName : row.districtName
+        const sub     = isFacilityRole ? row.districtName : null
+        return primary ? (
+          <div>
+            <p className="text-xs font-semibold text-text">{primary}</p>
+            {sub && <p className="text-[10px] text-text-muted font-medium">{sub}</p>}
+          </div>
+        ) : (
+          <span className="text-text-muted italic text-[11px]">Unassigned</span>
+        )
+      }
     },
     {
       key: 'isActive',
@@ -151,8 +193,8 @@ export default function UserManagement() {
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">User Management</h1>
           <p className="text-sm text-white/70 mt-0.5">
-            {!isLoading && `${users.length} ${users.length === 1 ? 'district supervisor' : 'district supervisors'} registered under system`}
-            {isLoading && 'Loading supervisors list…'}
+            {!isLoading && `${users.length} ${users.length === 1 ? 'user' : 'users'} registered under system`}
+            {isLoading && 'Loading users…'}
           </p>
         </div>
         <button
@@ -164,17 +206,40 @@ export default function UserManagement() {
         </button>
       </div>
 
-      {/* Search Input Box */}
+      {/* Search + Role filters */}
       {!isLoading && !isError && users.length > 0 && (
-        <div className="relative w-80">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-80">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+            {ROLE_FILTERS.map((f, i) => {
+              const active = roleFilter === i
+              return (
+                <button
+                  key={f.label}
+                  onClick={() => { setRoleFilter(i); setCurrentPage(1) }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
+                    active ? 'bg-primary text-white' : 'text-text-muted hover:bg-slate-50'
+                  }`}
+                >
+                  {f.label}
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${
+                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-text-muted'
+                  }`}>
+                    {roleCounts[i]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -197,7 +262,11 @@ export default function UserManagement() {
           <Table
             columns={columns}
             rows={paginatedUsers}
-            emptyMessage={searchQuery ? `No supervisors match "${searchQuery}"` : 'No supervisors registered yet.'}
+            emptyMessage={
+              searchQuery || roleFilter !== 0
+                ? `No users match${searchQuery ? ` "${searchQuery}"` : ''}${roleFilter !== 0 ? ` in ${ROLE_FILTERS[roleFilter].label}` : ''}.`
+                : 'No users registered yet.'
+            }
           />
 
           {/* Pagination bar */}

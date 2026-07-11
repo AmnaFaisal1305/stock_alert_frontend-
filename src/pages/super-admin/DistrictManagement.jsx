@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Plus, Pencil, UserX, UserCheck, Search, Map as MapIcon,
+  Plus, Pencil, Search, Map as MapIcon,
   ChevronLeft, ChevronRight, ChevronDown, Building2, User, Mail, Loader2,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getDistricts, getDistrict,
+  getDistricts, getDistrict, getDashboard,
   createDistrict, updateDistrict, deleteDistrict, activateDistrict,
 } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
@@ -15,7 +15,7 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 import StatusBadge from '../../components/shared/StatusBadge'
-import { worstStatus, statusConfig } from '../../lib/status'
+import { worstStatus, statusConfig, FILTERS } from '../../lib/status'
 
 // ── Inline facility sub-table — rendered below each expanded district row ────
 function DistrictExpandedPanel({ districtId }) {
@@ -160,14 +160,21 @@ export default function DistrictManagement() {
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [deactivateError, setDeactivateError]   = useState('')
 
-  const [toast, setToast]       = useState(null)
-  const [searchQuery, setSearch] = useState('')
-  const [currentPage, setPage]  = useState(1)
+  const [toast, setToast]         = useState(null)
+  const [searchQuery, setSearch]   = useState('')
+  const [statusFilter, setStatusFilter] = useState(0)
+  const [currentPage, setPage]     = useState(1)
   const [expandedId, setExpandedId] = useState(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['districts'],
     queryFn: getDistricts,
+  })
+
+  const { data: dashData } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: getDashboard,
+    staleTime: 30_000,
   })
 
   const mutation = useMutation({
@@ -211,9 +218,34 @@ export default function DistrictManagement() {
   })
 
   const districts = data?.districts ?? []
-  const filtered  = districts.filter((d) =>
-    d.name?.toLowerCase().includes(searchQuery.toLowerCase())
+
+  // Build a district→status map from dashboard facility rollup (same logic as Dashboard.jsx)
+  const districtStatusMap = useMemo(() => {
+    const map = new Map()
+    for (const f of (dashData?.summary?.byFacility ?? [])) {
+      const fStatus = worstStatus(f.statusCounts)
+      const prev = map.get(f.districtId)
+      if (!prev) { map.set(f.districtId, [fStatus]); continue }
+      prev.push(fStatus)
+    }
+    const result = new Map()
+    for (const [id, statuses] of map) {
+      result.set(id, worstStatus(statuses))
+    }
+    return result
+  }, [dashData])
+
+  const filterCounts = useMemo(() =>
+    FILTERS.map((f) => districts.filter((d) => f.match(districtStatusMap.get(d.id) ?? 'no_data')).length),
+    [districts, districtStatusMap]
   )
+
+  const activeFilter = FILTERS[statusFilter]
+  const filtered = districts.filter((d) => {
+    if (!d.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    const status = districtStatusMap.get(d.id) ?? 'no_data'
+    return activeFilter.match(status)
+  })
 
   const ITEMS_PER_PAGE = 10
   const totalPages     = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -244,17 +276,46 @@ export default function DistrictManagement() {
         </button>
       </div>
 
-      {/* ── Search ───────────────────────────────────────────────────── */}
+      {/* ── Search + Status filters ──────────────────────────────────── */}
       {!isLoading && !isError && districts.length > 0 && (
-        <div className="relative w-80">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search district by name…"
-            value={searchQuery}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-80">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search district by name…"
+              value={searchQuery}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+            {FILTERS.map((f, i) => {
+              const active = statusFilter === i
+              const colorClass =
+                f.label === 'Critical' ? (active ? 'bg-danger text-white' : 'text-danger hover:bg-danger/5') :
+                f.label === 'Low'      ? (active ? 'bg-warning text-white' : 'text-warning-dark hover:bg-warning/5') :
+                f.label === 'OK'       ? (active ? 'bg-success text-white' : 'text-success-dark hover:bg-success/5') :
+                (active ? 'bg-primary text-white' : 'text-text-muted hover:bg-slate-50')
+              const badgeClass =
+                f.label === 'Critical' ? (active ? 'bg-white/20 text-white' : 'bg-danger/10 text-danger') :
+                f.label === 'Low'      ? (active ? 'bg-white/20 text-white' : 'bg-warning/10 text-warning-dark') :
+                f.label === 'OK'       ? (active ? 'bg-white/20 text-white' : 'bg-success/10 text-success-dark') :
+                (active ? 'bg-white/20 text-white' : 'bg-slate-100 text-text-muted')
+              return (
+                <button
+                  key={f.label}
+                  onClick={() => { setStatusFilter(i); setPage(1) }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${colorClass}`}
+                >
+                  {f.label}
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${badgeClass}`}>
+                    {filterCounts[i]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -288,7 +349,9 @@ export default function DistrictManagement() {
 
             {paginated.length === 0 && (
               <div className="px-6 py-10 text-center text-sm text-text-muted">
-                {searchQuery ? `No districts match "${searchQuery}"` : 'No districts registered yet.'}
+                {searchQuery || statusFilter !== 0
+                  ? `No districts match${searchQuery ? ` "${searchQuery}"` : ''}${statusFilter !== 0 ? ` with status "${FILTERS[statusFilter].label}"` : ''}.`
+                  : 'No districts registered yet.'}
               </div>
             )}
 
@@ -304,7 +367,7 @@ export default function DistrictManagement() {
                     isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-slate-50/60',
                   ].join(' ')}>
 
-                    {/* District name + active badge + date */}
+                    {/* District name + active badge + date + activate/deactivate */}
                     <div className="flex items-center gap-2.5 min-w-0">
                       <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
                       <div className="min-w-0">
@@ -312,11 +375,30 @@ export default function DistrictManagement() {
                           <p className="font-bold text-text text-sm truncate">{row.name}</p>
                           <Badge type={row.isActive ? 'active' : 'inactive'} />
                         </div>
-                        <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                          {new Date(row.createdAt).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[10px] text-text-muted font-medium">
+                            {new Date(row.createdAt).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric',
+                            })}
+                          </p>
+                          <span className="text-text-muted/30 text-[10px]">·</span>
+                          {row.isActive ? (
+                            <button
+                              onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}
+                              className="text-[10px] font-bold text-danger hover:underline"
+                            >
+                              Deactivate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => activateMutation.mutate(row.id)}
+                              disabled={activateMutation.isPending}
+                              className="text-[10px] font-bold text-success-dark hover:underline disabled:opacity-50"
+                            >
+                              Activate
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -350,25 +432,6 @@ export default function DistrictManagement() {
                       <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
                         <Pencil size={12} /> Rename
                       </Button>
-
-                      {row.isActive ? (
-                        <Button
-                          variant="ghost" size="sm"
-                          className="text-text-muted hover:text-danger hover:bg-danger/5"
-                          onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}
-                        >
-                          <UserX size={12} />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost" size="sm"
-                          className="text-text-muted hover:text-success-dark hover:bg-success-bg"
-                          onClick={() => activateMutation.mutate(row.id)}
-                          disabled={activateMutation.isPending}
-                        >
-                          <UserCheck size={12} />
-                        </Button>
-                      )}
                     </div>
                   </div>
 
