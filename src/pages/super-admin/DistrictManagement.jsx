@@ -15,7 +15,7 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 import StatusBadge from '../../components/shared/StatusBadge'
-import { worstStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
+import { facilityStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
 
 // ── Inline facility sub-table — rendered below each expanded district row ────
 function DistrictExpandedPanel({ districtId }) {
@@ -223,7 +223,7 @@ export default function DistrictManagement() {
   const districtStatusMap = useMemo(() => {
     const map = new Map()
     for (const f of (dashData?.summary?.byFacility ?? [])) {
-      const fStatus = worstStatus(f.statusCounts)
+      const fStatus = facilityStatus(f.statusCounts)
       const prev = map.get(f.districtId)
       if (!prev) { map.set(f.districtId, [fStatus]); continue }
       prev.push(fStatus)

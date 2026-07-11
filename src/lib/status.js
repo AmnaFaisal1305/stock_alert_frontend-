@@ -45,8 +45,17 @@ export function worstStatus(input) {
   return 'no_data'
 }
 
+// Facility-level status from its statusCounts object.
+// Priority: critical > low > adequate > no_data (no_data is last — one unrecorded vaccine
+// must not override real adequate/low/critical counts on the same facility).
+export function facilityStatus(statusCounts) {
+  if (statusCounts?.critical > 0) return 'critical'
+  if (statusCounts?.low      > 0) return 'low'
+  if (statusCounts?.adequate > 0) return 'adequate'
+  return 'no_data'
+}
+
 // District-level rollup: ignore no_data facilities — only return no_data if every facility has no_data.
-// Priority: critical > low > adequate > no_data (no_data is last, not second).
 export function districtStatus(facilityStatuses) {
   const withData = facilityStatuses.filter((s) => s !== 'no_data')
   return withData.length ? worstStatus(withData) : 'no_data'

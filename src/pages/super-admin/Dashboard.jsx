@@ -4,7 +4,7 @@ import { Map as MapIcon, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide
 import { getDashboard, getDistricts } from '../../lib/api'
 import DistrictCard from '../../components/shared/DistrictCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { worstStatus, districtStatus, FILTERS } from '../../lib/status'
+import { facilityStatus, districtStatus, FILTERS } from '../../lib/status'
 
 export default function SuperAdminDashboard() {
   const [statusFilter, setStatusFilter] = useState(0)
@@ -43,7 +43,7 @@ export default function SuperAdminDashboard() {
         })
       }
       const d = districtMap.get(f.districtId)
-      const fStatus = worstStatus(f.statusCounts)
+      const fStatus = facilityStatus(f.statusCounts)
       d.facilityStatuses.push(fStatus)
       d.facilityCount += 1
       if (fStatus === 'adequate')                          d.statusCounts.adequate += 1
