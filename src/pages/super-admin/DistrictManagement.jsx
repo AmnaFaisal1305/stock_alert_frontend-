@@ -15,7 +15,7 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 import StatusBadge from '../../components/shared/StatusBadge'
-import { worstStatus, statusConfig, FILTERS } from '../../lib/status'
+import { worstStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
 
 // ── Inline facility sub-table — rendered below each expanded district row ────
 function DistrictExpandedPanel({ districtId }) {
@@ -230,7 +230,7 @@ export default function DistrictManagement() {
     }
     const result = new Map()
     for (const [id, statuses] of map) {
-      result.set(id, worstStatus(statuses))
+      result.set(id, districtStatus(statuses))
     }
     return result
   }, [dashData])

@@ -45,6 +45,13 @@ export function worstStatus(input) {
   return 'no_data'
 }
 
+// District-level rollup: ignore no_data facilities — only return no_data if every facility has no_data.
+// Priority: critical > low > adequate > no_data (no_data is last, not second).
+export function districtStatus(facilityStatuses) {
+  const withData = facilityStatuses.filter((s) => s !== 'no_data')
+  return withData.length ? worstStatus(withData) : 'no_data'
+}
+
 // Pill-filter definitions shared by list/grid screens that filter a row set by status.
 // 'Low' intentionally matches both 'low' and 'no_data' rows (an unrecorded vaccine needs
 // the same attention as a low one) even though their badge/border styling stays distinct.
