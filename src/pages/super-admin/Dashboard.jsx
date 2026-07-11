@@ -60,7 +60,7 @@ export default function SuperAdminDashboard() {
     const counts = {
       total:    districts.length,
       adequate: districts.filter((d) => d.status === 'adequate').length,
-      low:      districts.filter((d) => d.status === 'low' || d.status === 'no_data').length,
+      low:      districts.filter((d) => d.status === 'low').length,
       critical: districts.filter((d) => d.status === 'critical').length,
     }
     return { districts, counts }
@@ -288,11 +288,17 @@ export default function SuperAdminDashboard() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {districts.filter((d) => FILTERS[statusFilter].match(d.status)).map((d) => (
+              {districts.filter((d) => {
+                if (statusFilter !== 0 && d.status === 'no_data') return false
+                return FILTERS[statusFilter].match(d.status)
+              }).map((d) => (
                 <DistrictCard key={d.id} district={d} />
               ))}
             </div>
-            {districts.filter((d) => FILTERS[statusFilter].match(d.status)).length === 0 && (
+            {districts.filter((d) => {
+              if (statusFilter !== 0 && d.status === 'no_data') return false
+              return FILTERS[statusFilter].match(d.status)
+            }).length === 0 && (
               <div className="text-center py-12 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
                 <p className="font-bold text-text text-sm">No {FILTERS[statusFilter].label} districts</p>
                 <p className="text-xs mt-1">No districts currently match this status filter.</p>

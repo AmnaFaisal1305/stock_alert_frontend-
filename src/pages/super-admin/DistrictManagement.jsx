@@ -236,7 +236,11 @@ export default function DistrictManagement() {
   }, [dashData])
 
   const filterCounts = useMemo(() =>
-    FILTERS.map((f) => districts.filter((d) => f.match(districtStatusMap.get(d.id) ?? 'no_data')).length),
+    FILTERS.map((f, i) => districts.filter((d) => {
+      const status = districtStatusMap.get(d.id) ?? 'no_data'
+      if (i !== 0 && status === 'no_data') return false
+      return f.match(status)
+    }).length),
     [districts, districtStatusMap]
   )
 
@@ -244,6 +248,7 @@ export default function DistrictManagement() {
   const filtered = districts.filter((d) => {
     if (!d.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
     const status = districtStatusMap.get(d.id) ?? 'no_data'
+    if (statusFilter !== 0 && status === 'no_data') return false
     return activeFilter.match(status)
   })
 
