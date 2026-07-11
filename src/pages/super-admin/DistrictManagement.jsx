@@ -59,82 +59,71 @@ function DistrictExpandedPanel({ districtId }) {
           <p className="text-sm font-medium">No facilities registered under this district.</p>
         </div>
       ) : (
-        <div className="mx-6 mb-5 rounded-xl border border-surface-border overflow-hidden bg-white shadow-sm">
-
-          {/* Column headers */}
-          <div className="grid grid-cols-[2fr_1.4fr_1.8fr_90px_1fr] px-5 py-2.5 bg-slate-50 border-b border-surface-border gap-5 items-center">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility Name</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility Supervisor</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">Vaccines</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock Status</span>
-          </div>
-
-          {/* Facility rows */}
+        <div className="mx-6 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {facilities.map((f) => {
-            const fStatus     = facilityStatus(f.statusCounts)
-            const cfg         = statusConfig(fStatus)
-            const sc          = f.statusCounts ?? {}
-            const totalTypes  = (sc.critical ?? 0) + (sc.low ?? 0) + (sc.adequate ?? 0) + (sc.no_data ?? 0)
-            const hasAny      = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
+            const fStatus    = facilityStatus(f.statusCounts)
+            const cfg        = statusConfig(fStatus)
+            const sc         = f.statusCounts ?? {}
+            const totalTypes = (sc.critical ?? 0) + (sc.low ?? 0) + (sc.adequate ?? 0) + (sc.no_data ?? 0)
+            const hasAny     = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
 
             return (
               <Link
                 key={f.id}
                 to={`/super-admin/facilities/${f.id}`}
-                className="grid grid-cols-[2fr_1.4fr_1.8fr_90px_1fr] px-5 py-3.5 gap-5 items-center border-b border-surface-border last:border-b-0 hover:bg-primary/[0.03] transition-colors duration-100 group"
+                className={`group bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 flex flex-col gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
               >
-                {/* Facility name + status accent dot */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
-                    <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
+                {/* Header: icon + name */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
+                      <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
+                    </div>
+                    <p className="font-bold text-sm text-text truncate group-hover:text-primary transition-colors" title={f.name}>
+                      {f.name}
+                    </p>
                   </div>
-                  <span
-                    className="font-semibold text-sm text-text truncate group-hover:text-primary transition-colors"
-                    title={f.name}
-                  >
-                    {f.name}
+                  <StatusBadge status={fStatus} />
+                </div>
+
+                {/* Supervisor */}
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor</p>
+                  <p className={`text-xs truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
+                    {f.facilitySupervisorName ?? 'Unstaffed'}
+                  </p>
+                  {f.facilitySupervisorEmail && (
+                    <p className="text-[10px] text-text-muted truncate">{f.facilitySupervisorEmail}</p>
+                  )}
+                </div>
+
+                {/* Footer: vaccine count + status chips */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-surface-border">
+                  <span className="text-[10px] font-bold text-text-muted tabular-nums">
+                    {totalTypes} vaccine{totalTypes !== 1 ? 's' : ''}
                   </span>
-                </div>
-
-                {/* Supervisor name */}
-                <span className={`text-sm truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
-                  {f.facilitySupervisorName ?? '—'}
-                </span>
-
-                {/* Supervisor email */}
-                <span className={`text-sm truncate ${f.facilitySupervisorEmail ? 'text-text' : 'text-text-muted italic'}`}>
-                  {f.facilitySupervisorEmail ?? '—'}
-                </span>
-
-                {/* Total vaccine types */}
-                <div className="text-center">
-                  <span className="text-sm font-bold text-text tabular-nums">{totalTypes}</span>
-                  <p className="text-[10px] text-text-muted font-medium leading-none mt-0.5">types</p>
-                </div>
-
-                {/* Stock status chips */}
-                <div className="flex flex-wrap gap-1">
-                  {sc.critical > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
-                      {sc.critical} Critical
-                    </span>
-                  )}
-                  {sc.low > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
-                      {sc.low} Low
-                    </span>
-                  )}
-                  {sc.adequate > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
-                      {sc.adequate} OK
-                    </span>
-                  )}
-                  {!hasAny && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
-                      No Data
-                    </span>
-                  )}
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {sc.critical > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
+                        {sc.critical} Critical
+                      </span>
+                    )}
+                    {sc.low > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
+                        {sc.low} Low
+                      </span>
+                    )}
+                    {sc.adequate > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
+                        {sc.adequate} OK
+                      </span>
+                    )}
+                    {!hasAny && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
+                        No Data
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Link>
             )

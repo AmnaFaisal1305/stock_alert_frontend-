@@ -79,7 +79,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
             <img src="/images/akuh_logo.webp" alt="AKUH Logo" className="w-8 h-8 object-contain flex-shrink-0" />
             <div>
               <p className="font-extrabold text-text text-xs leading-none tracking-tight uppercase">Smart Stock Alert</p>
-              <p className="text-[9px] font-bold text-text-muted/70 mt-0.5 uppercase tracking-wider">AKUH Network</p>
+              <p className="text-[9px] font-bold text-text-muted/70 mt-0.5 uppercase tracking-wider">AKUH Inventory</p>
             </div>
           </div>
           {mobileOpen && (
