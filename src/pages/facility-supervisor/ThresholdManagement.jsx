@@ -134,7 +134,11 @@ export default function ThresholdManagement() {
 
   const mutation = useMutation({
     mutationFn: () => updateThreshold(editing.thresholdId, parseInt(minQty, 10)),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['dashboard'] }); setEditing(null); setFormError('') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setEditing(null); setFormError('')
+    },
     onError: (err) => setFormError(err.message),
   })
 
@@ -143,6 +147,7 @@ export default function ThresholdManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vaccines'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setRenaming(null); setRenameError('')
     },
     onError: (err) => setRenameError(duplicateNameMessage(err)),
@@ -156,6 +161,7 @@ export default function ThresholdManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vaccines'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setAddOpen(false); setNewVaccine({ name: '', minQuantity: '' }); setAddError('')
     },
     onError: (err) => setAddError(duplicateNameMessage(err)),
@@ -166,6 +172,7 @@ export default function ThresholdManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vaccines'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDeleteTarget(null)
       setDeleteError('')
     },
@@ -178,6 +185,7 @@ export default function ThresholdManagement() {
     mutationFn: () => updateVaccineStock(correcting.vaccineId, parseInt(correctQty, 10)),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCorrectResult(result)
       setCorrectError('')
     },

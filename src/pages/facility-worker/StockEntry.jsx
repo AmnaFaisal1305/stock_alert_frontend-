@@ -48,6 +48,7 @@ export default function StockEntry() {
     mutationFn: () => createStockEntry(vaccineId, useQty),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
     },
   })

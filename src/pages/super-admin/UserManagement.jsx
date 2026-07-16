@@ -45,6 +45,7 @@ export default function UserManagement() {
     mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'district_supervisor', districtId: form.districtId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCreateOpen(false)
       setForm({ name: '', email: '', password: '', districtId: '' })
       setFormError('')
@@ -61,6 +62,7 @@ export default function UserManagement() {
     mutationFn: (id) => deactivateUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setToast({ message: `${deactivateTarget?.email} deactivated.`, type: 'success' })
       setDeactivateTarget(null)
     },
@@ -71,6 +73,7 @@ export default function UserManagement() {
     mutationFn: (id) => activateUser(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       const target = users.find((u) => u.id === id)
       setToast({ message: `${target?.email ?? 'Account'} activated.`, type: 'success' })
     },
@@ -80,6 +83,7 @@ export default function UserManagement() {
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setResetTarget(null)
       setNewPassword('')
       setFormError('')

@@ -49,6 +49,7 @@ export default function RecordStock() {
     onSuccess: () => {
       setResult({ vaccineName: selectedVaccine?.name, addedQty: addQty, newTotal })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
     },
   })

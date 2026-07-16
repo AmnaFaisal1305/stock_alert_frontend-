@@ -170,6 +170,8 @@ export default function DistrictManagement() {
     mutationFn: () => createDistrict(name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setOpen(false); setName(''); setFormError('')
       setToast({ message: 'District created successfully.', type: 'success' })
     },
@@ -180,6 +182,7 @@ export default function DistrictManagement() {
     mutationFn: () => updateDistrict(renaming.id, renameValue),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setRenaming(null); setRenameError('')
       setToast({ message: 'District renamed.', type: 'success' })
     },
@@ -190,6 +193,8 @@ export default function DistrictManagement() {
     mutationFn: (id) => deleteDistrict(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setToast({ message: `${deactivateTarget?.name} deactivated.`, type: 'success' })
       setDeactivateTarget(null); setDeactivateError('')
     },
@@ -200,6 +205,8 @@ export default function DistrictManagement() {
     mutationFn: (id) => activateDistrict(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       const target = districts.find((d) => d.id === id)
       setToast({ message: `${target?.name ?? 'District'} activated.`, type: 'success' })
     },

@@ -38,6 +38,7 @@ export default function FacilityManagement() {
     mutationFn: () => createFacility({ name: form.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setOpen(false)
       setForm({ name: '' })
       setFormError('')
@@ -50,6 +51,7 @@ export default function FacilityManagement() {
     mutationFn: () => updateFacility(renaming.id, renameValue),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setRenaming(null)
       setRenameError('')
       setToast({ message: 'Facility renamed.', type: 'success' })
@@ -61,6 +63,7 @@ export default function FacilityManagement() {
     mutationFn: (id) => deleteFacility(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setToast({ message: `${deactivateTarget?.name} deactivated.`, type: 'success' })
       setDeactivateTarget(null)
       setDeactivateError('')
@@ -72,6 +75,7 @@ export default function FacilityManagement() {
     mutationFn: (id) => activateFacility(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       const target = facilities.find((f) => f.id === id)
       setToast({ message: `${target?.name ?? 'Facility'} activated.`, type: 'success' })
     },

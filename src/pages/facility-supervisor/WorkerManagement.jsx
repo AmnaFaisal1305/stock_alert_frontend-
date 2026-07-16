@@ -147,6 +147,7 @@ export default function WorkerManagement() {
     mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'facility_worker' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCreateOpen(false); setAddStep(1); setForm({ name: '', email: '', password: '' }); setFormError('')
     },
     onError: (err) => setFormError(err.message),
@@ -154,17 +155,27 @@ export default function WorkerManagement() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => deactivateUser(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); setConfirmingId(null) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setConfirmingId(null)
+    },
   })
 
   const activateMutation = useMutation({
     mutationFn: (id) => activateUser(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+    },
   })
 
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
-    onSuccess: () => { setResetTarget(null); setNewPassword(''); setResetError('') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setResetTarget(null); setNewPassword(''); setResetError('')
+    },
     onError: (err) => setResetError(err.message),
   })
 
