@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Shield } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import * as api from '../../lib/api'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import HeroCarousel from './HeroCarousel'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 const HERO_IMAGES = [
   '/images/hospital-1.webp',
@@ -16,10 +19,49 @@ const HERO_IMAGES = [
 export default function LoginPage() {
   const { login } = useAuth()
 
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [email,           setEmail]           = useState('')
+  const [password,        setPassword]        = useState('')
+  const [loading,         setLoading]         = useState(false)
+  const [error,           setError]           = useState('')
+  const [googleAvailable, setGoogleAvailable] = useState(!!GOOGLE_CLIENT_ID)
+  const [googleError,     setGoogleError]     = useState('')
+
+  async function handleGoogleCredential({ credential }) {
+    setGoogleError('')
+    setLoading(true)
+    try {
+      const data = await api.googleLogin(credential)
+      login(data.user, data.csrfToken)
+    } catch (err) {
+      if (err.status === 403 && err.body?.code === 'NOT_REGISTERED') {
+        setGoogleError('This Google account is not registered in the system. Contact your administrator.')
+      } else if (err.status === 503) {
+        setGoogleAvailable(false)
+      } else if (err.status === 429) {
+        setGoogleError('Too many attempts. Please wait a few minutes and try again.')
+      } else {
+        setGoogleError('Google sign-in failed. Please try signing in with your email and password.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = () => {
+      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential })
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-signin-btn'),
+        { theme: 'outline', size: 'large', width: '100%' }
+      )
+    }
+    document.head.appendChild(script)
+    return () => script.remove()
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -82,15 +124,22 @@ export default function LoginPage() {
               autoFocus
               required
             />
-            <Input
-              id="password"
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline font-semibold">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
 
             {error && (
               <p className="text-xs font-semibold text-danger bg-danger-bg border border-danger/10 px-3.5 py-2.5 rounded-xl flex items-center gap-2">
@@ -118,6 +167,26 @@ export default function LoginPage() {
               ) : 'Sign In'}
             </Button>
           </form>
+
+          {/* Google Sign-In — only rendered when VITE_GOOGLE_CLIENT_ID is set */}
+          {GOOGLE_CLIENT_ID && googleAvailable && (
+            <div className="flex flex-col gap-3 mt-4">
+              <div className="flex items-center gap-3">
+                <hr className="flex-1 border-slate-100" />
+                <span className="text-xs text-text-muted/60 font-medium">or</span>
+                <hr className="flex-1 border-slate-100" />
+              </div>
+              <div id="google-signin-btn" />
+              {googleError && (
+                <p className="text-xs font-semibold text-danger bg-danger-bg border border-danger/10 px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {googleError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-center gap-1.5 mt-6">

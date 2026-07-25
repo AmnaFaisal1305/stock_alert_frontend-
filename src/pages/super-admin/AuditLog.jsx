@@ -41,7 +41,10 @@ function formatDetails(row, vaccineNameById) {
 
   switch (row.action) {
     case 'STOCK_ENTRY': {
-      const verb = d.entryType === 'used' ? 'used' : d.entryType === 'legacy' ? 'recorded (legacy)' : 'received'
+      const verb =
+        d.entryType === 'used'     ? 'used' :
+        d.entryType === 'returned' ? 'returned' :
+        d.entryType === 'legacy'   ? 'recorded (legacy)' : 'received'
       return `${d.quantity} doses ${verb} — ${vaccineName(d.vaccineId)}`
     }
     case 'ADJUST_STOCK':

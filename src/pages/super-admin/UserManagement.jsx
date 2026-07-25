@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, RotateCcw, UserX, UserCheck, Search, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, getDistricts, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
+import { getUsers, getDistricts, getFacilities, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -15,7 +15,7 @@ export default function UserManagement() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', password: '', districtId: '' })
+  const [form, setForm] = useState({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', phone: '', cnic: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -33,27 +33,49 @@ export default function UserManagement() {
   ]
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
-  const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
+  const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts, staleTime: 0 })
+  const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, staleTime: 0 })
 
   const districtMap = Object.fromEntries((districtData?.districts ?? []).map((d) => [d.id, d.name]))
   const districtOptions = (districtData?.districts ?? [])
     .filter((d) => d.isActive)
     .map((d) => ({ value: d.id, label: d.supervisorName ? `${d.name} (staffed)` : d.name }))
+  const facilityOptions = (facilityData?.facilities ?? [])
+    .filter((f) => f.isActive)
+    .map((f) => ({ value: f.id, label: f.facilitySupervisorName ? `${f.name} (staffed)` : f.name }))
   const users = userData?.users ?? []
 
+  const ROLE_SUCCESS_LABELS = {
+    district_supervisor: 'District supervisor',
+    facility_supervisor: 'Facility supervisor',
+    facility_worker:     'Facility worker',
+  }
+
   const createMutation = useMutation({
-    mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'district_supervisor', districtId: form.districtId }),
+    mutationFn: () => {
+      const isFacilityRole = form.role === 'facility_supervisor' || form.role === 'facility_worker'
+      return createUser({
+        firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
+        email: form.email, password: form.password, role: form.role,
+        ...(isFacilityRole ? { facilityId: form.facilityId } : { districtId: form.districtId }),
+        ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+        ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCreateOpen(false)
-      setForm({ name: '', email: '', password: '', districtId: '' })
+      setForm({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', phone: '', cnic: '' })
       setFormError('')
-      setToast({ message: 'District supervisor created successfully.', type: 'success' })
+      setToast({ message: `${ROLE_SUCCESS_LABELS[form.role] ?? 'User'} created successfully.`, type: 'success' })
     },
     onError: (err) => setFormError(
-      err.status === 409 && err.body?.error?.includes('active supervisor')
-        ? 'This district already has an active supervisor. Deactivate them first before assigning a new one.'
+      err.status === 409 && err.body?.error?.includes('ZMID')
+        ? 'This ZMID is already assigned to another account.'
+        : err.status === 409 && err.body?.error?.includes('active supervisor')
+        ? 'This district/facility already has an active supervisor. Deactivate them first.'
         : err.message
     ),
   })
@@ -206,7 +228,7 @@ export default function UserManagement() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
         >
           <Plus size={15} strokeWidth={2.5} />
-          Add District Supervisor
+          Add User
         </button>
       </div>
 
@@ -332,16 +354,64 @@ export default function UserManagement() {
       )}
 
       {/* Create Modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create District Supervisor">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add User">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
-          <Input id="sup-name" label="Name" placeholder="Display name"
-            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          {/* Role selector */}
+          <div>
+            <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Role</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: 'district_supervisor',  label: 'District Supervisor' },
+                { value: 'facility_supervisor',  label: 'Facility Supervisor' },
+                { value: 'facility_worker',      label: 'Facility Worker' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, role: value, districtId: '', facilityId: '' }))}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center leading-snug ${
+                    form.role === value
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input id="sup-first-name" label="First Name" placeholder="Jane"
+              value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
+            <Input id="sup-last-name" label="Last Name" placeholder="Doe"
+              value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+          </div>
+          <Input id="sup-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-1001"
+            value={form.zmid} onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
           <Input id="sup-email" label="Email" type="email" placeholder="user@akuh.org"
             value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <Input id="sup-password" label="Password (min 8 chars)" type="password" minLength={8}
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <Select id="sup-district" label="Assign District" options={districtOptions}
-            value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} required />
+
+          {/* District picker — only for district_supervisor */}
+          {form.role === 'district_supervisor' && (
+            <Select id="sup-district" label="Assign District" options={districtOptions}
+              placeholder="Select a district…"
+              value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} required />
+          )}
+
+          {/* Facility picker — for facility_supervisor and facility_worker */}
+          {(form.role === 'facility_supervisor' || form.role === 'facility_worker') && (
+            <Select id="sup-facility" label="Assign Facility" options={facilityOptions}
+              placeholder="Select a facility…"
+              value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />
+          )}
+
+          <Input id="sup-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
+            value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input id="sup-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
+            value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
           {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>

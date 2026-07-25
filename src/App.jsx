@@ -6,10 +6,13 @@ import ErrorBoundary from './components/ErrorBoundary'
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
 const LoginPage             = lazy(() => import('./pages/Login/LoginPage'))
+const ForgotPassword        = lazy(() => import('./pages/Login/ForgotPassword'))
+const ResetPassword         = lazy(() => import('./pages/Login/ResetPassword'))
 
 const SuperAdminDashboard   = lazy(() => import('./pages/super-admin/Dashboard'))
 const DistrictManagement    = lazy(() => import('./pages/super-admin/DistrictManagement'))
 const DistrictDetail        = lazy(() => import('./pages/super-admin/DistrictDetail'))
+const SuperAdminFacilities  = lazy(() => import('./pages/super-admin/FacilityManagement'))
 const SuperAdminUsers       = lazy(() => import('./pages/super-admin/UserManagement'))
 const SuperAdminAuditLog    = lazy(() => import('./pages/super-admin/AuditLog'))
 
@@ -70,7 +73,9 @@ export default function App() {
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/login" element={<LoginRoute />} />
+              <Route path="/login"           element={<LoginRoute />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password"  element={<ResetPassword />} />
 
               <Route element={<AuthLayout />}>
                 <Route path="/" element={<RoleRedirect />} />
@@ -78,6 +83,7 @@ export default function App() {
                 <Route path="/super-admin/dashboard"        element={<SuperAdminDashboard />} />
                 <Route path="/super-admin/districts"        element={<DistrictManagement />} />
                 <Route path="/super-admin/districts/:id"    element={<DistrictDetail />} />
+                <Route path="/super-admin/facilities"       element={<SuperAdminFacilities />} />
                 <Route path="/super-admin/facilities/:id"   element={<FacilityDetail />} />
                 <Route path="/super-admin/users"            element={<SuperAdminUsers />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />

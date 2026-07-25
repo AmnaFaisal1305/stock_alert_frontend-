@@ -58,6 +58,18 @@ export async function logout() {
   return request('POST', '/api/auth/logout', {})
 }
 
+export async function forgotPassword(email) {
+  return request('POST', '/api/auth/forgot-password', { email })
+}
+
+export async function resetPasswordByToken(token, password) {
+  return request('POST', `/api/auth/reset-password/${token}`, { password })
+}
+
+export async function googleLogin(idToken) {
+  return request('POST', '/api/auth/google', { idToken })
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export async function getUsers() {
@@ -86,8 +98,8 @@ export async function getDistricts() {
   return request('GET', '/api/districts')
 }
 
-export async function createDistrict(name) {
-  return request('POST', '/api/districts', { name })
+export async function createDistrict(payload) {
+  return request('POST', '/api/districts', payload)
 }
 
 export async function getDistrict(id) {
@@ -162,8 +174,8 @@ export async function getDashboard() {
 
 // ── Stock entries ─────────────────────────────────────────────────────────────
 
-export async function createStockEntry(vaccineId, quantity) {
-  return request('POST', '/api/stock-entries', { vaccineId, quantity })
+export async function createStockEntry(payload) {
+  return request('POST', '/api/stock-entries', payload)
 }
 
 // ── Thresholds ────────────────────────────────────────────────────────────────

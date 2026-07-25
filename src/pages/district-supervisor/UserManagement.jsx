@@ -15,7 +15,7 @@ export default function DistrictUserManagement() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', password: '', facilityId: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', zmid: '', email: '', password: '', facilityId: '', phone: '', cnic: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -34,16 +34,26 @@ export default function DistrictUserManagement() {
   const users = userData?.users ?? []
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'facility_supervisor', facilityId: form.facilityId }),
+    mutationFn: () => createUser({
+      firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
+      email: form.email, password: form.password,
+      role: 'facility_supervisor', facilityId: form.facilityId,
+      ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+      ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCreateOpen(false)
-      setForm({ name: '', email: '', password: '', facilityId: '' })
+      setForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', facilityId: '', phone: '', cnic: '' })
       setFormError('')
       setToast({ message: 'Facility supervisor created successfully.', type: 'success' })
     },
-    onError: (err) => setFormError(err.message),
+    onError: (err) => setFormError(
+      err.status === 409 && err.body?.error?.includes('ZMID')
+        ? 'This ZMID is already assigned to another account.'
+        : err.message
+    ),
   })
 
   const deactivateMutation = useMutation({
@@ -257,14 +267,24 @@ export default function DistrictUserManagement() {
       {/* Create Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Facility Supervisor">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
-          <Input id="fs-name" label="Name" placeholder="Display name"
-            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input id="fs-first-name" label="First Name" placeholder="Jane"
+              value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
+            <Input id="fs-last-name" label="Last Name" placeholder="Doe"
+              value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+          </div>
+          <Input id="fs-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-2001"
+            value={form.zmid} onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
           <Input id="fs-email" label="Email" type="email"
             value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <Input id="fs-password" label="Password (min 8 chars)" type="password" minLength={8}
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           <Select id="fs-facility" label="Assign Facility" options={facilityOptions}
             value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />
+          <Input id="fs-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
+            value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input id="fs-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
+            value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
           {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>

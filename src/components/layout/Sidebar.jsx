@@ -10,6 +10,7 @@ const NAV = {
   super_admin: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
     { to: '/super-admin/districts',  label: 'Districts',          icon: Map             },
+    { to: '/super-admin/facilities', label: 'Facilities',         icon: Building2       },
     { to: '/super-admin/users',      label: 'User Management',    icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',          icon: ClipboardList   },
   ],

@@ -8,8 +8,15 @@ import SkeletonCard from '../../components/shared/SkeletonCard'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import { statusConfig, FILTERS as STATUS_FILTERS } from '../../lib/status'
 import RingGauge from '../../components/shared/RingGauge'
+
+const DEFAULT_VACCINE_NAMES = [
+  'Vaccine 01', 'Vaccine 02', 'Vaccine 03', 'Vaccine 04', 'Vaccine 05',
+  'Vaccine 06', 'Vaccine 07', 'Vaccine 08', 'Vaccine 09', 'Vaccine 10',
+  'Vaccine 11', 'Vaccine 12', 'Vaccine 13',
+]
 
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
 function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {
@@ -193,6 +200,13 @@ export default function ThresholdManagement() {
   })
 
   const allRows     = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+  const existingNames = new Set(allRows.map((r) => r.vaccineName))
+
+  // Names available to add (all 13 defaults minus what the facility already has)
+  const addableNames = DEFAULT_VACCINE_NAMES
+    .filter((n) => !existingNames.has(n))
+    .map((n) => ({ value: n, label: n }))
+
   const criticalCount = allRows.filter((r) => filterMatch.Critical(r.status)).length
   const lowCount      = allRows.filter((r) => filterMatch.Low(r.status)).length
   const healthyCount  = allRows.filter((r) => filterMatch.OK(r.status)).length
@@ -322,34 +336,61 @@ export default function ThresholdManagement() {
       {/* Rename Modal */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.vaccineName ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
-          <Input id="rename-vaccine" label="Vaccine Name"
-            value={renameValue} onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }} required />
+          <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
+            Names must be from the standard vaccine list.
+          </p>
+          <Select
+            id="rename-vaccine"
+            label="New Vaccine Name"
+            options={DEFAULT_VACCINE_NAMES
+              .filter((n) => n === renaming?.vaccineName || !existingNames.has(n))
+              .map((n) => ({ value: n, label: n }))}
+            value={renameValue}
+            onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }}
+            required
+          />
           {renameError && <p className="text-xs text-danger">{renameError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
-            <Button type="submit" disabled={renameMutation.isPending}>{renameMutation.isPending ? 'Saving…' : 'Save'}</Button>
+            <Button type="submit" disabled={renameMutation.isPending || !renameValue}>{renameMutation.isPending ? 'Saving…' : 'Save'}</Button>
           </div>
         </form>
       </Modal>
 
       {/* Add Vaccine Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add New Vaccine">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Vaccine">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createVaccineMutation.mutate() }}>
-          <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
-            New vaccines start with zero stock. Set a minimum threshold so alerts trigger automatically when stock runs low.
-          </p>
-          <Input id="new-vaccine-name" label="Vaccine Name"
-            value={newVaccine.name}
-            onChange={(e) => { setNewVaccine({ ...newVaccine, name: e.target.value }); setAddError('') }} required />
-          <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" placeholder="Leave blank to set later"
-            value={newVaccine.minQuantity}
-            onChange={(e) => setNewVaccine({ ...newVaccine, minQuantity: e.target.value })} />
-          {addError && <p className="text-xs text-danger">{addError}</p>}
+          {addableNames.length === 0 ? (
+            <p className="text-sm text-text-muted text-center py-4">
+              All 13 default vaccines are already configured for this facility.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
+                Re-add a previously deleted vaccine. Names must be from the standard list.
+              </p>
+              <Select
+                id="new-vaccine-name"
+                label="Vaccine Name"
+                options={addableNames}
+                placeholder="Select a vaccine name..."
+                value={newVaccine.name}
+                onChange={(e) => { setNewVaccine({ ...newVaccine, name: e.target.value }); setAddError('') }}
+                required
+              />
+              <Input id="new-vaccine-min" label="Minimum Quantity (doses, optional)" type="number" min="0" placeholder="Leave blank to set later"
+                value={newVaccine.minQuantity}
+                onChange={(e) => setNewVaccine({ ...newVaccine, minQuantity: e.target.value })} />
+              {addError && <p className="text-xs text-danger">{addError}</p>}
+            </>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={createVaccineMutation.isPending}>
-              {createVaccineMutation.isPending ? 'Adding…' : 'Add Vaccine'}
-            </Button>
+            {addableNames.length > 0 && (
+              <Button type="submit" disabled={createVaccineMutation.isPending || !newVaccine.name}>
+                {createVaccineMutation.isPending ? 'Adding…' : 'Add Vaccine'}
+              </Button>
+            )}
           </div>
         </form>
       </Modal>

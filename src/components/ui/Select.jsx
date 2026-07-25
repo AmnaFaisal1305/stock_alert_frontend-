@@ -14,52 +14,66 @@ export default function Select({
   ...props
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 })
   const containerRef = useRef(null)
+  const buttonRef = useRef(null)
+  const dropdownRef = useRef(null)
 
-  // Find selected option
   const selectedOption = options.find((opt) => opt.value === value)
 
-  // Only attach listener while dropdown is open
+  function openDropdown() {
+    if (disabled) return
+    if (!isOpen) {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) {
+        setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width })
+      }
+    }
+    setIsOpen((o) => !o)
+  }
+
   useEffect(() => {
     if (!isOpen) return
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+    function handleClose(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    function handleScroll(e) {
+      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return
+      setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClose)
+    document.addEventListener('scroll', handleScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', handleClose)
+      document.removeEventListener('scroll', handleScroll, true)
+    }
   }, [isOpen])
 
   const handleSelect = (val) => {
     if (disabled) return
     setIsOpen(false)
     if (onChange) {
-      // Simulate standard event target structure so we do not break any parent onChange handlers
-      onChange({
-        target: {
-          id,
-          name: props.name,
-          value: val,
-        },
-      })
+      onChange({ target: { id, name: props.name, value: val } })
     }
   }
 
   return (
-    <div className="flex flex-col gap-1.5 relative w-full" ref={containerRef}>
+    <div className="flex flex-col gap-1.5 w-full" ref={containerRef}>
       {label && (
         <label htmlFor={id} className="text-sm font-semibold text-text">
           {label}
         </label>
       )}
-      
+
       <div className="relative">
         <button
+          ref={buttonRef}
           type="button"
           id={id}
           disabled={disabled}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={openDropdown}
           className={[
             'w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm text-text bg-white shadow-sm transition-all text-left cursor-pointer select-none',
             'focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10',
@@ -80,7 +94,11 @@ export default function Select({
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5 focus:outline-none animate-in fade-in slide-in-from-top-1 duration-150">
+          <div
+            ref={dropdownRef}
+            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
+            className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+          >
             {options.length === 0 ? (
               <div className="px-4 py-2.5 text-xs text-text-muted italic">No options available</div>
             ) : (

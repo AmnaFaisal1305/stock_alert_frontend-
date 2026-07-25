@@ -129,7 +129,7 @@ export default function WorkerManagement() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [addStep, setAddStep]       = useState(1)
-  const [form, setForm]             = useState({ name: '', email: '', password: '' })
+  const [form, setForm]             = useState({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' })
   const [formError, setFormError]   = useState('')
 
   const [resetTarget, setResetTarget] = useState(null)
@@ -144,13 +144,22 @@ export default function WorkerManagement() {
   const inactiveCount = workers.filter((w) => !w.isActive).length
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ name: form.name, email: form.email, password: form.password, role: 'facility_worker' }),
+    mutationFn: () => createUser({
+      firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
+      email: form.email, password: form.password, role: 'facility_worker',
+      ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+      ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setCreateOpen(false); setAddStep(1); setForm({ name: '', email: '', password: '' }); setFormError('')
+      setCreateOpen(false); setAddStep(1); setForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }); setFormError('')
     },
-    onError: (err) => setFormError(err.message),
+    onError: (err) => setFormError(
+      err.status === 409 && err.body?.error?.includes('ZMID')
+        ? 'This ZMID is already assigned to another account.'
+        : err.message
+    ),
   })
 
   const deactivateMutation = useMutation({
@@ -180,7 +189,7 @@ export default function WorkerManagement() {
   })
 
   function openCreate() {
-    setCreateOpen(true); setAddStep(1); setForm({ name: '', email: '', password: '' }); setFormError('')
+    setCreateOpen(true); setAddStep(1); setForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }); setFormError('')
   }
 
   return (
@@ -263,16 +272,30 @@ export default function WorkerManagement() {
             <div className="flex flex-col gap-4">
               <p className="text-sm font-semibold text-text mb-1">Enter worker details</p>
               <p className="text-xs text-text-muted -mt-3">Their name and login email for the system.</p>
-              <Input id="w-name" label="Name" placeholder="Display name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <div className="grid grid-cols-2 gap-3">
+                <Input id="w-first-name" label="First Name" placeholder="Jane"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
+                <Input id="w-last-name" label="Last Name" placeholder="Doe"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+              </div>
+              <Input id="w-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-3001"
+                value={form.zmid}
+                onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
               <Input id="w-email" label="Email" type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <Input id="w-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input id="w-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
+                value={form.cnic}
+                onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
             </div>
             <div className="flex justify-end gap-3 pt-1">
               <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!form.email || !form.name}>Next →</Button>
+              <Button type="submit" disabled={!form.email || !form.firstName || !form.lastName || !form.zmid}>Next →</Button>
             </div>
           </form>
         )}

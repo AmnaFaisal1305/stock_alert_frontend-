@@ -45,7 +45,7 @@ export default function StockEntry() {
   const barColor = statusConfig(status).dot
 
   const mutation = useMutation({
-    mutationFn: () => createStockEntry(vaccineId, useQty),
+    mutationFn: () => createStockEntry({ vaccineId, quantity: useQty }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })

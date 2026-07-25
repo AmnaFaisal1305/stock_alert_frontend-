@@ -167,7 +167,7 @@ export default function DistrictManagement() {
   })
 
   const mutation = useMutation({
-    mutationFn: () => createDistrict(name),
+    mutationFn: () => createDistrict({ name, province: 'Sindh' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
