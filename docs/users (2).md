@@ -10,7 +10,7 @@ One account per role, created against the real seeded district/facility in the s
 
 | Role | Email | Password | Scope |
 |---|---|---|---|
-| `super_admin` | `admin@akuh.pilot` | YZVbffkya-9gkFrI | 
+| `super_admin` | `admin@akuh.pilot` | *(see `.env`'s `SEED_ADMIN_PASSWORD`, or ask Ahmed)* | unscoped |
 | `district_supervisor` | `ds.demo@akuh.pilot` | `Demo1234!` | Karachi Central (district) |
 | `facility_supervisor` | `fs.demo@akuh.pilot` | `Demo1234!` | AKUH Main Campus (facility, in Karachi Central) |
 | `facility_worker` | `fw.demo@akuh.pilot` | `Demo1234!` | AKUH Main Campus (same facility as `fs.demo`) |

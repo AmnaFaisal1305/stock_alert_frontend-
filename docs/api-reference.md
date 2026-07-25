@@ -56,7 +56,7 @@ Four roles, strictly cascading: `super_admin` → `district_supervisor` → `fac
 
 | Role | districtId | facilityId | Can see (dashboard) | Can see (audit-log) | Can create |
 |---|---|---|---|---|---|
-| `super_admin` | `null` | `null` | everything, unscoped | everything, unscoped | `district_supervisor` |
+| `super_admin` | `null` | `null` | everything, unscoped | everything, unscoped | **new:** any of `district_supervisor` / `facility_supervisor` / `facility_worker` directly (previously `district_supervisor` only) |
 | `district_supervisor` | set | `null` | own district only | own district only | `facility_supervisor` |
 | `facility_supervisor` | set | set | own facility only | **own actions + their own `facility_worker`s' actions** | `facility_worker` |
 | `facility_worker` | set (see note) | set | own facility only | no access — `403` | nothing |
@@ -130,6 +130,94 @@ Requires auth + CSRF, same as any other mutating route — send the `x-csrf-toke
 
 ---
 
+### `POST /api/auth/google` — **new**
+
+Public. Rate-limited: 10 attempts / 15 min / IP — its own budget, separate from every other auth route (`/login`, `/forgot-password`, `/reset-password/:token`). An alternative to `/login`, not a replacement — password login is unchanged and still works. The frontend uses Google Identity Services to obtain a signed Google ID token (client-side, via the "Sign in with Google" button), then POSTs that raw token here. The backend verifies its signature/issuer/audience/expiry server-side against Google's own public keys before trusting anything in it — only the verified `email`/`email_verified` claims are ever read; `name`/`picture` claims are never trusted for anything (this app's own admin-entered `firstName`/`lastName` are the source of truth for display).
+
+**Body:**
+```json
+{ "idToken": "the raw ID token string from Google's client library" }
+```
+
+**200 — identical shape to `/login`'s success response:**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Display Name",
+    "role": "super_admin | district_supervisor | facility_supervisor | facility_worker",
+    "districtId": "uuid | null",
+    "facilityId": "uuid | null"
+  },
+  "csrfToken": "string — store this, send as x-csrf-token on every mutating request"
+}
+```
+Also sets the `sst.token` and `sst.csrf` cookies, same as `/login`.
+
+**401 — token invalid, expired, malformed, wrong audience, or Google-side `email_verified` is not `true`:**
+```json
+{ "error": "Invalid Google credential" }
+```
+
+**403 — the token is genuinely valid, but the verified email doesn't match any registered account, or matches one that's deactivated (deliberately the same response for both, matching `/login`'s existing stance of not distinguishing the two):**
+```json
+{ "error": "Access denied", "code": "NOT_REGISTERED" }
+```
+Show an "Access Denied" screen on this response — don't retry, don't fall back to password login automatically (the user may not have one meaningfully set up for self-serve use).
+
+**503 — `GOOGLE_CLIENT_ID` isn't configured server-side yet:**
+```json
+{ "error": "Google sign-in is not configured" }
+```
+Best-effort, like the mailer env vars — if you see this, fall back to password login; it's not an outage.
+
+---
+
+### `POST /api/auth/forgot-password` — **new**
+
+Public. Rate-limited: 10 attempts / 15 min / IP — its own budget, separate from `/login`'s. Self-serve, so unlike login this must never reveal whether an email is registered: the response is **always identical**, regardless of whether the email is unknown, deactivated, or a real active account.
+
+**Body:**
+```json
+{ "email": "user@example.com" }
+```
+
+**200 — always this exact response, on every outcome:**
+```json
+{ "message": "If that email is registered, a reset link has been sent." }
+```
+
+If (and only if) the email matches an active account, an email is sent containing a link of the form `{FRONTEND_URL}/reset-password?token=<raw-token>`. The token is single-use and expires in 30 minutes. No response ever confirms whether this actually happened — don't build UI that branches on it.
+
+---
+
+### `POST /api/auth/reset-password/:token` — **new**
+
+Public. Same shared rate limit as `forgot-password`. `:token` is the raw value from the emailed link's `token` query param, passed as a URL path segment here (not in the body).
+
+**Body:**
+```json
+{ "password": "newPassword123" }
+```
+`password` follows the same rule as every other password field in this API: minimum 8 characters.
+
+**200:**
+```json
+{ "message": "Password reset. Please log in." }
+```
+No cookie or `csrfToken` is returned — this does not log the user in. Send them to the login screen.
+
+**400 — invalid, expired, or already-consumed token:**
+```json
+{ "error": "Invalid or expired token" }
+```
+Unlike `forgot-password`, this error message *can* be specific — by this point the token is the secret already revealed via email, not an enumeration vector.
+
+**400 — password fails validation:** standard zod error shape (§3).
+
+---
+
 ### `GET /api/users`
 
 Requires auth only (no CSRF for GET). `facility_worker` gets `403` — they can't create accounts at all, and have no user-management view.
@@ -153,31 +241,46 @@ Requires auth only (no CSRF for GET). `facility_worker` gets `403` — they can'
       "districtName": "string | null",
       "facilityId": "uuid",
       "facilityName": "string",
+      "phone": "string | null",
+      "cnic": "string | null",
+      "firstName": "string | null",
+      "lastName": "string | null",
+      "zmid": "string | null",
       "isActive": true
     }
   ]
 }
 ```
-`districtName`/`facilityName` are resolved via a join, not stored on `users` — use them instead of a separate district/facility lookup wherever a user list/table is rendered.
+`districtName`/`facilityName` are resolved via a join, not stored on `users` — use them instead of a separate district/facility lookup wherever a user list/table is rendered. `phone`/`cnic` — optional profile fields set at creation. `firstName`/`lastName`/`zmid` — new; `null` for any account created before this round, populated for every new one.
 
 ---
 
 ### `POST /api/users`
 
-Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `facility_supervisor` (each may only create the one role below them — see §2's table).
+Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `facility_supervisor` (each may only create the role(s) below them — see §2's table).
+
+**`super_admin` — new: can now create any of the three roles below it directly**, not just `district_supervisor`. This exists to let super_admin directly provision accounts from client-supplied profiles (name/email/CNIC/phone) without going through the cascade — the frontend only needs to expose the `district_supervisor`-creation path for now.
 
 **Body:**
 ```jsonc
 {
   "email": "new.user@example.com",
   "password": "min 8 characters",
-  "name": "Display Name", // required, 1-120 chars — a plain display name, not validated for uniqueness
-  "role": "district_supervisor | facility_supervisor | facility_worker", // must match exactly what the caller may create
-  "districtId": "uuid",   // required only when caller is super_admin creating a district_supervisor
-  "facilityId": "uuid"    // required only when caller is district_supervisor creating a facility_supervisor
+  "firstName": "Jane",     // required, 1-60 chars — replaces the old single `name` field
+  "lastName": "Doe",       // required, 1-60 chars
+  "zmid": "Z-1001",        // required, 1-60 chars, unique — free-text organization identifier, no format validation beyond non-empty
+  "role": "district_supervisor | facility_supervisor | facility_worker", // must be one of the roles the caller may create
+  "districtId": "uuid",   // required when caller is super_admin creating a district_supervisor
+  "facilityId": "uuid",   // required when caller is super_admin creating a facility_supervisor or facility_worker, or district_supervisor creating a facility_supervisor
+  "phone": "03001234567",       // optional, any role
+  "cnic": "12345-1234567-1"     // optional, any role
 }
 ```
-`facility_supervisor` creating a `facility_worker`: omit both `districtId` and `facilityId` — they're forced server-side to the caller's own facility and its owning district.
+**Breaking change: `name` is no longer accepted in the request body** — replaced by `firstName`/`lastName`. The server computes and stores `name` as `` `${firstName} ${lastName}` `` (trimmed), so it still appears exactly as before on every response — only the *creation* request shape changed.
+
+`facility_supervisor` creating a `facility_worker`: omit both `districtId` and `facilityId` — they're forced server-side to the caller's own facility and its owning district (unaffected by the super_admin note below — this cascade path is unchanged).
+
+`super_admin` creating a `facility_supervisor` or `facility_worker`: `facilityId` is required and validated as an existing, active facility; `districtId` is derived server-side from that facility's own district, not taken from the body. Since super_admin has no district/facility of its own, this is the one case where `facilityId` is trusted directly from the request — always after that validation, never blindly.
 
 **201:**
 ```json
@@ -185,21 +288,28 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`, `faci
   "user": {
     "id": "uuid",
     "email": "new.user@example.com",
-    "name": "Display Name",
+    "name": "Jane Doe",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "zmid": "Z-1001",
     "role": "facility_worker",
     "districtId": "uuid",
     "facilityId": "uuid",
+    "phone": "string | null",
+    "cnic": "string | null",
     "isActive": true
   }
 }
 ```
+Same shape on every other user-returning endpoint (`GET /api/users`, deactivate/activate/reset-password).
 
 **Errors:**
-- `403` if `role` doesn't match what the caller may create
-- `400` if `name` is missing/empty, a required `districtId`/`facilityId` is missing, references a district/facility outside the caller's own scope, or references a **soft-deleted** (`isActive: false`) district/facility
+- `403` if `role` isn't one of the roles the caller may create
+- `400` if `firstName`/`lastName`/`zmid` is missing/empty, a required `districtId`/`facilityId` is missing, references a district/facility outside the caller's own scope (for `district_supervisor`/`facility_supervisor` callers), or references a **soft-deleted** (`isActive: false`) district/facility
 - `409 { "error": "Email already in use" }` on a duplicate email
+- `409 { "error": "ZMID already in use" }` on a duplicate zmid
 - `409 { "error": "Facility already has an active supervisor" }` — creating a `facility_supervisor` for a facility that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the facility.
-- `409 { "error": "District already has an active supervisor" }` — **new** — creating a `district_supervisor` for a district that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the district.
+- `409 { "error": "District already has an active supervisor" }` — creating a `district_supervisor` for a district that already has a different active one. Deactivate the existing one first (`PUT /:id/deactivate`) to free up the district.
 
 ---
 
@@ -228,10 +338,16 @@ No body needed (send `{}` or an empty body).
     "role": "facility_worker",
     "districtId": "uuid | null",
     "facilityId": "uuid",
+    "phone": "string | null",
+    "cnic": "string | null",
+    "firstName": "string | null",
+    "lastName": "string | null",
+    "zmid": "string | null",
     "isActive": false
   }
 }
 ```
+Same shape on activate/reset-password below.
 
 Deactivation takes effect immediately — the user's existing session (if any) is invalidated on their very next request, not just on their next login attempt. **404** if the user id doesn't exist.
 
@@ -253,7 +369,7 @@ Unlike deactivate/reset-password, this does **not** bump `tokenVersion` — deac
 
 Requires auth + CSRF. Same caller/target rules as `PUT /:id/deactivate` above.
 
-**Body:** `{ "password": "min 8 characters" }` — whoever resets it sets the new password directly (there is no email-based reset flow in this system); communicate it to the user out-of-band.
+**Body:** `{ "password": "min 8 characters" }` — whoever resets it sets the new password directly; communicate it to the user out-of-band. A self-serve, email-based alternative also exists now (`POST /api/auth/forgot-password` / `POST /api/auth/reset-password/:token`, §4 above) — this admin-driven route is for cases where that isn't practical (e.g. the account can't access its own email).
 
 **200:** same shape as deactivate's response, minus the `isActive` field.
 
@@ -272,6 +388,7 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (all district
     {
       "id": "uuid",
       "name": "...",
+      "province": "Sindh",
       "isActive": true,
       "createdAt": "ISO 8601",
       "supervisorName": "string | null",
@@ -280,7 +397,7 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (all district
   ]
 }
 ```
-`supervisorName`/`supervisorEmail` are **new** — both `null` if the district currently has no active `district_supervisor`. A district can have at most one active `district_supervisor` at a time (enforced at the DB level — see §2), so this is never ambiguous.
+`province` is **new**. `supervisorName`/`supervisorEmail` — both `null` if the district currently has no active `district_supervisor`. A district can have at most one active `district_supervisor` at a time (enforced at the DB level — see §2), so this is never ambiguous.
 
 Includes soft-deleted (`isActive: false`) districts — this list is unfiltered by design so a deleted district can still be found and reactivated.
 
@@ -290,9 +407,9 @@ Includes soft-deleted (`isActive: false`) districts — this list is unfiltered 
 
 Requires auth + CSRF. **`super_admin` only.**
 
-**Body:** `{ "name": "District Name" }`
+**Body:** `{ "name": "District Name", "province": "Sindh" }` — `province` is **new**, optional, defaults to `"Sindh"` if omitted (every district in the system today is in Sindh; the field exists for when that's no longer true).
 
-**201:** `{ "district": { "id": "uuid", "name": "...", "isActive": true, "createdAt": "ISO 8601" } }`
+**201:** `{ "district": { "id": "uuid", "name": "...", "province": "Sindh", "isActive": true, "createdAt": "ISO 8601" } }`
 
 **409** if the name is already in use (district names are globally unique).
 
@@ -310,6 +427,7 @@ Drill-down detail: the district plus every facility in it (active **and** inacti
   "district": {
     "id": "uuid",
     "name": "Karachi Central",
+    "province": "Sindh",
     "isActive": true,
     "createdAt": "ISO 8601",
     "facilityCount": 6,
@@ -377,6 +495,8 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (all faciliti
       "id": "uuid",
       "name": "AKUH Main Campus",
       "districtId": "uuid",
+      "unionCouncil": "string | null",
+      "town": "string | null",
       "isActive": true,
       "createdAt": "ISO 8601",
       "facilitySupervisorId": "uuid | null",
@@ -385,7 +505,7 @@ Requires auth only (no CSRF for GET). Allowed roles: `super_admin` (all faciliti
   ]
 }
 ```
-`facilitySupervisorId`/`facilitySupervisorName` are **new** — both `null` if the facility currently has no active supervisor. A facility can have at most one active `facility_supervisor` at a time (enforced at the DB level — see §2), so this is never ambiguous. Includes soft-deleted (`isActive: false`) facilities — unfiltered by design, same reasoning as `GET /api/districts`.
+`unionCouncil`/`town` are **new**. `facilitySupervisorId`/`facilitySupervisorName` — both `null` if the facility currently has no active supervisor. A facility can have at most one active `facility_supervisor` at a time (enforced at the DB level — see §2), so this is never ambiguous. Includes soft-deleted (`isActive: false`) facilities — unfiltered by design, same reasoning as `GET /api/districts`.
 
 ---
 
@@ -397,13 +517,15 @@ Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor`.
 ```jsonc
 {
   "name": "Facility Name",
-  "districtId": "uuid" // required only when caller is super_admin; ignored/forced to caller's own district if caller is district_supervisor
+  "districtId": "uuid",     // required only when caller is super_admin; ignored/forced to caller's own district if caller is district_supervisor
+  "unionCouncil": "UC 5",   // new, optional
+  "town": "Malir"           // new, optional
 }
 ```
 
-**201:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "isActive": true, "createdAt": "ISO 8601" } }`
+**201:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "unionCouncil": "string | null", "town": "string | null", "isActive": true, "createdAt": "ISO 8601" } }`
 
-Side effect: a fixed default starter set of vaccines (BCG, OPV, Pentavalent, Measles, PCV) is cloned into the new facility as its own independent rows, each immediately paired with a `thresholds` row defaulted to `minQuantity: 0` — this is what `PUT /api/thresholds/:id` (below) will have to edit. No frontend action needed for this; it just means a brand-new facility already has an editable vaccine list and threshold rows out of the box. The `facility_supervisor` can add more / rename these afterward via `POST`/`PUT /api/vaccines` below — changes are scoped to this facility only.
+Side effect: a fixed default starter set of **13** vaccines is cloned into the new facility as its own independent rows (was 5 — `BCG`, `OPV`, `Pentavalent`, `Measles`, `PCV`; **currently placeholder names `"Vaccine 01"`–`"Vaccine 13"` pending the client's real EPI list — see `api/_lib/defaultVaccines.js`, no response-shape change when that list is swapped in**), each immediately paired with a `thresholds` row left unconfigured (`minQuantity: null`) — this is what `PUT /api/thresholds/:id` (below) will have to edit. No frontend action needed for this; it just means a brand-new facility already has an editable vaccine list and threshold rows out of the box. The `facility_supervisor` can add more / rename these afterward via `POST`/`PUT /api/vaccines` below (restricted to the same 13-name list — see that section), scoped to this facility only.
 
 **400** if (`super_admin` only) `districtId` is missing, unknown, or references a **soft-deleted** district.
 
@@ -423,6 +545,8 @@ Drill-down detail: facility metadata plus its full vaccine/stock list and a stat
     "name": "AKUH Main Campus",
     "districtId": "uuid",
     "districtName": "Karachi Central",
+    "unionCouncil": "string | null",
+    "town": "string | null",
     "isActive": true,
     "createdAt": "ISO 8601",
     "facilitySupervisorId": "uuid | null",
@@ -436,7 +560,7 @@ Drill-down detail: facility metadata plus its full vaccine/stock list and a stat
         "districtId": "uuid",
         "districtName": "Karachi Central",
         "vaccineId": "uuid",
-        "vaccineName": "BCG",
+        "vaccineName": "Vaccine 01",
         "minQuantity": 20,
         "quantity": 8,
         "recordedAt": "ISO 8601 | null",
@@ -458,7 +582,7 @@ Requires auth + CSRF. Allowed roles: `super_admin` (any facility), `district_sup
 
 **Body:** `{ "name": "New Facility Name" }`
 
-**200:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "isActive": true, "createdAt": "ISO 8601" } }`
+**200:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "unionCouncil": "string | null", "town": "string | null", "isActive": true, "createdAt": "ISO 8601" } }`
 
 **403** if a district_supervisor targets a facility outside their own district. **404** unknown id.
 
@@ -468,7 +592,7 @@ Requires auth + CSRF. Allowed roles: `super_admin` (any facility), `district_sup
 
 Requires auth + CSRF. Allowed roles: `super_admin`, `district_supervisor` (own district only). Soft-delete — sets `isActive: false`.
 
-**200:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "isActive": false, "createdAt": "ISO 8601" } }`
+**200:** `{ "facility": { "id": "uuid", "name": "...", "districtId": "uuid", "unionCouncil": "string | null", "town": "string | null", "isActive": false, "createdAt": "ISO 8601" } }`
 
 **409** if the facility still has any active user (`facility_supervisor` or `facility_worker`) — deactivate them first via `PUT /api/users/:id/deactivate`, then retry. **403**/**404** as above.
 
@@ -494,40 +618,43 @@ Requires auth only (no CSRF needed for GET). **Vaccines are facility-scoped, not
 
 **200:**
 ```json
-{ "vaccines": [{ "id": "uuid", "name": "BCG", "facilityId": "uuid", "createdAt": "ISO 8601" }, "..."] }
+{ "vaccines": [{ "id": "uuid", "name": "Vaccine 01", "facilityId": "uuid", "createdAt": "ISO 8601" }, "..."] }
 ```
+Vaccine names are currently placeholders (`"Vaccine 01"`–`"Vaccine 13"`) pending the client's official EPI vaccine list — see `api/_lib/defaultVaccines.js`. Fetch this endpoint for pickers rather than hardcoding names; the values will change but the shape won't.
 
 ---
 
 ### `POST /api/vaccines`
 
-Requires auth + CSRF. **`facility_supervisor` only.** Adds a new vaccine to the caller's own facility — never affects any other facility, even one with a vaccine of the same name (uniqueness is scoped per facility, not global).
+Requires auth + CSRF. **`facility_supervisor` only.** Adds a vaccine to the caller's own facility — never affects any other facility, even one with a vaccine of the same name (uniqueness is scoped per facility, not global).
+
+**`name` is new: must be one of the 13 default vaccine names** (see `GET /api/vaccines`) — anything else is rejected with the standard zod `400 { "error": "Validation failed", "fields": {...} }` shape, not a custom message. Since every facility already has all 13 auto-provisioned at creation, this endpoint is now mainly for re-adding one after it was deleted via `DELETE /api/vaccines/:id` below.
 
 **Body:**
 ```jsonc
-{ "name": "Rotavirus", "minQuantity": 0 } // minQuantity optional; omitted means "not yet configured" (null), an explicit 0 is a deliberate choice — see the threshold type note below
+{ "name": "Vaccine 01", "minQuantity": 0 } // name must be one of the 13 defaults; minQuantity optional, omitted means "not yet configured" (null), an explicit 0 is a deliberate choice — see the threshold type note below
 ```
 
 **201:**
 ```json
-{ "vaccine": { "id": "uuid", "name": "Rotavirus", "facilityId": "uuid", "createdAt": "ISO 8601" } }
+{ "vaccine": { "id": "uuid", "name": "Vaccine 01", "facilityId": "uuid", "createdAt": "ISO 8601" } }
 ```
 
 Side effect: a `thresholds` row is provisioned in the same transaction (same reason as `POST /api/facilities` above — `GET /api/dashboard` would otherwise never show this vaccine).
 
-**409** if a vaccine with this name already exists **at this facility** (a different facility having the same name is fine). **403** for any role other than `facility_supervisor`.
+**400** if `name` isn't one of the 13 defaults. **409** if a vaccine with this name already exists **at this facility** (a different facility having the same name is fine — and since every facility starts with all 13, this is the common case for any name you haven't deleted first). **403** for any role other than `facility_supervisor`.
 
 ---
 
 ### `PUT /api/vaccines/:id`
 
-Requires auth + CSRF. **`facility_supervisor` only**, and only for a vaccine belonging to their own facility. Renames a vaccine.
+Requires auth + CSRF. **`facility_supervisor` only**, and only for a vaccine belonging to their own facility. Renames a vaccine. **Same name restriction as `POST` above applies here too.**
 
-**Body:** `{ "name": "New Name" }`
+**Body:** `{ "name": "Vaccine 02" }` — must be one of the 13 defaults.
 
-**200:** `{ "vaccine": { "id": "uuid", "name": "New Name", "facilityId": "uuid", "createdAt": "ISO 8601" } }`
+**200:** `{ "vaccine": { "id": "uuid", "name": "Vaccine 02", "facilityId": "uuid", "createdAt": "ISO 8601" } }`
 
-**404** if the vaccine id doesn't exist. **403** if it exists but belongs to a different facility than the caller's. **409** on a name collision within the same facility.
+**400** if `name` isn't one of the 13 defaults. **404** if the vaccine id doesn't exist. **403** if it exists but belongs to a different facility than the caller's. **409** on a name collision within the same facility.
 
 ---
 
@@ -584,19 +711,38 @@ This also means `GET /api/dashboard`'s `quantity` and any insufficient-stock che
 
 Requires auth + CSRF. Allowed roles: `facility_supervisor`, `facility_worker`. **Append-only** — there is no update/delete endpoint for this resource, ever (`PUT /api/vaccines/:id/stock` above is a *correction*, i.e. a new row, not an edit of an existing one).
 
-**The type of movement is derived from the caller's role, not sent by the client:**
+**`facility_worker`'s type is still fully derived from role, not sent by the client — always `"used"`, regardless of body content.** **`facility_supervisor` — new: now chooses between `"received"` and `"returned"`** via an optional `entryType` field, instead of always being forced to `"received"`. Both add to the balance. Any value outside `{"received", "returned"}` (e.g. `"used"`, which is worker-only) is rejected with `400` at validation — not silently downgraded to `"received"` the way an unrecognized field used to be silently stripped.
 
-| Caller | Recorded as | Effect on the facility's balance |
-|---|---|---|
-| `facility_supervisor` | `"received"` | adds |
-| `facility_worker` | `"used"` | subtracts |
+| Caller | `entryType` in body | Recorded as | Effect on balance |
+|---|---|---|---|
+| `facility_supervisor` | omitted | `"received"` (default, backward-compatible) | adds |
+| `facility_supervisor` | `"received"` | `"received"` | adds |
+| `facility_supervisor` | `"returned"` | `"returned"` | adds |
+| `facility_supervisor` | anything else | — | `400`, rejected |
+| `facility_worker` | anything or omitted | `"used"` (always, body ignored) | subtracts |
 
-Current stock (`GET /api/dashboard`'s `quantity` field) is a running balance — `SUM(received) + SUM(adjustment_increase) − SUM(used) − SUM(adjustment_decrease)` for that facility/vaccine — not "the latest entry." Don't send an `entryType` field in the body; it's ignored even if present.
+Current stock (`GET /api/dashboard`'s `quantity` field) is a running balance — `SUM(received) + SUM(returned) + SUM(adjustment_increase) − SUM(used) − SUM(adjustment_decrease)` for that facility/vaccine — not "the latest entry."
 
-**Body:**
-```json
-{ "vaccineId": "uuid", "quantity": 0 }
+**New: a `"received"` entry requires five additional fields; `"returned"` needs none of them.**
+
+**Body — received:**
+```jsonc
+{
+  "vaccineId": "uuid",
+  "quantity": 50,
+  "batchNo": "B-2026-001",      // new, required for received
+  "expiryDate": "2027-06-30",   // new, required for received — plain date string (varchar), not a timestamp; reference metadata only, no FEFO/depletion logic reads it
+  "dosesPerVial": 10,           // new, required for received — positive integer
+  "manufacturer": "Manufacturer Name", // new, required for received
+  "remarks": "outreach"         // new, required for received — exactly "outreach" or "fixed", nothing else
+}
 ```
+
+**Body — returned:**
+```json
+{ "vaccineId": "uuid", "quantity": 5, "entryType": "returned" }
+```
+
 `quantity` must be a non-negative integer. `facilityId` is never part of the request — it's always the caller's own facility, forced server-side. `vaccineId` must belong to the caller's own facility (vaccines are facility-scoped — see `GET /api/vaccines` above).
 
 **201:**
@@ -607,18 +753,26 @@ Current stock (`GET /api/dashboard`'s `quantity` field) is a running balance —
     "facilityId": "uuid",
     "vaccineId": "uuid",
     "quantity": 50,
-    "entryType": "received | used",
+    "entryType": "received | returned | used",
     "recordedBy": "uuid — the submitting user's id",
+    "batchNo": "string | null",
+    "expiryDate": "string | null",
+    "dosesPerVial": "number | null",
+    "manufacturer": "string | null",
+    "remarks": "string | null",
     "createdAt": "ISO 8601"
   }
 }
 ```
+The five new fields are `null` for `used`/`returned` entries, populated for `received`.
 
-**400** if: `quantity` is negative or not an integer; `vaccineId` isn't a valid UUID or doesn't belong to the caller's own facility; **or** (`facility_worker` only) the `quantity` would drive the facility's stock below zero for that vaccine — the response includes the currently available amount:
+**400** if: `quantity` is negative or not an integer; `vaccineId` isn't a valid UUID or doesn't belong to the caller's own facility; `entryType` is present but not one of the values the caller's role may use; a `received` entry (explicit or defaulted) is missing one or more of `batchNo`/`expiryDate`/`dosesPerVial`/`manufacturer`/`remarks` (message: `"batchNo, expiryDate, dosesPerVial, manufacturer, and remarks are required for a received entry"`); **or** (`facility_worker` only) the `quantity` would drive the facility's stock below zero for that vaccine — the response includes the currently available amount:
 ```json
 { "error": "Insufficient stock", "available": 12 }
 ```
 The frontend should use this to show "only 12 left" rather than a generic error — this check is authoritative server-side; a client-side pre-check is a UX nicety only, never sufficient alone.
+
+**New backend side effect, no response-shape change:** if this entry (from either role) drops the facility/vaccine's balance below its configured threshold (status flips to `critical`), the backend automatically emails the facility's own supervisor(s), the owning district's supervisor, and every super_admin — once per critical episode, not on every subsequent entry while it stays critical (it fires again only after a later entry brings the balance back to `adequate`/`low` and it drops into `critical` again). Nothing about this is visible in the `201` response. The one observable effect: the specific request that first crosses into `critical` takes noticeably longer to respond, since it waits on a real outbound email send before returning — every other request responds at normal speed.
 
 ---
 
@@ -659,8 +813,10 @@ Requires auth only (no CSRF for GET). All four roles may call this — scope dif
       "facilityName": "AKUH Main Campus",
       "districtId": "uuid",
       "districtName": "Karachi Central",
+      "unionCouncil": "string | null", // the facility's own profile field, same as GET /api/facilities
+      "town": "string | null",
       "vaccineId": "uuid",
-      "vaccineName": "BCG",
+      "vaccineName": "Vaccine 01",
       "minQuantity": 20,            // null if a supervisor has never configured this threshold — see status note below
       "quantity": 15,               // running balance; null if no stock entry has ever been recorded for this pair
       "recordedAt": "ISO 8601 | null", // most recent stock-entry timestamp contributing to this pair, if any
@@ -759,14 +915,20 @@ Public, unauthenticated. `{ "status": "ok" }` — not part of the app's data API
 | Field | Type | Notes |
 |---|---|---|
 | `role` | enum | `super_admin`, `district_supervisor`, `facility_supervisor`, `facility_worker` |
-| `entryType` | enum | `received` (facility_supervisor, adds), `used` (facility_worker, subtracts), `adjustment_increase`/`adjustment_decrease` (facility_supervisor, via `PUT /api/vaccines/:id/stock`) — never sent by the client, always derived from the caller's role/route. A fifth value, `legacy`, only appears on stock entries created before this field existed and never on anything new. |
+| `entryType` | enum | `received` (facility_supervisor, adds), `returned` (facility_supervisor, adds — new), `used` (facility_worker, subtracts), `adjustment_increase`/`adjustment_decrease` (facility_supervisor, via `PUT /api/vaccines/:id/stock`) — never sent unchecked by the client: `facility_worker` is hardcoded server-side regardless of body content, `facility_supervisor` may choose `received`/`returned` via the body but nothing outside that pair. A sixth value, `legacy`, only appears on stock entries created before this field existed and never on anything new. |
 | `status` (dashboard/detail row) | enum | `critical`, `low`, `adequate`, `no_data` — see `GET /api/dashboard` |
 | `isActive` (district/facility/user) | boolean | Soft-delete flag. `false` means deactivated/deleted but the row still exists for history — filter to `true` in any picker, but don't assume `GET` list endpoints filter it for you (they mostly don't, by design — see each endpoint above). |
 | any `*Id` field | UUID string | or `null` where noted above |
 | any `*At` field | ISO 8601 timestamp string | UTC |
-| `quantity` (stock entry) | non-negative integer | the magnitude of one received/used/adjustment movement, not a running total — see `POST /api/stock-entries` and `PUT /api/vaccines/:id/stock` |
+| `quantity` (stock entry) | non-negative integer | the magnitude of one received/returned/used/adjustment movement, not a running total — see `POST /api/stock-entries` and `PUT /api/vaccines/:id/stock` |
 | `quantity` (dashboard/detail row) | non-negative integer, or `null` | dashboard `quantity` is a computed running balance, not stored directly; `null` means no stock entry has ever been recorded for this pair |
 | `minQuantity` | non-negative integer, or `null` | `null` means this threshold has never been configured (the default for every newly-provisioned facility/vaccine pair) — distinct from an explicit `0`, which is a deliberate supervisor choice |
 | `statusCounts` | object | `{ critical, low, adequate, no_data }`, each a non-negative integer count — appears in `GET /api/dashboard`'s `summary`, `GET /api/facilities/:id`, and `GET /api/districts/:id` |
+| `province` (district) | string | new — defaults to `"Sindh"` if omitted at creation |
+| `unionCouncil`, `town` (facility) | string, or `null` | new — both optional, no validation beyond non-empty/length |
+| `phone`, `cnic` (user) | string, or `null` | new — both optional, no validation beyond non-empty/length, on every role |
+| `batchNo`, `manufacturer`, `remarks` (stock entry) | string, or `null` | new — `remarks` is a fixed two-value enum (`"outreach"` \| `"fixed"`), the other two are free text. All `null` unless `entryType` is `received` |
+| `expiryDate` (stock entry) | string (`YYYY-MM-DD`), or `null` | new — plain date string, not a timestamp. Reference metadata only: doesn't affect the balance, no FEFO/depletion logic. `null` unless `entryType` is `received` |
+| `dosesPerVial` (stock entry) | positive integer, or `null` | new — `null` unless `entryType` is `received` |
 
 `password_hash` and `tokenVersion` are internal-only and never appear in any API response.
