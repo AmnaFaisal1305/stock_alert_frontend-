@@ -49,18 +49,19 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return
+    if (document.getElementById('gsi-script')) return
     const script = document.createElement('script')
+    script.id = 'gsi-script'
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
     script.onload = () => {
       window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential })
       window.google.accounts.id.renderButton(
         document.getElementById('google-signin-btn'),
-        { theme: 'outline', size: 'large', width: '100%' }
+        { theme: 'outline', size: 'large', width: 400 }
       )
     }
     document.head.appendChild(script)
-    return () => script.remove()
   }, [])
 
   async function handleSubmit(e) {
