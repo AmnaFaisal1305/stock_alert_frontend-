@@ -113,6 +113,20 @@ export default function FacilityManagement() {
       ),
     },
     {
+      key: 'unionCouncil',
+      label: 'Union Council',
+      render: (row) => (
+        <span className="text-xs font-semibold text-text-muted">{row.unionCouncil ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'town',
+      label: 'Town',
+      render: (row) => (
+        <span className="text-xs font-semibold text-text-muted">{row.town ?? '—'}</span>
+      ),
+    },
+    {
       key: 'createdAt',
       label: 'Date Added',
       render: (row) => (
@@ -177,7 +191,7 @@ export default function FacilityManagement() {
         <div>
           <h1 className="text-xl font-bold text-text tracking-tight">Facility Management</h1>
           <p className="text-sm text-text-muted mt-0.5">
-            {!isLoading && `${facilities.length} ${facilities.length === 1 ? 'clinic facility' : 'clinic facilities'} registered under your district`}
+            {!isLoading && `No. of Facilities = ${facilities.length}`}
             {isLoading && 'Loading facilities...'}
           </p>
         </div>

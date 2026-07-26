@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getAuditLog, getVaccines } from '../../lib/api'
+import { getAuditLog, getVaccines, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import Table from '../../components/shared/Table'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
-import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
 
 function humanizeKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
@@ -79,18 +79,26 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
   const { user } = useAuth()
   
   const isDistrictSup = user?.role === 'district_supervisor'
-  const defaultTab = isDistrictSup ? 'district_supervisor' : 'super_admin'
-  
-  const [activeTab, setActiveTab] = useState(defaultTab)
-  const [dateFilter, setDateFilter]     = useState('')
-  const [actionFilter, setActionFilter] = useState('')
-  const [currentPage, setCurrentPage]   = useState(1)
+  const defaultTab = isDistrictSup ? 'all' : 'super_admin'
+
+  const [activeTab, setActiveTab]         = useState(defaultTab)
+  const [selectedFacility, setSelectedFacility] = useState(null)
+  const [dateFilter, setDateFilter]       = useState('')
+  const [actionFilter, setActionFilter]   = useState('')
+  const [currentPage, setCurrentPage]     = useState(1)
+  const [drillPage, setDrillPage]         = useState(1)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['audit-log'],
     queryFn: getAuditLog,
   })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
+  const { data: facilityData } = useQuery({
+    queryKey: ['facilities'],
+    queryFn: getFacilities,
+    enabled: isDistrictSup,
+    staleTime: 30_000,
+  })
 
   const vaccineNameById = useMemo(
     () => Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name])),
@@ -98,9 +106,12 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
   )
 
   const hasFilters = !!(dateFilter || actionFilter)
+  const logs       = data?.auditLog ?? []
+  const facilities = facilityData?.facilities ?? []
 
   const filtered = useMemo(() => {
-    const tabLogs = (data?.auditLog ?? []).filter((l) => l.actorRole === activeTab)
+    if (activeTab === 'all') return []
+    const tabLogs = logs.filter((l) => l.actorRole === activeTab)
     return tabLogs.filter((l) => {
       if (dateFilter) {
         const lDate = l.createdAt?.split('T')[0]
@@ -109,7 +120,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       if (actionFilter && l.action !== actionFilter) return false
       return true
     })
-  }, [data, activeTab, dateFilter, actionFilter])
+  }, [logs, activeTab, dateFilter, actionFilter])
 
   const itemsPerPage = 10
   const totalPages   = Math.ceil(filtered.length / itemsPerPage)
@@ -118,19 +129,45 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     [filtered, currentPage]
   )
 
-  const logs = data?.auditLog ?? []
+  // Per-facility log counts for the "All" tab facility list
+  const facilityLogCounts = useMemo(() => {
+    const counts = {}
+    for (const l of logs) {
+      if (!l.facilityId) continue
+      if (l.actorRole !== 'facility_supervisor' && l.actorRole !== 'facility_worker') continue
+      counts[l.facilityId] = (counts[l.facilityId] ?? 0) + 1
+    }
+    return counts
+  }, [logs])
+
+  // Drill-down: combined supervisor + worker logs for selected facility, newest first
+  const drillLogs = useMemo(() => {
+    if (!selectedFacility) return []
+    return logs
+      .filter((l) =>
+        (l.actorRole === 'facility_supervisor' || l.actorRole === 'facility_worker') &&
+        (l.facilityId
+          ? l.facilityId === selectedFacility.id
+          : l.facilityName === selectedFacility.name)
+      )
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  }, [logs, selectedFacility])
+
+  const drillTotalPages = Math.ceil(drillLogs.length / itemsPerPage)
+  const drillPaginated  = drillLogs.slice((drillPage - 1) * itemsPerPage, drillPage * itemsPerPage)
 
   const tabs = isDistrictSup
     ? [
-        { id: 'district_supervisor', label: 'District Supervisor', icon: Shield },
+        { id: 'all',                 label: 'All',                  icon: Building2 },
+        { id: 'district_supervisor', label: 'District Supervisor',  icon: Shield },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
-        { id: 'facility_worker', label: 'Workers', icon: Users },
+        { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
     : [
-        { id: 'super_admin', label: 'Super Admin', icon: ShieldAlert },
+        { id: 'super_admin',         label: 'Super Admin',          icon: ShieldAlert },
         { id: 'district_supervisor', label: 'District Supervisors', icon: Shield },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
-        { id: 'facility_worker', label: 'Workers', icon: Users },
+        { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
 
   const columns = [
@@ -192,9 +229,16 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     },
   ]
 
-  // Tab counters for display badge
   const getCount = (tabId) => {
+    if (tabId === 'all') return facilities.length
     return logs.filter((l) => l.actorRole === tabId).length
+  }
+
+  function handleTabChange(tabId) {
+    setActiveTab(tabId)
+    setCurrentPage(1)
+    setSelectedFacility(null)
+    setDrillPage(1)
   }
 
   return (
@@ -227,7 +271,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
             return (
               <button
                 key={t.id}
-                onClick={() => { setActiveTab(t.id); setCurrentPage(1) }}
+                onClick={() => handleTabChange(t.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                   active
                     ? 'bg-white text-primary shadow-sm border border-slate-200'
@@ -247,7 +291,101 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         </div>
       )}
 
+      {/* ── All tab: facility list or drill-down ─────────────────────── */}
+      {activeTab === 'all' && !isLoading && !isError && (
+        <>
+          {!selectedFacility ? (
+            /* Facility list */
+            <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+              <div className="grid grid-cols-[2fr_1.5fr_1fr] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-4 items-center">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Activity</span>
+              </div>
+              {facilities.length === 0 ? (
+                <div className="px-6 py-10 text-center text-sm text-text-muted">No facilities registered yet.</div>
+              ) : (
+                facilities.map((f) => {
+                  const count = facilityLogCounts[f.id] ?? 0
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
+                      className="w-full grid grid-cols-[2fr_1.5fr_1fr] px-6 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Building2 size={14} className="text-text-muted/60 flex-shrink-0" />
+                        <span className="font-bold text-text text-sm truncate">{f.name}</span>
+                      </div>
+                      <span className={`text-sm truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic text-xs'}`}>
+                        {f.facilitySupervisorName ?? 'Unstaffed'}
+                      </span>
+                      <div className="flex justify-end items-center gap-1.5">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                          {count} {count === 1 ? 'log' : 'logs'}
+                        </span>
+                        <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          ) : (
+            /* Drill-down: selected facility logs */
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setSelectedFacility(null); setDrillPage(1) }}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-text-muted hover:text-primary transition-colors"
+                >
+                  <ArrowLeft size={14} /> Back to Facilities
+                </button>
+                <span className="text-text-muted/40">·</span>
+                <span className="text-sm font-bold text-text">{selectedFacility.name}</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${drillLogs.length > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                  {drillLogs.length} {drillLogs.length === 1 ? 'entry' : 'entries'}
+                </span>
+              </div>
+              <Table
+                columns={columns}
+                rows={drillPaginated}
+                emptyMessage="No activity recorded for this facility yet."
+              />
+              {drillTotalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
+                  <p className="text-xs text-text-muted font-semibold hidden sm:block">
+                    Page <span className="font-extrabold text-text">{drillPage}</span> of{' '}
+                    <span className="font-extrabold text-text">{drillTotalPages}</span>
+                  </p>
+                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+                    <button onClick={() => setDrillPage(drillPage - 1)} disabled={drillPage === 1}
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
+                      <ChevronLeft size={16} />
+                    </button>
+                    {Array.from({ length: drillTotalPages }).map((_, i) => {
+                      const p = i + 1
+                      return (
+                        <button key={p} onClick={() => setDrillPage(p)}
+                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${p === drillPage ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-white'}`}>
+                          {p}
+                        </button>
+                      )
+                    })}
+                    <button onClick={() => setDrillPage(drillPage + 1)} disabled={drillPage === drillTotalPages}
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
+                      <ChevronRight size={16} />
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Filter panel */}
+      {activeTab !== 'all' && (
       <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-2 text-text-muted">
           <Calendar size={14} className="text-primary" />
@@ -288,8 +426,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
           </div>
         )}
       </div>
+      )}
 
-      {isLoading && (
+      {isLoading && activeTab !== 'all' && (
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
         </div>
@@ -301,7 +440,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         </div>
       )}
 
-      {!isLoading && !isError && (
+      {!isLoading && !isError && activeTab !== 'all' && (
         <div className="flex flex-col gap-3">
           <Table
             columns={columns}

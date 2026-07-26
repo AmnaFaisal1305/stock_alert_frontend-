@@ -25,6 +25,7 @@ const FacilityDetail        = lazy(() => import('./pages/shared/FacilityDetail')
 
 const FacilityDashboard     = lazy(() => import('./pages/facility-supervisor/Dashboard'))
 const RecordStock           = lazy(() => import('./pages/facility-supervisor/RecordStock'))
+const StockRegister         = lazy(() => import('./pages/facility-supervisor/StockRegister'))
 const ThresholdManagement   = lazy(() => import('./pages/facility-supervisor/ThresholdManagement'))
 const WorkerManagement      = lazy(() => import('./pages/facility-supervisor/WorkerManagement'))
 const FacilityAuditLog      = lazy(() => import('./pages/facility-supervisor/AuditLog'))
@@ -95,7 +96,8 @@ export default function App() {
                 <Route path="/district/audit-log"      element={<DistrictAuditLog />} />
 
                 <Route path="/facility/dashboard"    element={<FacilityDashboard />} />
-                <Route path="/facility/record-stock" element={<RecordStock />} />
+                <Route path="/facility/record-stock"    element={<RecordStock />} />
+                <Route path="/facility/stock-register"  element={<StockRegister />} />
                 <Route path="/facility/thresholds"   element={<ThresholdManagement />} />
                 <Route path="/facility/workers"      element={<WorkerManagement />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />

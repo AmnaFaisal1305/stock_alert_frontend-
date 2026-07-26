@@ -128,7 +128,7 @@ function StockCard({ row }) {
 }
 
 // ─── Alert Banner ─────────────────────────────────────────────────────────────
-function AlertBanner({ criticalCount, lowCount, total }) {
+function AlertBanner({ criticalCount, lowCount, noDataCount, healthyCount, total }) {
   if (total === 0) return null
   if (criticalCount > 0) {
     return (
@@ -165,10 +165,22 @@ function AlertBanner({ criticalCount, lowCount, total }) {
       </div>
     )
   }
+  if (healthyCount > 0) {
+    return (
+      <div className="bg-success-bg border border-success/20 rounded-xl px-5 py-4 flex items-center gap-4">
+        <CheckCircle2 size={20} className="text-success flex-shrink-0" />
+        <p className="text-sm font-bold text-success-dark">
+          {healthyCount} vaccine{healthyCount > 1 ? 's are' : ' is'} at healthy stock levels
+        </p>
+      </div>
+    )
+  }
   return (
-    <div className="bg-success-bg border border-success/20 rounded-xl px-5 py-4 flex items-center gap-4">
-      <CheckCircle2 size={20} className="text-success flex-shrink-0" />
-      <p className="text-sm font-bold text-success-dark">All {total} vaccines are at healthy stock levels</p>
+    <div className="bg-surface border border-surface-border rounded-xl px-5 py-4 flex items-center gap-4">
+      <Syringe size={20} className="text-text-muted flex-shrink-0" />
+      <p className="text-sm font-semibold text-text-muted">
+        {noDataCount} vaccine{noDataCount > 1 ? 's have' : ' has'} no stock data recorded yet
+      </p>
     </div>
   )
 }
@@ -310,7 +322,7 @@ export default function FacilityDashboard() {
 
   const {
     rows, vaccineNameById, facilityName, districtName,
-    criticalCount, lowCount, healthyCount, activeWorkers,
+    criticalCount, lowCount, noDataCount, healthyCount, activeWorkers,
     urgentRows, healthyRows, allLogs,
   } = useMemo(() => {
     const rawRows       = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
@@ -322,7 +334,8 @@ export default function FacilityDashboard() {
       facilityName:  rows[0]?.facilityName,
       districtName:  rows[0]?.districtName,
       criticalCount: rows.filter((r) => r.status === 'critical').length,
-      lowCount:      rows.filter((r) => r.status === 'low' || r.status === 'no_data').length,
+      lowCount:      rows.filter((r) => r.status === 'low').length,
+      noDataCount:   rows.filter((r) => r.status === 'no_data').length,
       healthyCount:  rows.filter((r) => r.status === 'adequate').length,
       activeWorkers: (userData?.users ?? []).filter((u) => u.isActive).length,
       urgentRows:    rows.filter((r) => r.status === 'critical' || r.status === 'low' || r.status === 'no_data'),
@@ -371,7 +384,7 @@ export default function FacilityDashboard() {
 
       {/* ── Alert Banner ── */}
       {!isLoading && !isError && (
-        <AlertBanner criticalCount={criticalCount} lowCount={lowCount} total={rows.length} />
+        <AlertBanner criticalCount={criticalCount} lowCount={lowCount} noDataCount={noDataCount} healthyCount={healthyCount} total={rows.length} />
       )}
 
       {/* ── Error ── */}
@@ -385,11 +398,6 @@ export default function FacilityDashboard() {
       {!isLoading && !isError && rows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard
-            icon={Syringe} label="Total Vaccines" value={rows.length}
-            colorClass="text-primary"
-            subtitle={`${healthyCount} healthy`}
-          />
-          <StatCard
             icon={AlertCircle} label="Critical" value={criticalCount}
             colorClass={criticalCount > 0 ? 'text-danger' : 'text-text-muted'}
             subtitle={criticalCount > 0 ? 'Needs immediate action' : 'All clear'}
@@ -400,9 +408,14 @@ export default function FacilityDashboard() {
             subtitle={lowCount > 0 ? 'Plan restocking soon' : 'Levels healthy'}
           />
           <StatCard
-            icon={Users} label="Active Workers" value={userData ? activeWorkers : '—'}
+            icon={CheckCircle2} label="OK" value={healthyCount}
             colorClass="text-success-dark"
-            subtitle="Currently active"
+            subtitle={`${healthyCount} running stable`}
+          />
+          <StatCard
+            icon={Syringe} label="No Data" value={noDataCount}
+            colorClass={noDataCount > 0 ? 'text-text-muted' : 'text-text-muted'}
+            subtitle={noDataCount > 0 ? 'No stock recorded yet' : 'All vaccines reporting'}
           />
         </div>
       )}

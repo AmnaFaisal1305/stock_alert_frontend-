@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, UserCog, LogOut,
+  Syringe, PackagePlus, UserCog, LogOut, BookOpen,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -21,11 +21,12 @@ const NAV = {
     { to: '/district/audit-log',     label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_supervisor: [
-    { to: '/facility/dashboard',     label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/facility/record-stock',  label: 'Record Stock',       icon: PackagePlus     },
-    { to: '/facility/thresholds',    label: 'Vaccines',           icon: Syringe         },
-    { to: '/facility/workers',       label: 'Worker Management',  icon: UserCog         },
-    { to: '/facility/audit-log',     label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/facility/dashboard',        label: 'Dashboard',          icon: LayoutDashboard },
+    { to: '/facility/record-stock',     label: 'Record Stock',       icon: PackagePlus     },
+    { to: '/facility/stock-register',   label: 'Stock Register',     icon: BookOpen        },
+    { to: '/facility/thresholds',       label: 'Vaccines',           icon: Syringe         },
+    { to: '/facility/workers',          label: 'Worker Management',  icon: UserCog         },
+    { to: '/facility/audit-log',        label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
     { to: '/worker/stock-entry',     label: 'Stock Entry',        icon: Syringe         },

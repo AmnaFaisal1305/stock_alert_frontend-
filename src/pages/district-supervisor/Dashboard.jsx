@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Building2, AlertCircle } from 'lucide-react'
-import { getDashboard } from '../../lib/api'
+import { AlertTriangle, CheckCircle2, Building2, AlertCircle, User, MapPin } from 'lucide-react'
+import { getDashboard, getDistricts } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatCard from '../../components/shared/StatCard'
 import FacilityCard from '../../components/shared/FacilityCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { worstStatus } from '../../lib/status'
+import { worstStatus, facilityStatus } from '../../lib/status'
 
 export default function DistrictDashboard() {
   const { user } = useAuth()
@@ -17,21 +17,28 @@ export default function DistrictDashboard() {
     staleTime: 10_000,
   })
 
-  const { districtName, facilities, counts } = useMemo(() => {
-    const myRows = (data?.facilities ?? []).filter((r) => r.districtId === user.districtId)
-    const districtName = myRows[0]?.districtName ?? 'Your District'
+  const { data: districtData } = useQuery({
+    queryKey: ['districts'],
+    queryFn: getDistricts,
+    staleTime: 60_000,
+  })
+
+  const province     = districtData?.districts?.[0]?.province ?? null
+  const districtName = districtData?.districts?.[0]?.name ?? null
+
+  const { facilities, counts } = useMemo(() => {
     const facilities = (data?.summary?.byFacility ?? []).map((f) => ({
       id: f.facilityId, name: f.facilityName,
-      status: worstStatus(f.statusCounts), statusCounts: f.statusCounts,
+      status: facilityStatus(f.statusCounts), statusCounts: f.statusCounts,
     }))
     const counts = {
-      total:    facilities.length,
-      adequate: facilities.filter((f) => f.status === 'adequate').length,
-      low:      facilities.filter((f) => f.status === 'low' || f.status === 'no_data').length,
       critical: facilities.filter((f) => f.status === 'critical').length,
+      low:      facilities.filter((f) => f.status === 'low').length,
+      adequate: facilities.filter((f) => f.status === 'adequate').length,
+      noData:   facilities.filter((f) => f.status === 'no_data').length,
     }
-    return { districtName, facilities, counts }
-  }, [data, user.districtId])
+    return { facilities, counts }
+  }, [data])
 
   if (isLoading) {
     return (
@@ -58,42 +65,51 @@ export default function DistrictDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">District Dashboard</h1>
-        <p className="text-sm text-text-muted mt-0.5">
-          Monitoring {districtName} AKUH Network Facilities
+      <div className="bg-primary rounded-2xl px-6 py-5">
+        <p className="text-sm text-white/70 font-semibold">
+          District Name: <span className="text-white font-bold">{districtName ?? '—'}</span>
         </p>
+        <div className="flex flex-wrap items-center gap-4 mt-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80">
+            <User size={12} className="opacity-70" /> {user.name}
+          </span>
+          {province && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80">
+              <MapPin size={12} className="opacity-70" /> {province}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stats Summary Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Facilities"
-          value={counts.total}
-          icon={Building2}
-          colorClass="text-primary"
-          subtitle="Managed facilities"
+          label="Critical"
+          value={counts.critical}
+          icon={AlertCircle}
+          colorClass={counts.critical > 0 ? 'text-danger' : 'text-text-muted'}
+          subtitle={counts.critical > 0 ? 'Requires immediate action' : 'All clear'}
         />
         <StatCard
-          label="Adequate Level"
-          value={counts.adequate}
-          icon={CheckCircle2}
-          colorClass="text-success-dark"
-          subtitle={counts.adequate === counts.total ? 'All systems healthy' : `${counts.adequate} running stable`}
-        />
-        <StatCard
-          label="Low Stock Warning"
+          label="Low Stock"
           value={counts.low}
           icon={AlertTriangle}
           colorClass={counts.low > 0 ? 'text-warning-dark' : 'text-text-muted'}
           subtitle={counts.low > 0 ? 'Action suggested' : 'Levels healthy'}
         />
         <StatCard
-          label="Critical Low"
-          value={counts.critical}
-          icon={AlertCircle}
-          colorClass={counts.critical > 0 ? 'text-danger' : 'text-text-muted'}
-          subtitle={counts.critical > 0 ? 'Requires immediate action' : 'All clear'}
+          label="OK"
+          value={counts.adequate}
+          icon={CheckCircle2}
+          colorClass="text-success-dark"
+          subtitle={`${counts.adequate} running stable`}
+        />
+        <StatCard
+          label="No Data"
+          value={counts.noData}
+          icon={Building2}
+          colorClass={counts.noData > 0 ? 'text-text-muted' : 'text-text-muted'}
+          subtitle={counts.noData > 0 ? 'No stock recorded yet' : 'All facilities reporting'}
         />
       </div>
 
