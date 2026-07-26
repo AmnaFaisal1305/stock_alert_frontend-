@@ -140,6 +140,7 @@ export default function DistrictManagement() {
 
   const [open, setOpen]           = useState(false)
   const [name, setName]           = useState('')
+  const [province, setProvince]   = useState('')
   const [formError, setFormError] = useState('')
 
   const [renaming, setRenaming]         = useState(null)
@@ -167,12 +168,12 @@ export default function DistrictManagement() {
   })
 
   const mutation = useMutation({
-    mutationFn: () => createDistrict({ name, province: 'Sindh' }),
+    mutationFn: () => createDistrict({ name, province: province.trim() || 'Sindh' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setOpen(false); setName(''); setFormError('')
+      setOpen(false); setName(''); setProvince(''); setFormError('')
       setToast({ message: 'District created successfully.', type: 'success' })
     },
     onError: (err) => setFormError(err.message),
@@ -479,7 +480,7 @@ export default function DistrictManagement() {
       )}
 
       {/* ── Create modal ─────────────────────────────────────────────── */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Create District">
+      <Modal open={open} onClose={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }} title="Create District">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <Input
             id="district-name"
@@ -489,13 +490,20 @@ export default function DistrictManagement() {
             onChange={(e) => { setName(e.target.value); setFormError('') }}
             required
           />
+          <Input
+            id="district-province"
+            label="Province"
+            placeholder="e.g. Sindh"
+            value={province}
+            onChange={(e) => { setProvince(e.target.value); setFormError('') }}
+          />
           {formError && (
             <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">
               {formError}
             </p>
           )}
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="secondary" type="button" onClick={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Creating…' : 'Create'}
             </Button>

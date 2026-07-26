@@ -54,8 +54,8 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
-      <div ref={dialogRef} className={`relative bg-white rounded-2xl border border-surface-border shadow-2xl w-full ${maxWidth} z-10`}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-surface-border">
+      <div ref={dialogRef} className={`relative bg-white rounded-2xl border border-surface-border shadow-2xl w-full ${maxWidth} z-10 flex flex-col max-h-[calc(100vh-2rem)]`}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-surface-border flex-shrink-0">
           <h2 className="text-lg font-bold text-text tracking-tight">{title}</h2>
           <button
             onClick={onClose}
@@ -65,7 +65,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
             <X size={18} className="text-text-muted" />
           </button>
         </div>
-        <div className="px-6 py-6">{children}</div>
+        <div className="px-6 py-6 overflow-y-auto">{children}</div>
       </div>
     </div>
   )

@@ -390,7 +390,7 @@ export default function UserManagement() {
           <Input id="sup-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-1001"
             value={form.zmid} onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
           <Input id="sup-email" label="Email" type="email" placeholder="user@akuh.org"
-            value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            value={form.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormError('') }} required />
           <Input id="sup-password" label="Password (min 8 chars)" type="password" minLength={8}
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
 

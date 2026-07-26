@@ -108,7 +108,7 @@ export default function FacilityDetail() {
   })
 
   const facility = data?.facility
-  const backTo   = user?.role === 'super_admin' ? '/super-admin/districts' : '/district/facilities'
+  const backTo   = user?.role === 'super_admin' ? '/super-admin/facilities' : '/district/facilities'
 
   const counts = facility?.statusCounts ?? {}
 

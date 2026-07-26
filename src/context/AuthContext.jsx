@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import * as api from '../lib/api'
 
 const AuthContext = createContext(null)
@@ -31,14 +32,16 @@ export function AuthProvider({ children }) {
     return session?.user ?? null
   })
 
-  const navigate = useNavigate()
+  const navigate    = useNavigate()
+  const queryClient = useQueryClient()
 
   const login = useCallback((userData, csrfToken) => {
+    queryClient.clear()
     api.setCsrfToken(csrfToken)
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData))
     sessionStorage.setItem(CSRF_KEY, csrfToken)
     setUser(userData)
-  }, [])
+  }, [queryClient])
 
   const logout = useCallback(async () => {
     try {
@@ -46,12 +49,13 @@ export function AuthProvider({ children }) {
     } catch {
       // ignore — clear local state regardless
     }
+    queryClient.clear()
     api.setCsrfToken(null)
     sessionStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(CSRF_KEY)
     setUser(null)
     navigate('/login', { replace: true })
-  }, [navigate])
+  }, [navigate, queryClient])
 
   const defaultRoute = user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login'
 

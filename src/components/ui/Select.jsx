@@ -110,14 +110,14 @@ export default function Select({
                     type="button"
                     onClick={() => handleSelect(opt.value)}
                     className={[
-                      'w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-left transition-colors cursor-pointer select-none',
+                      'w-full flex items-start justify-between gap-2 px-4 py-2.5 text-sm font-semibold text-left transition-colors cursor-pointer select-none',
                       isSelected
                         ? 'bg-primary/5 text-primary font-bold'
                         : 'text-text hover:bg-slate-50 hover:text-text',
                     ].join(' ')}
                   >
-                    <span>{opt.label}</span>
-                    {isSelected && <Check size={14} className="text-primary" />}
+                    <span className="flex-1 min-w-0 whitespace-normal break-words">{opt.label}</span>
+                    {isSelected && <Check size={14} className="text-primary flex-shrink-0 mt-0.5" />}
                   </button>
                 )
               })
