@@ -182,6 +182,7 @@ export default function StockEntry() {
                       type="number"
                       inputMode="numeric"
                       min="1"
+                      max={10_000}
                       placeholder="e.g. 10"
                       value={quantity}
                       onChange={(e) => { setQuantity(e.target.value); mutation.reset() }}
@@ -212,12 +213,14 @@ export default function StockEntry() {
 
                   {quantity && useQty > 0 && (
                     <div className={`rounded-xl px-4 py-3 text-xs border ${
-                      wouldGoNegative
+                      wouldGoNegative || useQty > 10_000
                         ? 'bg-danger-bg border-danger/10 text-danger'
                         : 'bg-success-bg border-success/10 text-success-dark'
                     }`}>
                       {wouldGoNegative ? (
                         <span className="font-bold">Error: Insufficient stock. Only {currentQty} doses remain in stock.</span>
+                      ) : useQty > 10_000 ? (
+                        <span className="font-bold">Maximum 10,000 doses per entry.</span>
                       ) : (
                         <div className="flex flex-col gap-0.5">
                           <span className="font-bold uppercase tracking-wider text-[9px] opacity-75">Calculation Check</span>
@@ -249,7 +252,7 @@ export default function StockEntry() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={mutation.isPending || !quantity || useQty < 1 || wouldGoNegative}
+                      disabled={mutation.isPending || !quantity || useQty < 1 || wouldGoNegative || useQty > 10_000}
                       className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
                     >
                       <PackageMinus size={14} />

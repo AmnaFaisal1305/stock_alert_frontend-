@@ -13,6 +13,7 @@ function humanizeKey(key) {
 }
 
 const ACTION_LABELS = {
+  LOGOUT: 'Logout',
   STOCK_ENTRY: 'Stock Entry',
   ADJUST_STOCK: 'Stock Correction',
   SET_THRESHOLD: 'Threshold Set',
@@ -70,6 +71,8 @@ function formatDetails(row, vaccineNameById) {
     case 'DEACTIVATE_FACILITY':
     case 'ACTIVATE_FACILITY':
       return `"${d.name}"`
+    case 'LOGOUT':
+      return '—'
     default:
       return Object.entries(d).map(([k, v]) => `${humanizeKey(k)}: ${v}`).join(', ')
   }
@@ -218,6 +221,18 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       render: (row) => <span className="text-xs font-medium text-text-muted truncate max-w-[110px] inline-block">{row.districtName ?? '—'}</span>
     }] : []),
     { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted truncate max-w-[110px] inline-block">{row.facilityName ?? '—'}</span> },
+    {
+      key: 'balance',
+      label: 'Balance',
+      render: (row) => {
+        if (row.action !== 'STOCK_ENTRY' && row.action !== 'ADJUST_STOCK') {
+          return <span className="text-text-muted/50 text-xs">—</span>
+        }
+        const bal = row.details?.newBalance
+        if (bal == null) return <span className="text-text-muted/50 text-xs">—</span>
+        return <span className="text-sm font-bold text-text">{bal} <span className="text-[10px] font-medium text-text-muted">doses</span></span>
+      }
+    },
     {
       key: 'details',
       label: 'Details & Values',

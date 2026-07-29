@@ -481,7 +481,7 @@ export default function DistrictManagement() {
 
       {/* ── Create modal ─────────────────────────────────────────────── */}
       <Modal open={open} onClose={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }} title="Create District">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(name)) { setFormError('Names cannot contain < or > characters.'); return } mutation.mutate() }}>
           <Input
             id="district-name"
             label="District Name"
@@ -513,7 +513,7 @@ export default function DistrictManagement() {
 
       {/* ── Rename modal ─────────────────────────────────────────────── */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
           <Input
             id="rename-district"
             label="District Name"

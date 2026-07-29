@@ -355,7 +355,7 @@ export default function UserManagement() {
 
       {/* Create Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add User">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
           {/* Role selector */}
           <div>
             <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Role</p>

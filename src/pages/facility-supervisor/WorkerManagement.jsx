@@ -302,7 +302,7 @@ export default function WorkerManagement() {
 
         {addStep === 2 && (
           <form className="flex flex-col gap-4"
-            onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+            onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
             <div>
               <p className="text-sm font-semibold text-text mb-1">Set a password</p>
               <p className="text-xs text-text-muted mb-1">

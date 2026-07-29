@@ -254,7 +254,7 @@ export default function SuperAdminFacilityManagement() {
 
       {/* Create modal */}
       <Modal open={open} onClose={() => setOpen(false)} title="Create Facility">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.name)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
           <Input id="fac-name" label="Facility Name" placeholder="e.g. South Health Clinic"
             value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormError('') }} required />
           <Select id="fac-district" label="Assign to District" options={districtOptions}
@@ -276,7 +276,7 @@ export default function SuperAdminFacilityManagement() {
 
       {/* Rename modal */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
           <Input id="rename-facility" label="Facility Name"
             value={renameValue} onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }} required />
           {renameError && <p className="text-xs text-danger">{renameError}</p>}

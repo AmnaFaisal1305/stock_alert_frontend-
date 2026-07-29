@@ -296,7 +296,7 @@ export default function FacilityManagement() {
 
       {/* Create modal */}
       <Modal open={open} onClose={() => setOpen(false)} title="Create Facility">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.name)) { setFormError('Names cannot contain < or > characters.'); return } mutation.mutate() }}>
           <Input
             id="fac-name"
             label="Facility Name"
@@ -331,7 +331,7 @@ export default function FacilityManagement() {
 
       {/* Rename modal */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
           <Input
             id="rename-facility"
             label="Facility Name"

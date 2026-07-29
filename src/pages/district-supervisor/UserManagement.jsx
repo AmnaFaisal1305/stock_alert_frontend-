@@ -266,7 +266,7 @@ export default function DistrictUserManagement() {
 
       {/* Create Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Facility Supervisor">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
           <div className="grid grid-cols-2 gap-3">
             <Input id="fs-first-name" label="First Name" placeholder="Jane"
               value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />

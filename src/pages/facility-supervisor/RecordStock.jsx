@@ -86,7 +86,7 @@ export default function RecordStock() {
 
   function adjustQty(delta) {
     const cur = parseInt(quantity, 10) || 0
-    setQuantity(String(Math.max(1, cur + delta)))
+    setQuantity(String(Math.min(10_000, Math.max(1, cur + delta))))
   }
 
   if (done) {
@@ -268,7 +268,7 @@ export default function RecordStock() {
                 <button type="button" onClick={() => adjustQty(-1)}
                   className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-text-muted hover:text-text transition-all flex items-center justify-center flex-shrink-0 active:scale-95 cursor-pointer"
                   aria-label="Decrease by 1"><Minus size={14} strokeWidth={2.5} /></button>
-                <Input id="quantity" type="number" min="1" placeholder="0"
+                <Input id="quantity" type="number" min="1" max={10_000} placeholder="0"
                   value={quantity} onChange={(e) => setQuantity(e.target.value)}
                   className="flex-1 text-center text-xl font-extrabold text-text bg-white px-3 py-2.5" />
                 <button type="button" onClick={() => adjustQty(1)}
@@ -286,6 +286,12 @@ export default function RecordStock() {
                 <p className="font-medium text-text">
                   {currentQty} + {addQty} = <span className="font-bold text-success-dark">{newTotal} doses projected</span>
                 </p>
+              </div>
+            )}
+
+            {addQty > 10_000 && (
+              <div className="bg-danger-bg border border-danger/10 rounded-xl px-5 py-3 text-xs text-danger">
+                <span className="font-bold">Maximum 10,000 doses per entry.</span>
               </div>
             )}
 
@@ -335,7 +341,7 @@ export default function RecordStock() {
               </Button>
               <Button
                 onClick={() => setStep(4)}
-                disabled={!quantity || addQty < 1 || !isReceivedValid}
+                disabled={!quantity || addQty < 1 || addQty > 10_000 || !isReceivedValid}
                 className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
               >
                 Review <ChevronRight size={15} />
