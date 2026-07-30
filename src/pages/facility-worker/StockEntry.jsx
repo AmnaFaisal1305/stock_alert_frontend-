@@ -40,9 +40,11 @@ export default function StockEntry() {
   const remaining       = currentQty - useQty
   const wouldGoNegative = useQty > currentQty
   const status          = currentStock ? currentStock.status : null
-  const pct             = currentStock?.minQuantity > 0
-    ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
-    : 100
+  const pct             = currentStock?.quantity == null
+    ? 0
+    : currentStock?.minQuantity > 0
+      ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
+      : 100
   const barColor = statusConfig(status).dot
 
   const mutation = useMutation({

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
@@ -27,9 +27,11 @@ export default function FacilityManagement() {
   const [toast, setToast] = useState(null)
 
   // Filters & Pagination State
-  const [searchQuery, setSearchQuery]   = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [currentPage, setCurrentPage]   = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const statusFilter = searchParams.get('filter') ?? 'all'
+  function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setCurrentPage(1) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['facilities'],
@@ -111,10 +113,7 @@ export default function FacilityManagement() {
   const filteredFacilities = facilities.filter((f) => {
     const matchesSearch = f.name?.toLowerCase().includes(searchQuery.toLowerCase())
     const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
-    const matchesStatus =
-      statusFilter === 'all'      ? true :
-      statusFilter === 'low'      ? (fStatus === 'low' || fStatus === 'no_data') :
-      fStatus === statusFilter
+    const matchesStatus = statusFilter === 'all' ? true : fStatus === statusFilter
     return matchesSearch && matchesStatus
   })
 
@@ -241,14 +240,15 @@ export default function FacilityManagement() {
 
           <div className="flex gap-2 flex-wrap">
             {[
-              { key: 'all',      label: 'All',      count: facilities.length, activeClass: 'bg-primary text-white border-primary' },
-              { key: 'critical', label: 'Critical',  count: statusCounts.critical, activeClass: 'bg-danger text-white border-danger' },
-              { key: 'low',      label: 'Low',       count: statusCounts.low + statusCounts.no_data, activeClass: 'bg-warning text-white border-warning' },
-              { key: 'adequate', label: 'OK',         count: statusCounts.adequate, activeClass: 'bg-success text-white border-success' },
+              { key: 'all',      label: 'All',      count: facilities.length,       activeClass: 'bg-primary text-white border-primary'    },
+              { key: 'critical', label: 'Critical',  count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'      },
+              { key: 'low',      label: 'Low',       count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'    },
+              { key: 'adequate', label: 'OK',         count: statusCounts.adequate, activeClass: 'bg-success text-white border-success'    },
+              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,  activeClass: 'bg-slate-500 text-white border-slate-500' },
             ].map(({ key, label, count, activeClass }) => (
               <button
                 key={key}
-                onClick={() => { setStatusFilter(key); setCurrentPage(1) }}
+                onClick={() => setStatusFilter(key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
                   statusFilter === key
                     ? activeClass

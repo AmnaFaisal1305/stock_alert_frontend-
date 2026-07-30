@@ -55,9 +55,11 @@ function StockCard({ row }) {
   const status = row.status
   const noThreshold = row.minQuantity == null
   const hasQty = row.quantity != null
-  const pct = !noThreshold
-    ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
-    : 100
+  const pct = !hasQty
+    ? 0
+    : !noThreshold
+      ? Math.min(Math.round((row.quantity / row.minQuantity) * 100), 100)
+      : 100
   const dosesShort = !noThreshold && hasQty ? Math.max(0, row.minQuantity - row.quantity) : 0
 
   const cfg         = statusConfig(status)

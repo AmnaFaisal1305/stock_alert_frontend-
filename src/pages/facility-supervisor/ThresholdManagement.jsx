@@ -23,9 +23,11 @@ function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {
   const status      = row.status
   const canDelete   = row.recordedAt == null
   const noThreshold = row.minQuantity == null
-  const pct         = noThreshold
-    ? 100
-    : Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
+  const pct         = row.quantity == null
+    ? 0
+    : noThreshold
+      ? 100
+      : Math.min(Math.round((row.quantity / row.minQuantity) * 100), 100)
   const dosesShort  = !noThreshold ? Math.max(0, row.minQuantity - (row.quantity ?? 0)) : 0
 
   const cfg         = statusConfig(status)

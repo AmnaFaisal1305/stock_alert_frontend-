@@ -11,7 +11,7 @@ function VaccineCard({ v }) {
   const cfg        = statusConfig(v.status)
   const qty        = v.quantity ?? 0
   const minQty     = v.minQuantity ?? 0
-  const fillPct    = minQty > 0 ? Math.min((qty / minQty) * 100, 100) : 100
+  const fillPct    = v.quantity == null ? 0 : (minQty > 0 ? Math.min((qty / minQty) * 100, 100) : 100)
   const hasMin     = minQty > 0
 
   const barColor =

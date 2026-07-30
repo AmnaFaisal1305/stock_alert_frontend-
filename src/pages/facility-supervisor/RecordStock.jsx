@@ -49,9 +49,11 @@ export default function RecordStock() {
   const addQty          = parseInt(quantity, 10) || 0
   const newTotal        = currentQty + addQty
   const status          = currentStock ? currentStock.status : null
-  const pct             = currentStock && currentStock.minQuantity > 0
-    ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
-    : 100
+  const pct             = currentStock?.quantity == null
+    ? 0
+    : currentStock.minQuantity > 0
+      ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
+      : 100
 
   const isReceivedValid = entryType === 'received'
     ? batchNo.trim() && expiryDate && dosesPerVial && manufacturer.trim() && remarks

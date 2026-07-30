@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Search, Map as MapIcon,
   ChevronLeft, ChevronRight, ChevronDown, Building2, User, Mail, Loader2,
@@ -150,11 +150,14 @@ export default function DistrictManagement() {
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [deactivateError, setDeactivateError]   = useState('')
 
-  const [toast, setToast]         = useState(null)
-  const [searchQuery, setSearch]   = useState('')
-  const [statusFilter, setStatusFilter] = useState(0)
-  const [currentPage, setPage]     = useState(1)
+  const [toast, setToast]           = useState(null)
+  const [searchQuery, setSearch]    = useState('')
+  const [currentPage, setPage]      = useState(1)
   const [expandedId, setExpandedId] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeFilterLabel = searchParams.get('filter') ?? 'All'
+  const statusFilterIndex = Math.max(0, FILTERS.findIndex((f) => f.label === activeFilterLabel))
+  function setStatusFilter(label) { setSearchParams(label === 'All' ? {} : { filter: label }); setPage(1) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['districts'],
@@ -241,11 +244,11 @@ export default function DistrictManagement() {
     [districts, districtStatusMap]
   )
 
-  const activeFilter = FILTERS[statusFilter]
+  const activeFilter = FILTERS[statusFilterIndex]
   const filtered = districts.filter((d) => {
     if (!d.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
     const status = districtStatusMap.get(d.id) ?? 'no_data'
-    if (statusFilter !== 0 && status === 'no_data') return false
+    if (statusFilterIndex !== 0 && status === 'no_data') return false
     return activeFilter.match(status)
   })
 
@@ -293,7 +296,7 @@ export default function DistrictManagement() {
           </div>
           <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
             {FILTERS.map((f, i) => {
-              const active = statusFilter === i
+              const active = statusFilterIndex === i
               const colorClass =
                 f.label === 'Critical' ? (active ? 'bg-danger text-white' : 'text-danger hover:bg-danger/5') :
                 f.label === 'Low'      ? (active ? 'bg-warning text-white' : 'text-warning-dark hover:bg-warning/5') :
@@ -307,7 +310,7 @@ export default function DistrictManagement() {
               return (
                 <button
                   key={f.label}
-                  onClick={() => { setStatusFilter(i); setPage(1) }}
+                  onClick={() => setStatusFilter(f.label)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${colorClass}`}
                 >
                   {f.label}
@@ -351,8 +354,8 @@ export default function DistrictManagement() {
 
             {paginated.length === 0 && (
               <div className="px-6 py-10 text-center text-sm text-text-muted">
-                {searchQuery || statusFilter !== 0
-                  ? `No districts match${searchQuery ? ` "${searchQuery}"` : ''}${statusFilter !== 0 ? ` with status "${FILTERS[statusFilter].label}"` : ''}.`
+                {searchQuery || statusFilterIndex !== 0
+                  ? `No districts match${searchQuery ? ` "${searchQuery}"` : ''}${statusFilterIndex !== 0 ? ` with status "${activeFilterLabel}"` : ''}.`
                   : 'No districts registered yet.'}
               </div>
             )}

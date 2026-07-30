@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, getDistricts, createFacility, updateFacility, deleteFacility, activateFacility } from '../../lib/api'
+import { getFacilities, getDistricts, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -25,12 +26,16 @@ export default function SuperAdminFacilityManagement() {
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [deactivateError, setDeactivateError]   = useState('')
 
-  const [toast, setToast]       = useState(null)
+  const [toast, setToast]        = useState(null)
   const [searchQuery, setSearch] = useState('')
-  const [currentPage, setPage]  = useState(1)
+  const [currentPage, setPage]   = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const statusFilter = searchParams.get('filter') ?? 'all'
+  function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setPage(1) }
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
   const { data: districtData }       = useQuery({ queryKey: ['districts'],  queryFn: getDistricts  })
+  const { data: dashboardData }      = useQuery({ queryKey: ['dashboard'],  queryFn: getDashboard, staleTime: 15_000 })
 
   const facilities = data?.facilities ?? []
   const districtMap = Object.fromEntries((districtData?.districts ?? []).map((d) => [d.id, d.name]))
@@ -90,10 +95,23 @@ export default function SuperAdminFacilityManagement() {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   })
 
-  const filtered = facilities.filter((f) =>
-    (f.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (f.districtName ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+  const statusByFacilityId = new Map(
+    (dashboardData?.summary?.byFacility ?? []).map((f) => [f.facilityId, facilityStatus(f.statusCounts)])
   )
+
+  const statusCounts = { critical: 0, low: 0, adequate: 0, no_data: 0 }
+  for (const f of facilities) {
+    const s = statusByFacilityId.get(f.id) ?? 'no_data'
+    if (s in statusCounts) statusCounts[s]++
+  }
+
+  const filtered = facilities.filter((f) => {
+    const matchesSearch = (f.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (f.districtName ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
+    const matchesStatus = statusFilter === 'all' ? true : fStatus === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   const ITEMS_PER_PAGE = 10
   const totalPages  = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -188,17 +206,43 @@ export default function SuperAdminFacilityManagement() {
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search + Filter */}
       {!isLoading && !isError && facilities.length > 0 && (
-        <div className="relative w-80">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by name or district…"
-            value={searchQuery}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
+          <div className="relative w-80">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name or district…"
+              value={searchQuery}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'all',      label: 'All',      count: facilities.length,         activeClass: 'bg-primary text-white border-primary',    icon: null         },
+              { key: 'critical', label: 'Critical',  count: statusCounts.critical,    activeClass: 'bg-danger text-white border-danger',      icon: AlertCircle  },
+              { key: 'low',      label: 'Low',       count: statusCounts.low,         activeClass: 'bg-warning text-white border-warning',    icon: AlertTriangle},
+              { key: 'adequate', label: 'OK',         count: statusCounts.adequate,   activeClass: 'bg-success text-white border-success',    icon: CheckCircle2 },
+              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,    activeClass: 'bg-slate-500 text-white border-slate-500', icon: null         },
+            ].map(({ key, label, count, activeClass, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
+                  statusFilter === key
+                    ? activeClass
+                    : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                }`}
+              >
+                {Icon && <Icon size={11} />}
+                {label}
+                <span className="opacity-75">({count})</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
