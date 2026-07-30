@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
@@ -102,13 +102,13 @@ function VaccineCard({ v }) {
 export default function FacilityDetail() {
   const { id } = useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['facility', id],
     queryFn: () => getFacility(id),
   })
 
   const facility = data?.facility
-  const backTo   = user?.role === 'super_admin' ? '/super-admin/facilities' : '/district/facilities'
 
   const counts = facility?.statusCounts ?? {}
 
@@ -123,12 +123,12 @@ export default function FacilityDetail() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Back link */}
-      <Link
-        to={backTo}
+      <button
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary w-fit font-semibold transition-colors"
       >
         <ArrowLeft size={14} /> Back
-      </Link>
+      </button>
 
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Map as MapIcon, AlertCircle, Building2, Activity, TrendingUp } from 'lucide-react'
+import { Map as MapIcon, AlertCircle, AlertTriangle, Building2, Activity, TrendingUp, ArrowRight } from 'lucide-react'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -72,6 +73,47 @@ const FILTERS = [
   { key: 'adequate', label: 'OK'       },
 ]
 
+// ── Admin Alert Banner ────────────────────────────────────────────────────────
+function AdminAlertBanner({ criticalCount, lowCount, criticalDistricts }) {
+  if (criticalCount > 0) {
+    return (
+      <div className="bg-danger-bg border border-danger/20 rounded-xl px-5 py-4 flex items-center gap-4">
+        <div className="relative flex-shrink-0">
+          <span className="absolute inline-flex h-5 w-5 rounded-full bg-danger/30 animate-ping" />
+          <AlertCircle size={22} className="relative text-danger" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-danger">
+            {criticalCount} facilit{criticalCount > 1 ? 'ies' : 'y'} critically low
+            {criticalDistricts > 0 ? ` across ${criticalDistricts} district${criticalDistricts > 1 ? 's' : ''}` : ''} — immediate action required
+          </p>
+          <p className="text-xs text-danger/70 mt-0.5">Review affected districts and coordinate restocking as soon as possible</p>
+        </div>
+        <Link to="/super-admin/districts" className="flex items-center gap-1 text-xs font-semibold text-danger hover:underline flex-shrink-0">
+          View Districts <ArrowRight size={12} />
+        </Link>
+      </div>
+    )
+  }
+  if (lowCount > 0) {
+    return (
+      <div className="bg-warning-bg border border-warning/20 rounded-xl px-5 py-4 flex items-center gap-4">
+        <AlertTriangle size={20} className="text-warning flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-warning-dark">
+            {lowCount} facilit{lowCount > 1 ? 'ies' : 'y'} running low on stock
+          </p>
+          <p className="text-xs text-warning-dark/70 mt-0.5">Plan restocking before levels become critical</p>
+        </div>
+        <Link to="/super-admin/districts" className="flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline flex-shrink-0">
+          View Districts <ArrowRight size={12} />
+        </Link>
+      </div>
+    )
+  }
+  return null
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function SuperAdminDashboard() {
   const [activeFilter, setActiveFilter] = useState('all')
@@ -97,7 +139,7 @@ export default function SuperAdminDashboard() {
       districtMap.set(d.id, {
         id: d.id, name: d.name,
         facilityStatuses: [], facilityCount: 0,
-        statusCounts: { adequate: 0, low: 0, critical: 0 },
+        statusCounts: { adequate: 0, low: 0, critical: 0, no_data: 0 },
       })
     }
 
@@ -108,16 +150,17 @@ export default function SuperAdminDashboard() {
           id: f.districtId,
           name: districtNameById[f.districtId] ?? f.districtId,
           facilityStatuses: [], facilityCount: 0,
-          statusCounts: { adequate: 0, low: 0, critical: 0 },
+          statusCounts: { adequate: 0, low: 0, critical: 0, no_data: 0 },
         })
       }
       const d       = districtMap.get(f.districtId)
       const fStatus = facilityStatus(f.statusCounts)
       d.facilityStatuses.push(fStatus)
       d.facilityCount += 1
-      if      (fStatus === 'adequate')                      d.statusCounts.adequate += 1
-      else if (fStatus === 'low' || fStatus === 'no_data')  d.statusCounts.low      += 1
-      else if (fStatus === 'critical')                      d.statusCounts.critical  += 1
+      if      (fStatus === 'adequate') d.statusCounts.adequate += 1
+      else if (fStatus === 'low')     d.statusCounts.low      += 1
+      else if (fStatus === 'critical')d.statusCounts.critical += 1
+      else if (fStatus === 'no_data') d.statusCounts.no_data  += 1
     }
 
     const districts = Array.from(districtMap.values()).map((d) => ({
@@ -135,9 +178,10 @@ export default function SuperAdminDashboard() {
     const fStatuses       = byFacility.map((f) => facilityStatus(f.statusCounts))
     const totalFacilities = byFacility.length
     const criticalCount   = fStatuses.filter((s) => s === 'critical').length
+    const lowCount        = fStatuses.filter((s) => s === 'low').length
     const adequateCount   = fStatuses.filter((s) => s === 'adequate').length
     const healthPct       = totalFacilities > 0 ? Math.round((adequateCount / totalFacilities) * 100) : 0
-    const fStats          = { totalFacilities, criticalCount, adequateCount, healthPct }
+    const fStats          = { totalFacilities, criticalCount, lowCount, adequateCount, healthPct }
 
     // Donut slices
     const noDataCount = Math.max(0, districts.length - counts.adequate - counts.low - counts.critical)
@@ -220,6 +264,13 @@ export default function SuperAdminDashboard() {
           </span>
         </div>
       </div>
+
+      {/* ── Alert Banner ────────────────────────────────────────────────── */}
+      <AdminAlertBanner
+        criticalCount={fStats.criticalCount}
+        lowCount={fStats.lowCount}
+        criticalDistricts={counts.critical}
+      />
 
       {/* ── KPI Cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -431,6 +482,11 @@ export default function SuperAdminDashboard() {
                     {d.statusCounts.critical > 0 && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
                         {d.statusCounts.critical} Critical
+                      </span>
+                    )}
+                    {d.statusCounts.no_data > 0 && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                        {d.statusCounts.no_data} No Data
                       </span>
                     )}
                     {d.facilityCount === 0 && (

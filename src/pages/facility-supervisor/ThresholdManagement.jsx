@@ -9,7 +9,7 @@ import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
-import { statusConfig, FILTERS as STATUS_FILTERS } from '../../lib/status'
+import { statusConfig } from '../../lib/status'
 import RingGauge from '../../components/shared/RingGauge'
 
 const DEFAULT_VACCINE_NAMES = [
@@ -109,8 +109,14 @@ function duplicateNameMessage(err) {
   return err.status === 409 ? 'A vaccine with that name already exists at your facility.' : err.message
 }
 
-const FILTERS = STATUS_FILTERS.map((f) => f.label)
-const filterMatch = Object.fromEntries(STATUS_FILTERS.map((f) => [f.label, f.match]))
+const FILTERS = [
+  { label: 'All',     match: () => true },
+  { label: 'Critical',match: (s) => s === 'critical' },
+  { label: 'Low',     match: (s) => s === 'low' },
+  { label: 'OK',      match: (s) => s === 'adequate' },
+  { label: 'No Data', match: (s) => s === 'no_data' },
+]
+const filterMatch = Object.fromEntries(FILTERS.map((f) => [f.label, f.match]))
 
 export default function ThresholdManagement() {
   const { user } = useAuth()
@@ -207,13 +213,14 @@ export default function ThresholdManagement() {
     .filter((n) => !existingNames.has(n))
     .map((n) => ({ value: n, label: n }))
 
-  const criticalCount = allRows.filter((r) => filterMatch.Critical(r.status)).length
-  const lowCount      = allRows.filter((r) => filterMatch.Low(r.status)).length
-  const healthyCount  = allRows.filter((r) => filterMatch.OK(r.status)).length
+  const criticalCount = allRows.filter((r) => r.status === 'critical').length
+  const lowCount      = allRows.filter((r) => r.status === 'low').length
+  const noDataCount   = allRows.filter((r) => r.status === 'no_data').length
+  const healthyCount  = allRows.filter((r) => r.status === 'adequate').length
 
-  const filteredRows = allRows.filter((r) => filterMatch[filter](r.status))
+  const filteredRows = allRows.filter((r) => filterMatch[filter]?.(r.status))
 
-  const filterCount = { All: allRows.length, Critical: criticalCount, Low: lowCount, OK: healthyCount }
+  const filterCount = { All: allRows.length, Critical: criticalCount, Low: lowCount, 'No Data': noDataCount, OK: healthyCount }
 
   function openEdit(row) { setEditing(row); setMinQty(String(row.minQuantity ?? '')); setFormError('') }
   function openRename(row) { setRenaming(row); setRenameValue(row.vaccineName); setRenameError('') }
@@ -237,6 +244,7 @@ export default function ThresholdManagement() {
               {allRows.length} vaccine{allRows.length !== 1 ? 's' : ''}
               {criticalCount > 0 && <span className="text-danger font-semibold"> · {criticalCount} critical</span>}
               {lowCount > 0 && <span className="text-warning-dark font-semibold"> · {lowCount} low</span>}
+              {noDataCount > 0 && <span className="text-text-muted font-semibold"> · {noDataCount} no data</span>}
               {healthyCount > 0 && <span className="text-success-dark"> · {healthyCount} healthy</span>}
             </p>
           )}
@@ -252,25 +260,26 @@ export default function ThresholdManagement() {
       {/* Filter pills */}
       {!isLoading && !isError && allRows.length > 0 && (
         <div className="flex gap-2 flex-wrap">
-          {FILTERS.map((f) => (
+          {FILTERS.map(({ label }) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              key={label}
+              onClick={() => setFilter(label)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                filter === f
-                  ? f === 'Critical' ? 'bg-danger text-white border-danger'
-                  : f === 'Low'      ? 'bg-warning text-white border-warning'
-                  : f === 'OK'       ? 'bg-success text-white border-success'
+                filter === label
+                  ? label === 'Critical' ? 'bg-danger text-white border-danger'
+                  : label === 'Low'      ? 'bg-warning text-white border-warning'
+                  : label === 'No Data'  ? 'bg-slate-500 text-white border-slate-500'
+                  : label === 'OK'       ? 'bg-success text-white border-success'
                   : 'bg-primary text-white border-primary'
                   : 'bg-surface border-surface-border text-text-muted hover:border-primary/40 hover:text-primary'
               }`}
             >
-              {f === 'Critical' && <AlertCircle size={11} />}
-              {f === 'Low'      && <AlertTriangle size={11} />}
-              {f === 'OK'       && <CheckCircle2 size={11} />}
-              {f === 'All'      && <Syringe size={11} />}
-              {f}
-              <span className="opacity-70">({filterCount[f]})</span>
+              {label === 'Critical' && <AlertCircle size={11} />}
+              {label === 'Low'      && <AlertTriangle size={11} />}
+              {label === 'OK'       && <CheckCircle2 size={11} />}
+              {label === 'All'      && <Syringe size={11} />}
+              {label}
+              <span className="opacity-70">({filterCount[label]})</span>
             </button>
           ))}
         </div>

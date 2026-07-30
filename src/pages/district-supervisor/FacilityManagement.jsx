@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility } from '../../lib/api'
+import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -26,12 +27,19 @@ export default function FacilityManagement() {
   const [toast, setToast] = useState(null)
 
   // Filters & Pagination State
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery]   = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage]   = useState(1)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['facilities'],
     queryFn: getFacilities,
+  })
+
+  const { data: dashboardData } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: getDashboard,
+    staleTime: 15_000,
   })
 
   const mutation = useMutation({
@@ -88,10 +96,27 @@ export default function FacilityManagement() {
 
   const facilities = data?.facilities ?? []
 
-  // Filtration logic
-  const filteredFacilities = facilities.filter((f) =>
-    f.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  // Build status lookup from dashboard data
+  const statusByFacilityId = new Map(
+    (dashboardData?.summary?.byFacility ?? []).map((f) => [f.facilityId, facilityStatus(f.statusCounts)])
   )
+
+  const statusCounts = { critical: 0, low: 0, adequate: 0, no_data: 0 }
+  for (const f of facilities) {
+    const s = statusByFacilityId.get(f.id) ?? 'no_data'
+    if (s in statusCounts) statusCounts[s]++
+  }
+
+  // Filtration logic
+  const filteredFacilities = facilities.filter((f) => {
+    const matchesSearch = f.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
+    const matchesStatus =
+      statusFilter === 'all'      ? true :
+      statusFilter === 'low'      ? (fStatus === 'low' || fStatus === 'no_data') :
+      fStatus === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   // Pagination logic
   const itemsPerPage = 10
@@ -200,17 +225,45 @@ export default function FacilityManagement() {
         </Button>
       </div>
 
-      {/* Search Input Box */}
+      {/* Search + Filter row */}
       {!isLoading && !isError && facilities.length > 0 && (
-        <div className="relative w-80">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search facility by name..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
+          <div className="relative w-80">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search facility by name..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'all',      label: 'All',      count: facilities.length, activeClass: 'bg-primary text-white border-primary' },
+              { key: 'critical', label: 'Critical',  count: statusCounts.critical, activeClass: 'bg-danger text-white border-danger' },
+              { key: 'low',      label: 'Low',       count: statusCounts.low + statusCounts.no_data, activeClass: 'bg-warning text-white border-warning' },
+              { key: 'adequate', label: 'OK',         count: statusCounts.adequate, activeClass: 'bg-success text-white border-success' },
+            ].map(({ key, label, count, activeClass }) => (
+              <button
+                key={key}
+                onClick={() => { setStatusFilter(key); setCurrentPage(1) }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
+                  statusFilter === key
+                    ? activeClass
+                    : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                }`}
+              >
+                {key === 'critical' && <AlertCircle size={11} />}
+                {key === 'low'      && <AlertTriangle size={11} />}
+                {key === 'adequate' && <CheckCircle2 size={11} />}
+                {key === 'all'      && <Building2 size={11} />}
+                {label}
+                <span className="opacity-75">({count})</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

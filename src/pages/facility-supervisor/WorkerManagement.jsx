@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Plus, RotateCcw, UserX, Users, UserCheck, CheckCircle2 } from 'lucide-react'
+import { RotateCcw, UserX, Users, UserCheck, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
+import { getUsers, deactivateUser, activateUser, resetPassword } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -16,7 +16,6 @@ function getAvatarColor(key) {
   return AVATAR_COLORS[(key?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 }
 
-// ─── Worker Card ──────────────────────────────────────────────────────────────
 function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm, onDeactivate, onActivate, onResetPassword, isDeactivating, isActivating }) {
   const displayName = worker.name ?? worker.email
   const initial = (displayName?.[0] ?? '?').toUpperCase()
@@ -25,7 +24,6 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
 
   return (
     <div className={`bg-surface rounded-xl border border-surface-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md ${!isActive ? 'opacity-60' : ''}`}>
-      {/* Avatar + status */}
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="relative">
           <div className={`w-14 h-14 rounded-full ${avatarColor} text-white flex items-center justify-center text-xl font-bold flex-shrink-0 ${
@@ -50,7 +48,6 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-col gap-2 pt-1 border-t border-surface-border">
         <Button
           variant="ghost" size="sm" className="w-full justify-center"
@@ -98,69 +95,18 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
   )
 }
 
-// ─── Step Dots ────────────────────────────────────────────────────────────────
-function StepDots({ step }) {
-  const labels = ['Details', 'Password']
-  return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {[1, 2].map((n) => (
-        <div key={n} className="flex items-center gap-2">
-          <div className="flex flex-col items-center gap-1.5">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-              n < step   ? 'bg-primary text-white shadow-sm' :
-              n === step ? 'bg-primary text-white ring-4 ring-primary/20 shadow-sm' :
-                           'bg-surface-alt text-text-muted border border-surface-border'
-            }`}>
-              {n < step ? <CheckCircle2 size={13} /> : n}
-            </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-wide ${n === step ? 'text-primary' : 'text-text-muted'}`}>
-              {labels[n - 1]}
-            </span>
-          </div>
-          {n < 2 && <div className={`w-10 h-0.5 mb-5 ${n < step ? 'bg-primary' : 'bg-surface-border'}`} />}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function WorkerManagement() {
   const queryClient = useQueryClient()
-
-  const [createOpen, setCreateOpen] = useState(false)
-  const [addStep, setAddStep]       = useState(1)
-  const [form, setForm]             = useState({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' })
-  const [formError, setFormError]   = useState('')
 
   const [resetTarget, setResetTarget] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [resetError, setResetError]   = useState('')
-
   const [confirmingId, setConfirmingId] = useState(null)
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
-  const workers = userData?.users ?? []
+  const workers     = userData?.users ?? []
   const activeCount   = workers.filter((w) => w.isActive).length
   const inactiveCount = workers.filter((w) => !w.isActive).length
-
-  const createMutation = useMutation({
-    mutationFn: () => createUser({
-      firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
-      email: form.email, password: form.password, role: 'facility_worker',
-      ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
-      ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setCreateOpen(false); setAddStep(1); setForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }); setFormError('')
-    },
-    onError: (err) => setFormError(
-      err.status === 409 && err.body?.error?.includes('ZMID')
-        ? 'This ZMID is already assigned to another account.'
-        : err.message
-    ),
-  })
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => deactivateUser(id),
@@ -188,45 +134,36 @@ export default function WorkerManagement() {
     onError: (err) => setResetError(err.message),
   })
 
-  function openCreate() {
-    setCreateOpen(true); setAddStep(1); setForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }); setFormError('')
-  }
-
   return (
     <div className="flex flex-col gap-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-text">Worker Management</h1>
-          {!isLoading && workers.length > 0 && (
-            <div className="flex items-center gap-3 mt-1.5">
+      <div>
+        <h1 className="text-xl font-bold text-text">Users Info</h1>
+        {!isLoading && workers.length > 0 && (
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="flex items-center gap-1 text-xs font-semibold text-text-muted bg-surface-alt border border-surface-border px-2.5 py-1 rounded-full">
+              <Users size={11} /> {workers.length} total
+            </span>
+            <span className="flex items-center gap-1 text-xs font-semibold text-success-dark bg-success-bg px-2.5 py-1 rounded-full">
+              <UserCheck size={11} /> {activeCount} active
+            </span>
+            {inactiveCount > 0 && (
               <span className="flex items-center gap-1 text-xs font-semibold text-text-muted bg-surface-alt border border-surface-border px-2.5 py-1 rounded-full">
-                <Users size={11} /> {workers.length} total
+                <UserX size={11} /> {inactiveCount} inactive
               </span>
-              <span className="flex items-center gap-1 text-xs font-semibold text-success-dark bg-success-bg px-2.5 py-1 rounded-full">
-                <UserCheck size={11} /> {activeCount} active
-              </span>
-              {inactiveCount > 0 && (
-                <span className="flex items-center gap-1 text-xs font-semibold text-text-muted bg-surface-alt border border-surface-border px-2.5 py-1 rounded-full">
-                  <UserX size={11} /> {inactiveCount} inactive
-                </span>
-              )}
-            </div>
-          )}
-          {(isLoading || workers.length === 0) && (
-            <p className="text-sm text-text-muted mt-0.5">Manage facility workers at your facility</p>
-          )}
-        </div>
-        <Button onClick={openCreate}>
-          <Plus size={16} /> Add Worker
-        </Button>
+            )}
+          </div>
+        )}
+        {(isLoading || workers.length === 0) && (
+          <p className="text-sm text-text-muted mt-0.5">Manage facility workers at your facility</p>
+        )}
       </div>
 
       {/* Loading */}
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3,4].map((i) => <SkeletonCard key={i} lines={3} />)}
+          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} lines={3} />)}
         </div>
       )}
 
@@ -238,7 +175,7 @@ export default function WorkerManagement() {
         <div className="text-center py-16 border border-dashed border-surface-border rounded-xl text-text-muted">
           <Users size={40} className="mx-auto mb-3 opacity-20" />
           <p className="font-semibold text-text">No workers yet</p>
-          <p className="text-sm mt-1">Click "Add Worker" to add the first worker to your facility.</p>
+          <p className="text-sm mt-1">Workers assigned to your facility will appear here.</p>
         </div>
       )}
 
@@ -261,68 +198,6 @@ export default function WorkerManagement() {
           ))}
         </div>
       )}
-
-      {/* Add Worker Modal — 2-step */}
-      <Modal open={createOpen} onClose={() => { setCreateOpen(false); setAddStep(1) }} title="Add Facility Worker">
-        <StepDots step={addStep} />
-
-        {addStep === 1 && (
-          <form className="flex flex-col gap-4"
-            onSubmit={(e) => { e.preventDefault(); setFormError(''); setAddStep(2) }}>
-            <div className="flex flex-col gap-4">
-              <p className="text-sm font-semibold text-text mb-1">Enter worker details</p>
-              <p className="text-xs text-text-muted -mt-3">Their name and login email for the system.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Input id="w-first-name" label="First Name" placeholder="Jane"
-                  value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-                <Input id="w-last-name" label="Last Name" placeholder="Doe"
-                  value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-              </div>
-              <Input id="w-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-3001"
-                value={form.zmid}
-                onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
-              <Input id="w-email" label="Email" type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-              <Input id="w-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Input id="w-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
-                value={form.cnic}
-                onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
-            </div>
-            <div className="flex justify-end gap-3 pt-1">
-              <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!form.email || !form.firstName || !form.lastName || !form.zmid}>Next →</Button>
-            </div>
-          </form>
-        )}
-
-        {addStep === 2 && (
-          <form className="flex flex-col gap-4"
-            onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
-            <div>
-              <p className="text-sm font-semibold text-text mb-1">Set a password</p>
-              <p className="text-xs text-text-muted mb-1">
-                Creating account for <span className="font-semibold text-text">{form.email}</span>
-              </p>
-              <p className="text-xs text-text-muted mb-4">Minimum 8 characters.</p>
-              <Input id="w-password" label="Password" type="password"
-                value={form.password}
-                onChange={(e) => { setForm({ ...form, password: e.target.value }); setFormError('') }} required />
-            </div>
-            {formError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{formError}</p>}
-            <div className="flex justify-end gap-3 pt-1">
-              <Button variant="secondary" type="button" onClick={() => { setAddStep(1); setFormError('') }}>← Back</Button>
-              <Button type="submit" disabled={createMutation.isPending || form.password.length < 8}>
-                {createMutation.isPending ? 'Creating…' : 'Create Worker'}
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
 
       {/* Reset Password Modal */}
       <Modal open={!!resetTarget} onClose={() => { setResetTarget(null); setResetError('') }}

@@ -16,10 +16,11 @@ export default function StockEntry() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  const [step, setStep]           = useState(1)
-  const [vaccineId, setVaccineId] = useState('')
-  const [quantity, setQuantity]   = useState('')
-  const [done, setDone]           = useState(false)
+  const [step, setStep]             = useState(1)
+  const [vaccineId, setVaccineId]   = useState('')
+  const [quantity, setQuantity]     = useState('')
+  const [done, setDone]             = useState(false)
+  const [finalBalance, setFinalBalance] = useState(null)
 
   const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
   const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
@@ -47,6 +48,7 @@ export default function StockEntry() {
   const mutation = useMutation({
     mutationFn: () => createStockEntry({ vaccineId, quantity: useQty }),
     onSuccess: () => {
+      setFinalBalance(remaining)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
@@ -59,7 +61,7 @@ export default function StockEntry() {
       : null
 
   function reset() {
-    setStep(1); setVaccineId(''); setQuantity(''); setDone(false); mutation.reset()
+    setStep(1); setVaccineId(''); setQuantity(''); setDone(false); setFinalBalance(null); mutation.reset()
   }
 
   function handleQuickAdd(val) {
@@ -91,7 +93,7 @@ export default function StockEntry() {
                   </p>
                   <div className="h-px bg-slate-200/60 my-1" />
                   <p className="text-xs text-text-muted font-medium">
-                    New Running Balance: <span className="font-extrabold text-success">{remaining} doses</span>
+                    New Running Balance: <span className="font-extrabold text-success">{finalBalance} doses</span>
                   </p>
                 </div>
               </div>

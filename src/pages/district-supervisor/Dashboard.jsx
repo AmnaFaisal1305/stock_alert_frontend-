@@ -1,12 +1,52 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Building2, AlertCircle, User, MapPin } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Building2, AlertCircle, User, MapPin, ArrowRight } from 'lucide-react'
 import { getDashboard, getDistricts } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatCard from '../../components/shared/StatCard'
 import FacilityCard from '../../components/shared/FacilityCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { worstStatus, facilityStatus } from '../../lib/status'
+
+function AlertBanner({ criticalCount, lowCount }) {
+  if (criticalCount > 0) {
+    return (
+      <div className="bg-danger-bg border border-danger/20 rounded-xl px-5 py-4 flex items-center gap-4">
+        <div className="relative flex-shrink-0">
+          <span className="absolute inline-flex h-5 w-5 rounded-full bg-danger/30 animate-ping" />
+          <AlertCircle size={22} className="relative text-danger" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-danger">
+            {criticalCount} facilit{criticalCount > 1 ? 'ies' : 'y'} critically low — immediate action required
+          </p>
+          <p className="text-xs text-danger/70 mt-0.5">Restock as soon as possible to avoid service interruption</p>
+        </div>
+        <Link to="/district/facilities" className="flex items-center gap-1 text-xs font-semibold text-danger hover:underline flex-shrink-0">
+          View Facilities <ArrowRight size={12} />
+        </Link>
+      </div>
+    )
+  }
+  if (lowCount > 0) {
+    return (
+      <div className="bg-warning-bg border border-warning/20 rounded-xl px-5 py-4 flex items-center gap-4">
+        <AlertTriangle size={20} className="text-warning flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-warning-dark">
+            {lowCount} facilit{lowCount > 1 ? 'ies' : 'y'} running low on stock
+          </p>
+          <p className="text-xs text-warning-dark/70 mt-0.5">Plan restocking before levels become critical</p>
+        </div>
+        <Link to="/district/facilities" className="flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline flex-shrink-0">
+          View Facilities <ArrowRight size={12} />
+        </Link>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function DistrictDashboard() {
   const { user } = useAuth()
@@ -80,6 +120,9 @@ export default function DistrictDashboard() {
           )}
         </div>
       </div>
+
+      {/* Alert Banner */}
+      <AlertBanner criticalCount={counts.critical} lowCount={counts.low} />
 
       {/* Stats Summary Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

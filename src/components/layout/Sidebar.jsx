@@ -17,15 +17,15 @@ const NAV = {
   district_supervisor: [
     { to: '/district/dashboard',     label: 'Dashboard',          icon: LayoutDashboard },
     { to: '/district/facilities',    label: 'Facilities',         icon: Building2       },
-    { to: '/district/users',         label: 'User Management',    icon: Users           },
+    { to: '/district/users',         label: 'Users',              icon: Users           },
     { to: '/district/audit-log',     label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_supervisor: [
     { to: '/facility/dashboard',        label: 'Dashboard',          icon: LayoutDashboard },
+    { to: '/facility/thresholds',       label: 'Vaccines',           icon: Syringe         },
     { to: '/facility/record-stock',     label: 'Record Stock',       icon: PackagePlus     },
     { to: '/facility/stock-register',   label: 'Stock Register',     icon: BookOpen        },
-    { to: '/facility/thresholds',       label: 'Vaccines',           icon: Syringe         },
-    { to: '/facility/workers',          label: 'Worker Management',  icon: UserCog         },
+    { to: '/facility/workers',          label: 'Users Info',         icon: UserCog         },
     { to: '/facility/audit-log',        label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
