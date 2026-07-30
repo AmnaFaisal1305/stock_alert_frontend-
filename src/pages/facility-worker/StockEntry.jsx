@@ -72,15 +72,16 @@ export default function StockEntry() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pt-6 px-1 flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">Dose Entry Portal</h1>
-        <p className="text-sm text-text-muted mt-0.5">Quickly record vaccine doses used in the clinic</p>
-      </div>
+    <div className="max-w-6xl mx-auto pt-6 px-1">
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side: Form viewport */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-surface-border p-6 sm:p-8 shadow-xl">
+        {/* Left Side: title + form — sticky so both stay in view while stock cards scroll */}
+        <div className="lg:col-span-5 flex flex-col gap-4 sticky top-6">
+          <div>
+            <h1 className="text-xl font-bold text-text tracking-tight">Dose Entry Portal</h1>
+            <p className="text-sm text-text-muted mt-0.5">Quickly record vaccine doses used in the clinic</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-surface-border p-6 sm:p-8 shadow-xl">
           {done ? (
             <div className="flex flex-col items-center gap-6 text-center">
               <div className="bg-success/5 p-5 rounded-2xl text-success border border-success/10 animate-pulse">
@@ -267,6 +268,7 @@ export default function StockEntry() {
               )}
             </div>
           )}
+          </div>{/* end white card */}
         </div>
 
         {/* Right Side: Live Stock Dashboard catalog (visible on large screen resolutions) */}

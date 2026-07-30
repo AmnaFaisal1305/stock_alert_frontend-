@@ -10,7 +10,7 @@ export function getCsrfToken() {
   return _csrfToken
 }
 
-async function request(method, path, body) {
+async function request(method, path, body, { skipAuthRedirect = false } = {}) {
   const headers = { 'Content-Type': 'application/json' }
   if (method !== 'GET' && _csrfToken) {
     headers['x-csrf-token'] = _csrfToken
@@ -23,7 +23,7 @@ async function request(method, path, body) {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   })
 
-  if (res.status === 401) {
+  if (res.status === 401 && !skipAuthRedirect) {
     sessionStorage.removeItem('sst_user')
     sessionStorage.removeItem('sst_csrf')
     window.location.replace('/login')
@@ -51,7 +51,7 @@ async function request(method, path, body) {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function login(email, password) {
-  return request('POST', '/api/auth/login', { email, password })
+  return request('POST', '/api/auth/login', { email, password }, { skipAuthRedirect: true })
 }
 
 export async function logout() {
@@ -67,7 +67,7 @@ export async function resetPasswordByToken(token, password) {
 }
 
 export async function googleLogin(idToken) {
-  return request('POST', '/api/auth/google', { idToken })
+  return request('POST', '/api/auth/google', { idToken }, { skipAuthRedirect: true })
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

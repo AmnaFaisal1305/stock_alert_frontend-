@@ -102,10 +102,13 @@ export default function TopBar({ onMenuClick }) {
   const initial   = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
   const pageTitle = PAGE_TITLES[pathname] ?? ''
 
+  const showBell = user?.role !== 'facility_worker'
+
   const { data } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     staleTime: 15_000,
+    enabled: showBell,
   })
 
   // Extract critical vaccine rows — works for all roles that return data.facilities
@@ -144,38 +147,42 @@ export default function TopBar({ onMenuClick }) {
       {user && (
         <div className="flex items-center gap-3.5">
 
-          {/* Bell */}
-          <div className="relative">
-            <button
-              ref={bellRef}
-              onClick={() => setOpen((v) => !v)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-slate-100 hover:text-text transition-colors relative"
-              aria-label="Notifications"
-            >
-              <Bell size={18} strokeWidth={2.2} />
-              {criticalAlerts.length > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-white">
-                  {criticalAlerts.length > 9 ? '9+' : criticalAlerts.length}
-                </span>
-              )}
-            </button>
+          {/* Bell — hidden for facility_worker */}
+          {showBell && (
+            <>
+              <div className="relative">
+                <button
+                  ref={bellRef}
+                  onClick={() => setOpen((v) => !v)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-slate-100 hover:text-text transition-colors relative"
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} strokeWidth={2.2} />
+                  {criticalAlerts.length > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-white">
+                      {criticalAlerts.length > 9 ? '9+' : criticalAlerts.length}
+                    </span>
+                  )}
+                </button>
 
-            {open && criticalAlerts.length > 0 && (
-              <div ref={panelRef}>
-                <NotificationPanel alerts={criticalAlerts} role={user.role} onClose={() => setOpen(false)} />
+                {open && criticalAlerts.length > 0 && (
+                  <div ref={panelRef}>
+                    <NotificationPanel alerts={criticalAlerts} role={user.role} onClose={() => setOpen(false)} />
+                  </div>
+                )}
+
+                {open && criticalAlerts.length === 0 && (
+                  <div ref={panelRef} className="absolute right-0 top-12 w-72 bg-white rounded-2xl border border-surface-border shadow-2xl z-50 px-5 py-6 flex flex-col items-center gap-2 text-center animate-in fade-in duration-150">
+                    <Bell size={28} className="text-text-muted/30" />
+                    <p className="text-sm font-semibold text-text">No critical alerts</p>
+                    <p className="text-xs text-text-muted">All vaccines are within healthy or low stock levels.</p>
+                  </div>
+                )}
               </div>
-            )}
 
-            {open && criticalAlerts.length === 0 && (
-              <div ref={panelRef} className="absolute right-0 top-12 w-72 bg-white rounded-2xl border border-surface-border shadow-2xl z-50 px-5 py-6 flex flex-col items-center gap-2 text-center animate-in fade-in duration-150">
-                <Bell size={28} className="text-text-muted/30" />
-                <p className="text-sm font-semibold text-text">No critical alerts</p>
-                <p className="text-xs text-text-muted">All vaccines are within healthy or low stock levels.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-surface-border hidden sm:block" />
+              <div className="h-6 w-px bg-surface-border hidden sm:block" />
+            </>
+          )}
           <span className="text-[11px] font-bold uppercase tracking-wider bg-primary/5 text-primary border border-primary/10 px-3 py-1 rounded-full hidden sm:inline-block">
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
