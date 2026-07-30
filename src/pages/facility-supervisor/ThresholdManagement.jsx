@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Plus, Tag, Syringe, AlertCircle, CheckCircle2, AlertTriangle, Trash2, RefreshCcw } from 'lucide-react'
+import { Pencil, Plus, Tag, Syringe, AlertCircle, CheckCircle2, AlertTriangle, Trash2, RefreshCcw, LayoutGrid, List } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDashboard, updateThreshold, createVaccine, updateVaccine, deleteVaccine, updateVaccineStock } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -124,6 +124,7 @@ export default function ThresholdManagement() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
+  const [view, setView]             = useState('cards') // 'cards' | 'table'
   const [filter, setFilter]         = useState('All')
   const [editing, setEditing]       = useState(null)
   const [minQty, setMinQty]         = useState('')
@@ -259,9 +260,9 @@ export default function ThresholdManagement() {
         </Button>
       </div>
 
-      {/* Filter pills */}
+      {/* Filter pills + view toggle */}
       {!isLoading && !isError && allRows.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {FILTERS.map(({ label }) => (
             <button
               key={label}
@@ -284,6 +285,24 @@ export default function ThresholdManagement() {
               <span className="opacity-70">({filterCount[label]})</span>
             </button>
           ))}
+
+          {/* View toggle */}
+          <div className="flex items-center gap-0.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm ml-auto">
+            <button
+              onClick={() => setView('cards')}
+              title="Card view"
+              className={`p-1.5 rounded-lg transition-all ${view === 'cards' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setView('table')}
+              title="Table view"
+              className={`p-1.5 rounded-lg transition-all ${view === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+            >
+              <List size={14} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -297,7 +316,7 @@ export default function ThresholdManagement() {
       {/* Error */}
       {isError && <p className="text-sm text-danger">Failed to load data.</p>}
 
-      {/* Card grid */}
+      {/* Card / Table view */}
       {!isLoading && !isError && (
         <>
           {filteredRows.length === 0 && allRows.length > 0 ? (
@@ -314,7 +333,7 @@ export default function ThresholdManagement() {
               <p className="font-semibold text-text">No vaccines configured yet</p>
               <p className="text-sm mt-1">Click "Add Vaccine" to get started.</p>
             </div>
-          ) : (
+          ) : view === 'cards' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredRows.map((row) => (
                 <VaccineCard
@@ -326,6 +345,84 @@ export default function ThresholdManagement() {
                   onCorrectStock={openCorrectStock}
                 />
               ))}
+            </div>
+          ) : (
+            /* ── Table view ──────────────────────────────────────────── */
+            <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+              {/* Column headers */}
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_140px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Threshold</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Level</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Actions</span>
+              </div>
+
+              {filteredRows.map((row) => {
+                const noThreshold = row.minQuantity == null
+                const pct = row.quantity == null
+                  ? 0
+                  : noThreshold
+                    ? 100
+                    : Math.min(Math.round((row.quantity / row.minQuantity) * 100), 100)
+                const cfg      = statusConfig(row.status)
+                const canDelete = row.recordedAt == null
+
+                return (
+                  <div
+                    key={`${row.facilityId}-${row.vaccineId}`}
+                    className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_140px] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
+                  >
+                    {/* Name */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-1 h-7 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                      <p className="font-semibold text-sm text-text truncate">{row.vaccineName}</p>
+                    </div>
+
+                    {/* Status */}
+                    <div><StatusBadge status={row.status} /></div>
+
+                    {/* Stock */}
+                    <p className="text-sm font-bold text-text tabular-nums">
+                      {row.quantity ?? '—'}
+                      <span className="text-[10px] text-text-muted font-normal ml-1">doses</span>
+                    </p>
+
+                    {/* Threshold */}
+                    {noThreshold
+                      ? <span className="text-xs text-text-muted italic">Not set</span>
+                      : <p className="text-sm text-text tabular-nums">{row.minQuantity} <span className="text-[10px] text-text-muted">doses</span></p>
+                    }
+
+                    {/* Level bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${cfg.dot}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[11px] font-bold text-text-muted tabular-nums w-8 text-right">{pct}%</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => openRename(row)} title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        <Tag size={13} />
+                      </button>
+                      <button onClick={() => openEdit(row)} title="Edit Threshold" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => openCorrectStock(row)} title="Correct Stock" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        <RefreshCcw size={13} />
+                      </button>
+                      {canDelete && (
+                        <button onClick={() => openDelete(row)} title="Delete" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>

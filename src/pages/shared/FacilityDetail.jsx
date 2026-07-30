@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2 } from 'lucide-react'
+import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2, LayoutGrid, List } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -103,6 +104,7 @@ export default function FacilityDetail() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [view, setView] = useState('cards')
   const { data, isLoading, isError } = useQuery({
     queryKey: ['facility', id],
     queryFn: () => getFacility(id),
@@ -193,15 +195,35 @@ export default function FacilityDetail() {
             ))}
           </div>
 
-          {/* ── Vaccines Grid ────────────────────────────────────────── */}
+          {/* ── Vaccines ─────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between gap-3 mb-4">
               <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">
                 Vaccine Inventory
               </h2>
-              <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
-                {(facility.vaccines ?? []).length} vaccines tracked
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
+                  {(facility.vaccines ?? []).length} vaccines tracked
+                </span>
+                {(facility.vaccines ?? []).length > 0 && (
+                  <div className="flex items-center gap-0.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+                    <button
+                      onClick={() => setView('cards')}
+                      title="Card view"
+                      className={`p-1.5 rounded-lg transition-all ${view === 'cards' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+                    >
+                      <LayoutGrid size={14} />
+                    </button>
+                    <button
+                      onClick={() => setView('table')}
+                      title="Table view"
+                      className={`p-1.5 rounded-lg transition-all ${view === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+                    >
+                      <List size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {(facility.vaccines ?? []).length === 0 ? (
@@ -210,11 +232,72 @@ export default function FacilityDetail() {
                 <p className="font-bold text-text">No vaccines configured</p>
                 <p className="text-xs mt-1">No vaccine records have been set up for this facility yet.</p>
               </div>
-            ) : (
+            ) : view === 'cards' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {facility.vaccines.map((v) => (
                   <VaccineCard key={v.vaccineId} v={v} />
                 ))}
+              </div>
+            ) : (
+              /* ── Table view ──────────────────────────────────────── */
+              <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Threshold</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Level</span>
+                </div>
+                {facility.vaccines.map((v) => {
+                  const cfg    = statusConfig(v.status)
+                  const qty    = v.quantity ?? 0
+                  const minQty = v.minQuantity ?? 0
+                  const hasMin = minQty > 0
+                  const pct    = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / minQty) * 100), 100) : 100)
+                  return (
+                    <div
+                      key={v.vaccineId}
+                      className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
+                    >
+                      {/* Name */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-1 h-7 rounded-full flex-shrink-0 ${
+                          v.status === 'critical' ? 'bg-danger' :
+                          v.status === 'low'      ? 'bg-warning' :
+                          v.status === 'adequate' ? 'bg-success' : 'bg-secondary'
+                        }`} />
+                        <p className="font-semibold text-sm text-text truncate">{v.vaccineName}</p>
+                      </div>
+
+                      {/* Status */}
+                      <div><StatusBadge status={v.status} /></div>
+
+                      {/* Stock */}
+                      <p className="text-sm font-bold text-text tabular-nums">
+                        {v.quantity ?? '—'}
+                        <span className="text-[10px] text-text-muted font-normal ml-1">doses</span>
+                      </p>
+
+                      {/* Threshold */}
+                      {hasMin
+                        ? <p className="text-sm text-text tabular-nums">{minQty} <span className="text-[10px] text-text-muted">doses</span></p>
+                        : <span className="text-xs text-text-muted italic">Not set</span>
+                      }
+
+                      {/* Level bar */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${
+                            v.status === 'critical' ? 'bg-danger' :
+                            v.status === 'low'      ? 'bg-warning' :
+                            v.status === 'adequate' ? 'bg-success' : 'bg-secondary'
+                          }`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[11px] font-bold text-text-muted tabular-nums w-8 text-right">{pct}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
