@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import Select from '../../components/ui/Select'
 import { BookOpen, Syringe } from 'lucide-react'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 export default function StockRegister() {
   const [selectedVaccineId, setSelectedVaccineId] = useState('')
@@ -20,7 +21,7 @@ export default function StockRegister() {
   const logs     = logData?.auditLog    ?? []
   const isLoading = loadingVaccines || loadingLog
 
-  const vaccineOptions = vaccines.map((v) => ({ value: v.id, label: v.name }))
+  const vaccineOptions = vaccines.map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
   const selectedName   = vaccines.find((v) => v.id === selectedVaccineId)?.name ?? ''
 
   const entries = useMemo(() => {
@@ -121,7 +122,7 @@ export default function StockRegister() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Syringe size={14} className="text-primary flex-shrink-0" />
-              <span className="text-sm font-bold text-text">{selectedName}</span>
+              <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedName)}</span>
             </div>
             <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg">
               {entries.length} {entries.length === 1 ? 'entry' : 'entries'}

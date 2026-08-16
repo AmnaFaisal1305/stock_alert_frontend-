@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { statusConfig } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 function VaccineCard({ v }) {
   const cfg        = statusConfig(v.status)
@@ -48,9 +49,9 @@ function VaccineCard({ v }) {
             </div>
             <h3
               className="font-bold text-text text-sm leading-tight pt-1 truncate"
-              title={v.vaccineName}
+              title={displayVaccineName(v.vaccineName)}
             >
-              {v.vaccineName}
+              {displayVaccineName(v.vaccineName)}
             </h3>
           </div>
           <div className="flex-shrink-0">
@@ -266,7 +267,7 @@ export default function FacilityDetail() {
                           v.status === 'low'      ? 'bg-warning' :
                           v.status === 'adequate' ? 'bg-success' : 'bg-secondary'
                         }`} />
-                        <p className="font-semibold text-sm text-text truncate">{v.vaccineName}</p>
+                        <p className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.vaccineName)}</p>
                       </div>
 
                       {/* Status */}

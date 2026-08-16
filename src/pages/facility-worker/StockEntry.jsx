@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
 import { statusConfig } from '../../lib/status'
 import StepIndicator from '../../components/shared/StepIndicator'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 const STEP_LABELS = ['Select Vaccine', 'Enter Doses']
 
@@ -25,7 +26,7 @@ export default function StockEntry() {
   const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
   const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
 
-  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: v.name }))
+  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
 
   const stockRows = (dashboardData?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
 
@@ -92,7 +93,7 @@ export default function StockEntry() {
                 <div className="bg-slate-50/70 border border-slate-100 rounded-xl px-5 py-3.5 mt-4 flex flex-col gap-1.5">
                   <p className="text-sm text-text-muted">
                     Administered <span className="font-extrabold text-primary text-base">{useQty} doses</span> of{' '}
-                    <span className="font-extrabold text-text text-base">{selectedVaccine?.name}</span>
+                    <span className="font-extrabold text-text text-base" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
                   </p>
                   <div className="h-px bg-slate-200/60 my-1" />
                   <p className="text-xs text-text-muted font-medium">
@@ -172,7 +173,7 @@ export default function StockEntry() {
                       <div className="p-1.5 rounded-lg bg-red-50 text-primary">
                         <Syringe size={14} />
                       </div>
-                      <span className="text-sm font-bold text-text">{selectedVaccine?.name}</span>
+                      <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
                     </div>
                     <span className="text-xs font-semibold text-text-muted">{currentQty} in stock</span>
                   </div>
@@ -302,7 +303,7 @@ export default function StockEntry() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 min-w-0">
-                      <span className="font-bold text-xs text-text truncate">{row.vaccineName}</span>
+                      <span className="font-bold text-xs text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</span>
                       <StatusBadge status={row.status} />
                     </div>
                     <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">

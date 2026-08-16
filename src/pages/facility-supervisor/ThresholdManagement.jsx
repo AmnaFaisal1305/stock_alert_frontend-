@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import { statusConfig } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
 import RingGauge from '../../components/shared/RingGauge'
 
 const DEFAULT_VACCINE_NAMES = [
@@ -46,7 +47,7 @@ function VaccineCard({ row, onEdit, onRename, onDelete, onCorrectStock }) {
             </div>
           )}
           {status === 'low' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
-          <p className="font-bold text-text text-base truncate">{row.vaccineName}</p>
+          <p className="font-bold text-text text-base truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
         </div>
         <StatusBadge status={status} />
       </div>
@@ -214,7 +215,7 @@ export default function ThresholdManagement() {
   // Names available to add (all 13 defaults minus what the facility already has)
   const addableNames = DEFAULT_VACCINE_NAMES
     .filter((n) => !existingNames.has(n))
-    .map((n) => ({ value: n, label: n }))
+    .map((n) => ({ value: n, label: displayVaccineName(n) }))
 
   const criticalCount = allRows.filter((r) => r.status === 'critical').length
   const lowCount      = allRows.filter((r) => r.status === 'low').length
@@ -377,7 +378,7 @@ export default function ThresholdManagement() {
                     {/* Name */}
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-1 h-7 rounded-full flex-shrink-0 ${cfg.dot}`} />
-                      <p className="font-semibold text-sm text-text truncate">{row.vaccineName}</p>
+                      <p className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
                     </div>
 
                     {/* Status */}
@@ -429,7 +430,7 @@ export default function ThresholdManagement() {
       )}
 
       {/* Edit Threshold Modal */}
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit Threshold — ${editing?.vaccineName ?? ''}`}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit Threshold — ${displayVaccineName(editing?.vaccineName) ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
           <Input id="min-qty" label="Minimum Quantity (doses)" type="number" min="0" step="1"
             value={minQty} onChange={(e) => { setMinQty(e.target.value); setFormError('') }} required />
@@ -442,7 +443,7 @@ export default function ThresholdManagement() {
       </Modal>
 
       {/* Rename Modal */}
-      <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.vaccineName ?? ''}`}>
+      <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${displayVaccineName(renaming?.vaccineName) ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); renameMutation.mutate() }}>
           <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
             Names must be from the standard vaccine list.
@@ -452,7 +453,7 @@ export default function ThresholdManagement() {
             label="New Vaccine Name"
             options={DEFAULT_VACCINE_NAMES
               .filter((n) => n === renaming?.vaccineName || !existingNames.has(n))
-              .map((n) => ({ value: n, label: n }))}
+              .map((n) => ({ value: n, label: displayVaccineName(n) }))}
             value={renameValue}
             onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }}
             required
@@ -507,7 +508,7 @@ export default function ThresholdManagement() {
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete vaccine" maxWidth="max-w-sm">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-text">
-            Permanently delete <span className="font-medium">{deleteTarget?.vaccineName}</span>? This cannot be undone.
+            Permanently delete <span className="font-medium" dir="rtl">{displayVaccineName(deleteTarget?.vaccineName)}</span>? This cannot be undone.
           </p>
           {deleteError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deleteError}</p>}
           <div className="flex justify-end gap-3">
@@ -520,7 +521,7 @@ export default function ThresholdManagement() {
       </Modal>
 
       {/* Correct Stock Modal */}
-      <Modal open={!!correcting} onClose={closeCorrectStock} title={`Correct Stock — ${correcting?.vaccineName ?? ''}`}>
+      <Modal open={!!correcting} onClose={closeCorrectStock} title={`Correct Stock — ${displayVaccineName(correcting?.vaccineName) ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); correctStockMutation.mutate() }}>
           <p className="text-xs text-text-muted bg-surface-alt rounded-lg px-3 py-2.5 leading-relaxed">
             Enter the actual current stock count. This records a correction against the difference from what's currently tracked ({correcting?.quantity ?? 0} doses).

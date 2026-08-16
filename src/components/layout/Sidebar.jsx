@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, UserCog, LogOut, BookOpen,
+  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -10,6 +10,7 @@ const NAV = {
   super_admin: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
     { to: '/super-admin/districts',  label: 'Districts',          icon: Map             },
+    { to: '/super-admin/ucs',        label: 'UCs',                icon: MapPin          },
     { to: '/super-admin/facilities', label: 'Facilities',         icon: Building2       },
     { to: '/super-admin/users',      label: 'User Management',    icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',          icon: ClipboardList   },

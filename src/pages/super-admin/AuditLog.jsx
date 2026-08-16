@@ -7,6 +7,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 function humanizeKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
@@ -53,12 +54,15 @@ function formatDetails(row, vaccineNameById) {
     case 'SET_THRESHOLD':
       return `Minimum set to ${d.minQuantity} — ${vaccineName(d.vaccineId)}`
     case 'CREATE_VACCINE':
-      return `Added "${d.name ?? vaccineName(d.vaccineId)}"`
+      return `Added "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}"`
     case 'DELETE_VACCINE':
-      return `Deleted "${d.name ?? vaccineName(d.vaccineId)}"`
+      return `Deleted "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}"`
     case 'EDIT_VACCINE': {
       const newName = d.newName ?? d.name ?? vaccineName(d.vaccineId)
-      return d.oldName ? `Renamed "${d.oldName}" → "${newName}"` : `Renamed to "${newName}"`
+      const displayNew = d.newName || d.name ? displayVaccineName(newName) : newName
+      return d.oldName
+        ? `Renamed "${displayVaccineName(d.oldName)}" → "${displayNew}"`
+        : `Renamed to "${displayNew}"`
     }
     case 'CREATE_USER':
       return `${(d.role ?? '').replace(/_/g, ' ')} — ${d.email}`
@@ -104,7 +108,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
   })
 
   const vaccineNameById = useMemo(
-    () => Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name])),
+    () => Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, displayVaccineName(v.name)])),
     [vaccineData]
   )
 

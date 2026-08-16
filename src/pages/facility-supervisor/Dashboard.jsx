@@ -15,6 +15,7 @@ import SkeletonCard from '../../components/shared/SkeletonCard'
 import StatCard from '../../components/shared/StatCard'
 import RingGauge from '../../components/shared/RingGauge'
 import { statusConfig, STATUS_RANK } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 const AVATAR_COLORS = [
   'bg-teal-500', 'bg-violet-500', 'bg-amber-500',
@@ -96,7 +97,7 @@ function StockCard({ row }) {
               </div>
             )}
             {status === 'low' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
-            <p className="font-semibold text-text text-base truncate">{row.vaccineName}</p>
+            <p className="font-semibold text-text text-base truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
           </div>
           <StatusBadge status={status} />
         </div>
@@ -328,7 +329,7 @@ export default function FacilityDashboard() {
     urgentRows, healthyRows, allLogs,
   } = useMemo(() => {
     const rawRows       = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
-    const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, r.vaccineName]))
+    const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, displayVaccineName(r.vaccineName)]))
     const rows          = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
     return {
       rows,

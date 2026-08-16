@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { statusConfig } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 function SummaryPill({ icon: Icon, label, count, colorClass }) {
   return (
@@ -34,7 +35,7 @@ function StockCard({ row }) {
           <div className="p-1.5 rounded-lg bg-red-50 text-primary">
             <Syringe size={14} />
           </div>
-          <p className="font-bold text-sm text-text truncate">{row.vaccineName}</p>
+          <p className="font-bold text-sm text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
         </div>
         <StatusBadge status={row.status} />
       </div>

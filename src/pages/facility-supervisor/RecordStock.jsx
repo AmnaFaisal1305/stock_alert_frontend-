@@ -13,6 +13,7 @@ import Button from '../../components/ui/Button'
 import StatusBadge from '../../components/shared/StatusBadge'
 import RingGauge from '../../components/shared/RingGauge'
 import StepIndicator from '../../components/shared/StepIndicator'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 const STEP_LABELS = ['Select Vaccine', 'Entry Type', 'Details', 'Confirm']
 
@@ -35,7 +36,7 @@ export default function RecordStock() {
   const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
   const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
 
-  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: v.name }))
+  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
 
   const stockByVaccineId = new Map(
     (dashboardData?.facilities ?? [])
@@ -110,7 +111,7 @@ export default function RecordStock() {
               <p className="text-sm text-text-muted">
                 {isReturn ? 'Returned' : 'Received'}{' '}
                 <span className="font-extrabold text-primary text-base">+{result?.addedQty} doses</span> of{' '}
-                <span className="font-extrabold text-text text-base">{result?.vaccineName}</span>
+                <span className="font-extrabold text-text text-base" dir="rtl">{displayVaccineName(result?.vaccineName)}</span>
               </p>
               <div className="h-px bg-slate-200/60 my-1" />
               <p className="text-xs text-text-muted font-medium">
@@ -253,7 +254,7 @@ export default function RecordStock() {
                 <div className="p-1.5 rounded-lg bg-red-50 text-primary">
                   <Syringe size={14} />
                 </div>
-                <span className="text-sm font-bold text-text">{selectedVaccine?.name}</span>
+                <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
               </div>
               <span className="text-xs font-semibold text-text-muted capitalize">{entryType}</span>
             </div>
@@ -363,7 +364,7 @@ export default function RecordStock() {
             <div className="rounded-xl border border-slate-100 overflow-hidden text-sm divide-y divide-slate-100 shadow-sm">
               <div className="flex justify-between px-4 py-3 bg-slate-50/60">
                 <span className="text-text-muted">Vaccine</span>
-                <span className="font-bold text-text">{selectedVaccine?.name}</span>
+                <span className="font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
               </div>
               <div className="flex justify-between px-4 py-3 bg-slate-50/60">
                 <span className="text-text-muted">Entry Type</span>

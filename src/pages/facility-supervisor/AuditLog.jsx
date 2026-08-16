@@ -11,6 +11,7 @@ import {
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -392,7 +393,7 @@ export default function FacilitySupervisorAuditLog() {
 
   const workers = (userData?.users ?? []).filter((u) => u.role === 'facility_worker')
   const logs    = logData?.auditLog ?? []
-  const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.name]))
+  const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, displayVaccineName(v.name)]))
 
   // Filtration logic helper
   const filterEntries = (entriesList) => {
