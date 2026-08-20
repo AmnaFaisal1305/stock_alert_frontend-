@@ -48,6 +48,12 @@ async function request(method, path, body, { skipAuthRedirect = false } = {}) {
   return res.json()
 }
 
+function buildQs(params) {
+  const entries = Object.entries(params ?? {}).filter(([, v]) => v != null && v !== '')
+  if (!entries.length) return ''
+  return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function login(email, password) {
@@ -72,8 +78,8 @@ export async function googleLogin(idToken) {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
-export async function getUsers() {
-  return request('GET', '/api/users')
+export async function getUsers(params) {
+  return request('GET', `/api/users${buildQs(params)}`)
 }
 
 export async function createUser(payload) {
@@ -90,6 +96,10 @@ export async function activateUser(id) {
 
 export async function resetPassword(id, password) {
   return request('PUT', `/api/users/${id}/reset-password`, { password })
+}
+
+export async function assignUcSupervisor(userId, ucIds) {
+  return request('PUT', `/api/users/${userId}/uc-assignments`, { ucIds })
 }
 
 // ── Districts ─────────────────────────────────────────────────────────────────
@@ -118,10 +128,54 @@ export async function activateDistrict(id) {
   return request('PUT', `/api/districts/${id}/activate`, {})
 }
 
+// ── Towns ─────────────────────────────────────────────────────────────────────
+
+export async function getTowns() {
+  return request('GET', '/api/towns')
+}
+
+export async function createTown(payload) {
+  return request('POST', '/api/towns', payload)
+}
+
+export async function updateTown(id, name) {
+  return request('PUT', `/api/towns/${id}`, { name })
+}
+
+export async function deleteTown(id) {
+  return request('DELETE', `/api/towns/${id}`, {})
+}
+
+export async function activateTown(id) {
+  return request('PUT', `/api/towns/${id}/activate`, {})
+}
+
+// ── Union Councils ────────────────────────────────────────────────────────────
+
+export async function getUnionCouncils(params) {
+  return request('GET', `/api/union-councils${buildQs(params)}`)
+}
+
+export async function createUnionCouncil(payload) {
+  return request('POST', '/api/union-councils', payload)
+}
+
+export async function updateUnionCouncil(id, name) {
+  return request('PUT', `/api/union-councils/${id}`, { name })
+}
+
+export async function deleteUnionCouncil(id) {
+  return request('DELETE', `/api/union-councils/${id}`, {})
+}
+
+export async function activateUnionCouncil(id) {
+  return request('PUT', `/api/union-councils/${id}/activate`, {})
+}
+
 // ── Facilities ────────────────────────────────────────────────────────────────
 
-export async function getFacilities() {
-  return request('GET', '/api/facilities')
+export async function getFacilities(params) {
+  return request('GET', `/api/facilities${buildQs(params)}`)
 }
 
 export async function createFacility(payload) {
@@ -154,8 +208,8 @@ export async function createVaccine(payload) {
   return request('POST', '/api/vaccines', payload)
 }
 
-export async function updateVaccine(id, name) {
-  return request('PUT', `/api/vaccines/${id}`, { name })
+export async function updateVaccine(id, payload) {
+  return request('PUT', `/api/vaccines/${id}`, payload)
 }
 
 export async function deleteVaccine(id) {
@@ -168,8 +222,8 @@ export async function updateVaccineStock(id, quantity) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-export async function getDashboard() {
-  return request('GET', '/api/dashboard')
+export async function getDashboard(params) {
+  return request('GET', `/api/dashboard${buildQs(params)}`)
 }
 
 // ── Stock entries ─────────────────────────────────────────────────────────────
@@ -178,15 +232,11 @@ export async function createStockEntry(payload) {
   return request('POST', '/api/stock-entries', payload)
 }
 
-// ── Thresholds ────────────────────────────────────────────────────────────────
-
-export async function updateThreshold(id, minQuantity) {
-  return request('PUT', `/api/thresholds/${id}`, { minQuantity })
-}
-
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
-export async function getAuditLog({ limit } = {}) {
-  const qs = limit != null ? `?limit=${limit}` : ''
-  return request('GET', `/api/audit-log${qs}`)
+export async function getAuditLog({ limit, feed } = {}) {
+  const params = {}
+  if (limit != null) params.limit = limit
+  if (feed != null) params.feed = feed
+  return request('GET', `/api/audit-log${buildQs(params)}`)
 }

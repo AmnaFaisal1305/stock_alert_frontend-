@@ -11,11 +11,11 @@ export const STATUS_CONFIG = {
     borderL: 'border-l-warning', ring: 'ring-1 ring-warning/20', gaugeHex: '#F59E0B',
   },
   adequate: {
-    dot: 'bg-success', text: 'text-success-dark', bg: 'bg-success-bg', label: 'OK',
+    dot: 'bg-success', text: 'text-success-dark', bg: 'bg-success-bg', label: 'Normal',
     borderL: 'border-l-success', ring: 'ring-1 ring-success/20', gaugeHex: '#10B981',
   },
   no_data: {
-    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-alt', label: 'No data',
+    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-alt', label: 'Stock Not Updated',
     borderL: 'border-l-secondary', ring: 'ring-1 ring-secondary/20', gaugeHex: '#64748B',
   },
 }
@@ -68,5 +68,5 @@ export const FILTERS = [
   { label: 'All',      match: () => true },
   { label: 'Critical', match: (s) => s === 'critical' },
   { label: 'Low',      match: (s) => s === 'low' || s === 'no_data' },
-  { label: 'OK',       match: (s) => s === 'adequate' },
+  { label: 'Normal',   match: (s) => s === 'adequate' },
 ]

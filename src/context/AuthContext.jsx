@@ -8,6 +8,7 @@ const AuthContext = createContext(null)
 const ROLE_DEFAULTS = {
   super_admin:         '/super-admin/dashboard',
   district_supervisor: '/district/dashboard',
+  uc_supervisor:       '/uc/dashboard',
   facility_supervisor: '/facility/dashboard',
   facility_worker:     '/worker/stock-entry',
 }

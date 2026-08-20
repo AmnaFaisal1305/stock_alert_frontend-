@@ -24,10 +24,9 @@ export default function RecordStock() {
   const [step, setStep]             = useState(1)
   const [vaccineId, setVaccineId]   = useState('')
   const [entryType, setEntryType]   = useState('received')
-  const [quantity, setQuantity]     = useState('')
+  const [vials, setVials]           = useState('')
   const [batchNo, setBatchNo]       = useState('')
   const [expiryDate, setExpiryDate] = useState('')
-  const [dosesPerVial, setDosesPerVial] = useState('')
   const [manufacturer, setManufacturer] = useState('')
   const [remarks, setRemarks]       = useState('outreach')
   const [done, setDone]             = useState(false)
@@ -47,34 +46,42 @@ export default function RecordStock() {
   const selectedVaccine = vaccineData?.vaccines?.find((v) => v.id === vaccineId)
   const currentStock    = vaccineId ? stockByVaccineId.get(vaccineId) : null
   const currentQty      = currentStock?.quantity ?? 0
-  const addQty          = parseInt(quantity, 10) || 0
-  const newTotal        = currentQty + addQty
+  const addVials        = parseInt(vials, 10) || 0
+  const dosesPerVial    = selectedVaccine?.dosesPerVial ?? 1
+  const addedDoses      = addVials * dosesPerVial
+  const newTotal        = currentQty + addedDoses
   const status          = currentStock ? currentStock.status : null
+  const criticalDoses   = currentStock?.criticalDoses ?? 0
   const pct             = currentStock?.quantity == null
     ? 0
-    : currentStock.minQuantity > 0
-      ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
+    : criticalDoses > 0
+      ? Math.min(Math.round((currentQty / (criticalDoses * 2)) * 100), 100)
       : 100
 
   const isReceivedValid = entryType === 'received'
-    ? batchNo.trim() && expiryDate && dosesPerVial && manufacturer.trim() && remarks
+    ? batchNo.trim() && expiryDate && manufacturer.trim() && remarks
     : true
 
   const mutation = useMutation({
     mutationFn: () => createStockEntry({
       vaccineId,
-      quantity: addQty,
+      vials: addVials,
       entryType,
       ...(entryType === 'received' ? {
         batchNo: batchNo.trim(),
         expiryDate,
-        dosesPerVial: parseInt(dosesPerVial, 10),
         manufacturer: manufacturer.trim(),
         remarks,
       } : {}),
     }),
-    onSuccess: () => {
-      setResult({ vaccineName: selectedVaccine?.name, addedQty: addQty, newTotal, entryType })
+    onSuccess: (data) => {
+      setResult({
+        vaccineName: selectedVaccine?.name,
+        addedVials: addVials,
+        addedDoses: data?.entry?.quantity ?? addedDoses,
+        newTotal,
+        entryType,
+      })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
@@ -82,14 +89,14 @@ export default function RecordStock() {
   })
 
   function reset() {
-    setStep(1); setVaccineId(''); setEntryType('received'); setQuantity('')
-    setBatchNo(''); setExpiryDate(''); setDosesPerVial(''); setManufacturer('')
+    setStep(1); setVaccineId(''); setEntryType('received'); setVials('')
+    setBatchNo(''); setExpiryDate(''); setManufacturer('')
     setRemarks('outreach'); setDone(false); setResult(null); mutation.reset()
   }
 
-  function adjustQty(delta) {
-    const cur = parseInt(quantity, 10) || 0
-    setQuantity(String(Math.min(10_000, Math.max(1, cur + delta))))
+  function adjustVials(delta) {
+    const cur = parseInt(vials, 10) || 0
+    setVials(String(Math.min(1_000, Math.max(1, cur + delta))))
   }
 
   if (done) {
@@ -110,12 +117,13 @@ export default function RecordStock() {
             <div className="bg-slate-50/70 border border-slate-100 rounded-xl px-5 py-3.5 mt-4 flex flex-col gap-1.5">
               <p className="text-sm text-text-muted">
                 {isReturn ? 'Returned' : 'Received'}{' '}
-                <span className="font-extrabold text-primary text-base">+{result?.addedQty} doses</span> of{' '}
+                <span className="font-extrabold text-primary text-base">+{result?.addedVials} vials</span>{' '}
+                ({result?.addedDoses} doses) of{' '}
                 <span className="font-extrabold text-text text-base" dir="rtl">{displayVaccineName(result?.vaccineName)}</span>
               </p>
               <div className="h-px bg-slate-200/60 my-1" />
               <p className="text-xs text-text-muted font-medium">
-                New Available Balance: <span className="font-extrabold text-success">{result?.newTotal} doses</span>
+                New Projected Balance: <span className="font-extrabold text-success">{result?.newTotal} doses</span>
               </p>
             </div>
           </div>
@@ -148,7 +156,7 @@ export default function RecordStock() {
           <div className="flex flex-col gap-6">
             <div>
               <p className="text-sm font-bold text-text mb-1">1. Select Vaccine</p>
-              <p className="text-xs text-text-muted mb-4">Choose the vaccine from your facility list.</p>
+              <p className="text-xs text-text-muted mb-4">Choose the vaccine from the catalog.</p>
               <Select
                 id="vaccine"
                 label="Vaccine type"
@@ -168,8 +176,8 @@ export default function RecordStock() {
                   <p className="text-2xl font-extrabold text-text mt-0.5 tracking-tight">
                     {currentQty} <span className="text-xs font-semibold text-text-muted/80">doses</span>
                   </p>
-                  {currentStock.minQuantity > 0 && (
-                    <p className="text-xs text-text-muted/75 font-medium mt-0.5">Threshold: {currentStock.minQuantity} doses</p>
+                  {selectedVaccine?.dosesPerVial && (
+                    <p className="text-xs text-text-muted/75 font-medium mt-0.5">{selectedVaccine.dosesPerVial} doses/vial</p>
                   )}
                 </div>
                 <StatusBadge status={status} />
@@ -245,7 +253,7 @@ export default function RecordStock() {
           </div>
         )}
 
-        {/* ── Step 3: Quantity + batch details (received) or quantity only (returned) ── */}
+        {/* ── Step 3: Vials + batch details (received) or vials only (returned) ── */}
         {step === 3 && (
           <div className="flex flex-col gap-5">
             {/* Selected vaccine summary */}
@@ -259,42 +267,47 @@ export default function RecordStock() {
               <span className="text-xs font-semibold text-text-muted capitalize">{entryType}</span>
             </div>
 
-            {/* Quantity */}
+            {/* Vials */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-text" htmlFor="quantity">
-                Quantity (Doses) <span className="text-primary">*</span>
+              <label className="text-sm font-bold text-text" htmlFor="vials">
+                Number of Vials <span className="text-primary">*</span>
               </label>
               <div className="flex items-center gap-2 mt-1">
-                <button type="button" onClick={() => adjustQty(-10)}
+                <button type="button" onClick={() => adjustVials(-10)}
                   className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-text-muted hover:text-text transition-all flex items-center justify-center flex-shrink-0 font-bold text-xs active:scale-95 cursor-pointer"
                   aria-label="Decrease by 10">-10</button>
-                <button type="button" onClick={() => adjustQty(-1)}
+                <button type="button" onClick={() => adjustVials(-1)}
                   className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-text-muted hover:text-text transition-all flex items-center justify-center flex-shrink-0 active:scale-95 cursor-pointer"
                   aria-label="Decrease by 1"><Minus size={14} strokeWidth={2.5} /></button>
-                <Input id="quantity" type="number" min="1" max={10_000} placeholder="0"
-                  value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                <Input id="vials" type="number" min="1" max={1_000} placeholder="0"
+                  value={vials} onChange={(e) => setVials(e.target.value)}
                   className="flex-1 text-center text-xl font-extrabold text-text bg-white px-3 py-2.5" />
-                <button type="button" onClick={() => adjustQty(1)}
+                <button type="button" onClick={() => adjustVials(1)}
                   className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-red-50 hover:text-primary hover:border-primary/20 text-text-muted transition-all flex items-center justify-center flex-shrink-0 active:scale-95 cursor-pointer"
                   aria-label="Increase by 1"><Plus size={14} strokeWidth={2.5} /></button>
-                <button type="button" onClick={() => adjustQty(10)}
+                <button type="button" onClick={() => adjustVials(10)}
                   className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-red-50 hover:text-primary hover:border-primary/20 text-text-muted transition-all flex items-center justify-center flex-shrink-0 font-bold text-xs active:scale-95 cursor-pointer"
                   aria-label="Increase by 10">+10</button>
               </div>
+              {selectedVaccine?.dosesPerVial && vials && addVials > 0 && (
+                <p className="text-xs text-text-muted mt-1">
+                  = <span className="font-bold text-text">{addedDoses} doses</span> ({selectedVaccine.dosesPerVial} doses/vial)
+                </p>
+              )}
             </div>
 
-            {quantity && addQty > 0 && (
+            {vials && addVials > 0 && (
               <div className="bg-success/5 border border-success/15 rounded-xl px-5 py-3 text-xs text-success-dark">
                 <span className="font-bold uppercase tracking-wider text-[9px] opacity-75 block mb-0.5">Calculation Check</span>
                 <p className="font-medium text-text">
-                  {currentQty} + {addQty} = <span className="font-bold text-success-dark">{newTotal} doses projected</span>
+                  {currentQty} + {addedDoses} doses = <span className="font-bold text-success-dark">{newTotal} doses projected</span>
                 </p>
               </div>
             )}
 
-            {addQty > 10_000 && (
+            {addVials > 1_000 && (
               <div className="bg-danger-bg border border-danger/10 rounded-xl px-5 py-3 text-xs text-danger">
-                <span className="font-bold">Maximum 10,000 doses per entry.</span>
+                <span className="font-bold">Maximum 1,000 vials per entry.</span>
               </div>
             )}
 
@@ -308,9 +321,6 @@ export default function RecordStock() {
 
                 <Input id="expiry-date" label="Expiry Date *" type="date"
                   value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required />
-
-                <Input id="doses-per-vial" label="Doses Per Vial *" type="number" min="1" step="1" placeholder="e.g. 10"
-                  value={dosesPerVial} onChange={(e) => setDosesPerVial(e.target.value)} required />
 
                 <Input id="manufacturer" label="Manufacturer *" placeholder="e.g. Serum Institute"
                   value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} required />
@@ -344,7 +354,7 @@ export default function RecordStock() {
               </Button>
               <Button
                 onClick={() => setStep(4)}
-                disabled={!quantity || addQty < 1 || addQty > 10_000 || !isReceivedValid}
+                disabled={!vials || addVials < 1 || addVials > 1_000 || !isReceivedValid}
                 className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
               >
                 Review <ChevronRight size={15} />
@@ -375,8 +385,12 @@ export default function RecordStock() {
                 <span className="font-semibold text-text">{currentQty} doses</span>
               </div>
               <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Quantity</span>
-                <span className="font-bold text-primary">+{addQty}</span>
+                <span className="text-text-muted">Vials</span>
+                <span className="font-bold text-primary">+{addVials}</span>
+              </div>
+              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
+                <span className="text-text-muted">Doses Added</span>
+                <span className="font-bold text-primary">+{addedDoses}</span>
               </div>
               {entryType === 'received' && (
                 <>
@@ -389,10 +403,6 @@ export default function RecordStock() {
                     <span className="font-semibold text-text">{expiryDate}</span>
                   </div>
                   <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                    <span className="text-text-muted">Doses/Vial</span>
-                    <span className="font-semibold text-text">{dosesPerVial}</span>
-                  </div>
-                  <div className="flex justify-between px-4 py-3 bg-slate-50/60">
                     <span className="text-text-muted">Manufacturer</span>
                     <span className="font-semibold text-text">{manufacturer}</span>
                   </div>
@@ -403,7 +413,7 @@ export default function RecordStock() {
                 </>
               )}
               <div className="flex justify-between px-4 py-3 bg-success/5">
-                <span className="text-success-dark font-bold">New Available Balance</span>
+                <span className="text-success-dark font-bold">Projected New Balance</span>
                 <span className="font-extrabold text-success-dark text-base">{newTotal} doses</span>
               </div>
             </div>

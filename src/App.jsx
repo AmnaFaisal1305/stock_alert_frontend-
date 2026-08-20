@@ -34,6 +34,12 @@ const FacilityAuditLog      = lazy(() => import('./pages/facility-supervisor/Aud
 const StockEntry            = lazy(() => import('./pages/facility-worker/StockEntry'))
 const WorkerStatusView      = lazy(() => import('./pages/facility-worker/StatusView'))
 
+const UCSupervisorDashboard  = lazy(() => import('./pages/uc-supervisor/Dashboard'))
+const UCSupervisorFacilities = lazy(() => import('./pages/uc-supervisor/Facilities'))
+const UCSupervisorAuditLog   = lazy(() => import('./pages/uc-supervisor/AuditLog'))
+
+const SuperAdminVaccines     = lazy(() => import('./pages/super-admin/VaccineManagement'))
+
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
   return (
@@ -46,6 +52,7 @@ function PageLoader() {
 const ROLE_DEFAULTS = {
   super_admin:         '/super-admin/dashboard',
   district_supervisor: '/district/dashboard',
+  uc_supervisor:       '/uc/dashboard',
   facility_supervisor: '/facility/dashboard',
   facility_worker:     '/worker/stock-entry',
 }
@@ -89,6 +96,7 @@ export default function App() {
                 <Route path="/super-admin/facilities/:id"   element={<FacilityDetail />} />
                 <Route path="/super-admin/users"            element={<SuperAdminUsers />} />
                 <Route path="/super-admin/ucs"              element={<UCManagement />} />
+                <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
@@ -103,6 +111,11 @@ export default function App() {
                 <Route path="/facility/thresholds"   element={<ThresholdManagement />} />
                 <Route path="/facility/workers"      element={<WorkerManagement />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
+
+                <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
+                <Route path="/uc/facilities"         element={<UCSupervisorFacilities />} />
+                <Route path="/uc/facilities/:id"     element={<FacilityDetail />} />
+                <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />
                 <Route path="/worker/status"      element={<WorkerStatusView />} />

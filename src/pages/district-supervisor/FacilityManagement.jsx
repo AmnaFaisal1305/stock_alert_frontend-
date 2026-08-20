@@ -2,19 +2,20 @@ import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, getUnionCouncils } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 
 export default function FacilityManagement() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', unionCouncil: '', town: '' })
+  const [form, setForm] = useState({ name: '', ucId: '' })
   const [formError, setFormError] = useState('')
 
   const [renaming, setRenaming]       = useState(null)
@@ -44,17 +45,26 @@ export default function FacilityManagement() {
     staleTime: 15_000,
   })
 
+  const { data: ucData } = useQuery({
+    queryKey: ['ucs'],
+    queryFn: () => getUnionCouncils(),
+    staleTime: 0,
+  })
+
+  const ucOptions = (ucData?.unionCouncils ?? [])
+    .filter((uc) => uc.isActive)
+    .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
+
   const mutation = useMutation({
     mutationFn: () => createFacility({
       name: form.name,
-      ...(form.unionCouncil.trim() ? { unionCouncil: form.unionCouncil.trim() } : {}),
-      ...(form.town.trim() ? { town: form.town.trim() } : {}),
+      ...(form.ucId ? { ucId: form.ucId } : {}),
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setOpen(false)
-      setForm({ name: '', unionCouncil: '', town: '' })
+      setForm({ name: '', ucId: '' })
       setFormError('')
       setToast({ message: 'Facility created successfully.', type: 'success' })
     },
@@ -137,17 +147,13 @@ export default function FacilityManagement() {
       ),
     },
     {
-      key: 'unionCouncil',
-      label: 'Union Council',
+      key: 'ucName',
+      label: 'Union Council / Town',
       render: (row) => (
-        <span className="text-xs font-semibold text-text-muted">{row.unionCouncil ?? '—'}</span>
-      ),
-    },
-    {
-      key: 'town',
-      label: 'Town',
-      render: (row) => (
-        <span className="text-xs font-semibold text-text-muted">{row.town ?? '—'}</span>
+        <div>
+          <p className="text-xs font-semibold text-text">{row.ucName ?? '—'}</p>
+          {row.townName && <p className="text-[10px] text-text-muted font-medium">{row.townName}</p>}
+        </div>
       ),
     },
     {
@@ -358,19 +364,13 @@ export default function FacilityManagement() {
             onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormError('') }}
             required
           />
-          <Input
+          <Select
             id="fac-uc"
             label="Union Council (optional)"
-            placeholder="e.g. UC 5"
-            value={form.unionCouncil}
-            onChange={(e) => setForm({ ...form, unionCouncil: e.target.value })}
-          />
-          <Input
-            id="fac-town"
-            label="Town (optional)"
-            placeholder="e.g. Malir"
-            value={form.town}
-            onChange={(e) => setForm({ ...form, town: e.target.value })}
+            options={ucOptions}
+            placeholder="Select a UC…"
+            value={form.ucId}
+            onChange={(e) => setForm({ ...form, ucId: e.target.value })}
           />
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">

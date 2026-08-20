@@ -17,14 +17,14 @@ const ACTION_LABELS = {
   LOGOUT: 'Logout',
   STOCK_ENTRY: 'Stock Entry',
   ADJUST_STOCK: 'Stock Correction',
-  SET_THRESHOLD: 'Threshold Set',
   CREATE_VACCINE: 'Vaccine Added',
   DELETE_VACCINE: 'Vaccine Deleted',
-  EDIT_VACCINE: 'Vaccine Renamed',
+  EDIT_VACCINE: 'Vaccine Edited',
   CREATE_USER: 'User Created',
   ACTIVATE_USER: 'User Activated',
   DEACTIVATE_USER: 'User Deactivated',
   RESET_PASSWORD: 'Password Reset',
+  ASSIGN_UC_SUPERVISOR: 'UC Assignment',
   CREATE_DISTRICT: 'District Created',
   EDIT_DISTRICT: 'District Renamed',
   DEACTIVATE_DISTRICT: 'District Deactivated',
@@ -33,6 +33,14 @@ const ACTION_LABELS = {
   EDIT_FACILITY: 'Facility Renamed',
   DEACTIVATE_FACILITY: 'Facility Deactivated',
   ACTIVATE_FACILITY: 'Facility Activated',
+  CREATE_TOWN: 'Town Created',
+  EDIT_TOWN: 'Town Renamed',
+  DEACTIVATE_TOWN: 'Town Deactivated',
+  ACTIVATE_TOWN: 'Town Activated',
+  CREATE_UC: 'UC Created',
+  EDIT_UC: 'UC Renamed',
+  DEACTIVATE_UC: 'UC Deactivated',
+  ACTIVATE_UC: 'UC Activated',
 }
 
 function formatDetails(row, vaccineNameById) {
@@ -51,10 +59,8 @@ function formatDetails(row, vaccineNameById) {
     }
     case 'ADJUST_STOCK':
       return `Stock corrected ${d.delta > 0 ? '+' : ''}${d.delta} (${d.previousBalance} → ${d.newBalance}) — ${vaccineName(d.vaccineId)}`
-    case 'SET_THRESHOLD':
-      return `Minimum set to ${d.minQuantity} — ${vaccineName(d.vaccineId)}`
     case 'CREATE_VACCINE':
-      return `Added "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}"`
+      return `Added "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}" (${d.dosesPerVial ?? '?'} doses/vial)`
     case 'DELETE_VACCINE':
       return `Deleted "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}"`
     case 'EDIT_VACCINE': {
@@ -62,10 +68,12 @@ function formatDetails(row, vaccineNameById) {
       const displayNew = d.newName || d.name ? displayVaccineName(newName) : newName
       return d.oldName
         ? `Renamed "${displayVaccineName(d.oldName)}" → "${displayNew}"`
-        : `Renamed to "${displayNew}"`
+        : `Edited "${displayNew}"`
     }
     case 'CREATE_USER':
       return `${(d.role ?? '').replace(/_/g, ' ')} — ${d.email}`
+    case 'ASSIGN_UC_SUPERVISOR':
+      return `Assigned ${(d.ucNames ?? d.ucIds ?? []).length} UC(s) to ${d.email ?? d.userId ?? '—'}`
     case 'CREATE_DISTRICT':
     case 'EDIT_DISTRICT':
     case 'DEACTIVATE_DISTRICT':
@@ -74,6 +82,14 @@ function formatDetails(row, vaccineNameById) {
     case 'EDIT_FACILITY':
     case 'DEACTIVATE_FACILITY':
     case 'ACTIVATE_FACILITY':
+    case 'CREATE_TOWN':
+    case 'EDIT_TOWN':
+    case 'DEACTIVATE_TOWN':
+    case 'ACTIVATE_TOWN':
+    case 'CREATE_UC':
+    case 'EDIT_UC':
+    case 'DEACTIVATE_UC':
+    case 'ACTIVATE_UC':
       return `"${d.name}"`
     case 'LOGOUT':
       return '—'
@@ -173,6 +189,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     : [
         { id: 'super_admin',         label: 'Super Admin',          icon: ShieldAlert },
         { id: 'district_supervisor', label: 'District Supervisors', icon: Shield },
+        { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
@@ -411,12 +428,23 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
           <h2 className="text-xs font-bold uppercase tracking-wider">Filter tab logs</h2>
         </div>
 
+        {(() => {
+          const DISTRICT_HIDDEN = new Set([
+            'CREATE_VACCINE', 'EDIT_VACCINE', 'DELETE_VACCINE',
+            'CREATE_USER', 'ACTIVATE_USER', 'DEACTIVATE_USER', 'RESET_PASSWORD',
+            'CREATE_TOWN', 'EDIT_TOWN', 'DEACTIVATE_TOWN', 'ACTIVATE_TOWN',
+            'CREATE_UC', 'EDIT_UC', 'DEACTIVATE_UC', 'ACTIVATE_UC', 'ASSIGN_UC_SUPERVISOR',
+          ])
+          const visibleActions = Object.entries(ACTION_LABELS).filter(
+            ([k]) => !isDistrictSup || !DISTRICT_HIDDEN.has(k)
+          )
+          return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             id="action-filter"
             label="Filter by action"
             placeholder="All Action Types"
-            options={Object.entries(ACTION_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+            options={visibleActions.map(([k, v]) => ({ value: k, label: v }))}
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
           />
@@ -429,6 +457,8 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
             onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
           />
         </div>
+          )
+        })()}
 
         {hasFilters && (
           <div className="flex justify-end border-t border-slate-50 pt-3">

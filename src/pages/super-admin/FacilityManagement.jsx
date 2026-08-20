@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, getDistricts, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
@@ -16,7 +16,7 @@ export default function SuperAdminFacilityManagement() {
   const queryClient = useQueryClient()
 
   const [open, setOpen]             = useState(false)
-  const [form, setForm]             = useState({ name: '', districtId: '', unionCouncil: '', town: '' })
+  const [form, setForm]             = useState({ name: '', districtId: '', ucId: '' })
   const [formError, setFormError]   = useState('')
 
   const [renaming, setRenaming]         = useState(null)
@@ -35,6 +35,7 @@ export default function SuperAdminFacilityManagement() {
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
   const { data: districtData }       = useQuery({ queryKey: ['districts'],  queryFn: getDistricts  })
+  const { data: ucData }             = useQuery({ queryKey: ['ucs'],         queryFn: () => getUnionCouncils() })
   const { data: dashboardData }      = useQuery({ queryKey: ['dashboard'],  queryFn: getDashboard, staleTime: 15_000 })
 
   const facilities = data?.facilities ?? []
@@ -43,19 +44,23 @@ export default function SuperAdminFacilityManagement() {
     .filter((d) => d.isActive)
     .map((d) => ({ value: d.id, label: d.name }))
 
+  const allUCs = ucData?.unionCouncils ?? []
+  const filteredUCOptions = allUCs
+    .filter((uc) => uc.isActive && (!form.districtId || uc.districtId === form.districtId))
+    .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
+
   const createMutation = useMutation({
     mutationFn: () => createFacility({
       name: form.name,
       districtId: form.districtId,
-      ...(form.unionCouncil.trim() ? { unionCouncil: form.unionCouncil.trim() } : {}),
-      ...(form.town.trim() ? { town: form.town.trim() } : {}),
+      ucId: form.ucId,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setOpen(false)
-      setForm({ name: '', districtId: '', unionCouncil: '', town: '' })
+      setForm({ name: '', districtId: '', ucId: '' })
       setFormError('')
       setToast({ message: 'Facility created successfully.', type: 'success' })
     },
@@ -133,9 +138,12 @@ export default function SuperAdminFacilityManagement() {
     },
     {
       key: 'district',
-      label: 'District',
+      label: 'District / UC',
       render: (row) => (
-        <span className="text-xs font-semibold text-text-muted">{districtMap[row.districtId] ?? '—'}</span>
+        <div>
+          <p className="text-xs font-semibold text-text-muted">{districtMap[row.districtId] ?? '—'}</p>
+          {row.ucName && <p className="text-[10px] text-text-muted/70">{row.ucName} · {row.townName ?? ''}</p>}
+        </div>
       ),
     },
     {
@@ -301,17 +309,16 @@ export default function SuperAdminFacilityManagement() {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.name)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
           <Input id="fac-name" label="Facility Name" placeholder="e.g. South Health Clinic"
             value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormError('') }} required />
-          <Select id="fac-district" label="Assign to District" options={districtOptions}
+          <Select id="fac-district" label="District" options={districtOptions}
             placeholder="Select a district…"
-            value={form.districtId} onChange={(e) => { setForm({ ...form, districtId: e.target.value }); setFormError('') }} required />
-          <Input id="fac-uc" label="Union Council (optional)" placeholder="e.g. UC 5"
-            value={form.unionCouncil} onChange={(e) => setForm({ ...form, unionCouncil: e.target.value })} />
-          <Input id="fac-town" label="Town (optional)" placeholder="e.g. Malir"
-            value={form.town} onChange={(e) => setForm({ ...form, town: e.target.value })} />
+            value={form.districtId} onChange={(e) => { setForm({ ...form, districtId: e.target.value, ucId: '' }); setFormError('') }} required />
+          <Select id="fac-uc" label="Union Council" options={filteredUCOptions}
+            placeholder={form.districtId ? 'Select a UC…' : 'Select district first…'}
+            value={form.ucId} onChange={(e) => { setForm({ ...form, ucId: e.target.value }); setFormError('') }} required />
           {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit" disabled={createMutation.isPending || !form.ucId}>
               {createMutation.isPending ? 'Creating…' : 'Create'}
             </Button>
           </div>

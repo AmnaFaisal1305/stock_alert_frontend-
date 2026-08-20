@@ -66,6 +66,9 @@ export default function DistrictDashboard() {
   const province     = districtData?.districts?.[0]?.province ?? null
   const districtName = districtData?.districts?.[0]?.name ?? null
 
+  const townCount = data?.summary?.townCount ?? 0
+  const ucCount   = data?.summary?.ucCount   ?? 0
+
   const { facilities, counts } = useMemo(() => {
     const facilities = (data?.summary?.byFacility ?? []).map((f) => ({
       id: f.facilityId, name: f.facilityName,
@@ -155,6 +158,14 @@ export default function DistrictDashboard() {
           subtitle={counts.noData > 0 ? 'No stock recorded yet' : 'All facilities reporting'}
         />
       </div>
+
+      {/* Geography Stats */}
+      {(townCount > 0 || ucCount > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard label="Towns" value={townCount} icon={MapPin} colorClass="text-text-muted" subtitle="Administrative towns" />
+          <StatCard label="Union Councils" value={ucCount} icon={Building2} colorClass="text-text-muted" subtitle="Registered union councils" />
+        </div>
+      )}
 
       {/* Facilities Cards Section */}
       <div>

@@ -129,6 +129,9 @@ export default function SuperAdminDashboard() {
     queryFn: getDistricts,
   })
 
+  const townCount = data?.summary?.townCount ?? 0
+  const ucCount   = data?.summary?.ucCount   ?? 0
+
   const { counts, fStats, donutData, stackedBarData, districts } = useMemo(() => {
     const districtNameById = Object.fromEntries(
       (districtData?.districts ?? []).map((d) => [d.id, d.name])
@@ -303,6 +306,26 @@ export default function SuperAdminDashboard() {
           subtitle={`${fStats.adequateCount} of ${fStats.totalFacilities} facilities healthy`}
         />
       </div>
+
+      {/* ── Geography Stats ─────────────────────────────────────────────── */}
+      {(townCount > 0 || ucCount > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard
+            icon={MapIcon}
+            label="Towns"
+            value={townCount}
+            colorClass="text-text-muted"
+            subtitle="Administrative towns"
+          />
+          <StatCard
+            icon={Building2}
+            label="Union Councils"
+            value={ucCount}
+            colorClass="text-text-muted"
+            subtitle="Registered union councils"
+          />
+        </div>
+      )}
 
       {/* ── Row 1: Donut + Stacked Bar ──────────────────────────────────── */}
       {counts.total > 0 && (

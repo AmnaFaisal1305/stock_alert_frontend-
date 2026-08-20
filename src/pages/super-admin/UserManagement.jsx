@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, RotateCcw, UserX, UserCheck, Search, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, getDistricts, getFacilities, createUser, deactivateUser, activateUser, resetPassword } from '../../lib/api'
+import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
@@ -15,7 +15,10 @@ export default function UserManagement() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
-  const [form, setForm] = useState({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', phone: '', cnic: '' })
+  const [reassignTarget, setReassignTarget] = useState(null)
+  const [reassignUcIds, setReassignUcIds] = useState([])
+  const [reassignError, setReassignError] = useState('')
+  const [form, setForm] = useState({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -28,6 +31,7 @@ export default function UserManagement() {
   const ROLE_FILTERS = [
     { label: 'All',                  value: null },
     { label: 'District Supervisor',  value: 'district_supervisor' },
+    { label: 'UC Supervisor',        value: 'uc_supervisor' },
     { label: 'Facility Supervisor',  value: 'facility_supervisor' },
     { label: 'Facility Worker',      value: 'facility_worker' },
   ]
@@ -35,6 +39,7 @@ export default function UserManagement() {
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts, staleTime: 0 })
   const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, staleTime: 0 })
+  const { data: ucData }       = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils(), staleTime: 0 })
 
   const districtMap = Object.fromEntries((districtData?.districts ?? []).map((d) => [d.id, d.name]))
   const districtOptions = (districtData?.districts ?? [])
@@ -43,21 +48,30 @@ export default function UserManagement() {
   const facilityOptions = (facilityData?.facilities ?? [])
     .filter((f) => f.isActive)
     .map((f) => ({ value: f.id, label: f.facilitySupervisorName ? `${f.name} (staffed)` : f.name }))
+  const ucOptions = (ucData?.unionCouncils ?? [])
+    .filter((uc) => uc.isActive)
+    .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
   const users = userData?.users ?? []
 
   const ROLE_SUCCESS_LABELS = {
     district_supervisor: 'District supervisor',
+    uc_supervisor:       'UC supervisor',
     facility_supervisor: 'Facility supervisor',
     facility_worker:     'Facility worker',
   }
 
+  const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' }
+
   const createMutation = useMutation({
     mutationFn: () => {
       const isFacilityRole = form.role === 'facility_supervisor' || form.role === 'facility_worker'
+      const isUcRole = form.role === 'uc_supervisor'
       return createUser({
         firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
         email: form.email, password: form.password, role: form.role,
-        ...(isFacilityRole ? { facilityId: form.facilityId } : { districtId: form.districtId }),
+        ...(isFacilityRole ? { facilityId: form.facilityId }
+          : isUcRole ? { ucIds: form.ucIds }
+          : { districtId: form.districtId }),
         ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
         ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
       })
@@ -67,7 +81,7 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setCreateOpen(false)
-      setForm({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', phone: '', cnic: '' })
+      setForm(EMPTY_FORM)
       setFormError('')
       setToast({ message: `${ROLE_SUCCESS_LABELS[form.role] ?? 'User'} created successfully.`, type: 'success' })
     },
@@ -78,6 +92,18 @@ export default function UserManagement() {
         ? 'This district/facility already has an active supervisor. Deactivate them first.'
         : err.message
     ),
+  })
+
+  const reassignMutation = useMutation({
+    mutationFn: () => assignUcSupervisor(reassignTarget.id, reassignUcIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setReassignTarget(null)
+      setReassignUcIds([])
+      setReassignError('')
+      setToast({ message: 'UC assignments updated.', type: 'success' })
+    },
+    onError: (err) => setReassignError(err.message),
   })
 
   const deactivateMutation = useMutation({
@@ -134,14 +160,16 @@ export default function UserManagement() {
 
   const ROLE_LABELS = {
     district_supervisor: 'District Supervisor',
+    uc_supervisor:       'UC Supervisor',
     facility_supervisor: 'Facility Supervisor',
     facility_worker:     'Facility Worker',
   }
 
   const activeRole = ROLE_FILTERS[roleFilter].value
-  const nameColLabel       = activeRole ? `${ROLE_LABELS[activeRole]} Name` : 'Name'
+  const nameColLabel       = activeRole ? `${ROLE_LABELS[activeRole] ?? activeRole} Name` : 'Name'
   const assignmentColLabel =
     activeRole === 'district_supervisor' ? 'District Name' :
+    activeRole === 'uc_supervisor'       ? 'UC Assignments' :
     activeRole === 'facility_supervisor' ? 'Facility Name' :
     activeRole === 'facility_worker'     ? 'Facility Name' :
     'Assignment'
@@ -169,6 +197,14 @@ export default function UserManagement() {
       key: 'assignment',
       label: assignmentColLabel,
       render: (row) => {
+        if (row.role === 'uc_supervisor') {
+          const ucs = row.ucNames ?? row.ucIds ?? []
+          return ucs.length > 0 ? (
+            <p className="text-xs font-semibold text-text">{Array.isArray(ucs) ? ucs.join(', ') : ucs}</p>
+          ) : (
+            <span className="text-text-muted italic text-[11px]">No UCs assigned</span>
+          )
+        }
         const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker'
         const primary = isFacilityRole ? row.facilityName : row.districtName
         const sub     = isFacilityRole ? row.districtName : null
@@ -193,7 +229,12 @@ export default function UserManagement() {
       key: 'actions',
       label: '',
       render: (row) => (
-        <div className="flex gap-1.5 justify-end">
+        <div className="flex gap-1.5 justify-end flex-wrap">
+          {row.role === 'uc_supervisor' && (
+            <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>
+              Reassign UCs
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}>
             <RotateCcw size={12} /> Reset Password
           </Button>
@@ -359,16 +400,17 @@ export default function UserManagement() {
           {/* Role selector */}
           <div>
             <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Role</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { value: 'district_supervisor',  label: 'District Supervisor' },
+                { value: 'uc_supervisor',        label: 'UC Supervisor' },
                 { value: 'facility_supervisor',  label: 'Facility Supervisor' },
                 { value: 'facility_worker',      label: 'Facility Worker' },
               ].map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setForm((f) => ({ ...f, role: value, districtId: '', facilityId: '' }))}
+                  onClick={() => setForm((f) => ({ ...f, role: value, districtId: '', facilityId: '', ucIds: [] }))}
                   className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center leading-snug ${
                     form.role === value
                       ? 'bg-primary text-white border-primary shadow-sm'
@@ -399,6 +441,37 @@ export default function UserManagement() {
             <Select id="sup-district" label="Assign District" options={districtOptions}
               placeholder="Select a district…"
               value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} required />
+          )}
+
+          {/* UC multi-select — for uc_supervisor */}
+          {form.role === 'uc_supervisor' && (
+            <div>
+              <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Assign Union Councils *</p>
+              {ucOptions.length === 0 ? (
+                <p className="text-xs text-text-muted italic">No active UCs available.</p>
+              ) : (
+                <div className="border border-surface-border rounded-xl overflow-y-auto max-h-48 divide-y divide-surface-border">
+                  {ucOptions.map((uc) => {
+                    const checked = form.ucIds.includes(uc.value)
+                    return (
+                      <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setForm((f) => ({
+                            ...f,
+                            ucIds: checked ? f.ucIds.filter((id) => id !== uc.value) : [...f.ucIds, uc.value]
+                          }))}
+                          className="accent-primary"
+                        />
+                        <span className="text-xs font-semibold text-text">{uc.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+              {form.ucIds.length === 0 && <p className="text-[11px] text-danger mt-1">Select at least one UC.</p>}
+            </div>
           )}
 
           {/* Facility picker — for facility_supervisor and facility_worker */}
@@ -447,6 +520,42 @@ export default function UserManagement() {
             <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
             <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
               {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reassign UCs Modal */}
+      <Modal open={!!reassignTarget} onClose={() => setReassignTarget(null)} title={`Reassign UCs — ${reassignTarget?.name ?? ''}`}>
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-text-muted">Select the union councils this supervisor should oversee.</p>
+          {ucOptions.length === 0 ? (
+            <p className="text-xs text-text-muted italic">No active UCs available.</p>
+          ) : (
+            <div className="border border-surface-border rounded-xl overflow-y-auto max-h-64 divide-y divide-surface-border">
+              {ucOptions.map((uc) => {
+                const checked = reassignUcIds.includes(uc.value)
+                return (
+                  <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setReassignUcIds((prev) =>
+                        checked ? prev.filter((id) => id !== uc.value) : [...prev, uc.value]
+                      )}
+                      className="accent-primary"
+                    />
+                    <span className="text-xs font-semibold text-text">{uc.label}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+          {reassignError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{reassignError}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setReassignTarget(null)}>Cancel</Button>
+            <Button onClick={() => reassignMutation.mutate()} disabled={reassignMutation.isPending || reassignUcIds.length === 0}>
+              {reassignMutation.isPending ? 'Saving…' : 'Save Assignments'}
             </Button>
           </div>
         </div>

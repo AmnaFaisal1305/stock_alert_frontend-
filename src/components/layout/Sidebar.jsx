@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin,
+  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -10,8 +10,9 @@ const NAV = {
   super_admin: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
     { to: '/super-admin/districts',  label: 'Districts',          icon: Map             },
-    { to: '/super-admin/ucs',        label: 'UCs',                icon: MapPin          },
+    { to: '/super-admin/ucs',        label: 'UC Management',      icon: MapPin          },
     { to: '/super-admin/facilities', label: 'Facilities',         icon: Building2       },
+    { to: '/super-admin/vaccines',   label: 'Vaccines',           icon: Syringe         },
     { to: '/super-admin/users',      label: 'User Management',    icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',          icon: ClipboardList   },
   ],
@@ -29,6 +30,11 @@ const NAV = {
     { to: '/facility/workers',          label: 'Users Info',         icon: UserCog         },
     { to: '/facility/audit-log',        label: 'Audit Log',          icon: ClipboardList   },
   ],
+  uc_supervisor: [
+    { to: '/uc/dashboard',           label: 'Dashboard',          icon: LayoutDashboard },
+    { to: '/uc/facilities',          label: 'Facilities',         icon: Building2       },
+    { to: '/uc/audit-log',           label: 'Audit Log',          icon: ClipboardList   },
+  ],
   facility_worker: [
     { to: '/worker/stock-entry',     label: 'Stock Entry',        icon: Syringe         },
     { to: '/worker/status',          label: 'Stock Status',       icon: LayoutDashboard },
@@ -38,6 +44,7 @@ const NAV = {
 const ROLE_SECTION_LABELS = {
   super_admin:         'Administration',
   district_supervisor: 'District',
+  uc_supervisor:       'UC Supervisor',
   facility_supervisor: 'Facility',
   facility_worker:     'My Workspace',
 }

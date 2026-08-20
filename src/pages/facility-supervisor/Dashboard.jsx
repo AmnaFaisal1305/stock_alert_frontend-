@@ -54,14 +54,11 @@ function RefreshClock({ dataUpdatedAt, isFetching }) {
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
 function StockCard({ row }) {
   const status = row.status
-  const noThreshold = row.minQuantity == null
+  const hasThreshold = row.criticalDoses != null || row.lowDoses != null
   const hasQty = row.quantity != null
-  const pct = !hasQty
-    ? 0
-    : !noThreshold
-      ? Math.min(Math.round((row.quantity / row.minQuantity) * 100), 100)
-      : 100
-  const dosesShort = !noThreshold && hasQty ? Math.max(0, row.minQuantity - row.quantity) : 0
+  const ref = row.lowDoses ?? row.criticalDoses ?? 1
+  const pct = !hasQty ? 0 : hasThreshold ? Math.min(Math.round((row.quantity / ref) * 100), 100) : 100
+  const dosesShort = hasThreshold && hasQty ? Math.max(0, (row.criticalDoses ?? 0) - row.quantity) : 0
 
   const cfg         = statusConfig(status)
   const borderColor = cfg.borderL
@@ -76,7 +73,7 @@ function StockCard({ row }) {
     >
       {/* Ring gauge */}
       <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1">
-        {noThreshold ? (
+        {!hasThreshold ? (
           <div className="w-[72px] h-[72px] rounded-full border-4 border-dashed border-surface-border flex items-center justify-center">
             <Settings size={18} className="text-text-muted" />
           </div>
@@ -105,7 +102,7 @@ function StockCard({ row }) {
         {/* Qty + threshold */}
         <div className="flex items-baseline gap-1">
           <span className="text-2xl font-bold text-text leading-none">{row.quantity ?? '—'}</span>
-          <span className="text-xs text-text-muted">/ {noThreshold ? '∞' : row.minQuantity} doses</span>
+          <span className="text-xs text-text-muted">/ {hasThreshold ? (row.lowDoses ?? row.criticalDoses) : '∞'} doses</span>
         </div>
 
         {/* Footer */}
@@ -114,8 +111,6 @@ function StockCard({ row }) {
             <span className={`font-bold ${status === 'critical' ? 'text-danger' : 'text-warning-dark'}`}>
               {dosesShort} doses short
             </span>
-          ) : noThreshold ? (
-            <span className="text-primary font-medium group-hover:underline">Set threshold →</span>
           ) : (
             <span />
           )}
@@ -195,9 +190,8 @@ const FEED_ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
   ADJUST_STOCK:     { label: 'Stock Correction',  pill: 'bg-primary/10 text-primary',      icon: RefreshCcw },
   CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
-  EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
+  EDIT_VACCINE:     { label: 'Vaccine Edited',    pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
   DELETE_VACCINE:   { label: 'Vaccine Deleted',   pill: 'bg-danger-bg text-danger',        icon: Trash2   },
-  SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark', icon: Settings },
   CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
   ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
   DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',       icon: UserX    },
@@ -215,10 +209,6 @@ function parseFeedEntry(action, details, vaccineNameById) {
     case 'ADJUST_STOCK': {
       const { vaccineId, delta } = details
       return { subject: vaccineName(vaccineId), quantity: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null, qtyType: delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral' }
-    }
-    case 'SET_THRESHOLD': {
-      const { vaccineId, minQuantity } = details
-      return { subject: vaccineName(vaccineId), quantity: minQuantity != null ? `Min: ${minQuantity}` : null, qtyType: 'neutral' }
     }
     case 'CREATE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
     case 'EDIT_VACCINE':     return { subject: details.oldName && (details.newName ?? details.name) ? `${details.oldName} → ${details.newName ?? details.name}` : (details.newName ?? details.name ?? vaccineName(details.vaccineId)), quantity: null, qtyType: null }
