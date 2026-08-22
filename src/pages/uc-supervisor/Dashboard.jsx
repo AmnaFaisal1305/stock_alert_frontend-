@@ -1,14 +1,32 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Building2, AlertCircle, ArrowRight } from 'lucide-react'
-import { getDashboard } from '../../lib/api'
+import {
+  AlertTriangle, AlertCircle, CheckCircle2, Building2,
+  ArrowRight, Search,
+} from 'lucide-react'
+import { getDashboard, getFacilities } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import StatCard from '../../components/shared/StatCard'
-import FacilityCard from '../../components/shared/FacilityCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
-import { facilityStatus } from '../../lib/status'
+import { facilityStatus, statusConfig } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
+
+function timeAgo(isoStr) {
+  if (!isoStr) return null
+  const diff = Date.now() - new Date(isoStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
 
 export default function UCSupervisorDashboard() {
+  const { user } = useAuth()
+  const [search, setSearch] = useState('')
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
@@ -16,28 +34,75 @@ export default function UCSupervisorDashboard() {
     staleTime: 10_000,
   })
 
-  const { facilities, counts } = useMemo(() => {
-    const facilities = (data?.summary?.byFacility ?? []).map((f) => ({
+  const { data: facilityData } = useQuery({
+    queryKey: ['facilities'],
+    queryFn: getFacilities,
+    staleTime: 30_000,
+  })
+
+  const facilityCount = data?.summary?.facilityCount ?? (data?.summary?.byFacility ?? []).length
+
+  const { byFacility, counts } = useMemo(() => {
+    const byFacility = (data?.summary?.byFacility ?? []).map((f) => ({
       id: f.facilityId, name: f.facilityName,
       status: facilityStatus(f.statusCounts), statusCounts: f.statusCounts,
     }))
     const counts = {
-      critical: facilities.filter((f) => f.status === 'critical').length,
-      low:      facilities.filter((f) => f.status === 'low').length,
-      adequate: facilities.filter((f) => f.status === 'adequate').length,
-      noData:   facilities.filter((f) => f.status === 'no_data').length,
+      critical: byFacility.filter((f) => f.status === 'critical').length,
+      low:      byFacility.filter((f) => f.status === 'low').length,
+      adequate: byFacility.filter((f) => f.status === 'adequate').length,
     }
-    return { facilities, counts }
+    return { byFacility, counts }
+  }, [data])
+
+  const statusByFacilityId = useMemo(
+    () => new Map(byFacility.map((f) => [f.id, f.status])),
+    [byFacility]
+  )
+
+  const facilities = facilityData?.facilities ?? []
+  const filteredFacilities = useMemo(() => {
+    return facilities.filter((f) =>
+      f.name?.toLowerCase().includes(search.toLowerCase()) ||
+      (f.ucName   ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (f.townName ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+  }, [facilities, search])
+
+  // Vaccine matrix
+  const { vaccineColumns, facilityRows } = useMemo(() => {
+    const rawRows = data?.facilities ?? []
+
+    const vaccineMap = new Map()
+    rawRows.forEach((r) => {
+      if (!vaccineMap.has(r.vaccineId)) {
+        vaccineMap.set(r.vaccineId, displayVaccineName(r.vaccineName))
+      }
+    })
+    const vaccineColumns = [...vaccineMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const facilityMap = new Map()
+    rawRows.forEach((r) => {
+      if (!facilityMap.has(r.facilityId)) {
+        facilityMap.set(r.facilityId, { id: r.facilityId, name: r.facilityName, vaccines: new Map() })
+      }
+      facilityMap.get(r.facilityId).vaccines.set(r.vaccineId, r)
+    })
+    const facilityRows = [...facilityMap.values()].sort((a, b) => a.name.localeCompare(b.name))
+
+    return { vaccineColumns, facilityRows }
   }, [data])
 
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 animate-pulse">
-        <div className="h-20 bg-slate-100 rounded-2xl" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+        <div className="h-24 bg-slate-100 rounded-2xl" />
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
         </div>
       </div>
@@ -55,22 +120,19 @@ export default function UCSupervisorDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">UC Dashboard</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            {facilities.length} facilit{facilities.length !== 1 ? 'ies' : 'y'} across your union councils
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-          </span>
-          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest hidden sm:block">Live · Auto-refreshing</span>
+      {/* Analytics banner */}
+      <div className="bg-primary rounded-2xl px-6 py-5">
+        <p className="text-sm text-white/70 font-semibold">UC Supervisor Dashboard</p>
+        <p className="text-white font-bold text-lg mt-1">{user.name}</p>
+        <div className="flex flex-wrap gap-3 mt-4">
+          <div className="bg-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+            <span className="text-xl font-bold text-white">{facilityCount}</span>
+            <span className="text-xs font-semibold text-white/70">Facilities</span>
+          </div>
         </div>
       </div>
 
+      {/* Alert banners */}
       {counts.critical > 0 && (
         <div className="bg-danger-bg border border-danger/20 rounded-xl px-5 py-4 flex items-center gap-4">
           <div className="relative flex-shrink-0">
@@ -87,7 +149,6 @@ export default function UCSupervisorDashboard() {
           </Link>
         </div>
       )}
-
       {counts.low > 0 && counts.critical === 0 && (
         <div className="bg-warning-bg border border-warning/20 rounded-xl px-5 py-4 flex items-center gap-4">
           <AlertTriangle size={20} className="text-warning flex-shrink-0" />
@@ -100,41 +161,144 @@ export default function UCSupervisorDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={AlertCircle} label="Critical" value={counts.critical}
+      {/* Performance summary — 3 stat cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard
+          label="Critical"
+          value={counts.critical}
+          icon={AlertCircle}
           colorClass={counts.critical > 0 ? 'text-danger' : 'text-text-muted'}
-          subtitle={counts.critical > 0 ? 'Immediate action' : 'All clear'} />
-        <StatCard icon={AlertTriangle} label="Low Stock" value={counts.low}
+          subtitle={counts.critical > 0 ? 'Requires immediate action' : 'All clear'}
+        />
+        <StatCard
+          label="Low Stock"
+          value={counts.low}
+          icon={AlertTriangle}
           colorClass={counts.low > 0 ? 'text-warning-dark' : 'text-text-muted'}
-          subtitle={counts.low > 0 ? 'Plan restocking' : 'Levels healthy'} />
-        <StatCard icon={CheckCircle2} label="Normal" value={counts.adequate}
-          colorClass="text-success-dark" subtitle={`${counts.adequate} running stable`} />
-        <StatCard icon={Building2} label="No Data" value={counts.noData}
-          colorClass="text-text-muted"
-          subtitle={counts.noData > 0 ? 'Not updated yet' : 'All reporting'} />
+          subtitle={counts.low > 0 ? 'Action suggested' : 'Levels healthy'}
+        />
+        <StatCard
+          label="Normal"
+          value={counts.adequate}
+          icon={CheckCircle2}
+          colorClass="text-success-dark"
+          subtitle={`${counts.adequate} running stable`}
+        />
       </div>
 
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Facilities</h2>
+      {/* Facility-Level Performance Table */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Facility Performance</h2>
           <Link to="/uc/facilities" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
             View All <ArrowRight size={11} />
           </Link>
         </div>
 
-        {facilities.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
-            <Building2 size={36} className="mx-auto mb-3 opacity-20" />
-            <p className="font-bold text-text">No facilities in your union councils</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {facilities.slice(0, 9).map((f) => (
-              <FacilityCard key={f.id} facility={f} />
+        <div className="relative w-72">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search facilities…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+          />
+        </div>
+
+        <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <div className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+            {['Facility', 'Town', 'UC', 'Supervisor', 'Last Activity', 'Status'].map((h) => (
+              <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{h}</span>
             ))}
           </div>
-        )}
+
+          {filteredFacilities.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-text-muted">
+              {search ? `No facilities match "${search}".` : 'No facilities found.'}
+            </div>
+          ) : (
+            filteredFacilities.map((f) => {
+              const stockStatus = statusByFacilityId.get(f.id)
+              const stockCfg    = stockStatus ? statusConfig(stockStatus) : null
+              const lastAct     = timeAgo(f.lastActivityAt)
+              return (
+                <div
+                  key={f.id}
+                  className={`grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors border-l-4 ${
+                    stockStatus === 'critical' ? 'border-l-danger' : stockStatus === 'low' ? 'border-l-warning' : 'border-l-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
+                    <p className="font-bold text-text text-sm truncate">{f.name}</p>
+                  </div>
+                  <p className="text-xs font-medium text-text-muted truncate">{f.townName ?? '—'}</p>
+                  <p className="text-xs font-medium text-text-muted truncate">{f.ucName ?? '—'}</p>
+                  <p className="text-xs font-medium text-text truncate">{f.facilitySupervisorName ?? <span className="text-text-muted italic">Unstaffed</span>}</p>
+                  <p className="text-xs text-text-muted font-medium">{lastAct ?? <span className="italic">Never</span>}</p>
+                  <div>
+                    {stockCfg ? (
+                      <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full ${stockCfg.bg} ${stockCfg.text}`}>
+                        {stockCfg.label}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-text-muted">—</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
+
+      {/* Vaccine matrix */}
+      {vaccineColumns.length > 0 && facilityRows.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Live Stock &amp; Consumption</h2>
+          <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse" style={{ minWidth: `${200 + vaccineColumns.length * 150}px` }}>
+                <thead>
+                  <tr className="bg-slate-50 border-b border-surface-border">
+                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-slate-50 z-10">
+                      Facility
+                    </th>
+                    {vaccineColumns.map((v) => (
+                      <th key={v.id} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-center whitespace-nowrap" dir="rtl">
+                        {v.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-border">
+                  {facilityRows.map((fRow) => (
+                    <tr key={fRow.id} className="hover:bg-slate-50/40 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-white z-10">
+                        {fRow.name}
+                      </td>
+                      {vaccineColumns.map((v) => {
+                        const cell = fRow.vaccines.get(v.id)
+                        if (!cell) return <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-slate-50/50">—</td>
+                        const cfg = statusConfig(cell.status)
+                        return (
+                          <td key={v.id} className={`px-4 py-3 text-center ${cfg.bg}/30`}>
+                            <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>
+                            {cell.consumed != null && (
+                              <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

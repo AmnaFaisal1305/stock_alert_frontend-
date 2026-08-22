@@ -36,6 +36,7 @@ const WorkerStatusView      = lazy(() => import('./pages/facility-worker/StatusV
 
 const UCSupervisorDashboard  = lazy(() => import('./pages/uc-supervisor/Dashboard'))
 const UCSupervisorFacilities = lazy(() => import('./pages/uc-supervisor/Facilities'))
+const UCSupervisorUsers      = lazy(() => import('./pages/uc-supervisor/Users'))
 const UCSupervisorAuditLog   = lazy(() => import('./pages/uc-supervisor/AuditLog'))
 
 const SuperAdminVaccines     = lazy(() => import('./pages/super-admin/VaccineManagement'))
@@ -115,6 +116,7 @@ export default function App() {
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
                 <Route path="/uc/facilities"         element={<UCSupervisorFacilities />} />
                 <Route path="/uc/facilities/:id"     element={<FacilityDetail />} />
+                <Route path="/uc/users"              element={<UCSupervisorUsers />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />

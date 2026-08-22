@@ -3,12 +3,11 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle, AlertCircle, Syringe, CheckCircle2,
-  RefreshCw, Users, PackagePlus, Clock, Activity,
+  RefreshCw, PackagePlus, Clock, Activity,
   ArrowRight, Settings, UserCog,
-  Package, Tag, UserPlus, ArrowUp, ArrowDown, UserX, UserCheck, KeyRound,
-  RefreshCcw, Trash2,
+  ArrowDown,
 } from 'lucide-react'
-import { getDashboard, getUsers, getAuditLog } from '../../lib/api'
+import { getDashboard, getUsers, getAuditLog, getVaccines } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
@@ -52,7 +51,7 @@ function RefreshClock({ dataUpdatedAt, isFetching }) {
 }
 
 // ─── Vaccine Card ─────────────────────────────────────────────────────────────
-function StockCard({ row }) {
+function StockCard({ row, dosesPerVial }) {
   const status = row.status
   const hasThreshold = row.criticalDoses != null || row.lowDoses != null
   const hasQty = row.quantity != null
@@ -104,6 +103,11 @@ function StockCard({ row }) {
           <span className="text-2xl font-bold text-text leading-none">{row.quantity ?? '—'}</span>
           <span className="text-xs text-text-muted">/ {hasThreshold ? (row.lowDoses ?? row.criticalDoses) : '∞'} doses</span>
         </div>
+        {dosesPerVial != null && row.quantity != null && (
+          <p className="text-[11px] text-text-muted font-medium">
+            {Math.round(row.quantity / dosesPerVial)} vials
+          </p>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 text-xs">
@@ -185,51 +189,20 @@ function AlertBanner({ criticalCount, lowCount, noDataCount, healthyCount, total
 
 
 
-// ─── Activity Feed ─────────────────────────────────────────────────────────────
-const FEED_ACTION_META = {
-  STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/10 text-primary',      icon: Package  },
-  ADJUST_STOCK:     { label: 'Stock Correction',  pill: 'bg-primary/10 text-primary',      icon: RefreshCcw },
-  CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark', icon: Syringe  },
-  EDIT_VACCINE:     { label: 'Vaccine Edited',    pill: 'bg-surface-alt text-text-muted',  icon: Tag      },
-  DELETE_VACCINE:   { label: 'Vaccine Deleted',   pill: 'bg-danger-bg text-danger',        icon: Trash2   },
-  CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/10 text-primary',      icon: UserPlus },
-  ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark', icon: UserCheck },
-  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger',       icon: UserX    },
-  RESET_PASSWORD:   { label: 'Password Reset',    pill: 'bg-surface-alt text-text-muted',  icon: KeyRound },
-}
-
-function parseFeedEntry(action, details, vaccineNameById) {
-  if (!details) return { subject: null, quantity: null, qtyType: null }
-  const vaccineName = (id) => vaccineNameById?.[id] ?? details.vaccineName ?? null
-  switch (action) {
-    case 'STOCK_ENTRY': {
-      const { vaccineId, quantity, entryType } = details
-      return { subject: vaccineName(vaccineId), quantity: quantity != null ? `${quantity} doses` : null, qtyType: entryType === 'used' ? 'out' : 'in' }
-    }
-    case 'ADJUST_STOCK': {
-      const { vaccineId, delta } = details
-      return { subject: vaccineName(vaccineId), quantity: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null, qtyType: delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral' }
-    }
-    case 'CREATE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
-    case 'EDIT_VACCINE':     return { subject: details.oldName && (details.newName ?? details.name) ? `${details.oldName} → ${details.newName ?? details.name}` : (details.newName ?? details.name ?? vaccineName(details.vaccineId)), quantity: null, qtyType: null }
-    case 'DELETE_VACCINE':   return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
-    case 'CREATE_USER':      return { subject: details.email ?? null, quantity: null, qtyType: null }
-    default:                 return { subject: null, quantity: null, qtyType: null }
-  }
-}
-
+// ─── Activity Feed (worker dose usage only) ───────────────────────────────────
 function ActivityFeed({ logs, vaccineNameById }) {
-  const entries = logs ?? []
+  const entries = (logs ?? []).filter(
+    (l) => l.actorRole === 'facility_worker' && l.details?.entryType === 'used'
+  )
 
   return (
     <div className="bg-surface rounded-xl border border-surface-border overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Activity size={13} className="text-primary" />
           </div>
-          <h2 className="text-sm font-semibold text-text">Recent Activity</h2>
+          <h2 className="text-sm font-semibold text-text">Recent Usage Activity</h2>
         </div>
         <Link to="/facility/audit-log" className="text-xs text-primary hover:underline font-medium flex items-center gap-1">
           Full log <ArrowRight size={11} />
@@ -239,51 +212,36 @@ function ActivityFeed({ logs, vaccineNameById }) {
       {entries.length === 0 ? (
         <div className="text-center py-10 text-text-muted">
           <Activity size={28} className="mx-auto mb-2 opacity-20" />
-          <p className="text-sm font-medium">No activity recorded yet</p>
+          <p className="text-sm font-medium">No worker dose usage recorded yet</p>
         </div>
       ) : (
-      <>
-      {/* Column headers */}
-      <div className="grid grid-cols-[150px_1fr_100px_90px] gap-3 px-5 py-2 bg-surface-alt/70 border-b border-surface-border">
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</span>
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine / Subject</span>
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses</span>
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">When</span>
-      </div>
-
-      {/* Rows */}
-      <div className="divide-y divide-surface-border">
-        {entries.map((entry, i) => {
-          const meta    = FEED_ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-surface-alt text-text-muted', icon: Activity }
-          const IconCmp = meta.icon
-          const { subject, quantity, qtyType } = parseFeedEntry(entry.action, entry.details, vaccineNameById)
-          const qtyColor = qtyType === 'in' ? 'text-success-dark' : qtyType === 'out' ? 'text-warning-dark' : 'text-text-muted'
-
-          return (
-            <div key={i} className="grid grid-cols-[150px_1fr_100px_90px] gap-3 items-center px-5 py-2.5 hover:bg-surface-alt/40 transition-colors">
-              <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold w-fit ${meta.pill}`}>
-                <IconCmp size={11} />
-                {meta.label}
-              </span>
-              <p className="text-sm font-medium text-text truncate">{subject ?? <span className="text-text-muted text-xs italic">—</span>}</p>
-              {quantity ? (
-                <div className={`flex items-center gap-1 text-xs font-semibold ${qtyColor}`}>
-                  {qtyType === 'in'  && <ArrowUp   size={11} />}
-                  {qtyType === 'out' && <ArrowDown  size={11} />}
-                  {quantity}
+        <>
+          <div className="grid grid-cols-[1fr_1fr_100px_90px] gap-3 px-5 py-2 bg-surface-alt/70 border-b border-surface-border">
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Worker</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses Used</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">When</span>
+          </div>
+          <div className="divide-y divide-surface-border">
+            {entries.map((entry, i) => {
+              const vacName = vaccineNameById?.[entry.details?.vaccineId] ?? '—'
+              return (
+                <div key={i} className="grid grid-cols-[1fr_1fr_100px_90px] gap-3 items-center px-5 py-2.5 hover:bg-surface-alt/40 transition-colors">
+                  <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
+                  <p className="text-sm font-medium text-text truncate" dir="rtl">{vacName}</p>
+                  <div className="flex items-center gap-1 text-xs font-semibold text-danger">
+                    <ArrowDown size={11} />
+                    {entry.details?.quantity ?? '—'} doses
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-text-muted">
+                    <Clock size={10} className="flex-shrink-0" />
+                    {timeAgo(entry.createdAt)}
+                  </div>
                 </div>
-              ) : (
-                <span className="text-xs text-text-muted">—</span>
-              )}
-              <div className="flex items-center gap-1 text-xs text-text-muted">
-                <Clock size={10} className="flex-shrink-0" />
-                {timeAgo(entry.createdAt)}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      </>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )
@@ -310,17 +268,23 @@ export default function FacilityDashboard() {
     refetchInterval: 15_000,
     staleTime: 10_000,
   })
-  const { data: userData  } = useQuery({ queryKey: ['users'],     queryFn: getUsers    })
-  const { data: auditData } = useQuery({ queryKey: ['audit-log', 5], queryFn: () => getAuditLog({ limit: 5 }) })
+  const { data: userData    } = useQuery({ queryKey: ['users'],     queryFn: getUsers    })
+  const { data: vaccineData } = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
+  const { data: auditData   } = useQuery({ queryKey: ['audit-log', 'usage', 10], queryFn: () => getAuditLog({ limit: 10, feed: 'usage' }) })
+
+  const dosesPerVialById = useMemo(
+    () => Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, v.dosesPerVial])),
+    [vaccineData]
+  )
 
   const {
     rows, vaccineNameById, facilityName, districtName,
     criticalCount, lowCount, noDataCount, healthyCount, activeWorkers,
     urgentRows, healthyRows, allLogs,
   } = useMemo(() => {
-    const rawRows       = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
+    const rawRows         = (data?.facilities ?? []).filter((r) => r.facilityId === user.facilityId)
     const vaccineNameById = Object.fromEntries(rawRows.map((r) => [r.vaccineId, displayVaccineName(r.vaccineName)]))
-    const rows          = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
+    const rows            = [...rawRows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
     return {
       rows,
       vaccineNameById,
@@ -401,12 +365,12 @@ export default function FacilityDashboard() {
             subtitle={lowCount > 0 ? 'Plan restocking soon' : 'Levels healthy'}
           />
           <StatCard
-            icon={CheckCircle2} label="OK" value={healthyCount}
+            icon={CheckCircle2} label="Normal" value={healthyCount}
             colorClass="text-success-dark"
             subtitle={`${healthyCount} running stable`}
           />
           <StatCard
-            icon={Syringe} label="No Data" value={noDataCount}
+            icon={Syringe} label="Stock Not Updated" value={noDataCount}
             colorClass={noDataCount > 0 ? 'text-text-muted' : 'text-text-muted'}
             subtitle={noDataCount > 0 ? 'No stock recorded yet' : 'All vaccines reporting'}
           />
@@ -430,7 +394,7 @@ export default function FacilityDashboard() {
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {urgentRows.map((row) => (
-              <StockCard key={`urgent-${row.facilityId}-${row.vaccineId}`} row={row} />
+              <StockCard key={`urgent-${row.facilityId}-${row.vaccineId}`} row={row} dosesPerVial={dosesPerVialById[row.vaccineId]} />
             ))}
           </div>
         </div>
@@ -446,7 +410,7 @@ export default function FacilityDashboard() {
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {healthyRows.map((row) => (
-              <StockCard key={`ok-${row.facilityId}-${row.vaccineId}`} row={row} />
+              <StockCard key={`ok-${row.facilityId}-${row.vaccineId}`} row={row} dosesPerVial={dosesPerVialById[row.vaccineId]} />
             ))}
           </div>
         </div>
@@ -461,6 +425,33 @@ export default function FacilityDashboard() {
           <Link to="/facility/thresholds" className="inline-flex items-center gap-1.5 mt-4 text-sm text-primary font-semibold hover:underline">
             <Settings size={14} /> Configure Vaccines
           </Link>
+        </div>
+      )}
+
+      {/* ── Vaccine Consumption ── */}
+      {!isLoading && !isError && rows.some((r) => r.consumed) && (
+        <div className="flex flex-col gap-3">
+          <SectionHeading icon={Activity} label="Vaccine Consumption" color="text-text-muted" />
+          <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm">
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Current Stock</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Vials Consumed</span>
+            </div>
+            {rows.map((row) => {
+              const dpv = dosesPerVialById[row.vaccineId]
+              const vialsConsumed = dpv && row.consumed ? Math.round(row.consumed / dpv) : null
+              return (
+                <div key={row.vaccineId} className="grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60">
+                  <p className="text-sm font-semibold text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
+                  <p className="text-sm font-bold text-text text-right tabular-nums">{row.quantity ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
+                  <p className="text-sm font-bold text-warning-dark text-right tabular-nums">{row.consumed ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
+                  <p className="text-sm font-medium text-text-muted text-right tabular-nums">{vialsConsumed != null ? `${vialsConsumed} vials` : '—'}</p>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Syringe } from 'lucide-react'
 
 const SLIDE_DURATION = 5000
 
@@ -110,27 +109,17 @@ export default function HeroCarousel({ images }) {
 
       {/* Bottom-anchored overlay content */}
       <div className="absolute bottom-0 left-0 right-0 px-10 pb-10">
-        {/* Icon + tagline */}
-        <div className="flex items-center gap-2 mb-3">
-          <Syringe size={16} className="text-white/70 flex-shrink-0" aria-hidden="true" />
-          <span className="text-white/80 text-sm font-medium leading-snug">
-            Cold chain integrity, always monitored
-          </span>
-        </div>
+        {/* Main tagline */}
+        <p className="text-white font-bold text-base leading-snug mb-1">
+          Piloting Stock Management &amp; Alert System Expansion
+        </p>
+        <p className="text-white/80 text-sm font-medium mb-3">
+          To The Facility Level in Sindh
+        </p>
 
-        {/* Status pills */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <span className="bg-akuh-navy text-white text-xs font-semibold px-3 py-1 rounded-full">
-            Real-time vaccine stock visibility
-          </span>
-          <span className="bg-akuh-maroon text-white text-xs font-semibold px-3 py-1 rounded-full">
-            Alerts before you run out
-          </span>
-        </div>
-
-        {/* Network attribution */}
-        <p className="text-white/40 text-[11px] mb-5">
-          Aga Khan University Hospital network
+        {/* Sub label */}
+        <p className="text-white/50 text-[11px] mb-5 uppercase tracking-wider font-semibold">
+          Sprint 02 Digital Intervention
         </p>
 
         {/* Dot indicators */}

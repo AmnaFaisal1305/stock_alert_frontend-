@@ -140,6 +140,9 @@ export default function StockRegister() {
                     <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left border-r border-surface-border whitespace-nowrap align-middle">
                       Date &amp; Time
                     </th>
+                    <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left border-r border-surface-border whitespace-nowrap align-middle">
+                      Entry Type
+                    </th>
                     <th colSpan={4} className="text-[10px] font-bold text-primary uppercase tracking-widest px-4 py-2 text-center border-r border-surface-border border-b border-surface-border">
                       Article Particulars
                     </th>
@@ -168,7 +171,7 @@ export default function StockRegister() {
                       Received
                     </th>
                     <th className="text-[10px] font-bold text-danger uppercase tracking-widest px-4 py-2 text-center bg-danger-bg/20 whitespace-nowrap">
-                      Issued
+                      Consumed
                     </th>
                     <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-center border-r border-surface-border whitespace-nowrap">
                       Balance
@@ -179,12 +182,21 @@ export default function StockRegister() {
                 <tbody className="divide-y divide-surface-border">
                   {entries.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-14 text-center text-sm text-text-muted">
+                      <td colSpan={10} className="px-4 py-14 text-center text-sm text-text-muted">
                         No stock entries recorded for this vaccine yet.
                       </td>
                     </tr>
                   ) : (
-                    entries.map((row, i) => (
+                    entries.map((row, i) => {
+                      const entryTypeMeta = (() => {
+                        switch (row.entryType) {
+                          case 'received':  return { label: 'Received', cls: 'bg-success-bg text-success-dark' }
+                          case 'used':      return { label: 'Consumed', cls: 'bg-danger-bg text-danger' }
+                          case 'returned':  return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }
+                          default:          return { label: 'Corrected', cls: 'bg-slate-100 text-text-muted' }
+                        }
+                      })()
+                      return (
                       <tr key={i} className="hover:bg-slate-50/40 transition-colors">
 
                         {/* Date */}
@@ -199,6 +211,13 @@ export default function StockRegister() {
                               hour: 'numeric', minute: '2-digit', hour12: true,
                             })}
                           </p>
+                        </td>
+
+                        {/* Entry Type */}
+                        <td className="px-4 py-3 border-r border-surface-border">
+                          <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded ${entryTypeMeta.cls}`}>
+                            {entryTypeMeta.label}
+                          </span>
                         </td>
 
                         {/* Manufacturer */}
@@ -250,7 +269,8 @@ export default function StockRegister() {
                         </td>
 
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
 

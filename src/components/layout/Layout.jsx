@@ -6,7 +6,7 @@ export default function Layout({ children }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-surface-alt">
       <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <TopBar onMenuClick={() => setMobileNavOpen(true)} />

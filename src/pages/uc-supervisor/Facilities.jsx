@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Search, ArrowRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Building2, Search } from 'lucide-react'
 import { getFacilities, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import StatusBadge from '../../components/shared/StatusBadge'
-import Badge from '../../components/ui/Badge'
 
 export default function UCSupervisorFacilities() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -47,7 +45,7 @@ export default function UCSupervisorFacilities() {
 
       <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Facilities</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">Vaccine Performance</h1>
           <p className="text-sm text-white/70 mt-0.5">
             {isLoading ? 'Loading…' : `${facilities.length} facilit${facilities.length !== 1 ? 'ies' : 'y'} in your union councils`}
           </p>
@@ -81,11 +79,10 @@ export default function UCSupervisorFacilities() {
 
       {!isLoading && !isError && (
         <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[2fr_1.5fr_1fr_80px_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+          <div className="grid grid-cols-[2fr_1.5fr_1fr_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">UC / Town</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Last Activity</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Stock</span>
           </div>
 
@@ -100,7 +97,7 @@ export default function UCSupervisorFacilities() {
               return (
                 <div
                   key={f.id}
-                  className="grid grid-cols-[2fr_1.5fr_1fr_80px_100px] px-5 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
+                  className="grid grid-cols-[2fr_1.5fr_1fr_100px] px-5 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Building2 size={14} className="text-text-muted/60 flex-shrink-0" />
@@ -118,7 +115,6 @@ export default function UCSupervisorFacilities() {
                   <span className="text-xs text-text-muted font-medium">
                     {lastAct ?? <span className="italic">Never</span>}
                   </span>
-                  <Badge type={f.isActive ? 'active' : 'inactive'} />
                   <div className="flex justify-end">
                     {stockStatus ? (
                       <StatusBadge status={stockStatus} />

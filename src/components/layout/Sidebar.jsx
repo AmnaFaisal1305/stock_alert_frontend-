@@ -17,10 +17,10 @@ const NAV = {
     { to: '/super-admin/audit-log',  label: 'Audit Log',          icon: ClipboardList   },
   ],
   district_supervisor: [
-    { to: '/district/dashboard',     label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/district/facilities',    label: 'Facilities',         icon: Building2       },
-    { to: '/district/users',         label: 'Users',              icon: Users           },
-    { to: '/district/audit-log',     label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/district/dashboard',     label: 'Dashboard Analytics',  icon: LayoutDashboard },
+    { to: '/district/facilities',    label: 'Vaccine Performance',  icon: Building2       },
+    { to: '/district/users',         label: 'Users',                icon: Users           },
+    { to: '/district/audit-log',     label: 'Audit Log',            icon: ClipboardList   },
   ],
   facility_supervisor: [
     { to: '/facility/dashboard',        label: 'Dashboard',          icon: LayoutDashboard },
@@ -32,7 +32,8 @@ const NAV = {
   ],
   uc_supervisor: [
     { to: '/uc/dashboard',           label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/uc/facilities',          label: 'Facilities',         icon: Building2       },
+    { to: '/uc/facilities',          label: 'Vaccine Performance', icon: Building2       },
+    { to: '/uc/users',               label: 'Users',              icon: Users           },
     { to: '/uc/audit-log',           label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
@@ -79,24 +80,25 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
       )}
 
       <aside className={[
-        'w-64 h-screen bg-white border-r border-surface-border flex flex-col flex-shrink-0',
+        'w-64 h-screen bg-epi-dark flex flex-col flex-shrink-0',
         'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-transform duration-300 ease-in-out',
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:shadow-none'
       ].join(' ')}>
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/images/akuh_logo.webp" alt="AKUH Logo" className="w-8 h-8 object-contain flex-shrink-0" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-white/20 bg-white">
+              <img src="/images/WhatsApp Image 2026-08-21 at 2.25.20 AM.jpeg" alt="Government of Sindh" className="w-full h-full object-cover" />
+            </div>
             <div>
-              <p className="font-extrabold text-text text-xs leading-none tracking-tight uppercase">Smart Stock Alert</p>
-              <p className="text-[9px] font-bold text-text-muted/70 mt-0.5 uppercase tracking-wider">AKUH Inventory</p>
+              <p className="font-extrabold text-white text-xs leading-snug tracking-tight">Stock Management &amp; Alert System</p>
             </div>
           </div>
           {mobileOpen && (
             <button
               onClick={onClose}
               aria-label="Close navigation"
-              className="lg:hidden text-text-muted hover:text-text p-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="lg:hidden text-white/60 hover:text-white p-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-epi-mint"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -107,7 +109,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
 
         {/* Nav */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto" aria-label="Main navigation">
-          <p className="text-[10px] font-bold text-text-muted/65 uppercase tracking-widest px-3 mb-4">
+          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-4">
             {sectionLabel}
           </p>
           <div className="space-y-1">
@@ -120,14 +122,14 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
                   [
                     'flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-150 group border-l-4',
                     isActive
-                      ? 'bg-primary/5 text-primary border-primary'
-                      : 'text-secondary border-transparent hover:bg-slate-50 hover:text-text',
+                      ? 'bg-epi-mint/15 text-epi-mint border-epi-mint/50'
+                      : 'text-white/70 border-transparent hover:bg-white/10 hover:text-white',
                   ].join(' ')
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon size={17} className={isActive ? 'text-primary' : 'text-text-muted group-hover:text-text transition-colors'} />
+                    <Icon size={17} className={isActive ? 'text-epi-mint' : 'text-white/40 group-hover:text-white transition-colors'} />
                     {label}
                   </>
                 )}
@@ -137,12 +139,12 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
         </nav>
 
         {/* Sign out */}
-        <div className="px-4 pb-6 pt-3 border-t border-surface-border">
+        <div className="px-4 pb-6 pt-3 border-t border-white/10">
           <button
             onClick={logout}
-            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-secondary hover:bg-danger/5 hover:text-danger transition-all duration-150 w-full border-l-4 border-transparent group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-white/60 hover:bg-danger/20 hover:text-red-300 transition-all duration-150 w-full border-l-4 border-transparent group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-epi-mint"
           >
-            <LogOut size={17} className="text-text-muted group-hover:text-danger transition-colors" />
+            <LogOut size={17} className="text-white/40 group-hover:text-red-300 transition-colors" />
             Sign Out
           </button>
         </div>

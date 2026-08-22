@@ -9,7 +9,8 @@ import {
 import { getDashboard, getDistricts } from '../../lib/api'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import StatCard from '../../components/shared/StatCard'
-import { facilityStatus, districtStatus } from '../../lib/status'
+import { facilityStatus, districtStatus, statusConfig } from '../../lib/status'
+import { displayVaccineName } from '../../lib/vaccineNames'
 
 // ── Design-token colours ───────────────────────────────────────────────────────
 const C = {
@@ -17,7 +18,7 @@ const C = {
   low:      '#F59E0B',
   critical: '#EF4444',
   no_data:  '#CBD5E1',
-  primary:  '#A30014',
+  primary:  '#006241',
 }
 
 // ── Tooltips ──────────────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export default function SuperAdminDashboard() {
   const townCount = data?.summary?.townCount ?? 0
   const ucCount   = data?.summary?.ucCount   ?? 0
 
-  const { counts, fStats, donutData, stackedBarData, districts } = useMemo(() => {
+  const { counts, fStats, donutData, stackedBarData, districts, vaccineColumns, matrixDistricts } = useMemo(() => {
     const districtNameById = Object.fromEntries(
       (districtData?.districts ?? []).map((d) => [d.id, d.name])
     )
@@ -211,7 +212,39 @@ export default function SuperAdminDashboard() {
         Critical: d.statusCounts.critical,
       }))
 
-    return { counts, fStats, donutData, stackedBarData, districts }
+    // Vaccine matrix — per-district, per-vaccine
+    const rawFacilityRows = data?.facilities ?? []
+    const vaccineMap = new Map()
+    rawFacilityRows.forEach((r) => {
+      if (!vaccineMap.has(r.vaccineId)) {
+        vaccineMap.set(r.vaccineId, displayVaccineName(r.vaccineName))
+      }
+    })
+    const vaccineColumns = [...vaccineMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const districtVaccineMap = new Map()
+    rawFacilityRows.forEach((r) => {
+      const key = r.districtId ?? 'unknown'
+      if (!districtVaccineMap.has(key)) {
+        const dObj = districtMap.get(key)
+        districtVaccineMap.set(key, {
+          districtId: key,
+          districtName: dObj?.name ?? r.districtName ?? key,
+          facilities: new Map(),
+        })
+      }
+      const dEntry = districtVaccineMap.get(key)
+      const fKey   = r.facilityId
+      if (!dEntry.facilities.has(fKey)) {
+        dEntry.facilities.set(fKey, { id: fKey, name: r.facilityName, vaccines: new Map() })
+      }
+      dEntry.facilities.get(fKey).vaccines.set(r.vaccineId, r)
+    })
+    const matrixDistricts = [...districtVaccineMap.values()].sort((a, b) => a.districtName.localeCompare(b.districtName))
+
+    return { counts, fStats, donutData, stackedBarData, districts, vaccineColumns, matrixDistricts }
   }, [data, districtData])
 
   if (isLoading) {
@@ -433,6 +466,69 @@ export default function SuperAdminDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Vaccine Live Stock & Consumption Matrix ─────────────────────── */}
+      {vaccineColumns.length > 0 && matrixDistricts.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Live Stock &amp; Consumption</h2>
+          <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse" style={{ minWidth: `${200 + vaccineColumns.length * 160}px` }}>
+                <thead>
+                  <tr className="bg-slate-50 border-b border-surface-border">
+                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-slate-50 z-10">
+                      Facility
+                    </th>
+                    {vaccineColumns.map((v) => (
+                      <th key={v.id} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-center whitespace-nowrap" dir="rtl">
+                        {v.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixDistricts.map((d) => (
+                    <>
+                      {/* District subheading row */}
+                      <tr key={`district-${d.districtId}`} className="bg-primary/5 border-y border-surface-border">
+                        <td
+                          colSpan={vaccineColumns.length + 1}
+                          className="px-4 py-2 text-[10px] font-bold text-primary uppercase tracking-widest sticky left-0 bg-primary/5"
+                        >
+                          {d.districtName}
+                        </td>
+                      </tr>
+                      {/* Facility rows */}
+                      {[...d.facilities.values()].sort((a, b) => a.name.localeCompare(b.name)).map((fRow) => (
+                        <tr key={fRow.id} className="border-b border-surface-border hover:bg-slate-50/40 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-white z-10">
+                            {fRow.name}
+                          </td>
+                          {vaccineColumns.map((v) => {
+                            const cell = fRow.vaccines.get(v.id)
+                            if (!cell) {
+                              return <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-slate-50/50">—</td>
+                            }
+                            const cfg = statusConfig(cell.status)
+                            return (
+                              <td key={v.id} className={`px-4 py-3 text-center ${cfg.bg}/30`}>
+                                <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>
+                                {cell.consumed != null && (
+                                  <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

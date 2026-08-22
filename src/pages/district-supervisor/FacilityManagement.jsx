@@ -1,22 +1,17 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, getUnionCouncils } from '../../lib/api'
+import { getFacilities, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
-import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 
 export default function FacilityManagement() {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', ucId: '' })
-  const [formError, setFormError] = useState('')
 
   const [renaming, setRenaming]       = useState(null)
   const [renameValue, setRenameValue] = useState('')
@@ -43,32 +38,6 @@ export default function FacilityManagement() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     staleTime: 15_000,
-  })
-
-  const { data: ucData } = useQuery({
-    queryKey: ['ucs'],
-    queryFn: () => getUnionCouncils(),
-    staleTime: 0,
-  })
-
-  const ucOptions = (ucData?.unionCouncils ?? [])
-    .filter((uc) => uc.isActive)
-    .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
-
-  const mutation = useMutation({
-    mutationFn: () => createFacility({
-      name: form.name,
-      ...(form.ucId ? { ucId: form.ucId } : {}),
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setOpen(false)
-      setForm({ name: '', ucId: '' })
-      setFormError('')
-      setToast({ message: 'Facility created successfully.', type: 'success' })
-    },
-    onError: (err) => setFormError(err.message),
   })
 
   const renameMutation = useMutation({
@@ -179,13 +148,6 @@ export default function FacilityManagement() {
       ),
     },
     {
-      key: 'isActive',
-      label: 'Status',
-      render: (row) => (
-        <Badge type={row.isActive ? 'active' : 'inactive'} />
-      ),
-    },
-    {
       key: 'actions',
       label: '',
       render: (row) => (
@@ -225,9 +187,6 @@ export default function FacilityManagement() {
             {isLoading && 'Loading facilities...'}
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus size={16} /> Add Facility
-        </Button>
       </div>
 
       {/* Search + Filter row */}
@@ -352,35 +311,6 @@ export default function FacilityManagement() {
           )}
         </div>
       )}
-
-      {/* Create modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Create Facility">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.name)) { setFormError('Names cannot contain < or > characters.'); return } mutation.mutate() }}>
-          <Input
-            id="fac-name"
-            label="Facility Name"
-            placeholder="e.g. South Health Clinic"
-            value={form.name}
-            onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormError('') }}
-            required
-          />
-          <Select
-            id="fac-uc"
-            label="Union Council (optional)"
-            options={ucOptions}
-            placeholder="Select a UC…"
-            value={form.ucId}
-            onChange={(e) => setForm({ ...form, ucId: e.target.value })}
-          />
-          {formError && <p className="text-xs text-danger">{formError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Creating…' : 'Create'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
 
       {/* Rename modal */}
       <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
