@@ -2,43 +2,44 @@ import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin, ShieldCheck,
+  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin,
+  ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV = {
   super_admin: [
-    { to: '/super-admin/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/super-admin/districts',  label: 'Districts',          icon: Map             },
-    { to: '/super-admin/ucs',        label: 'UC Management',      icon: MapPin          },
-    { to: '/super-admin/facilities', label: 'Facilities',         icon: Building2       },
-    { to: '/super-admin/vaccines',   label: 'Vaccines',           icon: Syringe         },
-    { to: '/super-admin/users',      label: 'User Management',    icon: Users           },
-    { to: '/super-admin/audit-log',  label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
+    { to: '/super-admin/districts',  label: 'Districts',       icon: Map             },
+    { to: '/super-admin/ucs',        label: 'UC Management',   icon: MapPin          },
+    { to: '/super-admin/facilities', label: 'Facilities',      icon: Building2       },
+    { to: '/super-admin/vaccines',   label: 'Vaccines',        icon: Syringe         },
+    { to: '/super-admin/users',      label: 'User Management', icon: Users           },
+    { to: '/super-admin/audit-log',  label: 'Audit Log',       icon: ClipboardList   },
   ],
   district_supervisor: [
-    { to: '/district/dashboard',     label: 'Dashboard Analytics',  icon: LayoutDashboard },
-    { to: '/district/facilities',    label: 'Vaccine Performance',  icon: Building2       },
-    { to: '/district/users',         label: 'Users',                icon: Users           },
-    { to: '/district/audit-log',     label: 'Audit Log',            icon: ClipboardList   },
+    { to: '/district/dashboard',  label: 'Dashboard Analytics', icon: LayoutDashboard },
+    { to: '/district/facilities', label: 'Vaccine Performance', icon: Building2       },
+    { to: '/district/users',      label: 'Users',               icon: Users           },
+    { to: '/district/audit-log',  label: 'Audit Log',           icon: ClipboardList   },
   ],
   facility_supervisor: [
-    { to: '/facility/dashboard',        label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/facility/thresholds',       label: 'Vaccines',           icon: Syringe         },
-    { to: '/facility/record-stock',     label: 'Record Stock',       icon: PackagePlus     },
-    { to: '/facility/stock-register',   label: 'Stock Register',     icon: BookOpen        },
-    { to: '/facility/workers',          label: 'Users Info',         icon: UserCog         },
-    { to: '/facility/audit-log',        label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/facility/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
+    { to: '/facility/thresholds',     label: 'Vaccines',      icon: Syringe         },
+    { to: '/facility/record-stock',   label: 'Record Stock',  icon: PackagePlus     },
+    { to: '/facility/stock-register', label: 'Stock Register',icon: BookOpen        },
+    { to: '/facility/workers',        label: 'Users Info',    icon: UserCog         },
+    { to: '/facility/audit-log',      label: 'Audit Log',     icon: ClipboardList   },
   ],
   uc_supervisor: [
-    { to: '/uc/dashboard',           label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/uc/facilities',          label: 'Vaccine Performance', icon: Building2       },
-    { to: '/uc/users',               label: 'Users',              icon: Users           },
-    { to: '/uc/audit-log',           label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/uc/dashboard',   label: 'Dashboard',          icon: LayoutDashboard },
+    { to: '/uc/facilities',  label: 'Vaccine Performance',icon: Building2       },
+    { to: '/uc/users',       label: 'Users',              icon: Users           },
+    { to: '/uc/audit-log',   label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
-    { to: '/worker/stock-entry',     label: 'Stock Entry',        icon: Syringe         },
-    { to: '/worker/status',          label: 'Stock Status',       icon: LayoutDashboard },
+    { to: '/worker/stock-entry', label: 'Stock Entry',  icon: Syringe         },
+    { to: '/worker/status',      label: 'Stock Status', icon: LayoutDashboard },
   ],
 }
 
@@ -50,24 +51,21 @@ const ROLE_SECTION_LABELS = {
   facility_worker:     'My Workspace',
 }
 
-const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
+const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollapse }) {
   const { user, logout } = useAuth()
-  const links       = NAV[user?.role] ?? []
+  const links        = NAV[user?.role] ?? []
   const sectionLabel = ROLE_SECTION_LABELS[user?.role] ?? 'Navigation'
 
-  // Close on Escape when mobile drawer is open
   useEffect(() => {
     if (!mobileOpen) return
-    function onKey(e) {
-      if (e.key === 'Escape') onClose()
-    }
+    function onKey(e) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [mobileOpen, onClose])
 
   return (
     <>
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden transition-opacity"
@@ -79,26 +77,63 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
         />
       )}
 
-      <aside className={[
-        'w-64 h-screen bg-epi-dark flex flex-col flex-shrink-0',
-        'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-transform duration-300 ease-in-out',
-        mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:shadow-none'
-      ].join(' ')}>
-        {/* Logo */}
-        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-white/20 bg-white">
-              <img src="/images/WhatsApp Image 2026-08-21 at 2.25.20 AM.jpeg" alt="Government of Sindh" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <p className="font-extrabold text-white text-xs leading-snug tracking-tight">Stock Management &amp; Alert System</p>
-            </div>
+      <aside
+        className={[
+          'h-screen bg-epi-dark flex flex-col flex-shrink-0 relative',
+          'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0',
+          'transition-all duration-300 ease-in-out',
+          collapsed ? 'w-[72px]' : 'w-64',
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+        ].join(' ')}
+      >
+        {/* ── Logo ─────────────────────────────────── */}
+        <div className={[
+          'border-b border-white/10 flex items-center flex-shrink-0 relative',
+          collapsed ? 'justify-center px-0 py-5 h-[72px]' : 'gap-3 px-5 py-5 h-[72px]',
+        ].join(' ')}>
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-white/20 bg-white">
+            <img
+              src="/images/WhatsApp Image 2026-08-21 at 2.25.20 AM.jpeg"
+              alt="Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
+
+          {!collapsed && (
+            <p className="font-extrabold text-white text-xs leading-snug tracking-tight flex-1 min-w-0">
+              Stock Management &amp; Alert System
+            </p>
+          )}
+
+          {/* Collapse toggle — desktop only, top-right of header */}
+          {!mobileOpen && (
+            <button
+              onClick={onToggleCollapse}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className={[
+                'hidden lg:flex items-center justify-center w-6 h-6 rounded-full',
+                'bg-white/10 hover:bg-white/20 text-white/50 hover:text-white',
+                'transition-all duration-150 flex-shrink-0',
+                collapsed ? '' : 'ml-auto',
+              ].join(' ')}
+            >
+              <ChevronLeft
+                size={13}
+                strokeWidth={2.5}
+                className={[
+                  'transition-transform duration-300',
+                  collapsed ? 'rotate-180' : '',
+                ].join(' ')}
+              />
+            </button>
+          )}
+
+          {/* Mobile close button */}
           {mobileOpen && (
             <button
               onClick={onClose}
               aria-label="Close navigation"
-              className="lg:hidden text-white/60 hover:text-white p-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-epi-mint"
+              className="ml-auto lg:hidden text-white/60 hover:text-white p-1 rounded-lg"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -107,46 +142,76 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose }) {
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto" aria-label="Main navigation">
-          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-4">
-            {sectionLabel}
-          </p>
-          <div className="space-y-1">
-            {links.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  [
-                    'flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-150 group border-l-4',
-                    isActive
-                      ? 'bg-epi-mint/15 text-epi-mint border-epi-mint/50'
-                      : 'text-white/70 border-transparent hover:bg-white/10 hover:text-white',
-                  ].join(' ')
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon size={17} className={isActive ? 'text-epi-mint' : 'text-white/40 group-hover:text-white transition-colors'} />
-                    {label}
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </div>
+        {/* ── Nav ──────────────────────────────────── */}
+        <nav
+          className={[
+            'flex-1 py-5 overflow-y-auto overflow-x-hidden flex flex-col gap-1',
+            collapsed ? 'px-2.5' : 'px-3',
+          ].join(' ')}
+          aria-label="Main navigation"
+        >
+          {/* Section label */}
+          {!collapsed && (
+            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-2">
+              {sectionLabel}
+            </p>
+          )}
+
+          {links.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={onClose}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                [
+                  'flex items-center rounded-xl text-sm font-semibold transition-all duration-150 group',
+                  collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5',
+                  isActive
+                    ? 'bg-white/15 text-white shadow-sm'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/90',
+                ].join(' ')
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={18}
+                    strokeWidth={isActive ? 2.2 : 1.8}
+                    className={[
+                      'flex-shrink-0 transition-colors duration-150',
+                      isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80',
+                    ].join(' ')}
+                  />
+                  {!collapsed && (
+                    <span className="truncate">{label}</span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
 
-        {/* Sign out */}
-        <div className="px-4 pb-6 pt-3 border-t border-white/10">
+        {/* ── Bottom: sign-out + collapse toggle ───── */}
+        <div className={[
+          'border-t border-white/10 py-4 flex flex-col gap-1',
+          collapsed ? 'px-2.5 items-center' : 'px-3',
+        ].join(' ')}>
+
+          {/* Sign out */}
           <button
             onClick={logout}
-            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-white/60 hover:bg-danger/20 hover:text-red-300 transition-all duration-150 w-full border-l-4 border-transparent group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-epi-mint"
+            title={collapsed ? 'Sign Out' : undefined}
+            className={[
+              'flex items-center rounded-xl text-sm font-semibold text-white/40',
+              'hover:bg-danger/20 hover:text-red-300 transition-all duration-150 group',
+              collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5 w-full',
+            ].join(' ')}
           >
-            <LogOut size={17} className="text-white/40 group-hover:text-red-300 transition-colors" />
-            Sign Out
+            <LogOut size={18} strokeWidth={1.8} className="flex-shrink-0 group-hover:text-red-300 transition-colors" />
+            {!collapsed && <span>Sign Out</span>}
           </button>
+
         </div>
       </aside>
     </>

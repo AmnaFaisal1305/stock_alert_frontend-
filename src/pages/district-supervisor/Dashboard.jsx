@@ -378,6 +378,11 @@ export default function DistrictDashboard() {
                             {cell.consumed != null && (
                               <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
                             )}
+                            {(cell.criticalDoses != null || cell.criticalVials != null) && (
+                              <p className="text-[10px] text-text-muted/70 mt-0.5">
+                                Min: {cell.criticalDoses ?? '—'} doses / {cell.criticalVials ?? '—'} vials
+                              </p>
+                            )}
                           </td>
                         )
                       })}

@@ -12,7 +12,8 @@ import { displayVaccineName } from '../../lib/vaccineNames'
 function VaccineCard({ v }) {
   const cfg        = statusConfig(v.status)
   const qty        = v.quantity ?? 0
-  const minQty     = v.minQuantity ?? 0
+  const minQty     = v.criticalDoses ?? v.minQuantity ?? 0
+  const minVials   = v.criticalVials ?? null
   const fillPct    = v.quantity == null ? 0 : (minQty > 0 ? Math.min((qty / minQty) * 100, 100) : 100)
   const hasMin     = minQty > 0
 
@@ -82,8 +83,11 @@ function VaccineCard({ v }) {
               {hasMin ? minQty : '—'}
             </p>
             <p className="text-[10px] text-text-muted font-medium mt-0.5">
-              {hasMin ? 'minimum doses' : 'not set'}
+              {hasMin ? 'doses' : 'not set'}
             </p>
+            {hasMin && minVials != null && (
+              <p className="text-[10px] text-text-muted font-medium">{minVials} vials</p>
+            )}
           </div>
         </div>
 
@@ -250,11 +254,12 @@ export default function FacilityDetail() {
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Level</span>
                 </div>
                 {facility.vaccines.map((v) => {
-                  const cfg    = statusConfig(v.status)
-                  const qty    = v.quantity ?? 0
-                  const minQty = v.minQuantity ?? 0
-                  const hasMin = minQty > 0
-                  const pct    = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / minQty) * 100), 100) : 100)
+                  const cfg      = statusConfig(v.status)
+                  const qty      = v.quantity ?? 0
+                  const minQty   = v.criticalDoses ?? v.minQuantity ?? 0
+                  const minVials = v.criticalVials ?? null
+                  const hasMin   = minQty > 0
+                  const pct      = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / minQty) * 100), 100) : 100)
                   return (
                     <div
                       key={v.vaccineId}
@@ -280,10 +285,16 @@ export default function FacilityDetail() {
                       </p>
 
                       {/* Threshold */}
-                      {hasMin
-                        ? <p className="text-sm text-text tabular-nums">{minQty} <span className="text-[10px] text-text-muted">doses</span></p>
-                        : <span className="text-xs text-text-muted italic">Not set</span>
-                      }
+                      {hasMin ? (
+                        <div>
+                          <p className="text-sm text-text tabular-nums">{minQty} <span className="text-[10px] text-text-muted">doses</span></p>
+                          {minVials != null && (
+                            <p className="text-[10px] text-text-muted">{minVials} vials</p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-text-muted italic">Not set</span>
+                      )}
 
                       {/* Level bar */}
                       <div className="flex items-center gap-2">

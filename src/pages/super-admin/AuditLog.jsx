@@ -429,14 +429,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         </div>
 
         {(() => {
-          const DISTRICT_HIDDEN = new Set([
-            'CREATE_VACCINE', 'EDIT_VACCINE', 'DELETE_VACCINE',
-            'CREATE_USER', 'ACTIVATE_USER', 'DEACTIVATE_USER', 'RESET_PASSWORD',
-            'CREATE_TOWN', 'EDIT_TOWN', 'DEACTIVATE_TOWN', 'ACTIVATE_TOWN',
-            'CREATE_UC', 'EDIT_UC', 'DEACTIVATE_UC', 'ACTIVATE_UC', 'ASSIGN_UC_SUPERVISOR',
-          ])
+          const DISTRICT_STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
           const visibleActions = Object.entries(ACTION_LABELS).filter(
-            ([k]) => !isDistrictSup || !DISTRICT_HIDDEN.has(k)
+            ([k]) => !isDistrictSup || DISTRICT_STOCK_ONLY.has(k)
           )
           return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
