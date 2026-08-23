@@ -93,7 +93,7 @@ function StockCard({ row, dosesPerVial }) {
               </div>
             )}
             {status === 'low' && <AlertTriangle size={12} className="flex-shrink-0 text-warning" />}
-            <p className="font-semibold text-text text-base truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
+            <p className="font-semibold text-text text-base leading-snug">{displayVaccineName(row.vaccineName)}</p>
           </div>
           <StatusBadge status={status} />
         </div>
@@ -228,7 +228,7 @@ function ActivityFeed({ logs, vaccineNameById }) {
               return (
                 <div key={i} className="grid grid-cols-[1fr_1fr_100px_90px] gap-3 items-center px-5 py-2.5 hover:bg-surface-alt/40 transition-colors">
                   <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
-                  <p className="text-sm font-medium text-text truncate" dir="rtl">{vacName}</p>
+                  <p className="text-sm font-medium text-text leading-snug">{vacName}</p>
                   <div className="flex items-center gap-1 text-xs font-semibold text-danger">
                     <ArrowDown size={11} />
                     {entry.details?.quantity ?? '—'} doses
@@ -444,7 +444,7 @@ export default function FacilityDashboard() {
               const vialsConsumed = dpv && row.consumed ? Math.round(row.consumed / dpv) : null
               return (
                 <div key={row.vaccineId} className="grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60">
-                  <p className="text-sm font-semibold text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
+                  <p className="text-sm font-semibold text-text leading-snug">{displayVaccineName(row.vaccineName)}</p>
                   <p className="text-sm font-bold text-text text-right tabular-nums">{row.quantity ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
                   <p className="text-sm font-bold text-warning-dark text-right tabular-nums">{row.consumed ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
                   <p className="text-sm font-medium text-text-muted text-right tabular-nums">{vialsConsumed != null ? `${vialsConsumed} vials` : '—'}</p>
