@@ -25,7 +25,7 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
             rows.map((row, i) => (
               <tr key={rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i)} className={`hover:bg-slate-50/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}>
                 {columns.map((col) => (
-                  <td key={col.key} className="px-6 py-4 whitespace-nowrap text-text font-medium">
+                  <td key={col.key} className="px-6 py-4 align-top text-text font-medium">
                     {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCcw, MapPin, Map, Search, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCcw, MapPin, Map, Search, ChevronDown, ChevronRight, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getTowns, createTown, updateTown, deleteTown, activateTown,
@@ -219,7 +219,8 @@ function UCsTab() {
     return (
       uc.name.toLowerCase().includes(q) ||
       (uc.townName ?? '').toLowerCase().includes(q) ||
-      (uc.districtName ?? '').toLowerCase().includes(q)
+      (uc.districtName ?? '').toLowerCase().includes(q) ||
+      (uc.ucSupervisorName ?? '').toLowerCase().includes(q)
     )
   })
 
@@ -232,6 +233,16 @@ function UCsTab() {
     )},
     { key: 'town', label: 'Town', render: (uc) => <span className="text-xs text-text-muted font-semibold">{uc.townName ?? '—'}</span> },
     { key: 'district', label: 'District', render: (uc) => <span className="text-xs text-text-muted">{uc.districtName ?? '—'}</span> },
+    { key: 'supervisor', label: 'UC Supervisor', render: (uc) => (
+      uc.ucSupervisorName ? (
+        <div className="flex items-center gap-1.5">
+          <User size={12} className="text-primary flex-shrink-0" />
+          <span className="text-xs font-semibold text-text">{uc.ucSupervisorName}</span>
+        </div>
+      ) : (
+        <span className="text-xs italic text-text-muted/60">Unassigned</span>
+      )
+    )},
     { key: 'status', label: 'Status', render: (uc) => <Badge type={uc.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', label: '', render: (uc) => (
       <div className="flex items-center gap-1 justify-end">

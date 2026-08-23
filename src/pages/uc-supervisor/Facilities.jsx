@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Search } from 'lucide-react'
+import { Building2, Search, ArrowRight } from 'lucide-react'
 import { getFacilities, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -115,17 +116,14 @@ export default function UCSupervisorFacilities() {
                   <span className="text-xs text-text-muted font-medium">
                     {lastAct ?? <span className="italic">Never</span>}
                   </span>
-                  <div className="flex justify-end">
-                    {stockStatus ? (
-                      <StatusBadge status={stockStatus} />
-                    ) : (
-                      <Link
-                        to={`/uc/facilities/${f.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-                      >
-                        View <ArrowRight size={11} />
-                      </Link>
-                    )}
+                  <div className="flex flex-col items-end gap-1.5">
+                    {stockStatus && <StatusBadge status={stockStatus} />}
+                    <Link
+                      to={`/uc/facilities/${f.id}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                    >
+                      View <ArrowRight size={10} />
+                    </Link>
                   </div>
                 </div>
               )

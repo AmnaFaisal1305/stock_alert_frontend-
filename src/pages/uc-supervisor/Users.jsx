@@ -26,7 +26,8 @@ export default function UCSupervisorUsers() {
     return users.filter((u) =>
       u.name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      (u.facilityName ?? '').toLowerCase().includes(q)
+      (u.facilityName ?? '').toLowerCase().includes(q) ||
+      (u.ucName ?? '').toLowerCase().includes(q)
     )
   }, [users, search])
 
@@ -58,6 +59,13 @@ export default function UCSupervisorUsers() {
       ),
     },
     {
+      key: 'ucName',
+      label: 'UC',
+      render: (row) => (
+        <span className="text-xs font-medium text-text">{row.ucName ?? '—'}</span>
+      ),
+    },
+    {
       key: 'isActive',
       label: 'Active',
       render: (row) => <Badge type={row.isActive ? 'active' : 'inactive'} />,
@@ -82,7 +90,7 @@ export default function UCSupervisorUsers() {
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by name, email or facility…"
+            placeholder="Search by name, email, facility or UC…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"

@@ -6,11 +6,10 @@ import {
   Clock, Package, Settings, Syringe, Tag,
   UserPlus, UserX, ClipboardList, KeyRound,
   UserCheck, Search, Shield, ArrowUp, ArrowDown, Users,
-  RefreshCcw, Trash2, ChevronLeft, ChevronRight, Calendar
+  RefreshCcw, Trash2, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import Select from '../../components/ui/Select'
-import Input from '../../components/ui/Input'
-import Button from '../../components/ui/Button'
+import DatePicker from '../../components/ui/DatePicker'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,16 +30,16 @@ function formatFullDate(isoStr) {
 }
 
 const ACTION_META = {
-  STOCK_ENTRY:      { label: 'Stock Entry',       pill: 'bg-primary/5 text-primary border-primary/10',      icon: Package  },
-  ADJUST_STOCK:     { label: 'Stock Correction',  pill: 'bg-primary/5 text-primary border-primary/10',      icon: RefreshCcw },
-  CREATE_VACCINE:   { label: 'Vaccine Added',     pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe  },
-  EDIT_VACCINE:     { label: 'Vaccine Renamed',   pill: 'bg-slate-50 text-text-muted border-slate-200',     icon: Tag      },
-  DELETE_VACCINE:   { label: 'Vaccine Deleted',   pill: 'bg-danger-bg text-danger border-danger/15',        icon: Trash2   },
-  SET_THRESHOLD:    { label: 'Threshold Updated', pill: 'bg-warning-bg text-warning-dark border-warning/15', icon: Settings },
-  CREATE_USER:      { label: 'Worker Added',      pill: 'bg-primary/5 text-primary border-primary/10',      icon: UserPlus },
-  ACTIVATE_USER:    { label: 'Worker Activated',  pill: 'bg-success-bg text-success-dark border-success/15', icon: UserCheck },
-  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger border-danger/15',       icon: UserX    },
-  RESET_PASSWORD:   { label: 'Password Reset',    pill: 'bg-slate-50 text-text-muted border-slate-200',     icon: KeyRound },
+  STOCK_ENTRY:      { label: 'Stock Entry',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Package   },
+  ADJUST_STOCK:     { label: 'Stock Correction',   pill: 'bg-primary/5 text-primary border-primary/10',       icon: RefreshCcw },
+  CREATE_VACCINE:   { label: 'Vaccine Added',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe   },
+  EDIT_VACCINE:     { label: 'Vaccine Renamed',    pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: Tag       },
+  DELETE_VACCINE:   { label: 'Vaccine Deleted',    pill: 'bg-danger-bg text-danger border-danger/15',         icon: Trash2    },
+  SET_THRESHOLD:    { label: 'Threshold Updated',  pill: 'bg-warning-bg text-warning-dark border-warning/15', icon: Settings  },
+  CREATE_USER:      { label: 'Worker Added',       pill: 'bg-primary/5 text-primary border-primary/10',       icon: UserPlus  },
+  ACTIVATE_USER:    { label: 'Worker Activated',   pill: 'bg-success-bg text-success-dark border-success/15', icon: UserCheck },
+  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger border-danger/15',         icon: UserX     },
+  RESET_PASSWORD:   { label: 'Password Reset',     pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound  },
 }
 
 function parseEntry(action, details, vaccineNameById) {
@@ -123,7 +122,7 @@ function EntryRow({ entry, vaccineNameById }) {
         {meta.label}
       </span>
 
-      <p className="text-sm font-semibold text-text truncate" title={subject ?? undefined}>
+      <p className="text-sm font-semibold text-text break-words"  title={subject ?? undefined}>
         {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
       </p>
 
@@ -145,72 +144,47 @@ function EntryRow({ entry, vaccineNameById }) {
   )
 }
 
-// ─── Pagination Component ──────────────────────────────────────────────────────
+// ─── Pagination ────────────────────────────────────────────────────────────────
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null
-
   return (
-    <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2">
-      <div className="flex flex-1 justify-between sm:hidden">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={currentPage === 1}
+    <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4">
+      <p className="text-xs text-text-muted font-semibold hidden sm:block">
+        Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
+        <span className="font-extrabold text-text">{totalPages}</span>
+      </p>
+      <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+        <button
           onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
         >
-          Previous
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={currentPage === totalPages}
+          <ChevronLeft size={16} />
+        </button>
+        {Array.from({ length: totalPages }).map((_, i) => {
+          const p = i + 1
+          return (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                p === currentPage
+                  ? 'bg-primary text-white shadow-sm shadow-primary/10'
+                  : 'text-text-muted hover:bg-white'
+              }`}
+            >
+              {p}
+            </button>
+          )
+        })}
+        <button
           onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
         >
-          Next
-        </Button>
-      </div>
-      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs text-text-muted font-semibold">
-            Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-            <span className="font-extrabold text-text">{totalPages}</span>
-          </p>
-        </div>
-        <div>
-          <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const p = i + 1
-              return (
-                <button
-                  key={p}
-                  onClick={() => onPageChange(p)}
-                  className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    p === currentPage
-                      ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                      : 'text-text-muted hover:bg-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              )
-            })}
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </nav>
-        </div>
-      </div>
+          <ChevronRight size={16} />
+        </button>
+      </nav>
     </div>
   )
 }
@@ -224,7 +198,6 @@ function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, set
 
   return (
     <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-      {/* Header */}
       <div className="px-5 py-4 bg-slate-50 border-b border-surface-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm border border-primary/20">
@@ -249,7 +222,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, set
         <div className="flex flex-col items-center gap-2 px-5 py-12 text-text-muted text-center bg-white">
           <ClipboardList size={32} className="opacity-20 flex-shrink-0" />
           <p className="text-sm font-bold text-text">No supervisor actions matched</p>
-          <p className="text-xs">Try adjusting your filtration criteria above.</p>
+          <p className="text-xs">Try adjusting your filter criteria above.</p>
         </div>
       ) : (
         <>
@@ -264,7 +237,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, set
   )
 }
 
-// ─── Worker Card (Stateful for Nested Pagination) ──────────────────────────────
+// ─── Worker Card ──────────────────────────────────────────────────────────────
 function WorkerCard({ worker, entries, vaccineNameById }) {
   const [workerPage, setWorkerPage] = useState(1)
   const workerName = worker.name ?? worker.email
@@ -274,7 +247,6 @@ function WorkerCard({ worker, entries, vaccineNameById }) {
 
   return (
     <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-      {/* Worker header */}
       <div className="px-5 py-4 bg-slate-50 border-b border-surface-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className={`w-9 h-9 rounded-xl ${avatarBg(workerName)} text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm`}>
@@ -328,7 +300,6 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search */}
       {workers.length > 0 && (
         <div className="relative w-80">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
@@ -342,7 +313,6 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
         </div>
       )}
 
-      {/* No workers */}
       {workers.length === 0 && (
         <div className="text-center py-14 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
           <Users size={36} className="mx-auto mb-3 opacity-20" />
@@ -351,26 +321,23 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
         </div>
       )}
 
-      {/* Search empty */}
       {workers.length > 0 && filteredWorkers.length === 0 && (
         <div className="text-center py-10 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
           <p className="text-sm font-semibold">No workers match "{search}"</p>
-          <button onClick={() => setSearch('')} className="text-xs text-primary font-bold hover:underline mt-1.5">Clear search criteria</button>
+          <button onClick={() => setSearch('')} className="text-xs text-primary font-bold hover:underline mt-1.5">
+            Clear search
+          </button>
         </div>
       )}
 
-      {/* Worker cards */}
-      {filteredWorkers.map((worker) => {
-        const entries = workerEntriesFn(worker)
-        return (
-          <WorkerCard
-            key={worker.id}
-            worker={worker}
-            entries={entries}
-            vaccineNameById={vaccineNameById}
-          />
-        )
-      })}
+      {filteredWorkers.map((worker) => (
+        <WorkerCard
+          key={worker.id}
+          worker={worker}
+          entries={workerEntriesFn(worker)}
+          vaccineNameById={vaccineNameById}
+        />
+      ))}
     </div>
   )
 }
@@ -381,7 +348,6 @@ export default function FacilitySupervisorAuditLog() {
   const [tab, setTab]       = useState('supervisor')
   const [search, setSearch] = useState('')
 
-  // Filters State
   const [actionFilter, setActionFilter]       = useState('')
   const [startDateFilter, setStartDateFilter] = useState('')
   const [endDateFilter, setEndDateFilter]     = useState('')
@@ -395,22 +361,18 @@ export default function FacilitySupervisorAuditLog() {
   const logs    = logData?.auditLog ?? []
   const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, displayVaccineName(v.name)]))
 
-  // Filtration logic helper
-  const filterEntries = (entriesList) => {
+  const hasFilters = !!(actionFilter || startDateFilter || endDateFilter)
+
+  function filterEntries(entriesList) {
     return entriesList.filter((entry) => {
-      // 1. Action filter
       if (actionFilter && entry.action !== actionFilter) return false
-      
-      // 2. Date filter (compare date portions ignoring timezone time)
       if (startDateFilter) {
         const entryTime = new Date(entry.createdAt).setHours(0,0,0,0)
-        const startTime = new Date(startDateFilter).setHours(0,0,0,0)
-        if (entryTime < startTime) return false
+        if (entryTime < new Date(startDateFilter).setHours(0,0,0,0)) return false
       }
       if (endDateFilter) {
         const entryTime = new Date(entry.createdAt).setHours(23,59,59,999)
-        const endTime = new Date(endDateFilter).setHours(23,59,59,999)
-        if (entryTime > endTime) return false
+        if (entryTime > new Date(endDateFilter).setHours(23,59,59,999)) return false
       }
       return true
     })
@@ -422,96 +384,49 @@ export default function FacilitySupervisorAuditLog() {
     logsByActorId[log.actorId].push(log)
   })
 
-  const rawSupervisorEntries = logsByActorId[user?.id] ?? []
-  const filteredSupervisorEntries = filterEntries(rawSupervisorEntries)
+  const filteredSupervisorEntries = filterEntries(logsByActorId[user?.id] ?? [])
 
   function getFilteredWorkerEntries(worker) {
-    const entries = logsByActorId[worker.id] ?? []
-    return filterEntries(entries)
+    return filterEntries(logsByActorId[worker.id] ?? [])
   }
 
   const workerTotal = workers.reduce((sum, w) => sum + getFilteredWorkerEntries(w).length, 0)
   const isLoading   = loadingUsers || loadingLog
 
+  function resetFilters() {
+    setActionFilter('')
+    setStartDateFilter('')
+    setEndDateFilter('')
+    setCurrentPage(1)
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
-      
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+
+      {/* Banner — matches admin style */}
+      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-text tracking-tight">Audit Log History</h1>
-          <p className="text-sm text-text-muted mt-0.5">Audit actions logged by you and vaccine doses logged by clinical workers</p>
+          <h1 className="text-xl font-bold text-white tracking-tight">Audit Log</h1>
+          <p className="text-sm text-white/70 mt-0.5">
+            Actions logged by you and stock entries recorded by your workers
+          </p>
         </div>
-      </div>
-
-      {/* Filter Options Panel */}
-      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-text-muted">
-          <Calendar size={14} className="text-primary" />
-          <h2 className="text-xs font-bold uppercase tracking-wider">Filter logs catalog</h2>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+          </span>
+          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest hidden sm:block">
+            Live · Auto-refreshing
+          </span>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select
-            id="action-filter"
-            label="Action Type"
-            placeholder="All Actions"
-            options={[
-              { value: 'STOCK_ENTRY', label: 'Stock Entry' },
-              { value: 'ADJUST_STOCK', label: 'Stock Correction' },
-              { value: 'CREATE_VACCINE', label: 'Vaccine Added' },
-              { value: 'EDIT_VACCINE', label: 'Vaccine Renamed' },
-              { value: 'DELETE_VACCINE', label: 'Vaccine Deleted' },
-              { value: 'SET_THRESHOLD', label: 'Threshold Updated' },
-              { value: 'CREATE_USER', label: 'Worker Added' },
-              { value: 'ACTIVATE_USER', label: 'Worker Activated' },
-              { value: 'DEACTIVATE_USER', label: 'Worker Deactivated' },
-              { value: 'RESET_PASSWORD', label: 'Password Reset' },
-            ]}
-            value={actionFilter}
-            onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
-          />
-
-          <Input
-            id="start-date"
-            label="Start Date"
-            type="date"
-            value={startDateFilter}
-            onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1) }}
-          />
-
-          <Input
-            id="end-date"
-            label="End Date"
-            type="date"
-            value={endDateFilter}
-            onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1) }}
-          />
-        </div>
-
-        {(actionFilter || startDateFilter || endDateFilter) && (
-          <div className="flex justify-end border-t border-slate-50 pt-3">
-            <button
-              type="button"
-              onClick={() => {
-                setActionFilter('')
-                setStartDateFilter('')
-                setEndDateFilter('')
-                setCurrentPage(1)
-              }}
-              className="text-xs text-primary font-bold hover:underline transition-all"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit">
         <button
           onClick={() => { setTab('supervisor'); setCurrentPage(1) }}
-          className={`flex items-center gap-2 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
             tab === 'supervisor'
               ? 'bg-white text-primary shadow-sm border border-slate-200'
               : 'text-text-muted hover:text-text'
@@ -529,7 +444,7 @@ export default function FacilitySupervisorAuditLog() {
         </button>
         <button
           onClick={() => { setTab('workers'); setSearch('') }}
-          className={`flex items-center gap-2 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
             tab === 'workers'
               ? 'bg-white text-primary shadow-sm border border-slate-200'
               : 'text-text-muted hover:text-text'
@@ -547,13 +462,66 @@ export default function FacilitySupervisorAuditLog() {
         </button>
       </div>
 
+      {/* Filter Panel */}
+      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full bg-primary/40" />
+            <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Filter Logs</h2>
+          </div>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-xs text-primary font-bold hover:underline transition-all"
+            >
+              Reset All
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Select
+            id="action-filter"
+            label="Action Type"
+            placeholder="All Actions"
+            options={[
+              { value: 'STOCK_ENTRY',     label: 'Stock Entry' },
+              { value: 'ADJUST_STOCK',    label: 'Stock Correction' },
+              { value: 'CREATE_USER',     label: 'Worker Added' },
+              { value: 'ACTIVATE_USER',   label: 'Worker Activated' },
+              { value: 'DEACTIVATE_USER', label: 'Worker Deactivated' },
+              { value: 'RESET_PASSWORD',  label: 'Password Reset' },
+            ]}
+            value={actionFilter}
+            onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
+          />
+
+          <DatePicker
+            id="start-date"
+            label="From Date"
+            value={startDateFilter}
+            max={endDateFilter || undefined}
+            onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1) }}
+          />
+
+          <DatePicker
+            id="end-date"
+            label="To Date"
+            value={endDateFilter}
+            min={startDateFilter || undefined}
+            onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1) }}
+          />
+        </div>
+      </div>
+
       {/* Skeleton */}
       {isLoading && (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-2xl border border-surface-border p-5 animate-pulse shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-xl bg-slate-100" />
+                <div className="w-9 h-9 rounded-xl bg-slate-100" />
                 <div className="h-4 bg-slate-100 rounded w-48" />
               </div>
               <div className="h-3 bg-slate-100 rounded w-full mt-2" />

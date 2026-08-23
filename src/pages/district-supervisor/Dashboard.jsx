@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle, AlertCircle, CheckCircle2, Building2,
-  User, MapPin, ArrowRight, Search,
+  User, MapPin, ArrowRight, Search, ChevronDown, Check, X, Layers,
 } from 'lucide-react'
 import { getDashboard, getFacilities, getTowns, getUnionCouncils } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -11,6 +11,143 @@ import StatCard from '../../components/shared/StatCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { facilityStatus, statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
+
+// ─── Filter Chip ──────────────────────────────────────────────────────────────
+function FilterChip({ icon: Icon, placeholder, options, value, onChange, disabled = false }) {
+  const [open, setOpen]   = useState(false)
+  const [pos,  setPos]    = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef        = useRef(null)
+  const dropdownRef       = useRef(null)
+  const selected          = options.find((o) => o.value === value)
+  const isActive          = !!value
+
+  function handleToggle() {
+    if (disabled) return
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (rect) setPos({ top: rect.bottom + 6, left: rect.left, width: Math.max(rect.width, 200) })
+    setOpen((o) => !o)
+  }
+
+  function handleClear(e) {
+    e.stopPropagation()
+    onChange({ target: { value: '' } })
+    setOpen(false)
+  }
+
+  function handleSelect(val) {
+    onChange({ target: { value: val } })
+    setOpen(false)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutside(e) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
+      ) setOpen(false)
+    }
+    function handleScroll() { setOpen(false) }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('scroll', handleScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [open])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        onClick={handleToggle}
+        className={[
+          'inline-flex items-center gap-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer select-none',
+          isActive
+            ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 pl-3.5 pr-2.5 py-2'
+            : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text shadow-sm pl-3.5 pr-3 py-2',
+          disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : '',
+          open && !isActive ? 'border-primary ring-2 ring-primary/10 text-text' : '',
+        ].join(' ')}
+      >
+        <Icon size={13} className={isActive ? 'opacity-90' : 'opacity-60'} />
+        <span className={isActive ? 'text-white' : ''}>
+          {selected ? selected.label : placeholder}
+        </span>
+        {isActive ? (
+          <span
+            onClick={handleClear}
+            className="ml-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-white/20 hover:bg-white/40 transition-colors cursor-pointer"
+          >
+            <X size={10} strokeWidth={2.5} />
+          </span>
+        ) : (
+          <ChevronDown size={13} className={['opacity-60 transition-transform duration-200', open ? 'rotate-180' : ''].join(' ')} />
+        )}
+      </button>
+
+      {open && (
+        <div
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+        >
+          {/* dropdown header */}
+          <div className="px-3.5 pt-3 pb-2 border-b border-slate-100">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+              {options.length} {placeholder.replace('All ', '')}
+            </p>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            {options.length === 0 ? (
+              <p className="px-4 py-3 text-xs text-text-muted italic">No options available</p>
+            ) : (
+              options.map((opt) => {
+                const isSel = opt.value === value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleSelect(opt.value)}
+                    className={[
+                      'w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors cursor-pointer group',
+                      isSel ? 'bg-primary/5' : 'hover:bg-slate-50',
+                    ].join(' ')}
+                  >
+                    {/* icon badge */}
+                    <div className={[
+                      'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                      isSel
+                        ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                        : 'bg-slate-100 text-text-muted group-hover:bg-primary/10 group-hover:text-primary',
+                    ].join(' ')}>
+                      <Icon size={13} />
+                    </div>
+
+                    {/* label + sublabel */}
+                    <div className="flex-1 min-w-0">
+                      <p className={['text-sm font-semibold truncate', isSel ? 'text-primary' : 'text-text'].join(' ')}>
+                        {opt.label}
+                      </p>
+                      {opt.sublabel && (
+                        <p className="text-[10px] text-text-muted truncate mt-0.5">{opt.sublabel}</p>
+                      )}
+                    </div>
+
+                    {isSel && <Check size={13} className="text-primary flex-shrink-0" />}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 function timeAgo(isoStr) {
   if (!isoStr) return null
@@ -101,7 +238,7 @@ export default function DistrictDashboard() {
   const ucCount       = data?.summary?.ucCount       ?? 0
   const facilityCount = data?.summary?.facilityCount ?? (data?.summary?.byFacility ?? []).length
 
-  const districtName = data?.summary?.districtName ?? null
+  const districtName = data?.summary?.districtName ?? user?.districtName ?? null
   const province     = data?.summary?.province     ?? null
 
   const { byFacility, counts } = useMemo(() => {
@@ -213,29 +350,28 @@ export default function DistrictDashboard() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <select
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <FilterChip
+          icon={MapPin}
+          placeholder="All Towns"
+          options={townOptions.map((t) => ({ value: t.id, label: t.name }))}
           value={townFilter}
           onChange={(e) => { setTownFilter(e.target.value); setUcFilter('') }}
-          className="text-sm border border-surface-border rounded-xl px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
-        >
-          <option value="">All Towns</option>
-          {townOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select
+        />
+        <FilterChip
+          icon={Layers}
+          placeholder="All Union Councils"
+          options={ucOptions.map((uc) => ({ value: uc.id, label: uc.name, sublabel: uc.townName ?? undefined }))}
           value={ucFilter}
           onChange={(e) => setUcFilter(e.target.value)}
-          className="text-sm border border-surface-border rounded-xl px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
-        >
-          <option value="">All Union Councils</option>
-          {ucOptions.map((uc) => <option key={uc.id} value={uc.id}>{uc.name}</option>)}
-        </select>
+          disabled={ucOptions.length === 0}
+        />
         {(townFilter || ucFilter) && (
           <button
             onClick={() => { setTownFilter(''); setUcFilter('') }}
-            className="text-xs font-bold text-primary hover:underline"
+            className="text-xs font-bold text-text-muted hover:text-primary transition-colors px-1"
           >
-            Reset Filters
+            Clear all
           </button>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RotateCcw, UserX, Users, UserCheck, CheckCircle2 } from 'lucide-react'
+import { RotateCcw, UserX, Users, UserCheck, CheckCircle2, MapPin } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, deactivateUser, activateUser, resetPassword } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
@@ -16,7 +16,7 @@ function getAvatarColor(key) {
   return AVATAR_COLORS[(key?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 }
 
-function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm, onDeactivate, onActivate, onResetPassword, isDeactivating, isActivating }) {
+function WorkerCard({ worker, ucName, confirmingId, onConfirmDeactivate, onCancelConfirm, onDeactivate, onActivate, onResetPassword, isDeactivating, isActivating }) {
   const displayName = worker.name ?? worker.email
   const initial = (displayName?.[0] ?? '?').toUpperCase()
   const avatarColor = getAvatarColor(displayName)
@@ -47,6 +47,13 @@ function WorkerCard({ worker, confirmingId, onConfirmDeactivate, onCancelConfirm
           </span>
         </div>
       </div>
+
+      {ucName && (
+        <div className="flex items-center gap-1.5 text-xs text-text-muted px-1">
+          <MapPin size={12} className="flex-shrink-0" />
+          <span className="truncate">{ucName}</span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 pt-1 border-t border-surface-border">
         <Button
@@ -186,6 +193,7 @@ export default function WorkerManagement() {
             <WorkerCard
               key={worker.id}
               worker={worker}
+              ucName={worker.ucName}
               confirmingId={confirmingId}
               onConfirmDeactivate={setConfirmingId}
               onCancelConfirm={() => setConfirmingId(null)}

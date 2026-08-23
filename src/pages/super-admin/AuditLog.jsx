@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { getAuditLog, getVaccines, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import Table from '../../components/shared/Table'
-import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
+import DatePicker from '../../components/ui/DatePicker'
 import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -183,6 +183,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     ? [
         { id: 'all',                 label: 'All',                  icon: Building2 },
         { id: 'district_supervisor', label: 'District Supervisor',  icon: Shield },
+        { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
@@ -239,9 +240,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     ...(!isDistrictSup ? [{
       key: 'districtName',
       label: 'District',
-      render: (row) => <span className="text-xs font-medium text-text-muted truncate max-w-[110px] inline-block">{row.districtName ?? '—'}</span>
+      render: (row) => <span className="text-xs font-medium text-text-muted">{row.districtName ?? '—'}</span>
     }] : []),
-    { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted truncate max-w-[110px] inline-block">{row.facilityName ?? '—'}</span> },
+    { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted">{row.facilityName ?? '—'}</span> },
     {
       key: 'balance',
       label: 'Balance',
@@ -258,7 +259,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       key: 'details',
       label: 'Details & Values',
       render: (row) => (
-        <p className="text-xs text-text-muted font-medium max-w-[340px] truncate leading-normal" title={formatDetails(row, vaccineNameById)}>
+        <p className="text-xs text-text-muted font-medium leading-relaxed break-words min-w-[180px] max-w-[340px]">
           {formatDetails(row, vaccineNameById)}
         </p>
       )
@@ -429,10 +430,11 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         </div>
 
         {(() => {
-          const DISTRICT_STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
-          const visibleActions = Object.entries(ACTION_LABELS).filter(
-            ([k]) => !isDistrictSup || DISTRICT_STOCK_ONLY.has(k)
-          )
+          const STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
+          const visibleActions = Object.entries(ACTION_LABELS).filter(([k]) => {
+            if (activeTab === 'facility_worker') return STOCK_ONLY.has(k)
+            return true
+          })
           return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
@@ -444,10 +446,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
             onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
           />
 
-          <Input
+          <DatePicker
             id="date-filter"
             label="Filter by date"
-            type="date"
             value={dateFilter}
             onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
           />

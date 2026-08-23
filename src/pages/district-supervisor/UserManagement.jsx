@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Users, UserCheck, UserX, Building2 } from 'lucide-react'
-import { getUsers, getFacilities } from '../../lib/api'
+import { Users, UserCheck, UserX, Building2, MapPin } from 'lucide-react'
+import { getUsers } from '../../lib/api'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 
 const AVATAR_COLORS = [
@@ -12,15 +12,26 @@ function getAvatarColor(key) {
   return AVATAR_COLORS[(key?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 }
 
-function SupervisorCard({ user, facilityName }) {
+const ROLE_BADGE = {
+  facility_supervisor: 'Facility Supervisor',
+  uc_supervisor:       'UC Supervisor',
+}
+
+function SupervisorCard({ user, facilityName, ucName, ucNames }) {
   const displayName = user.name ?? user.email
   const initial     = (displayName?.[0] ?? '?').toUpperCase()
   const avatarColor = getAvatarColor(displayName)
   const isActive    = user.isActive
+  const isUC        = user.role === 'uc_supervisor'
 
   return (
     <div className={`bg-surface rounded-xl border border-surface-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md ${!isActive ? 'opacity-60' : ''}`}>
       <div className="flex flex-col items-center gap-3 text-center">
+        {/* Role badge */}
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-text-muted border border-surface-border">
+          {ROLE_BADGE[user.role] ?? user.role}
+        </span>
+
         <div className="relative">
           <div className={`w-14 h-14 rounded-full ${avatarColor} text-white flex items-center justify-center text-xl font-bold flex-shrink-0 ${
             isActive ? 'ring-2 ring-success ring-offset-2' : 'ring-2 ring-surface-border ring-offset-2'
@@ -44,11 +55,32 @@ function SupervisorCard({ user, facilityName }) {
         </div>
       </div>
 
-      <div className="pt-1 border-t border-surface-border flex items-center gap-2">
-        <Building2 size={13} className="text-text-muted flex-shrink-0" />
-        <p className="text-xs font-semibold text-text-muted truncate" title={facilityName}>
-          {facilityName ?? <span className="italic font-normal">Unassigned</span>}
-        </p>
+      <div className="pt-1 border-t border-surface-border flex flex-col gap-1">
+        {isUC ? (
+          <div className="flex items-center gap-2">
+            <MapPin size={13} className="text-text-muted flex-shrink-0" />
+            <p className="text-xs text-text-muted truncate">
+              {ucNames?.length
+                ? ucNames.join(' · ')
+                : <span className="italic font-normal">No UCs assigned</span>}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Building2 size={13} className="text-text-muted flex-shrink-0" />
+              <p className="text-xs font-semibold text-text-muted truncate" title={facilityName}>
+                {facilityName ?? <span className="italic font-normal">Unassigned</span>}
+              </p>
+            </div>
+            {ucName && (
+              <div className="flex items-center gap-2">
+                <MapPin size={13} className="text-text-muted flex-shrink-0" />
+                <p className="text-xs text-text-muted truncate" title={ucName}>{ucName}</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
@@ -56,10 +88,8 @@ function SupervisorCard({ user, facilityName }) {
 
 export default function DistrictUsers() {
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
-  const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
 
-  const users       = userData?.users ?? []
-  const facilityMap = Object.fromEntries((facilityData?.facilities ?? []).map((f) => [f.id, f.name]))
+  const users = userData?.users ?? []
 
   const activeCount   = users.filter((u) => u.isActive).length
   const inactiveCount = users.filter((u) => !u.isActive).length
@@ -86,7 +116,7 @@ export default function DistrictUsers() {
           </div>
         )}
         {(isLoading || users.length === 0) && (
-          <p className="text-sm text-text-muted mt-0.5">Facility supervisors in your district</p>
+          <p className="text-sm text-text-muted mt-0.5">Supervisors in your district</p>
         )}
       </div>
 
@@ -117,7 +147,7 @@ export default function DistrictUsers() {
       {!isLoading && !isError && users.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {users.map((u) => (
-            <SupervisorCard key={u.id} user={u} facilityName={facilityMap[u.facilityId]} />
+            <SupervisorCard key={u.id} user={u} facilityName={u.facilityName} ucName={u.ucName} ucNames={u.ucNames} />
           ))}
         </div>
       )}

@@ -122,7 +122,9 @@ export default function UCSupervisorDashboard() {
 
       {/* Analytics banner */}
       <div className="bg-primary rounded-2xl px-6 py-5">
-        <p className="text-sm text-white/70 font-semibold">UC Supervisor Dashboard</p>
+        <p className="text-sm text-white/70 font-semibold">
+          {user.ucNames?.length ? user.ucNames.join(' · ') : 'UC Supervisor Dashboard'}
+        </p>
         <p className="text-white font-bold text-lg mt-1">{user.name}</p>
         <div className="flex flex-wrap gap-3 mt-4">
           <div className="bg-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
