@@ -40,13 +40,7 @@ export default function StockEntry() {
   const useQty          = parseInt(quantity, 10) || 0
   const remaining       = currentQty - useQty
   const wouldGoNegative = useQty > currentQty
-  const status          = currentStock ? currentStock.status : null
-  const pct             = currentStock?.quantity == null
-    ? 0
-    : currentStock?.minQuantity > 0
-      ? Math.min(Math.round((currentQty / currentStock.minQuantity) * 100), 100)
-      : 100
-  const barColor = statusConfig(status).dot
+  const status = currentStock ? currentStock.status : null
 
   const mutation = useMutation({
     mutationFn: () => createStockEntry({ vaccineId, quantity: useQty }),
@@ -133,15 +127,6 @@ export default function StockEntry() {
                           <p className="text-2xl font-extrabold text-text mt-0.5 tracking-tight">{currentQty} <span className="text-xs font-semibold text-text-muted/80">doses</span></p>
                         </div>
                         <StatusBadge status={status} />
-                      </div>
-                      <div className="space-y-1 mt-1">
-                        <div className="h-2 rounded-full bg-slate-200/70 overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-                          <span>Stock Level</span>
-                          <span>{pct}% of min threshold</span>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -287,17 +272,13 @@ export default function StockEntry() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {stockRows.map((row) => {
-                const hasData     = row.quantity !== null
-                const outOfStock  = row.quantity === 0
-                const pct         = row.minQuantity > 0
-                  ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
-                  : (hasData ? 100 : 0)
-                const cfg         = statusConfig(row.status)
-                const isSelected  = row.vaccineId === vaccineId
+                const outOfStock = row.quantity === 0
+                const cfg        = statusConfig(row.status)
+                const isSelected = row.vaccineId === vaccineId
 
                 return (
-                  <div 
-                    key={row.vaccineId} 
+                  <div
+                    key={row.vaccineId}
                     className={`bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 flex flex-col gap-2 shadow-sm transition-all ${
                       isSelected ? 'ring-2 ring-primary/20 scale-[1.02] border-slate-400' : ''
                     }`}
@@ -306,20 +287,12 @@ export default function StockEntry() {
                       <span className="font-bold text-xs text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</span>
                       <StatusBadge status={row.status} />
                     </div>
-                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
-                      {hasData ? (
-                        <div className={`h-full rounded-full transition-all duration-300 ${cfg.dot}`} style={{ width: `${pct}%` }} />
-                      ) : (
-                        <div className="h-full rounded-full border border-dashed border-slate-200" />
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-50 mt-1 font-medium text-text-muted">
+                    <div className="flex items-center text-[10px] pt-1 border-t border-slate-50 mt-1 font-medium text-text-muted">
                       {outOfStock ? (
                         <span className="font-bold text-danger">Out of stock</span>
                       ) : (
                         <span className="font-bold text-text-muted/95">{row.quantity ?? 0} doses</span>
                       )}
-                      <span>Min: {row.minQuantity}</span>
                     </div>
                   </div>
                 )

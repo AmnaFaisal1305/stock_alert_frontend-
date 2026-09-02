@@ -18,14 +18,10 @@ function SummaryPill({ icon: Icon, label, count, colorClass }) {
 }
 
 function StockCard({ row }) {
-  const hasData     = row.quantity !== null
-  const outOfStock  = row.quantity === 0
-  const pct         = row.minQuantity > 0
-    ? Math.min(Math.round(((row.quantity ?? 0) / row.minQuantity) * 100), 100)
-    : (hasData ? 100 : 0)
-  const cfg         = statusConfig(row.status)
+  const hasData    = row.quantity !== null
+  const outOfStock = row.quantity === 0
+  const cfg        = statusConfig(row.status)
   const borderColor = cfg.borderL
-  const barColor    = cfg.dot
   const ringClass   = cfg.ring
 
   return (
@@ -40,17 +36,7 @@ function StockCard({ row }) {
         <StatusBadge status={row.status} />
       </div>
 
-      <div className="space-y-1">
-        <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/50">
-          {hasData ? (
-            <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
-          ) : (
-            <div className="h-full rounded-full border border-dashed border-slate-300 bg-slate-50" />
-          )}
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-50 mt-1 font-medium">
+      <div className="flex items-center text-xs pt-1 border-t border-slate-50 mt-1 font-medium">
         {!hasData ? (
           <span className="italic text-text-muted">Not recorded yet</span>
         ) : outOfStock ? (
@@ -60,7 +46,6 @@ function StockCard({ row }) {
         ) : (
           <span className="text-text font-bold text-sm">{row.quantity} <span className="text-xs font-semibold text-text-muted">doses</span></span>
         )}
-        <span className="text-text-muted text-[10px] uppercase font-bold tracking-wider">Min Threshold: {row.minQuantity}</span>
       </div>
     </div>
   )
@@ -107,7 +92,7 @@ export default function WorkerStatusView() {
 
       {!isLoading && !isError && rows.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <SummaryPill icon={CheckCircle2} label="OK" count={okCount}
+          <SummaryPill icon={CheckCircle2} label="Normal" count={okCount}
             colorClass="bg-success-bg border-success/20 text-success-dark" />
           <SummaryPill icon={AlertTriangle} label="Low" count={lowCount}
             colorClass="bg-warning-bg border-warning/20 text-warning-dark" />
