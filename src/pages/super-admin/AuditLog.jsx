@@ -430,8 +430,10 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         </div>
 
         {(() => {
+          const DISTRICT_ACTIONS = new Set(['STOCK_ENTRY', 'ADJUST_STOCK', 'LOGOUT'])
           const STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
           const visibleActions = Object.entries(ACTION_LABELS).filter(([k]) => {
+            if (isDistrictSup) return DISTRICT_ACTIONS.has(k)
             if (activeTab === 'facility_worker') return STOCK_ONLY.has(k)
             return true
           })

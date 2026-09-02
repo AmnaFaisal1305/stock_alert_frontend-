@@ -201,9 +201,12 @@ function AlertBanner({ criticalCount, lowCount }) {
 
 export default function DistrictDashboard() {
   const { user } = useAuth()
-  const [townFilter, setTownFilter]   = useState('')
-  const [ucFilter,   setUcFilter]     = useState('')
-  const [search,     setSearch]       = useState('')
+  const [townFilter,   setTownFilter]   = useState('')
+  const [ucFilter,     setUcFilter]     = useState('')
+  const [search,       setSearch]       = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [fpTownFilter, setFpTownFilter] = useState('')
+  const [fpUcFilter,   setFpUcFilter]   = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard', { townId: townFilter || undefined, ucId: ucFilter || undefined }],
@@ -260,13 +263,26 @@ export default function DistrictDashboard() {
   )
 
   const facilities = facilityData?.facilities ?? []
+
   const filteredFacilities = useMemo(() => {
-    return facilities.filter((f) =>
-      f.name?.toLowerCase().includes(search.toLowerCase()) ||
-      (f.ucName   ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (f.townName ?? '').toLowerCase().includes(search.toLowerCase())
-    )
-  }, [facilities, search])
+    return facilities.filter((f) => {
+      if (search) {
+        const q = search.toLowerCase()
+        const matchesSearch =
+          f.name?.toLowerCase().includes(q) ||
+          (f.ucName   ?? '').toLowerCase().includes(q) ||
+          (f.townName ?? '').toLowerCase().includes(q)
+        if (!matchesSearch) return false
+      }
+      if (statusFilter) {
+        const st = statusByFacilityId.get(f.id) ?? 'no-data'
+        if (st !== statusFilter) return false
+      }
+      if (fpTownFilter && f.townId !== fpTownFilter) return false
+      if (fpUcFilter   && f.ucId   !== fpUcFilter)   return false
+      return true
+    }).sort((a, b) => a.name.localeCompare(b.name))
+  }, [facilities, search, statusFilter, fpTownFilter, fpUcFilter, statusByFacilityId])
 
   // Vaccine matrix
   const { vaccineColumns, facilityRows } = useMemo(() => {
@@ -380,28 +396,34 @@ export default function DistrictDashboard() {
       <AlertBanner criticalCount={counts.critical} lowCount={counts.low} />
 
       {/* §1.3 Performance Summary — 3 stat cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard
-          label="Critical"
-          value={counts.critical}
-          icon={AlertCircle}
-          colorClass={counts.critical > 0 ? 'text-danger' : 'text-text-muted'}
-          subtitle={counts.critical > 0 ? 'Requires immediate action' : 'All clear'}
-        />
-        <StatCard
-          label="Low Stock"
-          value={counts.low}
-          icon={AlertTriangle}
-          colorClass={counts.low > 0 ? 'text-warning-dark' : 'text-text-muted'}
-          subtitle={counts.low > 0 ? 'Action suggested' : 'Levels healthy'}
-        />
-        <StatCard
-          label="Normal"
-          value={counts.adequate}
-          icon={CheckCircle2}
-          colorClass="text-success-dark"
-          subtitle={`${counts.adequate} running stable`}
-        />
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Stock Status</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            label="Critical"
+            value={counts.critical}
+            icon={AlertCircle}
+            colorClass={counts.critical > 0 ? 'text-danger' : 'text-text-muted'}
+            unit={`${counts.critical} critical facilit${counts.critical !== 1 ? 'ies' : 'y'}`}
+            subtitle={counts.critical > 0 ? 'Requires immediate action' : 'All clear'}
+          />
+          <StatCard
+            label="Low Stock"
+            value={counts.low}
+            icon={AlertTriangle}
+            colorClass={counts.low > 0 ? 'text-warning-dark' : 'text-text-muted'}
+            unit={`${counts.low} facilit${counts.low !== 1 ? 'ies' : 'y'} low on stock`}
+            subtitle={counts.low > 0 ? 'Action suggested' : 'Levels healthy'}
+          />
+          <StatCard
+            label="Normal"
+            value={counts.adequate}
+            icon={CheckCircle2}
+            colorClass="text-success-dark"
+            unit={`${counts.adequate} facilit${counts.adequate !== 1 ? 'ies' : 'y'} stable`}
+            subtitle="Stock levels healthy"
+          />
+        </div>
       </div>
 
       {/* §1.4 Facility-Level Performance Table */}
@@ -413,16 +435,74 @@ export default function DistrictDashboard() {
           </Link>
         </div>
 
-        {/* Search */}
-        <div className="relative w-72">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search facilities…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+        {/* Search + Filters */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search */}
+          <div className="relative w-56">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search facilities…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-3.5 py-2 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            />
+          </div>
+
+          {/* Status filter pills */}
+          {[
+            { value: '',          label: 'All' },
+            { value: 'critical',  label: 'Critical' },
+            { value: 'low',       label: 'Low Stock' },
+            { value: 'adequate',  label: 'Normal' },
+            { value: 'no-data',   label: 'No Data' },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setStatusFilter(opt.value)}
+              className={[
+                'px-3 py-2 rounded-xl text-xs font-semibold border transition-all',
+                statusFilter === opt.value
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          ))}
+
+          {/* Town filter */}
+          <FilterChip
+            icon={MapPin}
+            placeholder="All Towns"
+            options={townOptions.map((t) => ({ value: t.id, label: t.name }))}
+            value={fpTownFilter}
+            onChange={(e) => { setFpTownFilter(e.target.value); setFpUcFilter('') }}
           />
+
+          {/* UC filter */}
+          <FilterChip
+            icon={Layers}
+            placeholder="All UCs"
+            options={(ucData?.unionCouncils ?? [])
+              .filter((uc) => uc.isActive && (!fpTownFilter || uc.townId === fpTownFilter))
+              .map((uc) => ({ value: uc.id, label: uc.name, sublabel: uc.townName ?? undefined }))}
+            value={fpUcFilter}
+            onChange={(e) => setFpUcFilter(e.target.value)}
+            disabled={(ucData?.unionCouncils ?? []).filter((uc) => uc.isActive && (!fpTownFilter || uc.townId === fpTownFilter)).length === 0}
+          />
+
+          {/* Clear filters */}
+          {(search || statusFilter || fpTownFilter || fpUcFilter) && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setStatusFilter(''); setFpTownFilter(''); setFpUcFilter('') }}
+              className="text-xs font-bold text-text-muted hover:text-primary transition-colors px-1"
+            >
+              Clear all
+            </button>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
@@ -511,9 +591,6 @@ export default function DistrictDashboard() {
                         return (
                           <td key={v.id} className={`px-4 py-3 text-center ${bg}`}>
                             <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>
-                            {cell.consumed != null && (
-                              <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
-                            )}
                             {(cell.criticalDoses != null || cell.criticalVials != null) && (
                               <p className="text-[10px] text-text-muted/70 mt-0.5">
                                 Min: {cell.criticalDoses ?? '—'} doses / {cell.criticalVials ?? '—'} vials

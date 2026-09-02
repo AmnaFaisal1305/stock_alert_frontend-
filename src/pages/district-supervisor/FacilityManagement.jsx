@@ -1,28 +1,12 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { getFacilities, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import Table from '../../components/shared/Table'
-import Modal from '../../components/ui/Modal'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import Toast from '../../components/ui/Toast'
 
 export default function FacilityManagement() {
-  const queryClient = useQueryClient()
-
-  const [renaming, setRenaming]       = useState(null)
-  const [renameValue, setRenameValue] = useState('')
-  const [renameError, setRenameError] = useState('')
-
-  const [deactivateTarget, setDeactivateTarget] = useState(null)
-  const [deactivateError, setDeactivateError]   = useState('')
-
-  const [toast, setToast] = useState(null)
-
-  // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -40,44 +24,8 @@ export default function FacilityManagement() {
     staleTime: 15_000,
   })
 
-  const renameMutation = useMutation({
-    mutationFn: () => updateFacility(renaming.id, renameValue),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setRenaming(null)
-      setRenameError('')
-      setToast({ message: 'Facility renamed.', type: 'success' })
-    },
-    onError: (err) => setRenameError(err.message),
-  })
-
-  const deactivateMutation = useMutation({
-    mutationFn: (id) => deleteFacility(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setToast({ message: `${deactivateTarget?.name} deactivated.`, type: 'success' })
-      setDeactivateTarget(null)
-      setDeactivateError('')
-    },
-    onError: (err) => setDeactivateError(err.message),
-  })
-
-  const activateMutation = useMutation({
-    mutationFn: (id) => activateFacility(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      const target = facilities.find((f) => f.id === id)
-      setToast({ message: `${target?.name ?? 'Facility'} activated.`, type: 'success' })
-    },
-    onError: (err) => setToast({ message: err.message, type: 'error' }),
-  })
-
   const facilities = data?.facilities ?? []
 
-  // Build status lookup from dashboard data
   const statusByFacilityId = new Map(
     (dashboardData?.summary?.byFacility ?? []).map((f) => [f.facilityId, facilityStatus(f.statusCounts)])
   )
@@ -88,7 +36,6 @@ export default function FacilityManagement() {
     if (s in statusCounts) statusCounts[s]++
   }
 
-  // Filtration logic
   const filteredFacilities = facilities.filter((f) => {
     const matchesSearch = f.name?.toLowerCase().includes(searchQuery.toLowerCase())
     const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
@@ -96,13 +43,9 @@ export default function FacilityManagement() {
     return matchesSearch && matchesStatus
   })
 
-  // Pagination logic
   const itemsPerPage = 10
   const totalPages = Math.ceil(filteredFacilities.length / itemsPerPage)
   const paginatedFacilities = filteredFacilities.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  function openRename(row) { setRenaming(row); setRenameValue(row.name); setRenameError('') }
-  function openDeactivate(row) { setDeactivateTarget(row); setDeactivateError('') }
 
   const columns = [
     {
@@ -134,7 +77,7 @@ export default function FacilityManagement() {
             month: 'short', day: 'numeric', year: 'numeric'
           })}
         </span>
-      )
+      ),
     },
     {
       key: 'supervisor',
@@ -158,18 +101,6 @@ export default function FacilityManagement() {
           >
             View Stock <ArrowRight size={13} strokeWidth={2.2} />
           </RouterLink>
-          <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
-            <Pencil size={12} /> Rename
-          </Button>
-          {row.isActive ? (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}>
-              <UserX size={12} /> Deactivate
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-              <UserCheck size={12} /> Activate
-            </Button>
-          )}
         </div>
       ),
     },
@@ -177,7 +108,7 @@ export default function FacilityManagement() {
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -205,11 +136,11 @@ export default function FacilityManagement() {
 
           <div className="flex gap-2 flex-wrap">
             {[
-              { key: 'all',      label: 'All',      count: facilities.length,       activeClass: 'bg-primary text-white border-primary'    },
-              { key: 'critical', label: 'Critical',  count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'      },
-              { key: 'low',      label: 'Low',       count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'    },
-              { key: 'adequate', label: 'OK',         count: statusCounts.adequate, activeClass: 'bg-success text-white border-success'    },
-              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,  activeClass: 'bg-slate-500 text-white border-slate-500' },
+              { key: 'all',      label: 'All',     count: facilities.length,      activeClass: 'bg-primary text-white border-primary'     },
+              { key: 'critical', label: 'Critical', count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'       },
+              { key: 'low',      label: 'Low',      count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'     },
+              { key: 'adequate', label: 'Normal',    count: statusCounts.adequate,  activeClass: 'bg-success text-white border-success'     },
+              { key: 'no_data',  label: 'No Data',  count: statusCounts.no_data,   activeClass: 'bg-slate-500 text-white border-slate-500' },
             ].map(({ key, label, count, activeClass }) => (
               <button
                 key={key}
@@ -245,7 +176,7 @@ export default function FacilityManagement() {
         </div>
       )}
 
-      {/* List / Table */}
+      {/* Table */}
       {!isLoading && !isError && (
         <div className="flex flex-col gap-3">
           <Table
@@ -254,99 +185,44 @@ export default function FacilityManagement() {
             emptyMessage={searchQuery ? `No clinics match "${searchQuery}"` : 'No clinics configured yet.'}
           />
 
-          {/* Pagination bar */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
               <div className="flex flex-1 justify-between sm:hidden">
-                <Button variant="secondary" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
-                  Previous
-                </Button>
-                <Button variant="secondary" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
-                  Next
-                </Button>
+                <button className="text-xs font-semibold text-text-muted px-3 py-1.5 border border-surface-border rounded-lg disabled:opacity-40" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Previous</button>
+                <button className="text-xs font-semibold text-text-muted px-3 py-1.5 border border-surface-border rounded-lg disabled:opacity-40" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-text-muted font-semibold">
-                    Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-                    <span className="font-extrabold text-text">{totalPages}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    {Array.from({ length: totalPages }).map((_, i) => {
-                      const p = i + 1
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => setCurrentPage(p)}
-                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                            p === currentPage
-                              ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                              : 'text-text-muted hover:bg-white'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </nav>
-                </div>
+                <p className="text-xs text-text-muted font-semibold">
+                  Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
+                  <span className="font-extrabold text-text">{totalPages}</span>
+                </p>
+                <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+                  <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}
+                    className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer">
+                    <ChevronLeft size={16} />
+                  </button>
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const p = i + 1
+                    return (
+                      <button key={p} onClick={() => setCurrentPage(p)}
+                        className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                          p === currentPage ? 'bg-primary text-white shadow-sm shadow-primary/10' : 'text-text-muted hover:bg-white'
+                        }`}>
+                        {p}
+                      </button>
+                    )
+                  })}
+                  <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer">
+                    <ChevronRight size={16} />
+                  </button>
+                </nav>
               </div>
             </div>
           )}
         </div>
       )}
-
-      {/* Rename modal */}
-      <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
-          <Input
-            id="rename-facility"
-            label="Facility Name"
-            value={renameValue}
-            onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }}
-            required
-          />
-          {renameError && <p className="text-xs text-danger">{renameError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
-            <Button type="submit" disabled={renameMutation.isPending}>{renameMutation.isPending ? 'Saving…' : 'Save'}</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Deactivate confirmation */}
-      <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate Facility" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">
-            Deactivate <span className="font-bold text-text">{deactivateTarget?.name}</span>? Supervisors and staff will not be able to log stock until reactivated.
-          </p>
-          {deactivateError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deactivateError}</p>}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
-              {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

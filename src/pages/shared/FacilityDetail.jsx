@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2, LayoutGrid, List } from 'lucide-react'
+import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2, LayoutGrid, List, Search, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -17,12 +17,6 @@ function VaccineCard({ v }) {
   const fillPct    = v.quantity == null ? 0 : (minQty > 0 ? Math.min((qty / minQty) * 100, 100) : 100)
   const hasMin     = minQty > 0
 
-  const barColor =
-    v.status === 'critical' ? 'bg-danger' :
-    v.status === 'low'      ? 'bg-warning' :
-    v.status === 'adequate' ? 'bg-success' :
-    'bg-secondary'
-
   const accentBar =
     v.status === 'critical' ? 'bg-danger' :
     v.status === 'low'      ? 'bg-warning' :
@@ -36,22 +30,14 @@ function VaccineCard({ v }) {
 
   return (
     <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${borderColor}`}>
-
-      {/* Status accent bar */}
       <div className={`h-1 ${accentBar}`} />
-
       <div className="p-5 flex flex-col gap-4">
-
-        {/* Header: icon + name + badge */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
             <div className={`p-2 rounded-lg flex-shrink-0 mt-0.5 ${cfg.bg}`}>
               <Syringe size={14} className={cfg.text} strokeWidth={2.2} />
             </div>
-            <h3
-              className="font-bold text-text text-sm leading-tight pt-1 truncate"
-              title={displayVaccineName(v.vaccineName)}
-            >
+            <h3 className="font-bold text-text text-sm leading-tight pt-1 truncate" title={displayVaccineName(v.vaccineName)}>
               {displayVaccineName(v.vaccineName)}
             </h3>
           </div>
@@ -60,38 +46,26 @@ function VaccineCard({ v }) {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-px bg-slate-100" />
 
-        {/* Stock figures */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-              Current Stock
-            </p>
-            <p className="text-2xl font-extrabold text-text tabular-nums leading-none">
-              {v.quantity ?? '—'}
-            </p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Current Stock</p>
+            <p className="text-2xl font-extrabold text-text tabular-nums leading-none">{v.quantity ?? '—'}</p>
             <p className="text-[10px] text-text-muted font-medium mt-0.5">doses</p>
           </div>
-
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-              Min. Threshold
-            </p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Min. Threshold</p>
             <p className={`text-2xl font-extrabold tabular-nums leading-none ${hasMin ? 'text-text' : 'text-text-muted/40'}`}>
               {hasMin ? minQty : '—'}
             </p>
-            <p className="text-[10px] text-text-muted font-medium mt-0.5">
-              {hasMin ? 'doses' : 'not set'}
-            </p>
+            <p className="text-[10px] text-text-muted font-medium mt-0.5">{hasMin ? 'doses' : 'not set'}</p>
             {hasMin && minVials != null && (
               <p className="text-[10px] text-text-muted font-medium">{minVials} vials</p>
             )}
           </div>
         </div>
 
-        {/* Last recorded */}
         <div className="flex items-center gap-1.5 pt-1 border-t border-slate-50">
           <Calendar size={11} className="text-text-muted/50 flex-shrink-0" />
           <p className="text-[10px] font-semibold text-text-muted/70 uppercase tracking-wider">
@@ -110,21 +84,41 @@ export default function FacilityDetail() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [view, setView] = useState('cards')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['facility', id],
     queryFn: () => getFacility(id),
   })
 
   const facility = data?.facility
-
   const counts = facility?.statusCounts ?? {}
 
   const statRows = [
-    { label: 'Critical',  value: counts.critical ?? 0, icon: AlertCircle,   color: 'text-danger',      bg: 'bg-danger-bg',   bar: 'bg-danger'   },
-    { label: 'Low Stock', value: counts.low ?? 0,      icon: AlertTriangle, color: 'text-warning-dark', bg: 'bg-warning-bg',  bar: 'bg-warning'  },
-    { label: 'OK',        value: counts.adequate ?? 0, icon: CheckCircle2,  color: 'text-success-dark', bg: 'bg-success-bg',  bar: 'bg-success'  },
-    { label: 'No Data',   value: counts.no_data ?? 0,  icon: HelpCircle,    color: 'text-text-muted',   bg: 'bg-surface-alt', bar: 'bg-secondary'},
+    { label: 'Critical',  value: counts.critical ?? 0, icon: AlertCircle,   color: 'text-danger',       bg: 'bg-danger-bg',   bar: 'bg-danger',   key: 'critical' },
+    { label: 'Low Stock', value: counts.low ?? 0,       icon: AlertTriangle, color: 'text-warning-dark', bg: 'bg-warning-bg',  bar: 'bg-warning',  key: 'low'      },
+    { label: 'Normal',    value: counts.adequate ?? 0,  icon: CheckCircle2,  color: 'text-success-dark', bg: 'bg-success-bg',  bar: 'bg-success',  key: 'adequate' },
+    { label: 'No Data',   value: counts.no_data ?? 0,   icon: HelpCircle,    color: 'text-text-muted',   bg: 'bg-surface-alt', bar: 'bg-secondary',key: 'no_data'  },
   ]
+
+  const allVaccines = facility?.vaccines ?? []
+
+  const filteredVaccines = allVaccines.filter((v) => {
+    const matchesSearch = displayVaccineName(v.vaccineName).toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || v.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  const filterPills = [
+    { key: 'all',      label: 'All',      count: allVaccines.length,                                        activeClass: 'bg-primary text-white border-primary'     },
+    { key: 'critical', label: 'Critical', count: counts.critical ?? 0, icon: AlertCircle,                   activeClass: 'bg-danger text-white border-danger'       },
+    { key: 'low',      label: 'Low Stock',count: counts.low ?? 0,      icon: AlertTriangle,                 activeClass: 'bg-warning text-white border-warning'     },
+    { key: 'adequate', label: 'Normal',   count: counts.adequate ?? 0, icon: CheckCircle2,                  activeClass: 'bg-success text-white border-success'     },
+    { key: 'no_data',  label: 'No Data',  count: counts.no_data ?? 0,  icon: HelpCircle,                   activeClass: 'bg-slate-500 text-white border-slate-500' },
+  ]
+
+  const hasActiveFilter = statusFilter !== 'all' || searchQuery !== ''
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
@@ -157,7 +151,7 @@ export default function FacilityDetail() {
 
       {!isLoading && !isError && facility && (
         <>
-          {/* ── Page Header — AKUH maroon banner ─────────────────────── */}
+          {/* Page Header */}
           <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -180,10 +174,16 @@ export default function FacilityDetail() {
             </div>
           </div>
 
-          {/* ── Status Summary Cards ─────────────────────────────────── */}
+          {/* Status Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {statRows.map(({ label, value, icon: Icon, color, bg, bar }) => (
-              <div key={label} className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+            {statRows.map(({ label, value, icon: Icon, color, bg, bar, key }) => (
+              <button
+                key={label}
+                onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
+                className={`bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm text-left transition-all duration-150 ${
+                  statusFilter === key ? 'ring-2 ring-primary/30 border-primary/30' : 'hover:shadow-md'
+                }`}
+              >
                 <div className={`h-1 ${bar}`} />
                 <div className="px-5 py-4 flex items-center gap-3">
                   <div className={`p-2.5 rounded-xl flex-shrink-0 ${bg}`}>
@@ -191,26 +191,27 @@ export default function FacilityDetail() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</p>
-                    <p className={`text-2xl font-extrabold tabular-nums leading-none mt-0.5 ${value > 0 && label === 'Critical' ? 'text-danger' : value > 0 && label === 'Low Stock' ? 'text-warning-dark' : 'text-text'}`}>
+                    <p className={`text-2xl font-extrabold tabular-nums leading-none mt-0.5 ${value > 0 && key === 'critical' ? 'text-danger' : value > 0 && key === 'low' ? 'text-warning-dark' : 'text-text'}`}>
                       {value}
                     </p>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
-          {/* ── Vaccines ─────────────────────────────────────────────── */}
+          {/* Vaccines Section */}
           <div>
-            <div className="flex items-center justify-between gap-3 mb-4">
+            {/* Toolbar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 flex-wrap">
               <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">
                 Vaccine Inventory
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
-                  {(facility.vaccines ?? []).length} vaccines tracked
+                  {filteredVaccines.length} of {allVaccines.length} vaccines
                 </span>
-                {(facility.vaccines ?? []).length > 0 && (
+                {allVaccines.length > 0 && (
                   <div className="flex items-center gap-0.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
                     <button
                       onClick={() => setView('cards')}
@@ -231,20 +232,68 @@ export default function FacilityDetail() {
               </div>
             </div>
 
-            {(facility.vaccines ?? []).length === 0 ? (
+            {/* Search + Status filters */}
+            {allVaccines.length > 0 && (
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap mb-4">
+                <div className="relative w-64">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search vaccine..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+                  />
+                </div>
+
+                <div className="flex gap-1.5 flex-wrap">
+                  {filterPills.map(({ key, label, count, icon: Icon, activeClass }) => (
+                    <button
+                      key={key}
+                      onClick={() => setStatusFilter(key)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
+                        statusFilter === key
+                          ? activeClass
+                          : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                      }`}
+                    >
+                      {Icon && <Icon size={10} />}
+                      {label}
+                      <span className="opacity-75">({count})</span>
+                    </button>
+                  ))}
+                </div>
+
+                {hasActiveFilter && (
+                  <button
+                    onClick={() => { setStatusFilter('all'); setSearchQuery('') }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-text transition-colors"
+                  >
+                    <X size={12} /> Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            {allVaccines.length === 0 ? (
               <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
                 <Syringe size={36} className="mx-auto mb-3 opacity-20" />
                 <p className="font-bold text-text">No vaccines configured</p>
                 <p className="text-xs mt-1">No vaccine records have been set up for this facility yet.</p>
               </div>
+            ) : filteredVaccines.length === 0 ? (
+              <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+                <Search size={28} className="mx-auto mb-3 opacity-20" />
+                <p className="font-bold text-text">No matches</p>
+                <p className="text-xs mt-1">Try adjusting the search or status filter.</p>
+              </div>
             ) : view === 'cards' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {facility.vaccines.map((v) => (
+                {filteredVaccines.map((v) => (
                   <VaccineCard key={v.vaccineId} v={v} />
                 ))}
               </div>
             ) : (
-              /* ── Table view ──────────────────────────────────────── */
               <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
                 <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
@@ -253,7 +302,7 @@ export default function FacilityDetail() {
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Threshold</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Level</span>
                 </div>
-                {facility.vaccines.map((v) => {
+                {filteredVaccines.map((v) => {
                   const cfg      = statusConfig(v.status)
                   const qty      = v.quantity ?? 0
                   const minQty   = v.criticalDoses ?? v.minQuantity ?? 0
@@ -265,7 +314,6 @@ export default function FacilityDetail() {
                       key={v.vaccineId}
                       className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
                     >
-                      {/* Name */}
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`w-1 h-7 rounded-full flex-shrink-0 ${
                           v.status === 'critical' ? 'bg-danger' :
@@ -274,17 +322,11 @@ export default function FacilityDetail() {
                         }`} />
                         <p className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.vaccineName)}</p>
                       </div>
-
-                      {/* Status */}
                       <div><StatusBadge status={v.status} /></div>
-
-                      {/* Stock */}
                       <p className="text-sm font-bold text-text tabular-nums">
                         {v.quantity ?? '—'}
                         <span className="text-[10px] text-text-muted font-normal ml-1">doses</span>
                       </p>
-
-                      {/* Threshold */}
                       {hasMin ? (
                         <div>
                           <p className="text-sm text-text tabular-nums">{minQty} <span className="text-[10px] text-text-muted">doses</span></p>
@@ -295,8 +337,6 @@ export default function FacilityDetail() {
                       ) : (
                         <span className="text-xs text-text-muted italic">Not set</span>
                       )}
-
-                      {/* Level bar */}
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${

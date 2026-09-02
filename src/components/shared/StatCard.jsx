@@ -1,4 +1,4 @@
-export default function StatCard({ label, value, icon: Icon, colorClass = 'text-primary', subtitle }) {
+export default function StatCard({ label, value, icon: Icon, colorClass = 'text-primary', subtitle, unit }) {
   return (
     <div className="bg-white rounded-2xl border border-surface-border p-5 flex items-center gap-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md w-full">
       {Icon && (
@@ -9,6 +9,7 @@ export default function StatCard({ label, value, icon: Icon, colorClass = 'text-
       <div className="min-w-0">
         <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{label}</p>
         <p className="text-2xl font-extrabold text-text mt-0.5 tracking-tight">{value}</p>
+        {unit && <p className="text-xs font-semibold text-text-muted mt-0.5 truncate">{unit}</p>}
         {subtitle && <p className="text-[10px] text-text-muted/75 font-medium mt-0.5 truncate">{subtitle}</p>}
       </div>
     </div>
