@@ -5,8 +5,17 @@ import Select from '../../components/ui/Select'
 import { BookOpen, Syringe } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
+const ENTRY_TYPE_PILLS = [
+  { key: 'all',      label: 'All',       activeClass: 'bg-primary text-white border-primary'     },
+  { key: 'received', label: 'Received',  activeClass: 'bg-success text-white border-success'     },
+  { key: 'used',     label: 'Consumed',  activeClass: 'bg-danger text-white border-danger'       },
+  { key: 'returned', label: 'Returned',  activeClass: 'bg-warning text-white border-warning'     },
+  { key: 'ADJUST_STOCK', label: 'Corrected', activeClass: 'bg-slate-500 text-white border-slate-500' },
+]
+
 export default function StockRegister() {
   const [selectedVaccineId, setSelectedVaccineId] = useState('')
+  const [entryTypeFilter, setEntryTypeFilter] = useState('all')
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({
     queryKey: ['vaccines'],
@@ -72,6 +81,17 @@ export default function StockRegister() {
     })
   }, [logs, selectedVaccineId])
 
+  const filteredEntries = useMemo(() => {
+    if (entryTypeFilter === 'all') return entries
+    return entries.filter((e) => e.entryType === entryTypeFilter)
+  }, [entries, entryTypeFilter])
+
+  const pillCounts = useMemo(() => {
+    const counts = { all: entries.length, received: 0, used: 0, returned: 0, ADJUST_STOCK: 0 }
+    entries.forEach((e) => { if (e.entryType in counts) counts[e.entryType]++ })
+    return counts
+  }, [entries])
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
@@ -92,7 +112,7 @@ export default function StockRegister() {
           placeholder="Choose a vaccine to view its register…"
           options={vaccineOptions}
           value={selectedVaccineId}
-          onChange={(e) => setSelectedVaccineId(e.target.value)}
+          onChange={(e) => { setSelectedVaccineId(e.target.value); setEntryTypeFilter('all') }}
           disabled={loadingVaccines}
         />
       </div>
@@ -119,15 +139,35 @@ export default function StockRegister() {
       {!isLoading && selectedVaccineId && (
         <div className="flex flex-col gap-3">
           {/* Sub-header */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Syringe size={14} className="text-primary flex-shrink-0" />
-              <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedName)}</span>
+              <span className="text-sm font-bold text-text">{displayVaccineName(selectedName)}</span>
             </div>
             <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg">
-              {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+              {filteredEntries.length}{entryTypeFilter !== 'all' ? ` of ${entries.length}` : ''} {entries.length === 1 ? 'entry' : 'entries'}
             </span>
           </div>
+
+          {/* Entry Type filter pills */}
+          {entries.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {ENTRY_TYPE_PILLS.map(({ key, label, activeClass }) => (
+                <button
+                  key={key}
+                  onClick={() => setEntryTypeFilter(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
+                    entryTypeFilter === key
+                      ? activeClass
+                      : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                  }`}
+                >
+                  {label}
+                  <span className="opacity-75">({pillCounts[key] ?? 0})</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
@@ -180,14 +220,16 @@ export default function StockRegister() {
                 </thead>
 
                 <tbody className="divide-y divide-surface-border">
-                  {entries.length === 0 ? (
+                  {filteredEntries.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="px-4 py-14 text-center text-sm text-text-muted">
-                        No stock entries recorded for this vaccine yet.
+                        {entries.length === 0
+                          ? 'No stock entries recorded for this vaccine yet.'
+                          : `No ${ENTRY_TYPE_PILLS.find((p) => p.key === entryTypeFilter)?.label.toLowerCase()} entries found.`}
                       </td>
                     </tr>
                   ) : (
-                    entries.map((row, i) => {
+                    filteredEntries.map((row, i) => {
                       const entryTypeMeta = (() => {
                         switch (row.entryType) {
                           case 'received':  return { label: 'Received', cls: 'bg-success-bg text-success-dark' }

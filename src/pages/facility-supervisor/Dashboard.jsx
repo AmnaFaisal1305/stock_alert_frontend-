@@ -196,8 +196,8 @@ function ActivityFeed({ logs, vaccineNameById }) {
   )
 
   return (
-    <div className="bg-surface rounded-xl border border-surface-border overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border">
+    <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-slate-50">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Activity size={13} className="text-primary" />
@@ -216,26 +216,25 @@ function ActivityFeed({ logs, vaccineNameById }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-[1fr_1fr_100px_90px] gap-3 px-5 py-2 bg-surface-alt/70 border-b border-surface-border">
+          <div className="grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 px-5 py-2.5 bg-slate-50/70 border-b border-surface-border">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Worker</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses Used</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">When</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Doses / When</span>
           </div>
           <div className="divide-y divide-surface-border">
             {entries.map((entry, i) => {
               const vacName = vaccineNameById?.[entry.details?.vaccineId] ?? '—'
               return (
-                <div key={i} className="grid grid-cols-[1fr_1fr_100px_90px] gap-3 items-center px-5 py-2.5 hover:bg-surface-alt/40 transition-colors">
+                <div key={i} className="grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
                   <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
-                  <p className="text-sm font-medium text-text leading-snug">{vacName}</p>
-                  <div className="flex items-center gap-1 text-xs font-semibold text-danger">
-                    <ArrowDown size={11} />
-                    {entry.details?.quantity ?? '—'} doses
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-text-muted">
-                    <Clock size={10} className="flex-shrink-0" />
-                    {timeAgo(entry.createdAt)}
+                  <p className="text-xs font-medium text-text-muted truncate">{vacName}</p>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="flex items-center gap-1 text-xs font-bold text-danger">
+                      <ArrowDown size={10} />{entry.details?.quantity ?? '—'} doses
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-text-muted">
+                      <Clock size={9} className="flex-shrink-0" />{timeAgo(entry.createdAt)}
+                    </span>
                   </div>
                 </div>
               )
@@ -353,6 +352,8 @@ export default function FacilityDashboard() {
 
       {/* ── Stat Cards ── */}
       {!isLoading && !isError && rows.length > 0 && (
+        <div className="flex flex-col gap-3">
+        <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Stock Status</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard
             icon={AlertCircle} label="Critical" value={criticalCount}
@@ -374,6 +375,7 @@ export default function FacilityDashboard() {
             colorClass={noDataCount > 0 ? 'text-text-muted' : 'text-text-muted'}
             subtitle={noDataCount > 0 ? 'No stock recorded yet' : 'All vaccines reporting'}
           />
+        </div>
         </div>
       )}
 
@@ -428,35 +430,66 @@ export default function FacilityDashboard() {
         </div>
       )}
 
-      {/* ── Vaccine Consumption ── */}
-      {!isLoading && !isError && rows.some((r) => r.consumed) && (
-        <div className="flex flex-col gap-3">
-          <SectionHeading icon={Activity} label="Vaccine Consumption" color="text-text-muted" />
-          <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm">
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Current Stock</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Vials Consumed</span>
-            </div>
-            {rows.map((row) => {
-              const dpv = dosesPerVialById[row.vaccineId]
-              const vialsConsumed = dpv && row.consumed ? Math.round(row.consumed / dpv) : null
-              return (
-                <div key={row.vaccineId} className="grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60">
-                  <p className="text-sm font-semibold text-text leading-snug">{displayVaccineName(row.vaccineName)}</p>
-                  <p className="text-sm font-bold text-text text-right tabular-nums">{row.quantity ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
-                  <p className="text-sm font-bold text-warning-dark text-right tabular-nums">{row.consumed ?? '—'} <span className="text-text-muted font-normal text-xs">doses</span></p>
-                  <p className="text-sm font-medium text-text-muted text-right tabular-nums">{vialsConsumed != null ? `${vialsConsumed} vials` : '—'}</p>
+      {/* ── Vaccine Consumption + Recent Activity — side by side ── */}
+      {!isLoading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+
+          {/* Vaccine Consumption */}
+          <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Syringe size={13} className="text-primary" />
                 </div>
-              )
-            })}
+                <h2 className="text-sm font-semibold text-text">Vaccine Consumption</h2>
+              </div>
+              <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2 py-0.5 rounded-full tabular-nums">
+                {rows.length} vaccines
+              </span>
+            </div>
+
+            {!isError && rows.length > 0 ? (
+              <>
+                <div className="grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Stock</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Last Recorded</span>
+                </div>
+                <div className="divide-y divide-surface-border">
+                  {rows.map((row) => (
+                    <div key={row.vaccineId} className="grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
+                      <p className="text-sm font-semibold text-text truncate">{displayVaccineName(row.vaccineName)}</p>
+                      <p className="text-sm font-bold text-text text-right tabular-nums">
+                        {row.quantity ?? '—'}
+                        <span className="text-[10px] text-text-muted font-normal block">doses</span>
+                      </p>
+                      <p className="text-sm font-bold text-warning-dark text-right tabular-nums">
+                        {row.consumed ?? '—'}
+                        <span className="text-[10px] text-text-muted font-normal block">doses</span>
+                      </p>
+                      <p className="text-xs font-medium text-text-muted text-right">
+                        {row.recordedAt
+                          ? new Date(row.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : <span className="italic text-[10px]">Never</span>}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-10 text-text-muted">
+                <Syringe size={28} className="mx-auto mb-2 opacity-20" />
+                <p className="text-sm font-medium">No consumption data yet</p>
+              </div>
+            )}
           </div>
+
+          {/* Recent Activity */}
+          <ActivityFeed logs={allLogs} vaccineNameById={vaccineNameById} />
+
         </div>
       )}
-
-      {/* ── Recent Activity ── */}
-      {!isLoading && <ActivityFeed logs={allLogs} vaccineNameById={vaccineNameById} />}
 
     </div>
   )

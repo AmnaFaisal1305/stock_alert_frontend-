@@ -32,6 +32,7 @@ function formatFullDate(isoStr) {
 const ACTION_META = {
   STOCK_ENTRY:      { label: 'Stock Entry',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Package   },
   ADJUST_STOCK:     { label: 'Stock Correction',   pill: 'bg-primary/5 text-primary border-primary/10',       icon: RefreshCcw },
+  LOGOUT:           { label: 'Logout',             pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound  },
   CREATE_VACCINE:   { label: 'Vaccine Added',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe   },
   EDIT_VACCINE:     { label: 'Vaccine Renamed',    pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: Tag       },
   DELETE_VACCINE:   { label: 'Vaccine Deleted',    pill: 'bg-danger-bg text-danger border-danger/15',         icon: Trash2    },
@@ -486,12 +487,9 @@ export default function FacilitySupervisorAuditLog() {
             label="Action Type"
             placeholder="All Actions"
             options={[
-              { value: 'STOCK_ENTRY',     label: 'Stock Entry' },
-              { value: 'ADJUST_STOCK',    label: 'Stock Correction' },
-              { value: 'CREATE_USER',     label: 'Worker Added' },
-              { value: 'ACTIVATE_USER',   label: 'Worker Activated' },
-              { value: 'DEACTIVATE_USER', label: 'Worker Deactivated' },
-              { value: 'RESET_PASSWORD',  label: 'Password Reset' },
+              { value: 'STOCK_ENTRY',  label: 'Stock Entry' },
+              { value: 'ADJUST_STOCK', label: 'Stock Correction' },
+              { value: 'LOGOUT',       label: 'Logout' },
             ]}
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
