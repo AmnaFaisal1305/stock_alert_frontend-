@@ -61,7 +61,7 @@ function StackedBarTooltip({ active, payload, label }) {
 
 // ── District card config ──────────────────────────────────────────────────────
 const STATUS_CFG = {
-  adequate: { label: 'OK',       pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', borderL: 'border-l-emerald-400' },
+  adequate: { label: 'Normal',   pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', borderL: 'border-l-emerald-400' },
   low:      { label: 'Low',      pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',       borderL: 'border-l-amber-400'   },
   critical: { label: 'Critical', pill: 'bg-red-50 text-red-700 ring-1 ring-red-200',             borderL: 'border-l-red-400'     },
   no_data:  { label: 'No Data',  pill: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',      borderL: 'border-l-slate-300'   },
@@ -71,7 +71,7 @@ const FILTERS = [
   { key: 'all',      label: 'All'      },
   { key: 'critical', label: 'Critical' },
   { key: 'low',      label: 'Low'      },
-  { key: 'adequate', label: 'OK'       },
+  { key: 'adequate', label: 'Normal'   },
 ]
 
 // ── Admin Alert Banner ────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ export default function SuperAdminDashboard() {
     // Donut slices
     const noDataCount = Math.max(0, districts.length - counts.adequate - counts.low - counts.critical)
     const donutData = [
-      { name: 'OK',      value: counts.adequate, color: C.adequate },
+      { name: 'Normal',  value: counts.adequate, color: C.adequate },
       { name: 'Low',     value: counts.low,      color: C.low      },
       { name: 'Critical',value: counts.critical, color: C.critical },
       ...(noDataCount > 0 ? [{ name: 'No Data', value: noDataCount, color: C.no_data }] : []),
@@ -207,7 +207,7 @@ export default function SuperAdminDashboard() {
       .slice(0, 10)
       .map((d) => ({
         name:     d.name.length > 18 ? d.name.slice(0, 16) + '…' : d.name,
-        OK:       d.statusCounts.adequate,
+        Normal:   d.statusCounts.adequate,
         Low:      d.statusCounts.low,
         Critical: d.statusCounts.critical,
       }))
@@ -315,7 +315,7 @@ export default function SuperAdminDashboard() {
           label="Total Districts"
           value={counts.total}
           colorClass="text-primary"
-          subtitle={`${counts.adequate} OK · ${counts.low} Low · ${counts.critical} Critical`}
+          subtitle={`${counts.adequate} Normal · ${counts.low} Low · ${counts.critical} Critical`}
         />
         <StatCard
           icon={Building2}
@@ -433,7 +433,7 @@ export default function SuperAdminDashboard() {
                 {[
                   { label: 'Critical', color: C.critical },
                   { label: 'Low',      color: C.low      },
-                  { label: 'OK',       color: C.adequate },
+                  { label: 'Normal',   color: C.adequate },
                 ].map(({ label, color }) => (
                   <span key={label} className="flex items-center gap-1.5 text-[10px] font-semibold text-text-muted">
                     <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: color }} />
@@ -462,7 +462,7 @@ export default function SuperAdminDashboard() {
                     <ReTooltip content={<StackedBarTooltip />} cursor={{ fill: '#F8FAFC' }} />
                     <Bar dataKey="Critical" stackId="s" fill={C.critical} radius={[0, 0, 0, 0]} />
                     <Bar dataKey="Low"      stackId="s" fill={C.low}      radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="OK"       stackId="s" fill={C.adequate} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="Normal"   stackId="s" fill={C.adequate} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -590,7 +590,7 @@ export default function SuperAdminDashboard() {
                   <div className="flex gap-1.5 flex-wrap">
                     {d.statusCounts.adequate > 0 && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                        {d.statusCounts.adequate} OK
+                        {d.statusCounts.adequate} Normal
                       </span>
                     )}
                     {d.statusCounts.low > 0 && (

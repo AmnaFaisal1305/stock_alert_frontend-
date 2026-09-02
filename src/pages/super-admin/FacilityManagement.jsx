@@ -233,7 +233,7 @@ export default function SuperAdminFacilityManagement() {
               { key: 'all',      label: 'All',      count: facilities.length,         activeClass: 'bg-primary text-white border-primary',    icon: null         },
               { key: 'critical', label: 'Critical',  count: statusCounts.critical,    activeClass: 'bg-danger text-white border-danger',      icon: AlertCircle  },
               { key: 'low',      label: 'Low',       count: statusCounts.low,         activeClass: 'bg-warning text-white border-warning',    icon: AlertTriangle},
-              { key: 'adequate', label: 'OK',         count: statusCounts.adequate,   activeClass: 'bg-success text-white border-success',    icon: CheckCircle2 },
+              { key: 'adequate', label: 'Normal',     count: statusCounts.adequate,   activeClass: 'bg-success text-white border-success',    icon: CheckCircle2 },
               { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,    activeClass: 'bg-slate-500 text-white border-slate-500', icon: null         },
             ].map(({ key, label, count, activeClass, icon: Icon }) => (
               <button

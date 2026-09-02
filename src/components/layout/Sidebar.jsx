@@ -10,9 +10,14 @@ import { useAuth } from '../../context/AuthContext'
 const NAV = {
   super_admin: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
-    { to: '/super-admin/districts',  label: 'Districts',       icon: Map             },
-    { to: '/super-admin/ucs',        label: 'UC Management',   icon: MapPin          },
-    { to: '/super-admin/facilities', label: 'Facilities',      icon: Building2       },
+    {
+      type: 'tree',
+      items: [
+        { to: '/super-admin/districts',  label: 'Districts',     icon: Map,      depth: 0 },
+        { to: '/super-admin/ucs',        label: 'UC Management', icon: MapPin,   depth: 1 },
+        { to: '/super-admin/facilities', label: 'Facilities',    icon: Building2, depth: 2 },
+      ],
+    },
     { to: '/super-admin/vaccines',   label: 'Vaccines',        icon: Syringe         },
     { to: '/super-admin/users',      label: 'User Management', icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',       icon: ClipboardList   },
@@ -157,39 +162,93 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
             </p>
           )}
 
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={onClose}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                [
-                  'flex items-center rounded-xl text-sm font-semibold transition-all duration-150 group',
-                  collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5',
-                  isActive
-                    ? 'bg-white/15 text-white shadow-sm'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/90',
-                ].join(' ')
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    size={18}
-                    strokeWidth={isActive ? 2.2 : 1.8}
-                    className={[
-                      'flex-shrink-0 transition-colors duration-150',
-                      isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80',
-                    ].join(' ')}
-                  />
-                  {!collapsed && (
-                    <span className="truncate">{label}</span>
+          {links.map((item, idx) => {
+            if (item.type === 'tree') {
+              const treeLink = ({ to, label, icon: Icon }, size = 18) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  title={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    [
+                      'flex items-center rounded-xl font-semibold transition-all duration-150 group',
+                      collapsed ? 'justify-center w-full p-3 text-sm' : 'gap-2.5 px-3 py-2 text-sm',
+                      isActive
+                        ? 'bg-white/15 text-white shadow-sm'
+                        : 'text-white/50 hover:bg-white/10 hover:text-white/90',
+                    ].join(' ')
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={size} strokeWidth={isActive ? 2.2 : 1.8}
+                        className={['flex-shrink-0 transition-colors duration-150', isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'].join(' ')} />
+                      {!collapsed && <span className="truncate">{label}</span>}
+                    </>
                   )}
-                </>
-              )}
-            </NavLink>
-          ))}
+                </NavLink>
+              )
+
+              const root     = item.items.find((i) => i.depth === 0)
+              const ucItem   = item.items.find((i) => i.depth === 1)
+              const facItem  = item.items.find((i) => i.depth === 2)
+
+              if (collapsed) {
+                return (
+                  <div key={idx} className="flex flex-col gap-1">
+                    {treeLink(root)}
+                    {treeLink(ucItem)}
+                    {treeLink(facItem)}
+                  </div>
+                )
+              }
+
+              return (
+                <div key={idx} className="flex flex-col gap-0.5">
+                  {/* Districts — root */}
+                  {treeLink(root, 18)}
+
+                  {/* UC Management — nested under Districts */}
+                  <div className="ml-5 border-l border-white/[0.08] pl-2 flex flex-col gap-0.5">
+                    {treeLink(ucItem, 15)}
+
+                    {/* Facilities — nested under UC */}
+                    <div className="ml-4 border-l border-white/[0.08] pl-2">
+                      {treeLink(facItem, 14)}
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            const { to, label, icon: Icon } = item
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={onClose}
+                title={collapsed ? label : undefined}
+                className={({ isActive }) =>
+                  [
+                    'flex items-center rounded-xl text-sm font-semibold transition-all duration-150 group',
+                    collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5',
+                    isActive
+                      ? 'bg-white/15 text-white shadow-sm'
+                      : 'text-white/50 hover:bg-white/10 hover:text-white/90',
+                  ].join(' ')
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8}
+                      className={['flex-shrink-0 transition-colors duration-150', isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'].join(' ')} />
+                    {!collapsed && <span className="truncate">{label}</span>}
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
 
         {/* ── Bottom: sign-out + collapse toggle ───── */}

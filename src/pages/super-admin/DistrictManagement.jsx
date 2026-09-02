@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Search, Map as MapIcon,
-  ChevronLeft, ChevronRight, ChevronDown, Building2, User, Mail, Loader2,
+  ChevronLeft, ChevronRight, ChevronDown, Building2, User, Mail, Loader2, MapPin,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getDistricts, getDistrict, getDashboard,
+  getDistricts, getDistrict, getFacilities, getDashboard,
   createDistrict, updateDistrict, deleteDistrict, activateDistrict,
 } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
@@ -17,18 +17,24 @@ import Toast from '../../components/ui/Toast'
 import StatusBadge from '../../components/shared/StatusBadge'
 import { facilityStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
 
-// ── Inline facility sub-table — rendered below each expanded district row ────
+// ── Inline expanded panel — Town → UC → Facility hierarchy ──────────────────
 function DistrictExpandedPanel({ districtId }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data: districtData, isLoading: loadingDistrict, isError } = useQuery({
     queryKey: ['district', districtId],
     queryFn: () => getDistrict(districtId),
   })
+  const { data: facilitiesData, isLoading: loadingFacilities } = useQuery({
+    queryKey: ['facilities'],
+    queryFn: getFacilities,
+  })
+
+  const isLoading = loadingDistrict || loadingFacilities
 
   if (isLoading) {
     return (
       <div className="border-t border-primary/10 bg-slate-50 px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
         <Loader2 size={14} className="animate-spin flex-shrink-0" />
-        Loading facilities…
+        Loading hierarchy…
       </div>
     )
   }
@@ -36,100 +42,134 @@ function DistrictExpandedPanel({ districtId }) {
   if (isError) {
     return (
       <div className="border-t border-primary/10 bg-slate-50 px-8 py-4 text-xs font-semibold text-danger">
-        Failed to load facilities.
+        Failed to load district details.
       </div>
     )
   }
 
-  const facilities = data?.district?.facilities ?? []
+  // Merge statusCounts from district endpoint with UC/town data from facilities endpoint
+  const statusById = new Map((districtData?.district?.facilities ?? []).map((f) => [f.id, f.statusCounts]))
+  const allFacilities = (facilitiesData?.facilities ?? []).filter((f) => f.districtId === districtId)
+
+  const townMap = new Map()
+  for (const f of allFacilities) {
+    const townKey = f.townId ?? '__none__'
+    if (!townMap.has(townKey)) townMap.set(townKey, { id: townKey, name: f.townName ?? '—', ucs: new Map() })
+    const town = townMap.get(townKey)
+    const ucKey = f.ucId ?? '__none__'
+    if (!town.ucs.has(ucKey)) town.ucs.set(ucKey, { id: ucKey, name: f.ucName ?? '—', facilities: [] })
+    town.ucs.get(ucKey).facilities.push({ ...f, statusCounts: statusById.get(f.id) })
+  }
+
+  const towns = Array.from(townMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((town) => ({
+      ...town,
+      ucs: Array.from(town.ucs.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((uc) => ({ ...uc, facilities: [...uc.facilities].sort((a, b) => a.name.localeCompare(b.name)) })),
+    }))
+
+  if (towns.length === 0) {
+    return (
+      <div className="border-t border-primary/10 bg-slate-50/80 px-8 py-5 flex items-center gap-3 text-text-muted">
+        <Building2 size={16} className="opacity-30 flex-shrink-0" />
+        <p className="text-sm font-medium">No facilities registered under this district.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="border-t border-primary/10 bg-slate-50/80">
-      {/* Sub-panel header */}
-      <div className="px-8 pt-4 pb-3 flex items-center gap-3">
-        <div className="w-0.5 h-4 bg-primary rounded-full flex-shrink-0" />
-        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-          {facilities.length} {facilities.length === 1 ? 'Facility' : 'Facilities'}
-        </span>
-      </div>
+    <div className="border-t border-primary/10 bg-slate-50/80 px-8 py-6 flex flex-col gap-7">
+      {towns.map((town) => (
+        <div key={town.id} className="flex flex-col gap-3">
 
-      {facilities.length === 0 ? (
-        <div className="px-8 pb-5 flex items-center gap-3 text-text-muted">
-          <Building2 size={16} className="opacity-30 flex-shrink-0" />
-          <p className="text-sm font-medium">No facilities registered under this district.</p>
-        </div>
-      ) : (
-        <div className="mx-6 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {facilities.map((f) => {
-            const fStatus    = facilityStatus(f.statusCounts)
-            const cfg        = statusConfig(fStatus)
-            const sc         = f.statusCounts ?? {}
-            const totalTypes = (sc.critical ?? 0) + (sc.low ?? 0) + (sc.adequate ?? 0) + (sc.no_data ?? 0)
-            const hasAny     = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
+          {/* ── Town row ── */}
+          <div className="flex items-center gap-2.5">
+            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-primary text-white uppercase tracking-widest flex-shrink-0">
+              Town
+            </span>
+            <MapPin size={12} className="text-primary flex-shrink-0" />
+            <span className="text-sm font-bold text-text">{town.name}</span>
+          </div>
 
-            return (
-              <Link
-                key={f.id}
-                to={`/super-admin/facilities/${f.id}`}
-                className={`group bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 flex flex-col gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
-              >
-                {/* Header: icon + name */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
-                      <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
-                    </div>
-                    <p className="font-bold text-sm text-text truncate group-hover:text-primary transition-colors" title={f.name}>
-                      {f.name}
-                    </p>
-                  </div>
-                  <StatusBadge status={fStatus} />
-                </div>
+          {/* ── UCs under this town ── */}
+          <div className="flex flex-col gap-3 pl-5">
+            {town.ucs.map((uc) => (
+              <div key={uc.id} className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm">
 
-                {/* Supervisor */}
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor</p>
-                  <p className={`text-xs truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
-                    {f.facilitySupervisorName ?? 'Unstaffed'}
-                  </p>
-                  {f.facilitySupervisorEmail && (
-                    <p className="text-[10px] text-text-muted truncate">{f.facilitySupervisorEmail}</p>
-                  )}
-                </div>
-
-                {/* Footer: vaccine count + status chips */}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-surface-border">
-                  <span className="text-[10px] font-bold text-text-muted tabular-nums">
-                    {totalTypes} vaccine{totalTypes !== 1 ? 's' : ''}
+                {/* UC header bar */}
+                <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 border-b border-surface-border">
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-slate-300 text-slate-700 uppercase tracking-widest flex-shrink-0">
+                    UC
                   </span>
-                  <div className="flex flex-wrap gap-1 justify-end">
-                    {sc.critical > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
-                        {sc.critical} Critical
-                      </span>
-                    )}
-                    {sc.low > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
-                        {sc.low} Low
-                      </span>
-                    )}
-                    {sc.adequate > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
-                        {sc.adequate} OK
-                      </span>
-                    )}
-                    {!hasAny && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
-                        No Data
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs font-bold text-text">{uc.name}</span>
+                  <span className="ml-auto text-[10px] font-semibold text-text-muted">
+                    {uc.facilities.length} {uc.facilities.length === 1 ? 'facility' : 'facilities'}
+                  </span>
                 </div>
-              </Link>
-            )
-          })}
+
+                {/* Facility cards inside the UC box */}
+                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {uc.facilities.map((f) => {
+                    const fStatus = facilityStatus(f.statusCounts)
+                    const cfg     = statusConfig(fStatus)
+                    const sc      = f.statusCounts ?? {}
+                    const hasAny  = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
+
+                    return (
+                      <Link
+                        key={f.id}
+                        to={`/super-admin/facilities/${f.id}`}
+                        className={`group bg-slate-50 rounded-lg border border-surface-border border-l-4 ${cfg.borderL} p-3.5 flex flex-col gap-2.5 hover:bg-white hover:shadow-md transition-all duration-200`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
+                              <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
+                            </div>
+                            <p className="font-bold text-sm text-text truncate group-hover:text-primary transition-colors" title={f.name}>
+                              {f.name}
+                            </p>
+                          </div>
+                          <StatusBadge status={fStatus} />
+                        </div>
+
+                        <p className={`text-xs truncate pl-0.5 ${f.facilitySupervisorName ? 'text-text-muted font-medium' : 'text-text-muted italic'}`}>
+                          {f.facilitySupervisorName ?? 'Unstaffed'}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1 pt-2 border-t border-slate-100">
+                          {sc.critical > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
+                              {sc.critical} Critical
+                            </span>
+                          )}
+                          {sc.low > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
+                              {sc.low} Low
+                            </span>
+                          )}
+                          {sc.adequate > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
+                              {sc.adequate} Normal
+                            </span>
+                          )}
+                          {!hasAny && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
+                              No Data
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }
@@ -300,12 +340,12 @@ export default function DistrictManagement() {
               const colorClass =
                 f.label === 'Critical' ? (active ? 'bg-danger text-white' : 'text-danger hover:bg-danger/5') :
                 f.label === 'Low'      ? (active ? 'bg-warning text-white' : 'text-warning-dark hover:bg-warning/5') :
-                f.label === 'OK'       ? (active ? 'bg-success text-white' : 'text-success-dark hover:bg-success/5') :
+                f.label === 'Normal'       ? (active ? 'bg-success text-white' : 'text-success-dark hover:bg-success/5') :
                 (active ? 'bg-primary text-white' : 'text-text-muted hover:bg-slate-50')
               const badgeClass =
                 f.label === 'Critical' ? (active ? 'bg-white/20 text-white' : 'bg-danger/10 text-danger') :
                 f.label === 'Low'      ? (active ? 'bg-white/20 text-white' : 'bg-warning/10 text-warning-dark') :
-                f.label === 'OK'       ? (active ? 'bg-white/20 text-white' : 'bg-success/10 text-success-dark') :
+                f.label === 'Normal'       ? (active ? 'bg-white/20 text-white' : 'bg-success/10 text-success-dark') :
                 (active ? 'bg-white/20 text-white' : 'bg-slate-100 text-text-muted')
               return (
                 <button
