@@ -1,20 +1,39 @@
 import { Component } from 'react'
 
+function isChunkError(error) {
+  const msg = error?.message ?? ''
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('Unable to preload CSS') ||
+    error?.name === 'ChunkLoadError'
+  )
+}
+
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { error: null }
+    this.state = { error: null, chunkError: false }
   }
 
   static getDerivedStateFromError(error) {
-    return { error }
+    return { error, chunkError: isChunkError(error) }
   }
 
   componentDidCatch(error, info) {
+    if (isChunkError(error)) {
+      // Stale deployment — old chunk hashes. Reload silently to get fresh assets.
+      window.location.reload()
+      return
+    }
     console.error('Unhandled UI error:', error, info)
   }
 
   render() {
+    if (this.state.chunkError) {
+      // Page is about to reload — show nothing to avoid a flash
+      return null
+    }
     if (this.state.error) {
       return (
         <div className="min-h-screen flex items-center justify-center p-8">

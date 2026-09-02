@@ -96,11 +96,12 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
           'border-b border-white/10 flex items-center flex-shrink-0 relative',
           collapsed ? 'justify-center px-0 py-5 h-[72px]' : 'gap-3 px-5 py-5 h-[72px]',
         ].join(' ')}>
-          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-white/20 bg-white">
+          <div className="w-9 h-9 flex-shrink-0">
             <img
-              src="/images/WhatsApp Image 2026-08-21 at 2.25.20 AM.jpeg"
+              src="/images/icon image.jpeg"
               alt="Logo"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
+              style={{ mixBlendMode: 'screen', filter: 'invert(1) hue-rotate(180deg)' }}
             />
           </div>
 
