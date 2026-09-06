@@ -1,14 +1,18 @@
 import { useState, useMemo } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacilities, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
+import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
+import SearchInput from '../../components/shared/SearchInput'
+import Pagination from '../../components/shared/Pagination'
 
 export default function UCSupervisorFacilities() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const debouncedSearch = useDebounce(searchQuery)
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('filter') ?? 'all'
   function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setCurrentPage(1) }
@@ -37,11 +41,11 @@ export default function UCSupervisorFacilities() {
   }
 
   const filteredFacilities = useMemo(() => facilities.filter((f) => {
-    const matchesSearch = f.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = f.name?.toLowerCase().includes(debouncedSearch.toLowerCase())
     const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
     const matchesStatus = statusFilter === 'all' ? true : fStatus === statusFilter
     return matchesSearch && matchesStatus
-  }).sort((a, b) => a.name.localeCompare(b.name)), [facilities, searchQuery, statusFilter, statusByFacilityId])
+  }).sort((a, b) => a.name.localeCompare(b.name)), [facilities, debouncedSearch, statusFilter, statusByFacilityId])
 
   const itemsPerPage = 10
   const totalPages = Math.ceil(filteredFacilities.length / itemsPerPage)
@@ -111,16 +115,11 @@ export default function UCSupervisorFacilities() {
       {/* Search + Filter row */}
       {!isLoading && !isError && facilities.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
-          <div className="relative w-80">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search facility by name..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            placeholder="Search facility by name..."
+          />
 
           <div className="flex gap-2 flex-wrap">
             {[
@@ -173,42 +172,7 @@ export default function UCSupervisorFacilities() {
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}"` : 'No facilities found.'}
           />
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
-              <div className="flex flex-1 justify-between sm:hidden">
-                <button className="text-xs font-semibold text-text-muted px-3 py-1.5 border border-surface-border rounded-lg disabled:opacity-40" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Previous</button>
-                <button className="text-xs font-semibold text-text-muted px-3 py-1.5 border border-surface-border rounded-lg disabled:opacity-40" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-              </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <p className="text-xs text-text-muted font-semibold">
-                  Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-                  <span className="font-extrabold text-text">{totalPages}</span>
-                </p>
-                <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
-                  <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer">
-                    <ChevronLeft size={16} />
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const p = i + 1
-                    return (
-                      <button key={p} onClick={() => setCurrentPage(p)}
-                        className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                          p === currentPage ? 'bg-primary text-white shadow-sm shadow-primary/10' : 'text-text-muted hover:bg-white'
-                        }`}>
-                        {p}
-                      </button>
-                    )
-                  })}
-                  <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer">
-                    <ChevronRight size={16} />
-                  </button>
-                </nav>
-              </div>
-            </div>
-          )}
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
       )}
     </div>

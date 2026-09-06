@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Building2, AlertCircle, AlertTriangle, CheckCircle2, MapPin } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { getDistrict, getFacilities } from '../../lib/api'
+import { getDistrict } from '../../lib/api'
 import StatusBadge from '../../components/shared/StatusBadge'
 import StatCard from '../../components/shared/StatCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
@@ -11,26 +11,19 @@ import { facilityStatus } from '../../lib/status'
 export default function DistrictDetail() {
   const { id } = useParams()
 
-  const { data: districtData, isLoading: loadingDistrict, isError } = useQuery({
+  const { data: districtData, isLoading, isError } = useQuery({
     queryKey: ['district', id],
     queryFn: () => getDistrict(id),
   })
-  const { data: facilitiesData, isLoading: loadingFacilities } = useQuery({
-    queryKey: ['facilities'],
-    queryFn: getFacilities,
-  })
 
   const district = districtData?.district
-  const isLoading = loadingDistrict || loadingFacilities
 
-  // Merge statusCounts (from district endpoint) with hierarchy data (from facilities endpoint)
-  // then group: Town → UC → Facilities
+  // district.facilities now includes ucId/ucName/townId/townName (Round 23) — no second call needed
   const towns = useMemo(() => {
-    const allFacilities = (facilitiesData?.facilities ?? []).filter((f) => f.districtId === id)
-    const statusById = new Map((district?.facilities ?? []).map((f) => [f.id, f.statusCounts]))
+    const facilities = district?.facilities ?? []
 
     const townMap = new Map()
-    for (const f of allFacilities) {
+    for (const f of facilities) {
       const townKey = f.townId ?? '__none__'
       if (!townMap.has(townKey)) {
         townMap.set(townKey, { id: townKey, name: f.townName ?? '—', ucs: new Map() })
@@ -40,7 +33,7 @@ export default function DistrictDetail() {
       if (!town.ucs.has(ucKey)) {
         town.ucs.set(ucKey, { id: ucKey, name: f.ucName ?? '—', facilities: [] })
       }
-      town.ucs.get(ucKey).facilities.push({ ...f, statusCounts: statusById.get(f.id) })
+      town.ucs.get(ucKey).facilities.push(f)
     }
 
     return Array.from(townMap.values())
@@ -54,7 +47,7 @@ export default function DistrictDetail() {
             facilities: [...uc.facilities].sort((a, b) => a.name.localeCompare(b.name)),
           })),
       }))
-  }, [facilitiesData, district, id])
+  }, [district])
 
   const totalUCs = towns.reduce((sum, t) => sum + t.ucs.length, 0)
 

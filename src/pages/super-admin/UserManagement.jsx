@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { Plus, RotateCcw, UserX, UserCheck, Search, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { Plus, RotateCcw, UserX, UserCheck, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
+import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
+import SearchInput from '../../components/shared/SearchInput'
+import Pagination from '../../components/shared/Pagination'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -90,6 +94,8 @@ export default function UserManagement() {
         ? 'This ZMID is already assigned to another account.'
         : err.status === 409 && err.body?.error?.includes('active supervisor')
         ? 'This district/facility already has an active supervisor. Deactivate them first.'
+        : err.body?.error?.includes('same district')
+        ? 'All selected union councils must belong to the same district.'
         : err.message
     ),
   })
@@ -103,7 +109,11 @@ export default function UserManagement() {
       setReassignError('')
       setToast({ message: 'UC assignments updated.', type: 'success' })
     },
-    onError: (err) => setReassignError(err.message),
+    onError: (err) => setReassignError(
+      err.body?.error?.includes('same district')
+        ? 'All selected union councils must belong to the same district.'
+        : err.message
+    ),
   })
 
   const deactivateMutation = useMutation({
@@ -144,11 +154,14 @@ export default function UserManagement() {
     f.value ? users.filter((u) => u.role === f.value).length : users.length
   )
 
+  const debouncedSearch = useDebounce(searchQuery)
+
   // Filter users by name/email and role
   const filteredUsers = users.filter((u) => {
+    const q = debouncedSearch.toLowerCase()
     const matchesSearch =
-      (u.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+      (u.name ?? '').toLowerCase().includes(q) ||
+      (u.email ?? '').toLowerCase().includes(q)
     const matchesRole = !ROLE_FILTERS[roleFilter].value || u.role === ROLE_FILTERS[roleFilter].value
     return matchesSearch && matchesRole
   })
@@ -276,16 +289,11 @@ export default function UserManagement() {
       {/* Search + Role filters */}
       {!isLoading && !isError && users.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-80">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            placeholder="Search by name or email..."
+          />
           <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
             {ROLE_FILTERS.map((f, i) => {
               const active = roleFilter === i
@@ -336,61 +344,7 @@ export default function UserManagement() {
             }
           />
 
-          {/* Pagination bar */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
-              <div className="flex flex-1 justify-between sm:hidden">
-                <Button variant="secondary" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
-                  Previous
-                </Button>
-                <Button variant="secondary" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
-                  Next
-                </Button>
-              </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-text-muted font-semibold">
-                    Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-                    <span className="font-extrabold text-text">{totalPages}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    {Array.from({ length: totalPages }).map((_, i) => {
-                      const p = i + 1
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => setCurrentPage(p)}
-                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                            p === currentPage
-                              ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                              : 'text-text-muted hover:bg-white'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
       )}
 
@@ -510,20 +464,15 @@ export default function UserManagement() {
         </form>
       </Modal>
 
-      {/* Deactivate Modal */}
-      <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate Account" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">
-            Deactivate <span className="font-bold text-text">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.
-          </p>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
-              {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={() => deactivateMutation.mutate(deactivateTarget.id)}
+        title="Deactivate Account"
+        message={<p className="text-sm text-text">Deactivate <span className="font-bold">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.</p>}
+        confirmLabel="Deactivate"
+        isPending={deactivateMutation.isPending}
+      />
 
       {/* Reassign UCs Modal */}
       <Modal open={!!reassignTarget} onClose={() => setReassignTarget(null)} title={`Reassign UCs — ${reassignTarget?.name ?? ''}`}>

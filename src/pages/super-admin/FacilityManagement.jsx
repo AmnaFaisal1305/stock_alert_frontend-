@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Search, Building2, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
+import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
+import SearchInput from '../../components/shared/SearchInput'
+import Pagination from '../../components/shared/Pagination'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -29,6 +33,7 @@ export default function SuperAdminFacilityManagement() {
   const [toast, setToast]        = useState(null)
   const [searchQuery, setSearch] = useState('')
   const [currentPage, setPage]   = useState(1)
+  const debouncedSearch = useDebounce(searchQuery)
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('filter') ?? 'all'
   function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setPage(1) }
@@ -111,8 +116,9 @@ export default function SuperAdminFacilityManagement() {
   }
 
   const filtered = facilities.filter((f) => {
-    const matchesSearch = (f.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (f.districtName ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    const q = debouncedSearch.toLowerCase()
+    const matchesSearch = (f.name ?? '').toLowerCase().includes(q) ||
+                          (f.districtName ?? '').toLowerCase().includes(q)
     const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
     const matchesStatus = statusFilter === 'all' ? true : fStatus === statusFilter
     return matchesSearch && matchesStatus
@@ -217,16 +223,11 @@ export default function SuperAdminFacilityManagement() {
       {/* Search + Filter */}
       {!isLoading && !isError && facilities.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
-          <div className="relative w-80">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by name or district…"
-              value={searchQuery}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Search by name or district…"
+          />
 
           <div className="flex gap-2 flex-wrap">
             {[
@@ -274,33 +275,7 @@ export default function SuperAdminFacilityManagement() {
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}".` : 'No facilities registered yet.'}
           />
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
-              <p className="text-xs text-text-muted font-semibold hidden sm:block">
-                Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-                <span className="font-extrabold text-text">{totalPages}</span>
-              </p>
-              <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
-                <button onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}
-                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
-                  <ChevronLeft size={16} />
-                </button>
-                {Array.from({ length: totalPages }).map((_, i) => {
-                  const p = i + 1
-                  return (
-                    <button key={p} onClick={() => setPage(p)}
-                      className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                        p === currentPage ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-white'
-                      }`}>{p}</button>
-                  )
-                })}
-                <button onClick={() => setPage(currentPage + 1)} disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
-                  <ChevronRight size={16} />
-                </button>
-              </nav>
-            </div>
-          )}
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
 
@@ -338,21 +313,16 @@ export default function SuperAdminFacilityManagement() {
         </form>
       </Modal>
 
-      {/* Deactivate confirmation */}
-      <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate Facility" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">
-            Deactivate <span className="font-bold">{deactivateTarget?.name}</span>? Supervisors and staff will not be able to log stock until reactivated.
-          </p>
-          {deactivateError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deactivateError}</p>}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deactivateMutation.mutate(deactivateTarget.id)} disabled={deactivateMutation.isPending}>
-              {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={() => deactivateMutation.mutate(deactivateTarget.id)}
+        title="Deactivate Facility"
+        message={<p className="text-sm text-text">Deactivate <span className="font-bold">{deactivateTarget?.name}</span>? Supervisors and staff will not be able to log stock until reactivated.</p>}
+        confirmLabel="Deactivate"
+        isPending={deactivateMutation.isPending}
+        error={deactivateError}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

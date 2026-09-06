@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Syringe, AlertCircle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, createVaccine, updateVaccine, deleteVaccine } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
@@ -256,22 +257,16 @@ export default function VaccineManagement() {
         )}
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete vaccine" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">
-            Delete <span className="font-semibold" dir="rtl">{displayVaccineName(deleteTarget?.name)}</span> from the global catalog?
-            This cannot be undone and will remove it from every facility's dashboard.
-          </p>
-          {deleteError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{deleteError}</p>}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Delete Vaccine"
+        message={<p className="text-sm text-text">Delete <span className="font-semibold" dir="rtl">{displayVaccineName(deleteTarget?.name)}</span> from the global catalog? This cannot be undone and will remove it from every facility's dashboard.</p>}
+        confirmLabel="Delete"
+        isPending={deleteMutation.isPending}
+        error={deleteError}
+      />
     </div>
   )
 }

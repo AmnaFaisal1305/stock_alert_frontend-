@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCcw, MapPin, Map, Search, ChevronDown, ChevronRight, User } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCcw, MapPin, Map, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getTowns, createTown, updateTown, deleteTown, activateTown,
   getUnionCouncils, createUnionCouncil, updateUnionCouncil, deleteUnionCouncil, activateUnionCouncil,
   getDistricts,
 } from '../../lib/api'
+import SearchInput from '../../components/shared/SearchInput'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -107,11 +109,7 @@ function TownsTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="relative w-72">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input type="text" placeholder="Search towns…" value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60" />
-        </div>
+        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns…" />
         <Button onClick={() => { setAddOpen(true); setAddError('') }}>
           <Plus size={15} /> Add Town
         </Button>
@@ -152,19 +150,16 @@ function TownsTab() {
         </form>
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!delTarget} onClose={() => setDelTarget(null)} title="Deactivate Town" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">Deactivate <span className="font-semibold">{delTarget?.name}</span>? It can be reactivated later.</p>
-          {delError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{delError}</p>}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDelTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Deactivating…' : 'Deactivate'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!delTarget}
+        onClose={() => setDelTarget(null)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Deactivate Town"
+        message={`Deactivate ${delTarget?.name ?? ''}? It can be reactivated later.`}
+        confirmLabel="Deactivate"
+        isPending={deleteMutation.isPending}
+        error={delError}
+      />
     </div>
   )
 }
@@ -268,11 +263,7 @@ function UCsTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="relative w-72">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input type="text" placeholder="Search UCs…" value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60" />
-        </div>
+        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UCs…" />
         <Button onClick={() => { setAddOpen(true); setAddError('') }}>
           <Plus size={15} /> Add UC
         </Button>
@@ -313,19 +304,16 @@ function UCsTab() {
         </form>
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!delTarget} onClose={() => setDelTarget(null)} title="Deactivate UC" maxWidth="max-w-sm">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-text">Deactivate <span className="font-semibold">{delTarget?.name}</span>? It can be reactivated later.</p>
-          {delError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{delError}</p>}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDelTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Deactivating…' : 'Deactivate'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!delTarget}
+        onClose={() => setDelTarget(null)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Deactivate UC"
+        message={`Deactivate ${delTarget?.name ?? ''}? It can be reactivated later.`}
+        confirmLabel="Deactivate"
+        isPending={deleteMutation.isPending}
+        error={delError}
+      />
     </div>
   )
 }
