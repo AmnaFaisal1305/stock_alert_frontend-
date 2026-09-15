@@ -84,7 +84,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
 
       <aside
         className={[
-          'h-screen bg-epi-dark flex flex-col flex-shrink-0 relative',
+          'h-screen bg-epi-dark flex flex-col flex-shrink-0',
           'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0',
           'transition-all duration-300 ease-in-out',
           collapsed ? 'w-[72px]' : 'w-64',
