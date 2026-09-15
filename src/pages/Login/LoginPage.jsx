@@ -77,7 +77,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
 
       {/* ── LEFT — Login Form ─────────────────────────────────────── */}
-      <div className="relative flex flex-col justify-center w-full lg:w-[580px] xl:w-[640px] flex-shrink-0 bg-white px-14 xl:px-16 py-20 z-10">
+      <div className="relative flex flex-col justify-center w-full lg:w-[580px] xl:w-[640px] flex-shrink-0 bg-white px-5 sm:px-10 lg:px-14 xl:px-16 py-12 sm:py-20 z-10">
 
         {/* Top green accent bar */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary-dark via-primary to-primary-light" />
@@ -174,7 +174,7 @@ export default function LoginPage() {
               <span className="text-[11px] text-text-muted/50 font-medium whitespace-nowrap">or continue with</span>
               <hr className="flex-1 border-surface-border" />
             </div>
-            <div id="google-signin-btn" className="flex justify-center" />
+            <div id="google-signin-btn" className="flex justify-center max-w-full overflow-hidden" />
             {googleError && (
               <div
                 role="alert"

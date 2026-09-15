@@ -302,7 +302,7 @@ export default function DistrictManagement() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* ── Maroon banner header ─────────────────────────────────────── */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">District Management</h1>
           <p className="text-sm text-white/70 mt-0.5">
@@ -377,8 +377,8 @@ export default function DistrictManagement() {
         <div className="flex flex-col gap-3">
           <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
 
-            {/* Column headers */}
-            <div className="grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-6 items-center">
+            {/* Column headers — desktop only */}
+            <div className="hidden sm:grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-6 items-center">
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Name</span>
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Supervisor</span>
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
@@ -399,13 +399,49 @@ export default function DistrictManagement() {
               return (
                 <div key={row.id} className="border-b border-surface-border last:border-b-0">
 
-                  {/* Main row */}
+                  {/* ── Mobile card ── */}
+                  <div className={['sm:hidden px-4 py-3 flex flex-col gap-2 transition-colors duration-150', isExpanded ? 'bg-primary/[0.04]' : ''].join(' ')}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-text text-sm truncate">{row.name}</p>
+                            <Badge type={row.isActive ? 'active' : 'inactive'} />
+                          </div>
+                          <p className="text-[10px] text-text-muted font-medium mt-0.5">
+                            {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-0.5 text-xs text-text-muted pl-5">
+                      <span>Supervisor: <span className={row.supervisorName ? 'font-semibold text-text' : 'italic'}>{row.supervisorName ?? '—'}</span></span>
+                      <span className="truncate">Email: <span className={row.supervisorEmail ? 'text-text' : 'italic'}>{row.supervisorEmail ?? '—'}</span></span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap pl-5 pt-0.5">
+                      <button onClick={() => toggleExpand(row.id)} className={['inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150', isExpanded ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'].join(' ')}>
+                        <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        {isExpanded ? 'Collapse' : 'View Details'}
+                      </button>
+                      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
+                        <Pencil size={12} /> Rename
+                      </Button>
+                      {row.isActive ? (
+                        <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Desktop row ── */}
                   <div className={[
-                    'grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-4 gap-6 items-center transition-colors duration-150',
+                    'hidden sm:grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-4 gap-6 items-center transition-colors duration-150',
                     isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-slate-50/60',
                   ].join(' ')}>
 
-                    {/* District name + active badge + date + activate/deactivate */}
+                    {/* District name + active badge + date */}
                     <div className="flex items-center gap-2.5 min-w-0">
                       <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
                       <div className="min-w-0">

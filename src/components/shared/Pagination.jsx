@@ -3,12 +3,15 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
-      <p className="text-xs text-text-muted font-semibold hidden sm:block">
+    <div className="flex items-center justify-between bg-white px-4 sm:px-5 py-3 sm:py-4 rounded-2xl border border-surface-border shadow-sm gap-2">
+      <p className="text-xs text-text-muted font-semibold hidden sm:block flex-shrink-0">
         Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
         <span className="font-extrabold text-text">{totalPages}</span>
       </p>
-      <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
+      <p className="text-xs text-text-muted font-semibold sm:hidden flex-shrink-0">
+        {currentPage}/{totalPages}
+      </p>
+      <nav className="isolate inline-flex overflow-x-auto max-w-full rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-0.5" aria-label="Pagination">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}

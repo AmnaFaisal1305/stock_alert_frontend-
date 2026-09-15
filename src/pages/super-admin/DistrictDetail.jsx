@@ -63,7 +63,7 @@ export default function DistrictDetail() {
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">
           <div className="h-6 bg-slate-100 rounded w-1/4" />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -81,7 +81,7 @@ export default function DistrictDetail() {
       {!isLoading && !isError && district && (
         <>
           {/* Banner */}
-          <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+          <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl font-bold text-white tracking-tight">{district.name}</h1>
@@ -100,7 +100,7 @@ export default function DistrictDetail() {
           </div>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Critical" value={district.statusCounts?.critical ?? 0} icon={AlertCircle} colorClass="text-danger" subtitle="Urgent action required" />
             <StatCard label="Low" value={district.statusCounts?.low ?? 0} icon={AlertTriangle} colorClass="text-warning-dark" subtitle="Attention suggested" />
             <StatCard label="Normal" value={district.statusCounts?.adequate ?? 0} icon={CheckCircle2} colorClass="text-success-dark" subtitle="All lines healthy" />

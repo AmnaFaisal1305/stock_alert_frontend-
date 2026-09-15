@@ -11,7 +11,7 @@ function facilityPath(role, facilityId) {
 export default function NotificationPanel({ alerts, role, onClose }) {
   if (alerts.length === 0) {
     return (
-      <div className="absolute right-0 top-12 w-72 bg-white rounded-2xl border border-surface-border shadow-2xl z-50 px-5 py-6 flex flex-col items-center gap-2 text-center animate-in fade-in duration-150">
+      <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-72 bg-white rounded-2xl border border-surface-border shadow-2xl z-50 px-5 py-6 flex flex-col items-center gap-2 text-center animate-in fade-in duration-150">
         <Bell size={28} className="text-text-muted/30" />
         <p className="text-sm font-semibold text-text">No critical alerts</p>
         <p className="text-xs text-text-muted">All vaccines are within healthy or low stock levels.</p>
@@ -20,7 +20,7 @@ export default function NotificationPanel({ alerts, role, onClose }) {
   }
 
   return (
-    <div className="absolute right-0 top-12 w-[340px] bg-white rounded-2xl border border-surface-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+    <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[340px] bg-white rounded-2xl border border-surface-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-danger-bg">
         <div className="flex items-center gap-2">
           <AlertCircle size={15} className="text-danger" />

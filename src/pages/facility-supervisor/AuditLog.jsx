@@ -95,7 +95,7 @@ function parseEntry(action, details, vaccineNameById) {
 // ─── Column Headers ───────────────────────────────────────────────────────────
 function ColumnHeaders() {
   return (
-    <div className="grid grid-cols-[160px_1fr_120px_200px] gap-3 px-5 py-3 bg-slate-50 border-b border-surface-border">
+    <div className="hidden sm:grid grid-cols-[160px_1fr_120px_200px] gap-3 px-5 py-3 bg-slate-50 border-b border-surface-border">
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</span>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine / Subject</span>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses / Detail</span>
@@ -117,29 +117,52 @@ function EntryRow({ entry, vaccineNameById }) {
       : 'text-text-muted'
 
   return (
-    <div className="grid grid-cols-[160px_1fr_120px_200px] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
-        <IconCmp size={12} strokeWidth={2.2} />
-        {meta.label}
-      </span>
-
-      <p className="text-sm font-semibold text-text break-words"  title={subject ?? undefined}>
-        {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
-      </p>
-
-      {quantity ? (
-        <div className={`flex items-center gap-1 text-xs font-bold ${qtyColor}`}>
-          {qtyType === 'in'  && <ArrowUp   size={12} strokeWidth={2.5} />}
-          {qtyType === 'out' && <ArrowDown  size={12} strokeWidth={2.5} />}
-          {quantity}
+    <div>
+      {/* Mobile card */}
+      <div className="sm:hidden px-4 py-3 hover:bg-slate-50/50 transition-colors">
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
+            <IconCmp size={12} strokeWidth={2.2} />
+            {meta.label}
+          </span>
+          {quantity && (
+            <div className={`flex items-center gap-1 text-xs font-bold flex-shrink-0 ${qtyColor}`}>
+              {qtyType === 'in'  && <ArrowUp size={12} strokeWidth={2.5} />}
+              {qtyType === 'out' && <ArrowDown size={12} strokeWidth={2.5} />}
+              {quantity}
+            </div>
+          )}
         </div>
-      ) : (
-        <span className="text-xs text-text-muted font-normal">—</span>
-      )}
-
-      <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
-        <Clock size={12} className="flex-shrink-0" />
-        <span>{formatFullDate(entry.createdAt)}</span>
+        <p className="text-sm font-semibold text-text">
+          {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
+        </p>
+        <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
+          <Clock size={10} className="flex-shrink-0" />
+          <span>{formatFullDate(entry.createdAt)}</span>
+        </div>
+      </div>
+      {/* Desktop row */}
+      <div className="hidden sm:grid grid-cols-[160px_1fr_120px_200px] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
+          <IconCmp size={12} strokeWidth={2.2} />
+          {meta.label}
+        </span>
+        <p className="text-sm font-semibold text-text break-words" title={subject ?? undefined}>
+          {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
+        </p>
+        {quantity ? (
+          <div className={`flex items-center gap-1 text-xs font-bold ${qtyColor}`}>
+            {qtyType === 'in'  && <ArrowUp   size={12} strokeWidth={2.5} />}
+            {qtyType === 'out' && <ArrowDown  size={12} strokeWidth={2.5} />}
+            {quantity}
+          </div>
+        ) : (
+          <span className="text-xs text-text-muted font-normal">—</span>
+        )}
+        <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
+          <Clock size={12} className="flex-shrink-0" />
+          <span>{formatFullDate(entry.createdAt)}</span>
+        </div>
       </div>
     </div>
   )
@@ -302,7 +325,7 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
   return (
     <div className="flex flex-col gap-4">
       {workers.length > 0 && (
-        <div className="relative w-80">
+        <div className="relative w-full sm:w-80">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           <input
             type="text"
@@ -405,7 +428,7 @@ export default function FacilitySupervisorAuditLog() {
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
 
       {/* Banner — matches admin style */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">Audit Log</h1>
           <p className="text-sm text-white/70 mt-0.5">

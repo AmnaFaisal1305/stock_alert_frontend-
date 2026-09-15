@@ -182,6 +182,27 @@ export default function FacilityManagement() {
             columns={columns}
             rows={paginatedFacilities}
             emptyMessage={searchQuery ? `No clinics match "${searchQuery}"` : 'No clinics configured yet.'}
+            mobileCard={(row) => (
+              <div className="px-4 py-3 hover:bg-slate-50">
+                <div className="flex items-center gap-2 min-w-0 mb-1">
+                  <Building2 size={12} className="text-text-muted/70 flex-shrink-0" />
+                  <RouterLink to={`/district/facilities/${row.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">
+                    {row.name}
+                  </RouterLink>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-text-muted pl-5 mb-2">
+                  <span>UC: <span className="font-medium text-text">{row.ucName ?? '—'}</span></span>
+                  <span>Town: <span className="font-medium text-text">{row.townName ?? '—'}</span></span>
+                  <span className="col-span-2">
+                    {row.facilitySupervisorName ?? <span className="italic">Unstaffed</span>}
+                  </span>
+                </div>
+                <RouterLink to={`/district/facilities/${row.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pl-5">
+                  View Stock <ArrowRight size={13} strokeWidth={2.2} />
+                </RouterLink>
+              </div>
+            )}
           />
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />

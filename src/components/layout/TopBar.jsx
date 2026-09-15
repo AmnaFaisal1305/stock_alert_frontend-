@@ -86,7 +86,7 @@ export default function TopBar({ onMenuClick }) {
           </svg>
         </button>
         {pageTitle && (
-          <h1 className="text-base font-bold text-text tracking-tight">{pageTitle}</h1>
+          <h1 className="text-sm sm:text-base font-bold text-text tracking-tight truncate max-w-[140px] sm:max-w-none">{pageTitle}</h1>
         )}
       </div>
 

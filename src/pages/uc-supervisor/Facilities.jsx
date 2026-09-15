@@ -103,7 +103,7 @@ export default function UCSupervisorFacilities() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">Vaccine Performance</h1>
           <p className="text-sm text-white/70 mt-0.5">
@@ -170,6 +170,27 @@ export default function UCSupervisorFacilities() {
             columns={columns}
             rows={paginatedFacilities}
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}"` : 'No facilities found.'}
+            mobileCard={(row) => (
+              <div className="px-4 py-3 hover:bg-slate-50">
+                <div className="flex items-center gap-2 min-w-0 mb-1">
+                  <Building2 size={12} className="text-text-muted/70 flex-shrink-0" />
+                  <RouterLink to={`/uc/facilities/${row.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">
+                    {row.name}
+                  </RouterLink>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-text-muted pl-5 mb-2">
+                  <span>UC: <span className="font-medium text-text">{row.ucName ?? '—'}</span></span>
+                  <span>Town: <span className="font-medium text-text">{row.townName ?? '—'}</span></span>
+                  <span className="col-span-2">
+                    {row.facilitySupervisorName ?? <span className="italic">Unstaffed</span>}
+                  </span>
+                </div>
+                <RouterLink to={`/uc/facilities/${row.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pl-5">
+                  View Stock <ArrowRight size={12} strokeWidth={2.2} />
+                </RouterLink>
+              </div>
+            )}
           />
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />

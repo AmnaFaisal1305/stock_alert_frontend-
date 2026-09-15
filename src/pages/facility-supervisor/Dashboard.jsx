@@ -216,7 +216,7 @@ function ActivityFeed({ logs, vaccineNameById }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 px-5 py-2.5 bg-slate-50/70 border-b border-surface-border">
+          <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 px-5 py-2.5 bg-slate-50/70 border-b border-surface-border">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Worker</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Doses / When</span>
@@ -225,16 +225,34 @@ function ActivityFeed({ logs, vaccineNameById }) {
             {entries.map((entry, i) => {
               const vacName = vaccineNameById?.[entry.details?.vaccineId] ?? '—'
               return (
-                <div key={i} className="grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
-                  <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
-                  <p className="text-xs font-medium text-text-muted truncate">{vacName}</p>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span className="flex items-center gap-1 text-xs font-bold text-danger">
-                      <ArrowDown size={10} />{entry.details?.quantity ?? '—'} doses
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-text-muted">
-                      <Clock size={9} className="flex-shrink-0" />{timeAgo(entry.createdAt)}
-                    </span>
+                <div key={i} className="hover:bg-slate-50/50 transition-colors">
+                  {/* Mobile row */}
+                  <div className="sm:hidden px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
+                      <span className="flex items-center gap-1 text-xs font-bold text-danger flex-shrink-0">
+                        <ArrowDown size={10} />{entry.details?.quantity ?? '—'} doses
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs font-medium text-text-muted truncate">{vacName}</p>
+                      <span className="flex items-center gap-1 text-[10px] text-text-muted flex-shrink-0">
+                        <Clock size={9} />{timeAgo(entry.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Desktop row */}
+                  <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 items-center px-5 py-3">
+                    <p className="text-sm font-semibold text-text truncate">{entry.actorName ?? '—'}</p>
+                    <p className="text-xs font-medium text-text-muted truncate">{vacName}</p>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="flex items-center gap-1 text-xs font-bold text-danger">
+                        <ArrowDown size={10} />{entry.details?.quantity ?? '—'} doses
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] text-text-muted">
+                        <Clock size={9} className="flex-shrink-0" />{timeAgo(entry.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )
@@ -450,7 +468,7 @@ export default function FacilityDashboard() {
 
             {!isError && rows.length > 0 ? (
               <>
-                <div className="grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
+                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Stock</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
@@ -458,21 +476,46 @@ export default function FacilityDashboard() {
                 </div>
                 <div className="divide-y divide-surface-border">
                   {rows.map((row) => (
-                    <div key={row.vaccineId} className="grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
-                      <p className="text-sm font-semibold text-text truncate">{displayVaccineName(row.vaccineName)}</p>
-                      <p className="text-sm font-bold text-text text-right tabular-nums">
-                        {row.quantity ?? '—'}
-                        <span className="text-[10px] text-text-muted font-normal block">doses</span>
-                      </p>
-                      <p className="text-sm font-bold text-warning-dark text-right tabular-nums">
-                        {row.consumed ?? '—'}
-                        <span className="text-[10px] text-text-muted font-normal block">doses</span>
-                      </p>
-                      <p className="text-xs font-medium text-text-muted text-right">
-                        {row.recordedAt
-                          ? new Date(row.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : <span className="italic text-[10px]">Never</span>}
-                      </p>
+                    <div key={row.vaccineId}>
+                      {/* Mobile row */}
+                      <div className="sm:hidden px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                        <p className="text-sm font-semibold text-text mb-1">{displayVaccineName(row.vaccineName)}</p>
+                        <div className="grid grid-cols-3 gap-x-3 text-xs">
+                          <div>
+                            <p className="text-text-muted">Stock</p>
+                            <p className="font-bold text-text tabular-nums">{row.quantity ?? '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-text-muted">Consumed</p>
+                            <p className="font-bold text-warning-dark tabular-nums">{row.consumed ?? '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-text-muted">Recorded</p>
+                            <p className="font-medium text-text-muted text-[10px]">
+                              {row.recordedAt
+                                ? new Date(row.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                : <span className="italic">Never</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Desktop row */}
+                      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
+                        <p className="text-sm font-semibold text-text truncate">{displayVaccineName(row.vaccineName)}</p>
+                        <p className="text-sm font-bold text-text text-right tabular-nums">
+                          {row.quantity ?? '—'}
+                          <span className="text-[10px] text-text-muted font-normal block">doses</span>
+                        </p>
+                        <p className="text-sm font-bold text-warning-dark text-right tabular-nums">
+                          {row.consumed ?? '—'}
+                          <span className="text-[10px] text-text-muted font-normal block">doses</span>
+                        </p>
+                        <p className="text-xs font-medium text-text-muted text-right">
+                          {row.recordedAt
+                            ? new Date(row.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : <span className="italic text-[10px]">Never</span>}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>

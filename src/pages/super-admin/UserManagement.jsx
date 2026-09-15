@@ -269,7 +269,7 @@ export default function UserManagement() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
       
       {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">User Management</h1>
           <p className="text-sm text-white/70 mt-0.5">
@@ -342,6 +342,36 @@ export default function UserManagement() {
                 ? `No users match${searchQuery ? ` "${searchQuery}"` : ''}${roleFilter !== 0 ? ` in ${ROLE_FILTERS[roleFilter].label}` : ''}.`
                 : 'No users registered yet.'
             }
+            mobileCard={(row) => {
+              const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker'
+              const assignment = isFacilityRole ? row.facilityName : row.role === 'uc_supervisor' ? (row.ucNames ?? []).join(', ') || 'No UCs' : row.districtName
+              return (
+                <div className="px-4 py-3 hover:bg-slate-50">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-text truncate">{row.name ?? '—'}</p>
+                      <p className="text-[10px] font-semibold text-text-muted">{ROLE_LABELS[row.role] ?? row.role}</p>
+                    </div>
+                    <Badge type={row.isActive ? 'active' : 'inactive'} />
+                  </div>
+                  <div className="text-xs text-text-muted mt-1 space-y-0.5">
+                    <p className="truncate">{row.email}</p>
+                    {assignment && <p className="truncate">Assigned: <span className="text-text font-medium">{assignment}</span></p>}
+                  </div>
+                  <div className="flex gap-1 flex-wrap mt-2">
+                    {row.role === 'uc_supervisor' && (
+                      <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><RotateCcw size={12} /> Reset Pwd</Button>
+                    {row.isActive ? (
+                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
+                    )}
+                  </div>
+                </div>
+              )
+            }}
           />
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
@@ -377,7 +407,7 @@ export default function UserManagement() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="sup-first-name" label="First Name" placeholder="Jane"
               value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
             <Input id="sup-last-name" label="Last Name" placeholder="Doe"

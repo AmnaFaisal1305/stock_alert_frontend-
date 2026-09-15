@@ -119,7 +119,7 @@ export default function UCSupervisorAuditLog() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">Audit Log</h1>
           <p className="text-sm text-white/70 mt-0.5">Activity in your union councils</p>
@@ -205,6 +205,22 @@ export default function UCSupervisorAuditLog() {
             columns={columns}
             rows={paginated}
             emptyMessage={(dateFilter || actionFilter) ? 'No entries match your filters.' : 'No activity recorded yet.'}
+            mobileCard={(row) => (
+              <div className="px-4 py-3 hover:bg-slate-50/50">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+                    {ACTION_LABELS[row.action] ?? row.action}
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted flex-shrink-0">
+                    <Clock size={10} />
+                    <span>{new Date(row.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  </div>
+                </div>
+                <p className="font-bold text-sm text-text">{row.actorName ?? '—'}</p>
+                {row.facilityName && <p className="text-xs text-text-muted">{row.facilityName}</p>}
+                <p className="text-xs text-text-muted mt-0.5 font-medium">{formatDetails(row)}</p>
+              </div>
+            )}
           />
 
           {totalPages > 1 && (

@@ -112,7 +112,7 @@ export default function UCSupervisorUsers() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">Users</h1>
           <p className="text-sm text-white/70 mt-0.5">
@@ -141,7 +141,7 @@ export default function UCSupervisorUsers() {
 
       {/* Search */}
       {!isLoading && !isError && users.length > 0 && (
-        <div className="relative w-80">
+        <div className="relative w-full sm:w-80">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           <input
             type="text"

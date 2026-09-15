@@ -203,7 +203,7 @@ export default function SuperAdminFacilityManagement() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">Facility Management</h1>
           <p className="text-sm text-white/70 mt-0.5">
@@ -273,6 +273,33 @@ export default function SuperAdminFacilityManagement() {
             columns={columns}
             rows={paginated}
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}".` : 'No facilities registered yet.'}
+            mobileCard={(row) => (
+              <div className="px-4 py-3 hover:bg-slate-50">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-bold text-sm text-text hover:text-primary transition-colors flex items-center gap-1.5 min-w-0">
+                    <Building2 size={13} className="text-text-muted/70 flex-shrink-0" />
+                    <span className="truncate">{row.name}</span>
+                  </RouterLink>
+                  <Badge type={row.isActive ? 'active' : 'inactive'} />
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-text-muted mt-1 pl-5">
+                  <span>District: {districtMap[row.districtId] ?? '—'}</span>
+                  <span>UC: {row.ucName ?? '—'}</span>
+                  <span>Supervisor: {row.facilitySupervisorName ?? <em>Unstaffed</em>}</span>
+                </div>
+                <div className="flex gap-1.5 flex-wrap mt-2 pl-5">
+                  <RouterLink to={`/super-admin/facilities/${row.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2 py-1">
+                    View Stock <ArrowRight size={11} />
+                  </RouterLink>
+                  <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
+                  {row.isActive ? (
+                    <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
+                  )}
+                </div>
+              </div>
+            )}
           />
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />

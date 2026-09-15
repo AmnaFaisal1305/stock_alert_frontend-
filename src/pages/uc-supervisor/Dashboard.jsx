@@ -105,7 +105,7 @@ export default function UCSupervisorDashboard() {
     return (
       <div className="flex flex-col gap-6 animate-pulse">
         <div className="h-24 bg-slate-100 rounded-2xl" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
@@ -127,7 +127,7 @@ export default function UCSupervisorDashboard() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header banner */}
-      <div className="bg-primary rounded-2xl px-6 py-5">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
         <p className="text-sm text-white/70 font-semibold">
           {user.ucNames?.length ? user.ucNames.join(' · ') : 'UC Supervisor Dashboard'}
         </p>
@@ -176,7 +176,7 @@ export default function UCSupervisorDashboard() {
       {/* Vaccine Stock Status — 3 stat cards */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Stock Status</h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             label="Critical"
             value={counts.critical}
@@ -215,7 +215,7 @@ export default function UCSupervisorDashboard() {
 
         {/* Search + Status filter pills */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative w-56">
+          <div className="relative w-full sm:w-56">
             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
@@ -260,7 +260,7 @@ export default function UCSupervisorDashboard() {
         </div>
 
         <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
             {['Facility', 'Town', 'UC', 'Supervisor', 'Last Activity', 'Status'].map((h) => (
               <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{h}</span>
             ))}
@@ -275,31 +275,52 @@ export default function UCSupervisorDashboard() {
               const stockStatus = statusByFacilityId.get(f.id)
               const stockCfg   = stockStatus ? statusConfig(stockStatus) : null
               const lastAct    = timeAgo(f.lastActivityAt)
+              const leftBorder = stockStatus === 'critical' ? 'border-l-danger' : stockStatus === 'low' ? 'border-l-warning' : 'border-l-transparent'
               return (
-                <div
-                  key={f.id}
-                  className={`grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors border-l-4 ${
-                    stockStatus === 'critical' ? 'border-l-danger' : stockStatus === 'low' ? 'border-l-warning' : 'border-l-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
-                    <Link to={`/uc/facilities/${f.id}`} className="font-bold text-text text-sm truncate hover:text-primary transition-colors">
-                      {f.name}
-                    </Link>
+                <div key={f.id} className={`border-b border-surface-border last:border-b-0 border-l-4 ${leftBorder}`}>
+                  {/* Mobile card */}
+                  <div className="sm:hidden px-4 py-3 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Building2 size={12} className="text-text-muted/60 flex-shrink-0" />
+                        <Link to={`/uc/facilities/${f.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">
+                          {f.name}
+                        </Link>
+                      </div>
+                      {stockCfg ? (
+                        <span className={`flex-shrink-0 inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full ${stockCfg.bg} ${stockCfg.text}`}>
+                          {stockCfg.label}
+                        </span>
+                      ) : <span className="text-[10px] text-text-muted flex-shrink-0">—</span>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-text-muted pl-4">
+                      <span>Town: <span className="font-medium text-text">{f.townName ?? '—'}</span></span>
+                      <span>UC: <span className="font-medium text-text">{f.ucName ?? '—'}</span></span>
+                      <span className="col-span-2 truncate">{f.facilitySupervisorName ?? <span className="italic">Unstaffed</span>}</span>
+                      {lastAct && <span className="text-text-muted/70">{lastAct}</span>}
+                    </div>
                   </div>
-                  <p className="text-xs font-medium text-text-muted truncate">{f.townName ?? '—'}</p>
-                  <p className="text-xs font-medium text-text-muted truncate">{f.ucName ?? '—'}</p>
-                  <p className="text-xs font-medium text-text truncate">{f.facilitySupervisorName ?? <span className="text-text-muted italic">Unstaffed</span>}</p>
-                  <p className="text-xs text-text-muted font-medium">{lastAct ?? <span className="italic">Never</span>}</p>
-                  <div>
-                    {stockCfg ? (
-                      <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full ${stockCfg.bg} ${stockCfg.text}`}>
-                        {stockCfg.label}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-text-muted">—</span>
-                    )}
+                  {/* Desktop row */}
+                  <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
+                      <Link to={`/uc/facilities/${f.id}`} className="font-bold text-text text-sm truncate hover:text-primary transition-colors">
+                        {f.name}
+                      </Link>
+                    </div>
+                    <p className="text-xs font-medium text-text-muted truncate">{f.townName ?? '—'}</p>
+                    <p className="text-xs font-medium text-text-muted truncate">{f.ucName ?? '—'}</p>
+                    <p className="text-xs font-medium text-text truncate">{f.facilitySupervisorName ?? <span className="text-text-muted italic">Unstaffed</span>}</p>
+                    <p className="text-xs text-text-muted font-medium">{lastAct ?? <span className="italic">Never</span>}</p>
+                    <div>
+                      {stockCfg ? (
+                        <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full ${stockCfg.bg} ${stockCfg.text}`}>
+                          {stockCfg.label}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-text-muted">—</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )

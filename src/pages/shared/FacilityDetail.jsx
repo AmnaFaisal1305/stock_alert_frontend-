@@ -134,7 +134,7 @@ export default function FacilityDetail() {
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">
           <div className="h-[88px] bg-slate-100 rounded-2xl" />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-slate-50 border border-slate-200 rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -152,7 +152,7 @@ export default function FacilityDetail() {
       {!isLoading && !isError && facility && (
         <>
           {/* Page Header */}
-          <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+          <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl font-bold text-white tracking-tight">{facility.name}</h1>
@@ -175,7 +175,7 @@ export default function FacilityDetail() {
           </div>
 
           {/* Status Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {statRows.map(({ label, value, icon: Icon, color, bg, bar, key }) => (
               <button
                 key={label}
@@ -235,7 +235,7 @@ export default function FacilityDetail() {
             {/* Search + Status filters */}
             {allVaccines.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap mb-4">
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                   <input
                     type="text"
@@ -294,7 +294,8 @@ export default function FacilityDetail() {
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+              <div className="overflow-x-auto rounded-2xl border border-surface-border shadow-sm">
+              <div className="bg-white min-w-[640px]">
                 <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
@@ -350,6 +351,7 @@ export default function FacilityDetail() {
                     </div>
                   )
                 })}
+              </div>
               </div>
             )}
           </div>

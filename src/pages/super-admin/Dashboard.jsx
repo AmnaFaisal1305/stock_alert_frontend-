@@ -78,8 +78,8 @@ const FILTERS = [
 function AdminAlertBanner({ criticalCount, lowCount, criticalDistricts }) {
   if (criticalCount > 0) {
     return (
-      <div className="bg-danger-bg border border-danger/20 rounded-xl px-5 py-4 flex items-center gap-4">
-        <div className="relative flex-shrink-0">
+      <div className="bg-danger-bg border border-danger/20 rounded-xl px-4 sm:px-5 py-4 flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="relative flex-shrink-0 mt-0.5 sm:mt-0">
           <span className="absolute inline-flex h-5 w-5 rounded-full bg-danger/30 animate-ping" />
           <AlertCircle size={22} className="relative text-danger" />
         </div>
@@ -89,8 +89,11 @@ function AdminAlertBanner({ criticalCount, lowCount, criticalDistricts }) {
             {criticalDistricts > 0 ? ` across ${criticalDistricts} district${criticalDistricts > 1 ? 's' : ''}` : ''} — immediate action required
           </p>
           <p className="text-xs text-danger/70 mt-0.5">Review affected districts and coordinate restocking as soon as possible</p>
+          <Link to="/super-admin/districts" className="inline-flex items-center gap-1 text-xs font-semibold text-danger hover:underline mt-1 sm:hidden">
+            View Districts <ArrowRight size={12} />
+          </Link>
         </div>
-        <Link to="/super-admin/districts" className="flex items-center gap-1 text-xs font-semibold text-danger hover:underline flex-shrink-0">
+        <Link to="/super-admin/districts" className="hidden sm:flex items-center gap-1 text-xs font-semibold text-danger hover:underline flex-shrink-0">
           View Districts <ArrowRight size={12} />
         </Link>
       </div>
@@ -98,15 +101,18 @@ function AdminAlertBanner({ criticalCount, lowCount, criticalDistricts }) {
   }
   if (lowCount > 0) {
     return (
-      <div className="bg-warning-bg border border-warning/20 rounded-xl px-5 py-4 flex items-center gap-4">
-        <AlertTriangle size={20} className="text-warning flex-shrink-0" />
+      <div className="bg-warning-bg border border-warning/20 rounded-xl px-4 sm:px-5 py-4 flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+        <AlertTriangle size={20} className="text-warning flex-shrink-0 mt-0.5 sm:mt-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-warning-dark">
             {lowCount} facilit{lowCount > 1 ? 'ies' : 'y'} running low on stock
           </p>
           <p className="text-xs text-warning-dark/70 mt-0.5">Plan restocking before levels become critical</p>
+          <Link to="/super-admin/districts" className="inline-flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline mt-1 sm:hidden">
+            View Districts <ArrowRight size={12} />
+          </Link>
         </div>
-        <Link to="/super-admin/districts" className="flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline flex-shrink-0">
+        <Link to="/super-admin/districts" className="hidden sm:flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline flex-shrink-0">
           View Districts <ArrowRight size={12} />
         </Link>
       </div>
@@ -283,7 +289,7 @@ export default function SuperAdminDashboard() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* ── Banner ──────────────────────────────────────────────────────── */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">System Dashboard</h1>
           <p className="text-sm text-white/70 mt-0.5">

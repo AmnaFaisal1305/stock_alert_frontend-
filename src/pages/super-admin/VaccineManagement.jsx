@@ -33,7 +33,7 @@ function VaccineForm({ initial, onSubmit, isPending, error, submitLabel }) {
         onChange={(e) => set('dosesPerVial', e.target.value)}
         required
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           id="critDoses" label="Critical Doses" type="number" min="0" step="1"
           placeholder={String(DEFAULTS.criticalDoses)}
@@ -174,7 +174,7 @@ export default function VaccineManagement() {
       {/* Table */}
       {!isLoading && !isError && vaccines.length > 0 && (
         <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-3 items-center">
+          <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-3 items-center">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses/Vial</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Crit. Doses</span>
@@ -184,34 +184,54 @@ export default function VaccineManagement() {
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Actions</span>
           </div>
           {vaccines.map((v) => (
-            <div
-              key={v.id}
-              className="grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3.5 gap-3 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <Syringe size={13} className="text-primary flex-shrink-0" />
-                <span className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.name)}</span>
+            <div key={v.id} className="border-b border-surface-border last:border-b-0">
+              {/* Mobile card */}
+              <div className="sm:hidden px-4 py-3 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Syringe size={13} className="text-primary flex-shrink-0" />
+                    <span className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.name)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-xs text-text-muted">
+                  <span>Doses/Vial: <span className="font-semibold text-text">{v.dosesPerVial}</span></span>
+                  <span>Crit.Doses: <span className="font-semibold text-text">{v.criticalDoses}</span></span>
+                  <span>Low Doses: <span className="font-semibold text-text">{v.lowDoses}</span></span>
+                  <span>Crit.Vials: <span className="font-semibold text-text">{v.criticalVials}</span></span>
+                  <span>Low Vials: <span className="font-semibold text-text">{v.lowVials}</span></span>
+                </div>
               </div>
-              <span className="text-sm tabular-nums text-text">{v.dosesPerVial}</span>
-              <span className="text-sm tabular-nums text-text">{v.criticalDoses}</span>
-              <span className="text-sm tabular-nums text-text">{v.lowDoses}</span>
-              <span className="text-sm tabular-nums text-text">{v.criticalVials}</span>
-              <span className="text-sm tabular-nums text-text">{v.lowVials}</span>
-              <div className="flex items-center gap-1 justify-end">
-                <button
-                  onClick={() => { setEditing(v); setEditError('') }}
-                  title="Edit"
-                  className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors"
-                >
-                  <Pencil size={13} />
-                </button>
-                <button
-                  onClick={() => { setDeleteTarget(v); setDeleteError('') }}
-                  title="Delete"
-                  className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
-                >
-                  <Trash2 size={13} />
-                </button>
+              {/* Desktop row */}
+              <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3.5 gap-3 items-center hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Syringe size={13} className="text-primary flex-shrink-0" />
+                  <span className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.name)}</span>
+                </div>
+                <span className="text-sm tabular-nums text-text">{v.dosesPerVial}</span>
+                <span className="text-sm tabular-nums text-text">{v.criticalDoses}</span>
+                <span className="text-sm tabular-nums text-text">{v.lowDoses}</span>
+                <span className="text-sm tabular-nums text-text">{v.criticalVials}</span>
+                <span className="text-sm tabular-nums text-text">{v.lowVials}</span>
+                <div className="flex items-center gap-1 justify-end">
+                  <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
+                    className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
+                    className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

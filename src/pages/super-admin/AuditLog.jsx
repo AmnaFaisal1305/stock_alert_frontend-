@@ -278,11 +278,35 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
     setDrillPage(1)
   }
 
+  const auditMobileCard = (row) => (
+    <div className="px-4 py-3 hover:bg-slate-50/50">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+          {ACTION_LABELS[row.action] ?? row.action}
+        </span>
+        <div className="flex items-center gap-1 text-[10px] text-text-muted font-semibold flex-shrink-0">
+          <Clock size={10} />
+          <span>
+            {new Date(row.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
+          </span>
+        </div>
+      </div>
+      <p className="font-bold text-sm text-text">{row.actorName ?? '—'}</p>
+      <p className="text-[10px] text-text-muted font-semibold mt-0.5">
+        {row.actorRole ? row.actorRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '—'}
+        {row.facilityName ? ` · ${row.facilityName}` : ''}
+      </p>
+      <p className="text-xs text-text-muted font-medium mt-1.5 leading-relaxed">
+        {formatDetails(row, vaccineNameById)}
+      </p>
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
           <p className="text-sm text-white/70 mt-0.5">{subtitle}</p>
@@ -300,7 +324,8 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
 
       {/* Tabs list */}
       {!isLoading && !isError && (
-        <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit flex-wrap">
+        <div className="overflow-x-auto max-w-full -mx-1 px-1 pb-0.5">
+        <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit min-w-max">
           {tabs.map((t) => {
             const Icon = t.icon
             const active = activeTab === t.id
@@ -326,6 +351,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
             )
           })}
         </div>
+        </div>
       )}
 
       {/* ── All tab: facility list or drill-down ─────────────────────── */}
@@ -334,7 +360,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
           {!selectedFacility ? (
             /* Facility list */
             <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-              <div className="grid grid-cols-[2fr_1.5fr_1fr] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-4 items-center">
+              <div className="hidden sm:grid grid-cols-[2fr_1.5fr_1fr] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-4 items-center">
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility</span>
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor</span>
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Activity</span>
@@ -345,25 +371,48 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
                 facilities.map((f) => {
                   const count = facilityLogCounts[f.id] ?? 0
                   return (
-                    <button
-                      key={f.id}
-                      onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
-                      className="w-full grid grid-cols-[2fr_1.5fr_1fr] px-6 py-4 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Building2 size={14} className="text-text-muted/60 flex-shrink-0" />
-                        <span className="font-bold text-text text-sm truncate">{f.name}</span>
-                      </div>
-                      <span className={`text-sm truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic text-xs'}`}>
-                        {f.facilitySupervisorName ?? 'Unstaffed'}
-                      </span>
-                      <div className="flex justify-end items-center gap-1.5">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
-                          {count} {count === 1 ? 'log' : 'logs'}
+                    <div key={f.id} className="border-b border-surface-border last:border-b-0">
+                      {/* Mobile card */}
+                      <button
+                        onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
+                        className="sm:hidden w-full px-4 py-3 hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
+                            <span className="font-bold text-text text-sm truncate">{f.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                              {count} {count === 1 ? 'log' : 'logs'}
+                            </span>
+                            <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
+                          </div>
+                        </div>
+                        <p className={`text-xs mt-0.5 pl-5 ${f.facilitySupervisorName ? 'text-text-muted' : 'text-text-muted/60 italic'}`}>
+                          {f.facilitySupervisorName ?? 'Unstaffed'}
+                        </p>
+                      </button>
+                      {/* Desktop row */}
+                      <button
+                        onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
+                        className="hidden sm:grid w-full grid-cols-[2fr_1.5fr_1fr] px-6 py-4 gap-4 items-center hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Building2 size={14} className="text-text-muted/60 flex-shrink-0" />
+                          <span className="font-bold text-text text-sm truncate">{f.name}</span>
+                        </div>
+                        <span className={`text-sm truncate ${f.facilitySupervisorName ? 'text-text font-medium' : 'text-text-muted italic text-xs'}`}>
+                          {f.facilitySupervisorName ?? 'Unstaffed'}
                         </span>
-                        <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
-                      </div>
-                    </button>
+                        <div className="flex justify-end items-center gap-1.5">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                            {count} {count === 1 ? 'log' : 'logs'}
+                          </span>
+                          <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
+                        </div>
+                      </button>
+                    </div>
                   )
                 })
               )}
@@ -388,6 +437,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
                 columns={columns}
                 rows={drillPaginated}
                 emptyMessage="No activity recorded for this facility yet."
+                mobileCard={auditMobileCard}
               />
               {drillTotalPages > 1 && (
                 <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
@@ -493,6 +543,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
             columns={columns}
             rows={paginatedRows}
             emptyMessage={hasFilters ? 'No log entries match your filters.' : 'No activity recorded yet.'}
+            mobileCard={auditMobileCard}
           />
 
           {/* Pagination bar */}

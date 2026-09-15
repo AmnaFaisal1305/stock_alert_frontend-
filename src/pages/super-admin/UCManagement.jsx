@@ -119,7 +119,37 @@ function TownsTab() {
       {isError && <p className="text-sm text-danger">Failed to load towns.</p>}
       {!isLoading && !isError && (
         <Table columns={columns} rows={filtered} rowKey={(t) => t.id}
-          emptyMessage={search ? `No towns match "${search}".` : 'No towns yet.'} />
+          emptyMessage={search ? `No towns match "${search}".` : 'No towns yet.'}
+          mobileCard={(t) => (
+            <div className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Map size={12} className="text-primary flex-shrink-0" />
+                  <span className="font-semibold text-sm text-text truncate">{t.name}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge type={t.isActive ? 'active' : 'inactive'} />
+                  <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
+                    title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  {t.isActive ? (
+                    <button onClick={() => { setDelTarget(t); setDelError('') }}
+                      title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  ) : (
+                    <button onClick={() => activateMutation.mutate(t.id)}
+                      title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
+                      <RefreshCcw size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-text-muted pl-5">{districtMap[t.districtId] ?? '—'}</p>
+            </div>
+          )}
+        />
       )}
 
       {/* Add Modal */}
@@ -273,7 +303,46 @@ function UCsTab() {
       {isError && <p className="text-sm text-danger">Failed to load union councils.</p>}
       {!isLoading && !isError && (
         <Table columns={columns} rows={filtered} rowKey={(uc) => uc.id}
-          emptyMessage={search ? `No UCs match "${search}".` : 'No union councils yet.'} />
+          emptyMessage={search ? `No UCs match "${search}".` : 'No union councils yet.'}
+          mobileCard={(uc) => (
+            <div className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin size={12} className="text-primary flex-shrink-0" />
+                  <span className="font-semibold text-sm text-text truncate">{uc.name}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge type={uc.isActive ? 'active' : 'inactive'} />
+                  <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
+                    title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  {uc.isActive ? (
+                    <button onClick={() => { setDelTarget(uc); setDelError('') }}
+                      title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  ) : (
+                    <button onClick={() => activateMutation.mutate(uc.id)}
+                      title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
+                      <RefreshCcw size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 text-xs text-text-muted pl-5">
+                <span>Town: <span className="font-semibold text-text">{uc.townName ?? '—'}</span></span>
+                <span>District: <span className="font-semibold text-text">{uc.districtName ?? '—'}</span></span>
+                {uc.ucSupervisorName && (
+                  <span className="col-span-2 flex items-center gap-1 mt-0.5">
+                    <User size={10} className="text-primary" />
+                    <span className="font-semibold text-text">{uc.ucSupervisorName}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        />
       )}
 
       {/* Add Modal */}
@@ -326,7 +395,7 @@ export default function UCManagement() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-6 py-5">
+      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
         <h1 className="text-xl font-bold text-white tracking-tight">UC Management</h1>
         <p className="text-sm text-white/70 mt-0.5">Manage Towns and Union Councils · District → Town → UC → Facility</p>
       </div>

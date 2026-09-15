@@ -236,7 +236,8 @@ export default function ThresholdManagement() {
             </div>
           ) : (
             /* ── Table view ──────────────────────────────────────────── */
-            <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+            <div className="overflow-x-auto rounded-2xl border border-surface-border shadow-sm">
+            <div className="bg-white min-w-[700px]">
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
@@ -285,6 +286,7 @@ export default function ThresholdManagement() {
                   </div>
                 )
               })}
+            </div>
             </div>
           )}
         </>
