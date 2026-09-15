@@ -71,7 +71,7 @@ export default function StockEntry() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Side: title + form — sticky so both stay in view while stock cards scroll */}
-        <div className="lg:col-span-5 flex flex-col gap-4 sticky top-0 bg-surface-alt z-10 pb-2 -mx-1 px-1 pt-6 -mt-6">
+        <div className="lg:col-span-5 flex flex-col gap-4 lg:sticky lg:top-6">
           <div>
             <h1 className="text-xl font-bold text-text tracking-tight">Dose Entry Portal</h1>
             <p className="text-sm text-text-muted mt-0.5">Quickly record vaccine doses used in the clinic</p>
@@ -257,8 +257,8 @@ export default function StockEntry() {
           </div>{/* end white card */}
         </div>
 
-        {/* Right Side: Live Stock Dashboard catalog (visible on large screen resolutions) */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
+        {/* Right Side: Live Stock Dashboard catalog */}
+        <div className="lg:col-span-7 flex flex-col gap-4 max-h-[45vh] overflow-y-auto lg:max-h-none lg:overflow-visible pr-1 lg:pr-0">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-text-muted/75 uppercase tracking-wider">Live Facility Stock</h2>
             <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-100 tracking-wider">LIVE DATA</span>
