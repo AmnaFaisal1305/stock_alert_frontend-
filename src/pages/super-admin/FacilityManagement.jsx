@@ -170,7 +170,24 @@ export default function SuperAdminFacilityManagement() {
     {
       key: 'isActive',
       label: 'Status',
-      render: (row) => <Badge type={row.isActive ? 'active' : 'inactive'} />,
+      render: (row) => (
+        <div className="flex flex-col gap-0.5">
+          <Badge type={row.isActive ? 'active' : 'inactive'} />
+          {row.isActive && row.lastActivityAt && (
+            <p className="text-[10px] text-text-muted">
+              Last active {new Date(row.lastActivityAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+          )}
+          {row.isActive && !row.lastActivityAt && (
+            <p className="text-[10px] text-text-muted italic">No activity yet</p>
+          )}
+          {!row.isActive && row.deactivatedAt && (
+            <p className="text-[10px] text-text-muted">
+              Since {new Date(row.deactivatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions',

@@ -6,13 +6,14 @@ import { BookOpen, Syringe } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const ENTRY_TYPE_PILLS = [
-  { key: 'all',          label: 'All',       activeClass: 'bg-primary text-white border-primary'       },
-  { key: 'received',     label: 'Received',  activeClass: 'bg-success text-white border-success'       },
-  { key: 'used',         label: 'Consumed',  activeClass: 'bg-danger text-white border-danger'         },
-  { key: 'returned',     label: 'Returned',  activeClass: 'bg-warning text-white border-warning'       },
-  { key: 'wasted',       label: 'Wasted',    activeClass: 'bg-orange-500 text-white border-orange-500' },
-  { key: 'ADJUST_STOCK', label: 'Corrected', activeClass: 'bg-slate-500 text-white border-slate-500'   },
-  { key: 'STOCK_DAY_END', label: 'Day End',  activeClass: 'bg-indigo-500 text-white border-indigo-500' },
+  { key: 'all',          label: 'All',            activeClass: 'bg-primary text-white border-primary'       },
+  { key: 'opening',      label: 'Opening',        activeClass: 'bg-sky-500 text-white border-sky-500'       },
+  { key: 'received',     label: 'Received',       activeClass: 'bg-success text-white border-success'       },
+  { key: 'used',         label: 'Consumed',       activeClass: 'bg-danger text-white border-danger'         },
+  { key: 'returned',     label: 'Returned',       activeClass: 'bg-warning text-white border-warning'       },
+  { key: 'wasted',       label: 'Wasted',         activeClass: 'bg-orange-500 text-white border-orange-500' },
+  { key: 'ADJUST_STOCK', label: 'Corrected',      activeClass: 'bg-slate-500 text-white border-slate-500'   },
+  { key: 'STOCK_DAY_END', label: 'Day End',       activeClass: 'bg-indigo-500 text-white border-indigo-500' },
 ]
 
 export default function StockRegister() {
@@ -59,7 +60,7 @@ export default function StockRegister() {
       let issued   = null
 
       if (l.action === 'STOCK_ENTRY') {
-        if (d.entryType === 'received') {
+        if (d.entryType === 'opening' || d.entryType === 'received') {
           received  = d.quantity ?? 0
           balance  += received
         } else if (d.entryType === 'used') {
@@ -111,7 +112,7 @@ export default function StockRegister() {
   }, [entries, entryTypeFilter])
 
   const pillCounts = useMemo(() => {
-    const counts = { all: entries.length, received: 0, used: 0, returned: 0, wasted: 0, ADJUST_STOCK: 0, STOCK_DAY_END: 0 }
+    const counts = { all: entries.length, opening: 0, received: 0, used: 0, returned: 0, wasted: 0, ADJUST_STOCK: 0, STOCK_DAY_END: 0 }
     entries.forEach((e) => { if (e.entryType in counts) counts[e.entryType]++ })
     return counts
   }, [entries])
@@ -256,6 +257,7 @@ export default function StockRegister() {
                     filteredEntries.map((row, i) => {
                       const entryTypeMeta = (() => {
                         switch (row.entryType) {
+                          case 'opening':      return { label: 'Opening Balance', cls: 'bg-sky-50 text-sky-700' }
                           case 'received':     return { label: 'Received', cls: 'bg-success-bg text-success-dark' }
                           case 'used':         return { label: 'Consumed', cls: 'bg-danger-bg text-danger' }
                           case 'returned':     return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }

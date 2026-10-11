@@ -1,13 +1,74 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-11  
+**Last updated:** 2026-10-11 (session 4)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-11 (what happened today)
+## Session Log — 2026-10-11 Session 4 (latest)
+
+### What changed in session 4
+
+Read updated docs: `docs/api-reference (3).md`, `docs/FRONTEND_HANDOFF (4).md`, `docs/functionality (5).md`. Compared against built codebase. Implemented Sprint 8 items and display gap fixes.
+
+**Sprint 8 — `opening` entryType (go-live opening balance)**
+
+1. **`src/pages/facility-supervisor/StockRegister.jsx`** — added `opening` entryType to:
+   - Balance calc (adds to balance like `received`)
+   - `ENTRY_TYPE_PILLS` (sky blue "Opening" pill)
+   - `pillCounts` init
+   - Display switch (`case 'opening': 'Opening Balance'`)
+2. **`src/pages/super-admin/AuditLog.jsx`** (reused by district + facility-head) — added `opening` case in STOCK_ENTRY verb ternary → shows "opening balance"
+3. **`src/pages/uc-supervisor/AuditLog.jsx`** — same one-line addition
+4. **`src/pages/shared/Analytics.jsx`** — accumulated `opening` field from movement rows; included in Received stat card total; added Opening column to movement table
+
+**Display gaps**
+
+5. **`src/pages/super-admin/DistrictManagement.jsx`** — added `province` as sub-line under district name (both desktop and mobile)
+6. **`src/pages/shared/FacilityDetail.jsx`** — added amber "Custom" badge next to Min. Threshold label when `thresholdOverridden === true`
+7. **`src/pages/super-admin/FacilityManagement.jsx`** — added `lastActivityAt` / `deactivatedAt` sub-line in Status column
+
+`facility-supervisor/AuditLog.jsx` — no change needed (non-`used` already maps to `qtyType: 'in'`).
+
+Build: `npm run build` passed clean.
+
+---
+
+## Session Log — 2026-10-11 Session 3
+
+### What changed in session 3
+
+Read the updated API reference (`docs/api-reference (2).md`), functionality doc, and frontend handoff. Then implemented Sprint 5 + Sprint 6.
+
+**Sprint 5 (AuditLog + Notifications) — confirmed already done, no changes needed:**
+- `AuditLog.jsx` already had all `STOCK_REQUEST_*` and `APPROVAL_*` action labels + the `status` badge for `entityType === 'stock_request' || 'approval'` rows.
+- `NotificationPanel.jsx` renders `n.message` which is display-ready text from the backend — new notification types (`stock_assigned`, `stock_day_end`, `approval_cancelled`) work automatically.
+
+**Sprint 6 — Analytics page (backend live, verified working):**
+
+1. **`src/lib/api.js`** — added `getAnalytics({ from, to })` calling `GET /api/analytics`
+2. **`src/pages/shared/Analytics.jsx`** — new shared page:
+   - Date range filter (defaults to last 12 months ending today)
+   - 3 stat cards on Movement tab: Received (vials), Used (doses), Wasted (vials)
+   - 4 tabs: Movement (aggregated by vaccine), Remaining Stock (facility × vaccine), Requests (by month), Pending Approvals
+   - All data from single `getAnalytics` call; query key `['analytics', from, to]`
+3. **`src/App.jsx`** — 5 new routes all pointing to the shared Analytics component:
+   - `/super-admin/analytics`, `/district/analytics`, `/uc/analytics`, `/facility/analytics`, `/head/analytics`
+4. **`src/components/layout/Sidebar.jsx`** — `BarChart2` icon added to imports; Analytics link added to all 6 applicable roles: `super_admin`, `observer`, `district_supervisor`, `uc_supervisor`, `facility_supervisor`, `facility_head`
+
+**Browser tested with agent-browser:** All 4 tabs loaded with live backend data. Movement showed 841 vials received / 6280 doses used / 64 wasted. Remaining Stock showed per-facility/vaccine breakdown. Requests showed 2026-10 month row. Pending Approvals showed 2 items.
+
+**What was already completed in session 2 (prior session):**
+- TopBar ROLE_LABELS: added `uc_supervisor`, `facility_head`, `observer` (item 3 from old pending list)
+- ThresholdManagement deleted: `src/pages/facility-supervisor/ThresholdManagement.jsx` + its route in `App.jsx` removed (item 2)
+- Observer button in Add User modal: visually confirmed working in browser (item 1)
+- Observer read-only enforcement: confirmed already guarded on all super-admin pages (item 5)
+
+---
+
+## Session Log — 2026-10-11 (Sessions 1 & 2)
 
 This section describes the two sessions run on 2026-10-11, in order. Read this first if you want to know what changed today.
 
@@ -170,6 +231,7 @@ src/
     facility-head/       — Dashboard, Users, Approvals, StockRequests, AuditLog
     shared/
       FacilityDetail.jsx — shared by super-admin, district, uc — checks user.role internally
+      Analytics.jsx      — shared by all roles except facility_worker (6 routes, 1 component)
 public/
   images/                — kebab-case filenames only (icon-image.jpeg, login-hero.jpeg, etc.)
 docs/                    — internal dev docs (gitignored) — includes api-reference.md
@@ -215,6 +277,8 @@ Single `request(method, path, body)` wrapper. All named functions exported from 
 
 **Audit log:** `getAuditLog({ limit, feed })`
 
+**Analytics (Sprint 6):** `getAnalytics({ from, to })` — optional date strings `YYYY-MM-DD`, defaults to last 12 months server-side
+
 ---
 
 ## What Was Built: Sprint by Sprint
@@ -251,6 +315,17 @@ Core scaffolding: all 5 original roles (no facility_head, no observer), login fl
 - `src/pages/super-admin/UserManagement.jsx` — added `observer` role to Add User form, role filter tabs, table display labels
 - Action buttons on super-admin pages guard with `user.role !== 'observer'` where applicable
 
+### Sprint 5 — AuditLog status field + new notification types
+All Sprint 5 changes were **already present** in the codebase when the API reference was reviewed — no code changes were needed:
+- `AuditLog.jsx`: already had `STOCK_REQUEST_*` action labels (lines 52–57), `APPROVAL_*` labels (lines 47–50), and `status` badge rendering for `entityType === 'stock_request' || 'approval'` rows (lines 271–285)
+- `NotificationPanel.jsx`: renders `n.message` as display-ready text from the backend — new types (`stock_assigned`, `stock_day_end`, `approval_cancelled`) display automatically
+
+### Sprint 6 — Analytics page
+- `src/pages/shared/Analytics.jsx` — new shared page; date range picker + 3 stat cards (movement tab only) + 4 tabs: Movement, Remaining Stock, Requests, Pending Approvals
+- `src/lib/api.js` — added `getAnalytics({ from, to })`
+- `src/App.jsx` — 5 new routes: `/super-admin/analytics`, `/district/analytics`, `/uc/analytics`, `/facility/analytics`, `/head/analytics`
+- `src/components/layout/Sidebar.jsx` — Analytics link (`BarChart2` icon) added to `super_admin`, `observer`, `district_supervisor`, `uc_supervisor`, `facility_supervisor`, `facility_head` NAV configs
+
 ### observer + facility_head in Add User form (UserManagement.jsx)
 Both roles now appear as selectable options in the "Add User" modal:
 - `facility_head` → sends `facilityId` (same as facility_supervisor/worker)
@@ -263,29 +338,24 @@ Both roles now appear as selectable options in the "Add User" modal:
 
 ### Verified working (browser-tested)
 - Login for all 7 roles (no blank-page loops)
-- super_admin: all pages, Add User modal with all 7 roles including facility_head and observer
-- facility_supervisor: Dashboard, Approvals, Stock Requests, Stock Register, Workers, Assign Vials, Day End, Audit Log
-- facility_worker: Stock Entry (mobile layout, sticky form)
+- super_admin: all pages, Add User modal with all 7 roles, Analytics page (all 4 tabs)
+- facility_supervisor: Dashboard, Approvals, Stock Requests, Stock Register, Workers, Assign Vials, Day End, Audit Log, Analytics
+- facility_worker: Stock Entry (mobile layout, sticky form), Status View
 - facility_head: Dashboard, Users, Approvals, Stock Requests, Audit Log
 - uc_supervisor: Dashboard, Facilities, Users, Stock Requests, Audit Log
 - district_supervisor: Dashboard, Facilities, Users, Audit Log
 - observer: can log in, sees super_admin layout read-only
+- TopBar role chip shows correct human-readable label for all 7 roles
 
-### NOT yet verified in browser
-- **Observer Add User button** — the "Observer" role button was added to the Add User modal in `UserManagement.jsx` and the build passed, but the browser verification was interrupted (Chrome extension disconnected). The code change is complete and correct; just needs a visual confirm that the button appears and that selecting it hides the assignment picker.
-
-### Dead code
-- `src/pages/facility-supervisor/ThresholdManagement.jsx` — route `/facility/thresholds` still exists in `App.jsx` but the sidebar no longer links to it. The route was replaced by `/facility/approvals`. ThresholdManagement calls `updateVaccineStock` → `PUT /api/vaccines/:id/stock` which was removed in Sprint 3 (returns 404). Safe to delete the file and the route when convenient.
-
-### TopBar ROLE_LABELS incomplete
-`TopBar.jsx` line 9 only has 4 roles in `ROLE_LABELS`. `facility_head`, `uc_supervisor`, and `observer` fall through to `user.role` raw string. Not broken — just shows the raw role key. Low priority.
+### Dead code (minor, non-breaking)
+- `updateVaccineStock` in `api.js` — still exported but calls `PUT /api/vaccines/:id/stock` which was removed in Sprint 3 (returns 404). No page calls it (ThresholdManagement was deleted). Safe to remove if desired.
 
 ---
 
 ## Data Fetching Conventions
 
 - TanStack Query v5 throughout
-- Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log']`, `['district', id]`, `['approvals']`, `['approvals', 'pending']`, `['approvals', 'history']`, `['stock-requests']`, `['notifications']`, `['unread-count']`
+- Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log']`, `['district', id]`, `['approvals']`, `['approvals', 'pending']`, `['approvals', 'history']`, `['stock-requests']`, `['notifications']`, `['unread-count']`, `['analytics', from, to]`
 - After every mutation: `invalidateQueries` the affected key(s)
 - Dashboard pages use `refetchInterval` (polling)
 - Never call `fetch` directly in a page — always go through `src/lib/api.js`
@@ -404,12 +474,31 @@ Old WhatsApp-named images (`WhatsApp Image 2026-08-21 at 2.10.03 AM.jpeg` etc.) 
 
 ## What To Do Next (pending work)
 
-1. **Visual confirm Observer button** — Start dev server, log in as super_admin (`admin@akuh.pilot`), go to User Management → Add User → verify "Observer" button appears in role selector → click it → verify no assignment picker shows. The code is done and build passes; just needs eyeball confirmation.
+### Sprint 7 — Push notifications + offline sync (backend NOT yet deployed — defer)
 
-2. **Delete ThresholdManagement dead code** — `src/pages/facility-supervisor/ThresholdManagement.jsx` is unreachable (sidebar no longer links to it, backend endpoint gone). Remove the file and its route in `App.jsx` (`/facility/thresholds`).
+When the backend is deployed, implement:
 
-3. **TopBar ROLE_LABELS** — add `facility_head`, `uc_supervisor`, `observer` to the `ROLE_LABELS` map in `TopBar.jsx` so the role chip shows a human-readable label instead of the raw key.
+1. **Push notification subscription** — `GET /api/push/public-key` → `POST /api/push/subscriptions` (send `PushSubscription.toJSON()`). Call `DELETE /api/push/subscriptions` before logout. VAPID Web Push API.
 
-4. **Sprint 5 — Activity history + email** — additive, not yet deployed. Will add: `APPROVAL_REQUEST/APPROVE/REJECT/CANCEL` and `STOCK_REQUEST_*` action labels to `AuditLog.jsx`, a status badge column on approval/stock-request rows. Backend Sprint 5 not yet live.
+2. **Session restore for offline PWA** — `GET /api/auth/session` returns same shape as `/login`. Use this to restore user + fresh CSRF token on PWA restart without requiring re-login. Add `getSession` to `api.js`.
 
-5. **Observer read-only enforcement** — action buttons on super-admin pages (create district, add user, etc.) should be hidden or disabled when `user.role === 'observer'`. Currently they appear and will fail with a 403. The guard pattern: `{user.role !== 'observer' && <Button>...}`.
+3. **Service worker** — required for Web Push and offline queuing of `/assign` + `/day-end` submissions.
+
+Add to `api.js` when Sprint 7 deploys:
+```js
+export async function getSession() {
+  return request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
+}
+export async function getPushPublicKey() {
+  return request('GET', '/api/push/public-key')
+}
+export async function subscribePush(subscription) {
+  return request('POST', '/api/push/subscriptions', subscription)
+}
+export async function unsubscribePush(endpoint) {
+  return request('DELETE', '/api/push/subscriptions', { endpoint })
+}
+```
+
+### Minor cleanup (low priority, non-breaking)
+- Remove `updateVaccineStock` from `api.js` — it calls a removed endpoint (`PUT /api/vaccines/:id/stock`) and is not called by any page.

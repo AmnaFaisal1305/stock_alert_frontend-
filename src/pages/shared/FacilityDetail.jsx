@@ -55,7 +55,12 @@ function VaccineCard({ v }) {
             <p className="text-[10px] text-text-muted font-medium mt-0.5">doses</p>
           </div>
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Min. Threshold</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Min. Threshold</p>
+              {v.thresholdOverridden && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">Custom</span>
+              )}
+            </div>
             <p className={`text-2xl font-extrabold tabular-nums leading-none ${hasMin ? 'text-text' : 'text-text-muted/40'}`}>
               {hasMin ? minQty : '—'}
             </p>

@@ -42,11 +42,12 @@ export default function Analytics() {
       if (!acc[row.vaccineId]) {
         acc[row.vaccineId] = {
           vaccineName: displayVaccineName(row.vaccineName),
-          received: 0, used: 0, wasted: 0,
+          opening: 0, received: 0, used: 0, wasted: 0,
           adjustmentIncrease: 0, adjustmentDecrease: 0, usedDoses: 0,
         }
       }
       const v = acc[row.vaccineId]
+      v.opening            += row.opening ?? 0
       v.received           += row.received
       v.used               += row.used
       v.wasted             += row.wasted
@@ -58,7 +59,7 @@ export default function Analytics() {
   }, [movement])
 
   const totals = useMemo(() => ({
-    received:  vaccineMovement.reduce((s, v) => s + v.received,  0),
+    received:  vaccineMovement.reduce((s, v) => s + v.opening + v.received, 0),
     usedDoses: vaccineMovement.reduce((s, v) => s + v.usedDoses, 0),
     wasted:    vaccineMovement.reduce((s, v) => s + v.wasted,    0),
   }), [vaccineMovement])
@@ -78,6 +79,8 @@ export default function Analytics() {
   const movementColumns = [
     { key: 'vaccineName', label: 'Vaccine',
       render: (r) => <span className="text-sm font-semibold text-text">{r.vaccineName}</span> },
+    { key: 'opening', label: 'Opening (vials)',
+      render: (r) => <span className={`text-sm ${r.opening > 0 ? 'text-sky-700 font-semibold' : 'text-text-muted'}`}>{r.opening || '—'}</span> },
     { key: 'received', label: 'Received (vials)',
       render: (r) => <span className="text-sm text-text">{r.received}</span> },
     { key: 'usedDoses', label: 'Used (doses)',

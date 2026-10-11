@@ -414,7 +414,7 @@ export default function DistrictManagement() {
                             <Badge type={row.isActive ? 'active' : 'inactive'} />
                           </div>
                           <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                            {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {row.province ?? 'Sindh'} · {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </p>
                         </div>
                       </div>
@@ -456,7 +456,7 @@ export default function DistrictManagement() {
                           <Badge type={row.isActive ? 'active' : 'inactive'} />
                         </div>
                         <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                          {new Date(row.createdAt).toLocaleDateString('en-US', {
+                          {row.province ?? 'Sindh'} · {new Date(row.createdAt).toLocaleDateString('en-US', {
                             month: 'short', day: 'numeric', year: 'numeric',
                           })}
                         </p>

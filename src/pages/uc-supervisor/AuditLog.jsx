@@ -58,7 +58,7 @@ export default function UCSupervisorAuditLog() {
     if (!d) return '—'
     switch (row.action) {
       case 'STOCK_ENTRY': {
-        const verb = d.entryType === 'used' ? 'used' : d.entryType === 'returned' ? 'returned' : 'received'
+        const verb = d.entryType === 'used' ? 'used' : d.entryType === 'returned' ? 'returned' : d.entryType === 'opening' ? 'opening balance' : 'received'
         const vialsStr = d.vials != null ? ` (${d.vials} vials)` : ''
         return `${d.quantity ?? d.vials ?? '?'} doses${vialsStr} ${verb} — ${vaccineName(d.vaccineId)}`
       }
