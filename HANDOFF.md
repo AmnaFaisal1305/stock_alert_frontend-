@@ -34,6 +34,15 @@ Read updated docs: `docs/api-reference (3).md`, `docs/FRONTEND_HANDOFF (4).md`, 
 
 Build: `npm run build` passed clean.
 
+**Browser-tested (agent-browser, live backend):**
+- **DistrictManagement** — province renders as "Sindh · <date>" sub-line under each district ✓
+- **FacilityManagement** — Status column shows "Last active <date>" (active) and "Since <date>" (inactive) ✓
+- **FacilityDetail** — page renders cleanly; "Custom" badge not observable (no facility in current dataset has a Head-approved override — correct, stays hidden)
+- **`opening` entryType** (StockRegister/AuditLog/Analytics) — NOT browser-verifiable yet: `opening` rows only exist after the Sprint 8 go-live seeding script runs on the backend. Logic is in place and build-clean; no live data to render against.
+- Note: dev server must run on **port 5173** — the backend CORS allowlist rejects other ports (5174 fallback got blocked).
+
+Committed as `feat: Sprint 8 opening entryType + district/facility display gaps` (8 files). `CLAUDE.md` left uncommitted (unrelated pre-existing edit).
+
 ---
 
 ## Session Log — 2026-10-11 Session 3
