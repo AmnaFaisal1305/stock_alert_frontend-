@@ -139,6 +139,21 @@ Read the updated API reference (`docs/api-reference (2).md`), functionality doc,
 
 ---
 
+## Session Log — 2026-10-11 Session 6
+
+### What changed in session 6
+
+**Dead code removal (frontend cleanup gap from HANDOFF)**
+
+- **`src/lib/api.js`** — removed `updateVaccineStock(id, quantity)`. Called `PUT /api/vaccines/:id/stock` which was removed in Sprint 3. No page called it after `ThresholdManagement.jsx` was deleted.
+- **`src/pages/facility-supervisor/VaccinesList.jsx`** — deleted. Page was never routed in `App.jsx`; only caller of `updateVaccineStock`.
+
+Build: `npm run build` clean. Committed as `bedef79` and pushed to `origin/main`.
+
+**All client requirements §1–§9 remain complete. No regressions.**
+
+---
+
 ## Session Log — 2026-10-11 (Sessions 1 & 2)
 
 This section describes the two sessions run on 2026-10-11, in order. Read this first if you want to know what changed today.
@@ -418,8 +433,8 @@ Both roles now appear as selectable options in the "Add User" modal:
 - observer: can log in, sees super_admin layout read-only
 - TopBar role chip shows correct human-readable label for all 7 roles
 
-### Dead code (minor, non-breaking)
-- `updateVaccineStock` in `api.js` — still exported but calls `PUT /api/vaccines/:id/stock` which was removed in Sprint 3 (returns 404). No page calls it (ThresholdManagement was deleted). Safe to remove if desired.
+### Dead code
+None remaining.
 
 ---
 
@@ -571,5 +586,5 @@ export async function unsubscribePush(endpoint) {
 }
 ```
 
-### Minor cleanup (low priority, non-breaking)
-- Remove `updateVaccineStock` from `api.js` — it calls a removed endpoint (`PUT /api/vaccines/:id/stock`) and is not called by any page.
+### Minor cleanup
+None remaining — dead code removed in session 6.
