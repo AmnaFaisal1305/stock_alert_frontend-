@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, RotateCcw, UserX, UserCheck, User } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
 import SearchInput from '../../components/shared/SearchInput'
@@ -15,6 +16,7 @@ import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 
 export default function UserManagement() {
+  const { user: authUser } = useAuth()
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
@@ -38,6 +40,8 @@ export default function UserManagement() {
     { label: 'UC Supervisor',        value: 'uc_supervisor' },
     { label: 'Facility Supervisor',  value: 'facility_supervisor' },
     { label: 'Facility Worker',      value: 'facility_worker' },
+    { label: 'Facility Head',        value: 'facility_head' },
+    { label: 'Observer',             value: 'observer' },
   ]
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
@@ -62,19 +66,23 @@ export default function UserManagement() {
     uc_supervisor:       'UC supervisor',
     facility_supervisor: 'Facility supervisor',
     facility_worker:     'Facility worker',
+    facility_head:       'Facility head',
+    observer:            'Observer',
   }
 
   const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' }
 
   const createMutation = useMutation({
     mutationFn: () => {
-      const isFacilityRole = form.role === 'facility_supervisor' || form.role === 'facility_worker'
+      const isFacilityRole = form.role === 'facility_supervisor' || form.role === 'facility_worker' || form.role === 'facility_head'
       const isUcRole = form.role === 'uc_supervisor'
+      const isObserver = form.role === 'observer'
       return createUser({
         firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
         email: form.email, password: form.password, role: form.role,
         ...(isFacilityRole ? { facilityId: form.facilityId }
           : isUcRole ? { ucIds: form.ucIds }
+          : isObserver ? {}
           : { districtId: form.districtId }),
         ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
         ...(form.cnic.trim() ? { cnic: form.cnic.trim() } : {}),
@@ -176,6 +184,8 @@ export default function UserManagement() {
     uc_supervisor:       'UC Supervisor',
     facility_supervisor: 'Facility Supervisor',
     facility_worker:     'Facility Worker',
+    facility_head:       'Facility Head',
+    observer:            'Observer',
   }
 
   const activeRole = ROLE_FILTERS[roleFilter].value
@@ -185,6 +195,7 @@ export default function UserManagement() {
     activeRole === 'uc_supervisor'       ? 'UC Assignments' :
     activeRole === 'facility_supervisor' ? 'Facility Name' :
     activeRole === 'facility_worker'     ? 'Facility Name' :
+    activeRole === 'facility_head'       ? 'Facility Name' :
     'Assignment'
 
   const columns = [
@@ -218,7 +229,7 @@ export default function UserManagement() {
             <span className="text-text-muted italic text-[11px]">No UCs assigned</span>
           )
         }
-        const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker'
+        const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker' || row.role === 'facility_head'
         const primary = isFacilityRole ? row.facilityName : row.districtName
         const sub     = isFacilityRole ? row.districtName : null
         return primary ? (
@@ -243,23 +254,25 @@ export default function UserManagement() {
       label: '',
       render: (row) => (
         <div className="flex gap-1.5 justify-end flex-wrap">
-          {row.role === 'uc_supervisor' && (
-            <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>
-              Reassign UCs
+          {authUser?.role !== 'observer' && (<>
+            {row.role === 'uc_supervisor' && (
+              <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>
+                Reassign UCs
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}>
+              <RotateCcw size={12} /> Reset Password
             </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}>
-            <RotateCcw size={12} /> Reset Password
-          </Button>
-          {row.isActive ? (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}>
-              <UserX size={12} /> Deactivate
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-              <UserCheck size={12} /> Activate
-            </Button>
-          )}
+            {row.isActive ? (
+              <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}>
+                <UserX size={12} /> Deactivate
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
+                <UserCheck size={12} /> Activate
+              </Button>
+            )}
+          </>)}
         </div>
       ),
     },
@@ -277,13 +290,15 @@ export default function UserManagement() {
             {isLoading && 'Loading users…'}
           </p>
         </div>
-        <button
-          onClick={() => { setCreateOpen(true); setFormError('') }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
-        >
-          <Plus size={15} strokeWidth={2.5} />
-          Add User
-        </button>
+        {authUser?.role !== 'observer' && (
+          <button
+            onClick={() => { setCreateOpen(true); setFormError('') }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            Add User
+          </button>
+        )}
       </div>
 
       {/* Search + Role filters */}
@@ -343,7 +358,7 @@ export default function UserManagement() {
                 : 'No users registered yet.'
             }
             mobileCard={(row) => {
-              const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker'
+              const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker' || row.role === 'facility_head'
               const assignment = isFacilityRole ? row.facilityName : row.role === 'uc_supervisor' ? (row.ucNames ?? []).join(', ') || 'No UCs' : row.districtName
               return (
                 <div className="px-4 py-3 hover:bg-slate-50">
@@ -358,17 +373,19 @@ export default function UserManagement() {
                     <p className="truncate">{row.email}</p>
                     {assignment && <p className="truncate">Assigned: <span className="text-text font-medium">{assignment}</span></p>}
                   </div>
-                  <div className="flex gap-1 flex-wrap mt-2">
-                    {row.role === 'uc_supervisor' && (
-                      <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><RotateCcw size={12} /> Reset Pwd</Button>
-                    {row.isActive ? (
-                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
-                    )}
-                  </div>
+                  {authUser?.role !== 'observer' && (
+                    <div className="flex gap-1 flex-wrap mt-2">
+                      {row.role === 'uc_supervisor' && (
+                        <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><RotateCcw size={12} /> Reset Pwd</Button>
+                      {row.isActive ? (
+                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             }}
@@ -390,6 +407,8 @@ export default function UserManagement() {
                 { value: 'uc_supervisor',        label: 'UC Supervisor' },
                 { value: 'facility_supervisor',  label: 'Facility Supervisor' },
                 { value: 'facility_worker',      label: 'Facility Worker' },
+                { value: 'facility_head',        label: 'Facility Head' },
+                { value: 'observer',             label: 'Observer' },
               ].map(({ value, label }) => (
                 <button
                   key={value}
@@ -458,8 +477,8 @@ export default function UserManagement() {
             </div>
           )}
 
-          {/* Facility picker — for facility_supervisor and facility_worker */}
-          {(form.role === 'facility_supervisor' || form.role === 'facility_worker') && (
+          {/* Facility picker — for facility_supervisor, facility_worker, facility_head */}
+          {(form.role === 'facility_supervisor' || form.role === 'facility_worker' || form.role === 'facility_head') && (
             <Select id="sup-facility" label="Assign Facility" options={facilityOptions}
               placeholder="Select a facility…"
               value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />

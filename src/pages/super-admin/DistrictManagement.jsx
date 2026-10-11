@@ -9,6 +9,7 @@ import {
   getDistricts, getDistrict, getDashboard,
   createDistrict, updateDistrict, deleteDistrict, activateDistrict,
 } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { useDebounce } from '../../hooks/useDebounce'
 import SearchInput from '../../components/shared/SearchInput'
 import Pagination from '../../components/shared/Pagination'
@@ -173,6 +174,7 @@ function DistrictExpandedPanel({ districtId }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function DistrictManagement() {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const [open, setOpen]           = useState(false)
@@ -311,12 +313,14 @@ export default function DistrictManagement() {
               : 'Loading districts list…'}
           </p>
         </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 bg-white text-primary font-bold text-sm px-4 py-2 rounded-lg shadow-sm hover:bg-white/90 active:scale-[0.98] transition-all flex-shrink-0"
-        >
-          <Plus size={15} strokeWidth={2.5} /> Add District
-        </button>
+        {user?.role !== 'observer' && (
+          <button
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-1.5 bg-white text-primary font-bold text-sm px-4 py-2 rounded-lg shadow-sm hover:bg-white/90 active:scale-[0.98] transition-all flex-shrink-0"
+          >
+            <Plus size={15} strokeWidth={2.5} /> Add District
+          </button>
+        )}
       </div>
 
       {/* ── Search + Status filters ──────────────────────────────────── */}
@@ -424,14 +428,16 @@ export default function DistrictManagement() {
                         <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                         {isExpanded ? 'Collapse' : 'View Details'}
                       </button>
-                      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
-                        <Pencil size={12} /> Rename
-                      </Button>
-                      {row.isActive ? (
-                        <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
-                      )}
+                      {user?.role !== 'observer' && (<>
+                        <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
+                          <Pencil size={12} /> Rename
+                        </Button>
+                        {row.isActive ? (
+                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
+                        )}
+                      </>)}
                     </div>
                   </div>
 
@@ -484,19 +490,20 @@ export default function DistrictManagement() {
                         {isExpanded ? 'Collapse' : 'View Details'}
                       </button>
 
-                      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
-                        <Pencil size={12} /> Rename
-                      </Button>
-
-                      {row.isActive ? (
-                        <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
-                          Deactivate
+                      {user?.role !== 'observer' && (<>
+                        <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
+                          <Pencil size={12} /> Rename
                         </Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-                          Activate
-                        </Button>
-                      )}
+                        {row.isActive ? (
+                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
+                            Deactivate
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
+                            Activate
+                          </Button>
+                        )}
+                      </>)}
                     </div>
                   </div>
 

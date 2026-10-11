@@ -6,11 +6,13 @@ import { BookOpen, Syringe } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const ENTRY_TYPE_PILLS = [
-  { key: 'all',      label: 'All',       activeClass: 'bg-primary text-white border-primary'     },
-  { key: 'received', label: 'Received',  activeClass: 'bg-success text-white border-success'     },
-  { key: 'used',     label: 'Consumed',  activeClass: 'bg-danger text-white border-danger'       },
-  { key: 'returned', label: 'Returned',  activeClass: 'bg-warning text-white border-warning'     },
-  { key: 'ADJUST_STOCK', label: 'Corrected', activeClass: 'bg-slate-500 text-white border-slate-500' },
+  { key: 'all',          label: 'All',       activeClass: 'bg-primary text-white border-primary'       },
+  { key: 'received',     label: 'Received',  activeClass: 'bg-success text-white border-success'       },
+  { key: 'used',         label: 'Consumed',  activeClass: 'bg-danger text-white border-danger'         },
+  { key: 'returned',     label: 'Returned',  activeClass: 'bg-warning text-white border-warning'       },
+  { key: 'wasted',       label: 'Wasted',    activeClass: 'bg-orange-500 text-white border-orange-500' },
+  { key: 'ADJUST_STOCK', label: 'Corrected', activeClass: 'bg-slate-500 text-white border-slate-500'   },
+  { key: 'STOCK_DAY_END', label: 'Day End',  activeClass: 'bg-indigo-500 text-white border-indigo-500' },
 ]
 
 export default function StockRegister() {
@@ -30,17 +32,24 @@ export default function StockRegister() {
   const logs     = logData?.auditLog    ?? []
   const isLoading = loadingVaccines || loadingLog
 
-  const vaccineOptions = vaccines.map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
-  const selectedName   = vaccines.find((v) => v.id === selectedVaccineId)?.name ?? ''
+  const vaccineOptions  = vaccines.map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
+  const selectedVaccine = vaccines.find((v) => v.id === selectedVaccineId)
+  const selectedName    = selectedVaccine?.name ?? ''
+  const selectedDpv     = selectedVaccine?.dosesPerVial ?? 1
 
   const entries = useMemo(() => {
     if (!selectedVaccineId) return []
 
     const relevant = logs
-      .filter((l) =>
-        (l.action === 'STOCK_ENTRY' || l.action === 'ADJUST_STOCK') &&
-        l.details?.vaccineId === selectedVaccineId
-      )
+      .filter((l) => {
+        if (l.action === 'STOCK_ENTRY' || l.action === 'ADJUST_STOCK') {
+          return l.details?.vaccineId === selectedVaccineId
+        }
+        if (l.action === 'STOCK_DAY_END') {
+          return (l.details?.items ?? []).some((i) => i.vaccineId === selectedVaccineId)
+        }
+        return false
+      })
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
 
     let balance = 0
@@ -59,11 +68,26 @@ export default function StockRegister() {
         } else if (d.entryType === 'returned') {
           received  = d.quantity ?? 0
           balance  += received
+        } else if (d.entryType === 'wasted') {
+          issued   = d.quantity ?? 0
+          balance -= issued
         }
       } else if (l.action === 'ADJUST_STOCK') {
         const delta = d.delta ?? 0
         if (delta > 0) { received = delta;          balance += delta }
         else           { issued   = Math.abs(delta); balance -= Math.abs(delta) }
+      } else if (l.action === 'STOCK_DAY_END') {
+        const item = (d.items ?? []).find((i) => i.vaccineId === selectedVaccineId)
+        if (item) {
+          const dpv = selectedDpv
+          const usedDoses     = (item.usedVials    ?? 0) * dpv
+          const wastedDoses   = (item.wastedVials  ?? 0) * dpv
+          const returnedDoses = (item.returnedVials ?? 0) * dpv
+          issued   = usedDoses + wastedDoses
+          received = returnedDoses > 0 ? returnedDoses : null
+          balance -= issued
+          balance += (returnedDoses ?? 0)
+        }
       }
 
       return {
@@ -79,7 +103,7 @@ export default function StockRegister() {
         entryType:    d.entryType     ?? l.action,
       }
     })
-  }, [logs, selectedVaccineId])
+  }, [logs, selectedVaccineId, selectedDpv])
 
   const filteredEntries = useMemo(() => {
     if (entryTypeFilter === 'all') return entries
@@ -87,7 +111,7 @@ export default function StockRegister() {
   }, [entries, entryTypeFilter])
 
   const pillCounts = useMemo(() => {
-    const counts = { all: entries.length, received: 0, used: 0, returned: 0, ADJUST_STOCK: 0 }
+    const counts = { all: entries.length, received: 0, used: 0, returned: 0, wasted: 0, ADJUST_STOCK: 0, STOCK_DAY_END: 0 }
     entries.forEach((e) => { if (e.entryType in counts) counts[e.entryType]++ })
     return counts
   }, [entries])
@@ -232,10 +256,12 @@ export default function StockRegister() {
                     filteredEntries.map((row, i) => {
                       const entryTypeMeta = (() => {
                         switch (row.entryType) {
-                          case 'received':  return { label: 'Received', cls: 'bg-success-bg text-success-dark' }
-                          case 'used':      return { label: 'Consumed', cls: 'bg-danger-bg text-danger' }
-                          case 'returned':  return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }
-                          default:          return { label: 'Corrected', cls: 'bg-slate-100 text-text-muted' }
+                          case 'received':     return { label: 'Received', cls: 'bg-success-bg text-success-dark' }
+                          case 'used':         return { label: 'Consumed', cls: 'bg-danger-bg text-danger' }
+                          case 'returned':     return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }
+                          case 'wasted':       return { label: 'Wasted',   cls: 'bg-orange-50 text-orange-600' }
+                          case 'STOCK_DAY_END': return { label: 'Day End', cls: 'bg-indigo-50 text-indigo-600' }
+                          default:             return { label: 'Corrected', cls: 'bg-slate-100 text-text-muted' }
                         }
                       })()
                       return (

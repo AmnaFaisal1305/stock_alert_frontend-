@@ -334,26 +334,28 @@ export default function FacilityDashboard() {
             <RefreshClock dataUpdatedAt={dataUpdatedAt} isFetching={isFetching} />
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            to="/facility/workers"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-surface-border bg-surface text-text-muted hover:text-warning-dark hover:border-warning/30 hover:bg-warning-bg transition-colors"
-          >
-            <UserCog size={13} className="text-warning-dark" /> Manage Workers
-          </Link>
-          <Link
-            to="/facility/thresholds"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-surface-border bg-surface text-text-muted hover:text-success-dark hover:border-success/30 hover:bg-success-bg transition-colors"
-          >
-            <Syringe size={13} className="text-success-dark" /> Manage Vaccines
-          </Link>
-          <Link
-            to="/facility/record-stock"
-            className="inline-flex items-center gap-2 bg-primary text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors shadow-sm"
-          >
-            <PackagePlus size={15} /> Record Delivery
-          </Link>
-        </div>
+        {user?.role !== 'facility_head' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              to="/facility/workers"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-surface-border bg-surface text-text-muted hover:text-warning-dark hover:border-warning/30 hover:bg-warning-bg transition-colors"
+            >
+              <UserCog size={13} className="text-warning-dark" /> Manage Workers
+            </Link>
+            <Link
+              to="/facility/thresholds"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-surface-border bg-surface text-text-muted hover:text-success-dark hover:border-success/30 hover:bg-success-bg transition-colors"
+            >
+              <Syringe size={13} className="text-success-dark" /> Manage Vaccines
+            </Link>
+            <Link
+              to="/facility/record-stock"
+              className="inline-flex items-center gap-2 bg-primary text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors shadow-sm"
+            >
+              <PackagePlus size={15} /> Record Delivery
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── Alert Banner ── */}
@@ -468,10 +470,11 @@ export default function FacilityDashboard() {
 
             {!isError && rows.length > 0 ? (
               <>
-                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
+                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Stock</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Wasted (30d)</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Last Recorded</span>
                 </div>
                 <div className="divide-y divide-surface-border">
@@ -480,7 +483,7 @@ export default function FacilityDashboard() {
                       {/* Mobile row */}
                       <div className="sm:hidden px-4 py-3 hover:bg-slate-50/50 transition-colors">
                         <p className="text-sm font-semibold text-text mb-1">{displayVaccineName(row.vaccineName)}</p>
-                        <div className="grid grid-cols-3 gap-x-3 text-xs">
+                        <div className="grid grid-cols-4 gap-x-3 text-xs">
                           <div>
                             <p className="text-text-muted">Stock</p>
                             <p className="font-bold text-text tabular-nums">{row.quantity ?? '—'}</p>
@@ -488,6 +491,10 @@ export default function FacilityDashboard() {
                           <div>
                             <p className="text-text-muted">Consumed</p>
                             <p className="font-bold text-warning-dark tabular-nums">{row.consumed ?? '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-text-muted">Wasted</p>
+                            <p className="font-bold text-orange-500 tabular-nums">{row.wasted ?? '—'}</p>
                           </div>
                           <div>
                             <p className="text-text-muted">Recorded</p>
@@ -500,7 +507,7 @@ export default function FacilityDashboard() {
                         </div>
                       </div>
                       {/* Desktop row */}
-                      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
+                      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
                         <p className="text-sm font-semibold text-text truncate">{displayVaccineName(row.vaccineName)}</p>
                         <p className="text-sm font-bold text-text text-right tabular-nums">
                           {row.quantity ?? '—'}
@@ -508,6 +515,10 @@ export default function FacilityDashboard() {
                         </p>
                         <p className="text-sm font-bold text-warning-dark text-right tabular-nums">
                           {row.consumed ?? '—'}
+                          <span className="text-[10px] text-text-muted font-normal block">doses</span>
+                        </p>
+                        <p className="text-sm font-bold text-orange-500 text-right tabular-nums">
+                          {row.wasted ?? '—'}
                           <span className="text-[10px] text-text-muted font-normal block">doses</span>
                         </p>
                         <p className="text-xs font-medium text-text-muted text-right">

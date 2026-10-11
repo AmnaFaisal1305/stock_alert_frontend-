@@ -227,7 +227,7 @@ export default function LoginPage() {
           {/* Partner logos card */}
           <div className="bg-white/10 backdrop-blur-md rounded-2xl px-8 py-7 border border-white/15 shadow-2xl w-full">
             <img
-              src="/images/WhatsApp%20Image%202026-08-21%20at%202.10.03%20AM.jpeg"
+              src="/images/login-hero.jpeg"
               alt="Partner logos — AKUH, EPI Sindh, UNICEF, WHO"
               className="w-full max-w-[300px] mx-auto object-contain"
             />

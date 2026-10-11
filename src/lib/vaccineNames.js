@@ -12,6 +12,9 @@ const VACCINE_NAME_MAP = {
   'Vaccine 11': 'ایم آر خسرہ',
   'Vaccine 12': 'ایم آر روبیلا',
   'Vaccine 13': 'ٹی سی وی',
+  'Vaccine 14': 'ٹی ڈی - ٹی',
+  'Vaccine 15': 'ٹی ڈی - ڈی',
+  'Vaccine 16': 'ایچ پی وی',
 }
 
 export function displayVaccineName(name) {

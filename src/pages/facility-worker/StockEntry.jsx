@@ -1,306 +1,111 @@
-import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, PackageMinus, Syringe } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getVaccines, getDashboard, createStockEntry } from '../../lib/api'
+import { Syringe } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { getHoldings } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import Select from '../../components/ui/Select'
-import Input from '../../components/ui/Input'
-import Button from '../../components/ui/Button'
-import StatusBadge from '../../components/shared/StatusBadge'
-import { statusConfig } from '../../lib/status'
-import StepIndicator from '../../components/shared/StepIndicator'
+import SkeletonCard from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
-
-const STEP_LABELS = ['Select Vaccine', 'Enter Doses']
 
 export default function StockEntry() {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
 
-  const [step, setStep]             = useState(1)
-  const [vaccineId, setVaccineId]   = useState('')
-  const [quantity, setQuantity]     = useState('')
-  const [done, setDone]             = useState(false)
-  const [finalBalance, setFinalBalance] = useState(null)
-
-  const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
-  const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
-
-  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
-
-  const stockRows = (dashboardData?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
-
-  const stockByVaccineId = new Map(
-    stockRows.map((r) => [r.vaccineId, r])
-  )
-
-  const selectedVaccine = vaccineData?.vaccines?.find((v) => v.id === vaccineId)
-  const currentStock    = vaccineId ? stockByVaccineId.get(vaccineId) : null
-  const currentQty      = currentStock?.quantity ?? 0
-  const useQty          = parseInt(quantity, 10) || 0
-  const remaining       = currentQty - useQty
-  const wouldGoNegative = useQty > currentQty
-  const status = currentStock ? currentStock.status : null
-
-  const mutation = useMutation({
-    mutationFn: () => createStockEntry({ vaccineId, quantity: useQty }),
-    onSuccess: () => {
-      setFinalBalance(remaining)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setDone(true)
-    },
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['holdings'],
+    queryFn:  getHoldings,
+    refetchInterval: 30_000,
   })
 
-  const insufficientAvailable =
-    mutation.error?.status === 400 && mutation.error?.body?.available != null
-      ? mutation.error.body.available
-      : null
+  const rows = (data?.holdings ?? []).filter((r) => r.workerId === user?.id)
 
-  function reset() {
-    setStep(1); setVaccineId(''); setQuantity(''); setDone(false); setFinalBalance(null); mutation.reset()
-  }
+  if (isLoading) return (
+    <div className="max-w-3xl mx-auto pt-6 px-1 flex flex-col gap-4">
+      {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  )
 
-  function handleQuickAdd(val) {
-    setQuantity(val.toString())
-    mutation.reset()
-  }
+  if (isError) return (
+    <div className="max-w-3xl mx-auto pt-6 px-4 text-sm text-danger font-medium">
+      Failed to load holdings. Please refresh.
+    </div>
+  )
 
   return (
-    <div className="max-w-6xl mx-auto pt-6 px-1">
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side: title + form — sticky so both stay in view while stock cards scroll */}
-        <div className="lg:col-span-5 flex flex-col gap-4 sticky top-0 bg-surface-alt z-10 lg:top-6 pb-4 -mx-1 px-1">
-          <div>
-            <h1 className="text-xl font-bold text-text tracking-tight">Dose Entry Portal</h1>
-            <p className="text-sm text-text-muted mt-0.5">Quickly record vaccine doses used in the clinic</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-surface-border p-6 sm:p-8 shadow-xl">
-          {done ? (
-            <div className="flex flex-col items-center gap-6 text-center">
-              <div className="bg-success/5 p-5 rounded-2xl text-success border border-success/10 animate-pulse">
-                <CheckCircle2 size={48} strokeWidth={2.2} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-text tracking-tight">Stock Activity Logged</h2>
-                <div className="bg-slate-50/70 border border-slate-100 rounded-xl px-5 py-3.5 mt-4 flex flex-col gap-1.5">
-                  <p className="text-sm text-text-muted">
-                    Administered <span className="font-extrabold text-primary text-base">{useQty} doses</span> of{' '}
-                    <span className="font-extrabold text-text text-base" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
-                  </p>
-                  <div className="h-px bg-slate-200/60 my-1" />
-                  <p className="text-xs text-text-muted font-medium">
-                    New Running Balance: <span className="font-extrabold text-success">{finalBalance} doses</span>
-                  </p>
-                </div>
-              </div>
-              <Button variant="secondary" onClick={reset} className="w-full mt-2 py-3 font-semibold uppercase tracking-wider text-xs">
-                Record Another Entry
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <StepIndicator step={step} labels={STEP_LABELS} />
-
-              {step === 1 && (
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <p className="text-sm font-bold text-text mb-1">1. Select Vaccine</p>
-                    <p className="text-xs text-text-muted mb-4">Choose the vaccine name to record usage.</p>
-                    <Select
-                      id="vaccine"
-                      label="Vaccine catalog"
-                      options={vaccineOptions}
-                      placeholder="Choose vaccine from list..."
-                      value={vaccineId}
-                      onChange={(e) => { setVaccineId(e.target.value); setQuantity('') }}
-                      required
-                    />
-                  </div>
-
-                  {vaccineId && currentStock && (
-                    <div className="bg-slate-50/60 rounded-xl px-5 py-4 border border-surface-border flex flex-col gap-3 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] font-bold text-text-muted/70 uppercase tracking-widest">Current Balance</p>
-                          <p className="text-2xl font-extrabold text-text mt-0.5 tracking-tight">{currentQty} <span className="text-xs font-semibold text-text-muted/80">doses</span></p>
-                        </div>
-                        <StatusBadge status={status} />
-                      </div>
-                    </div>
-                  )}
-
-                  {status === 'critical' && (
-                    <div className="bg-danger-bg border border-danger/10 rounded-xl px-4 py-3 flex items-start gap-2.5 animate-in shake duration-300">
-                      <AlertTriangle size={16} className="text-danger flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-danger">Stock Alert: Critically Low</p>
-                        <p className="text-[10px] text-danger/80 mt-0.5 leading-snug">Dose counts are below threshold. Reorder action is recommended.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={() => setStep(2)}
-                    disabled={!vaccineId}
-                    className="w-full py-3 mt-1 font-bold text-xs uppercase tracking-wider animate-in fade-in"
-                  >
-                    Continue to quantity <ChevronRight size={15} />
-                  </Button>
-                </div>
-              )}
-
-              {step === 2 && (
-                <form className="flex flex-col gap-6 animate-in fade-in duration-200" onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}>
-                  <div className="bg-slate-50/70 rounded-xl px-5 py-3 flex items-center justify-between border border-surface-border">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-red-50 text-primary">
-                        <Syringe size={14} />
-                      </div>
-                      <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
-                    </div>
-                    <span className="text-xs font-semibold text-text-muted">{currentQty} in stock</span>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-bold text-text mb-1">2. How many doses were used?</p>
-                    <p className="text-xs text-text-muted mb-4">Enter exact dose count or tap quick presets below.</p>
-                    
-                    <Input
-                      id="quantity"
-                      label="Doses Used"
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      max={10_000}
-                      placeholder="e.g. 10"
-                      value={quantity}
-                      onChange={(e) => { setQuantity(e.target.value); mutation.reset() }}
-                      required
-                    />
-
-                    {/* Quick Preset Buttons for rapid clinical input */}
-                    <div className="mt-4">
-                      <p className="text-[10px] font-bold text-text-muted/65 uppercase tracking-wider mb-2">Quick presets</p>
-                      <div className="flex flex-wrap gap-2">
-                        {[1, 5, 10, 20, 50].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => handleQuickAdd(val)}
-                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 ${
-                              quantity === val.toString()
-                                ? 'bg-primary text-white border-primary shadow-sm shadow-primary/10'
-                                : 'bg-slate-50 border-slate-200 text-text hover:bg-red-50 hover:border-primary/20 hover:text-primary'
-                            }`}
-                          >
-                            {val} Dose{val > 1 ? 's' : ''}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {quantity && useQty > 0 && (
-                    <div className={`rounded-xl px-4 py-3 text-xs border ${
-                      wouldGoNegative || useQty > 10_000
-                        ? 'bg-danger-bg border-danger/10 text-danger'
-                        : 'bg-success-bg border-success/10 text-success-dark'
-                    }`}>
-                      {wouldGoNegative ? (
-                        <span className="font-bold">Error: Insufficient stock. Only {currentQty} doses remain in stock.</span>
-                      ) : useQty > 10_000 ? (
-                        <span className="font-bold">Maximum 10,000 doses per entry.</span>
-                      ) : (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-bold uppercase tracking-wider text-[9px] opacity-75">Calculation Check</span>
-                          <p className="font-medium text-text mt-0.5">
-                            Starting Balance ({currentQty}) − Used ({useQty}) ={' '}
-                            <span className="font-bold text-success-dark">{remaining} doses remaining</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {mutation.isError && (
-                    <p className="text-xs font-bold text-danger bg-danger-bg border border-danger/10 rounded-xl px-4 py-3">
-                      {insufficientAvailable != null
-                        ? `Only ${insufficientAvailable} doses left in stock.`
-                        : mutation.error?.message}
-                    </p>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      onClick={() => { setStep(1); mutation.reset() }}
-                      className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
-                    >
-                      <ChevronLeft size={15} /> Back
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={mutation.isPending || !quantity || useQty < 1 || wouldGoNegative || useQty > 10_000}
-                      className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
-                    >
-                      <PackageMinus size={14} />
-                      {mutation.isPending ? 'Recording…' : 'Record'}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
-          </div>{/* end white card */}
-        </div>
-
-        {/* Right Side: Live Stock Dashboard catalog */}
-        <div className="lg:col-span-7 flex flex-col gap-4 max-h-[45vh] overflow-y-auto lg:max-h-none lg:overflow-visible pr-1 lg:pr-0">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-text-muted/75 uppercase tracking-wider">Live Facility Stock</h2>
-            <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-100 tracking-wider">LIVE DATA</span>
-          </div>
-
-          {stockRows.length === 0 ? (
-            <div className="text-center py-10 border border-dashed border-slate-200 bg-white rounded-2xl text-text-muted px-4">
-              <Syringe size={28} className="mx-auto mb-2 text-text-muted/30" />
-              <p className="font-bold text-xs">No configured stock levels</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {stockRows.map((row) => {
-                const outOfStock = row.quantity === 0
-                const cfg        = statusConfig(row.status)
-                const isSelected = row.vaccineId === vaccineId
-
-                return (
-                  <div
-                    key={row.vaccineId}
-                    className={`bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 flex flex-col gap-2 shadow-sm transition-all ${
-                      isSelected ? 'ring-2 ring-primary/20 scale-[1.02] border-slate-400' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <span className="font-bold text-xs text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</span>
-                      <StatusBadge status={row.status} />
-                    </div>
-                    <div className="flex items-center text-[10px] pt-1 border-t border-slate-50 mt-1 font-medium text-text-muted">
-                      {outOfStock ? (
-                        <span className="font-bold text-danger">Out of stock</span>
-                      ) : (
-                        <span className="font-bold text-text-muted/95">{row.quantity ?? 0} doses</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+    <div className="max-w-3xl mx-auto pt-6 px-1 flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-bold text-text tracking-tight">My Holdings</h1>
+        <p className="text-sm text-text-muted mt-0.5">Vials currently assigned to you by your supervisor</p>
       </div>
+
+      {rows.length === 0 ? (
+        <div className="text-center py-14 border border-dashed border-slate-200 bg-white rounded-2xl text-text-muted px-4">
+          <Syringe size={28} className="mx-auto mb-3 text-text-muted/30" />
+          <p className="font-bold text-sm">No vials assigned yet</p>
+          <p className="text-xs mt-1 text-text-muted/70">Your supervisor will assign vials to you each morning.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-border bg-surface-alt">
+                  <th className="px-5 py-3 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Assigned</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Used</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Returned</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Wasted</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Remaining</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {rows.map((r) => (
+                  <tr key={r.vaccineId} className="hover:bg-surface-alt/50 transition-colors">
+                    <td className="px-5 py-3.5 font-semibold text-text" dir="rtl">{displayVaccineName(r.vaccineName)}</td>
+                    <td className="px-4 py-3.5 text-right text-text-muted">{r.assigned}</td>
+                    <td className="px-4 py-3.5 text-right text-text-muted">{r.used}</td>
+                    <td className="px-4 py-3.5 text-right text-text-muted">{r.returned}</td>
+                    <td className="px-4 py-3.5 text-right text-text-muted">{r.wasted}</td>
+                    <td className="px-4 py-3.5 text-right">
+                      <span className={`font-bold ${r.remaining === 0 ? 'text-text-muted' : 'text-text'}`}>
+                        {r.remaining}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-surface-border">
+            {rows.map((r) => (
+              <div key={r.vaccineId} className="px-4 py-4 flex flex-col gap-3">
+                <p className="font-bold text-sm text-text" dir="rtl">{displayVaccineName(r.vaccineName)}</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  {[
+                    ['Assigned', r.assigned],
+                    ['Used',     r.used],
+                    ['Returned', r.returned],
+                    ['Wasted',   r.wasted],
+                  ].map(([label, val]) => (
+                    <div key={label} className="flex justify-between">
+                      <span className="text-text-muted">{label}</span>
+                      <span className="font-medium text-text">{val}</span>
+                    </div>
+                  ))}
+                  <div className="col-span-2 flex justify-between border-t border-surface-border pt-1.5 mt-0.5">
+                    <span className="font-bold text-text-muted">Remaining</span>
+                    <span className={`font-bold ${r.remaining === 0 ? 'text-text-muted' : 'text-text'}`}>{r.remaining} vials</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-text-muted/60 text-center pb-2">
+        All counts are in vials · Refreshes every 30 seconds
+      </p>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { RotateCcw, UserX, Users, UserCheck, CheckCircle2, MapPin } from 'lucide-react'
+import { RotateCcw, UserX, Users, UserCheck, CheckCircle2, MapPin, Plus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, deactivateUser, activateUser, resetPassword } from '../../lib/api'
+import { getUsers, deactivateUser, activateUser, resetPassword, createUser } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -105,6 +105,10 @@ function WorkerCard({ worker, ucName, confirmingId, onConfirmDeactivate, onCance
 export default function WorkerManagement() {
   const queryClient = useQueryClient()
 
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' })
+  const [createError, setCreateError] = useState('')
+
   const [resetTarget, setResetTarget] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [resetError, setResetError]   = useState('')
@@ -141,11 +145,35 @@ export default function WorkerManagement() {
     onError: (err) => setResetError(err.message),
   })
 
+  const createMutation = useMutation({
+    mutationFn: () => {
+      const payload = { ...createForm, role: 'facility_worker' }
+      if (!payload.phone) delete payload.phone
+      if (!payload.cnic)  delete payload.cnic
+      return createUser(payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setCreateOpen(false)
+      setCreateForm({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' })
+      setCreateError('')
+    },
+    onError: (err) => setCreateError(
+      err.status === 409 && err.body?.error?.toLowerCase().includes('zmid')
+        ? 'ZMID already in use.'
+        : err.status === 409
+        ? 'Email already in use.'
+        : (err.message ?? 'Failed to create worker.')
+    ),
+  })
+
   return (
     <div className="flex flex-col gap-6">
 
       {/* Header */}
-      <div>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
         <h1 className="text-xl font-bold text-text">Users Info</h1>
         {!isLoading && workers.length > 0 && (
           <div className="flex items-center gap-3 mt-1.5">
@@ -162,9 +190,13 @@ export default function WorkerManagement() {
             )}
           </div>
         )}
-        {(isLoading || workers.length === 0) && (
-          <p className="text-sm text-text-muted mt-0.5">Manage facility workers at your facility</p>
-        )}
+          {(isLoading || workers.length === 0) && (
+            <p className="text-sm text-text-muted mt-0.5">Manage facility workers at your facility</p>
+          )}
+        </div>
+        <Button onClick={() => { setCreateOpen(true); setCreateError('') }}>
+          <Plus size={15} /> Add Worker
+        </Button>
       </div>
 
       {/* Loading */}
@@ -206,6 +238,35 @@ export default function WorkerManagement() {
           ))}
         </div>
       )}
+
+      {/* Add Worker Modal */}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Worker">
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
+          <div className="grid grid-cols-2 gap-3">
+            <Input id="firstName" label="First Name *" value={createForm.firstName}
+              onChange={(e) => setCreateForm((f) => ({ ...f, firstName: e.target.value }))} required />
+            <Input id="lastName" label="Last Name *" value={createForm.lastName}
+              onChange={(e) => setCreateForm((f) => ({ ...f, lastName: e.target.value }))} required />
+          </div>
+          <Input id="zmid" label="ZMID *" placeholder="e.g. ZM001" value={createForm.zmid}
+            onChange={(e) => setCreateForm((f) => ({ ...f, zmid: e.target.value }))} required />
+          <Input id="email" label="Email *" type="email" value={createForm.email}
+            onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} required />
+          <Input id="password" label="Password * (min 8 chars)" type="password" value={createForm.password}
+            onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} required />
+          <Input id="phone" label="Phone (optional)" value={createForm.phone}
+            onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} />
+          <Input id="cnic" label="CNIC (optional)" value={createForm.cnic}
+            onChange={(e) => setCreateForm((f) => ({ ...f, cnic: e.target.value }))} />
+          {createError && <p className="text-xs text-danger">{createError}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={createMutation.isPending || createForm.password.length < 8}>
+              {createMutation.isPending ? 'Creating…' : 'Create Worker'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Reset Password Modal */}
       <Modal open={!!resetTarget} onClose={() => { setResetTarget(null); setResetError('') }}

@@ -11,6 +11,8 @@ const ROLE_DEFAULTS = {
   uc_supervisor:       '/uc/dashboard',
   facility_supervisor: '/facility/dashboard',
   facility_worker:     '/worker/stock-entry',
+  facility_head:       '/head/dashboard',
+  observer:            '/super-admin/dashboard',
 }
 
 const SESSION_KEY = 'sst_user'

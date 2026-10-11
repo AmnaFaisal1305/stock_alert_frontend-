@@ -16,7 +16,9 @@ function humanizeKey(key) {
 const ACTION_LABELS = {
   LOGOUT: 'Logout',
   STOCK_ENTRY: 'Stock Entry',
-  ADJUST_STOCK: 'Stock Correction',
+  ADJUST_STOCK:  'Stock Correction',
+  STOCK_ASSIGN:  'Vials Assigned',
+  STOCK_DAY_END: 'Day End Recorded',
   CREATE_VACCINE: 'Vaccine Added',
   DELETE_VACCINE: 'Vaccine Deleted',
   EDIT_VACCINE: 'Vaccine Edited',
@@ -41,6 +43,18 @@ const ACTION_LABELS = {
   EDIT_UC: 'UC Renamed',
   DEACTIVATE_UC: 'UC Deactivated',
   ACTIVATE_UC: 'UC Activated',
+  // Sprint 3 — Approvals
+  APPROVAL_REQUEST: 'Approval Requested',
+  APPROVAL_APPROVE: 'Approval Approved',
+  APPROVAL_REJECT:  'Approval Rejected',
+  APPROVAL_CANCEL:  'Approval Cancelled',
+  // Sprint 4 — Stock Requests
+  STOCK_REQUEST_CREATE:   'Stock Request Raised',
+  STOCK_REQUEST_SENT:     'Stock Sent Recorded',
+  STOCK_REQUEST_RECEIVED: 'Stock Received Recorded',
+  STOCK_REQUEST_APPROVE:  'Stock Request Approved',
+  STOCK_REQUEST_CANCEL:   'Stock Request Cancelled',
+  STOCK_REQUEST_DECLINE:  'Stock Request Declined',
 }
 
 function formatDetails(row, vaccineNameById) {
@@ -59,6 +73,14 @@ function formatDetails(row, vaccineNameById) {
     }
     case 'ADJUST_STOCK':
       return `Stock corrected ${d.delta > 0 ? '+' : ''}${d.delta} (${d.previousBalance} → ${d.newBalance}) — ${vaccineName(d.vaccineId)}`
+    case 'STOCK_ASSIGN': {
+      const items = d.items ?? []
+      return `${items.length} vaccine${items.length !== 1 ? 's' : ''} assigned to ${d.workerEmail ?? d.workerId ?? 'worker'}`
+    }
+    case 'STOCK_DAY_END': {
+      const items = d.items ?? []
+      return `Day-end recorded for ${items.length} vaccine${items.length !== 1 ? 's' : ''} — ${d.workerEmail ?? d.workerId ?? 'worker'}`
+    }
     case 'CREATE_VACCINE':
       return `Added "${d.name ? displayVaccineName(d.name) : vaccineName(d.vaccineId)}" (${d.dosesPerVial ?? '?'} doses/vial)`
     case 'DELETE_VACCINE':
@@ -91,6 +113,24 @@ function formatDetails(row, vaccineNameById) {
     case 'DEACTIVATE_UC':
     case 'ACTIVATE_UC':
       return `"${d.name}"`
+    case 'APPROVAL_REQUEST':
+    case 'APPROVAL_APPROVE':
+    case 'APPROVAL_REJECT':
+    case 'APPROVAL_CANCEL': {
+      const typeLabel = d.type === 'stock_correction' ? 'Stock Correction' : d.type === 'threshold_change' ? 'Threshold Change' : (d.type ?? '')
+      const name = d.vaccineName ? displayVaccineName(d.vaccineName) : vaccineName(d.vaccineId)
+      return `${typeLabel}${name ? ` — ${name}` : ''}`
+    }
+    case 'STOCK_REQUEST_CREATE':
+    case 'STOCK_REQUEST_SENT':
+    case 'STOCK_REQUEST_RECEIVED':
+    case 'STOCK_REQUEST_APPROVE':
+    case 'STOCK_REQUEST_CANCEL':
+    case 'STOCK_REQUEST_DECLINE': {
+      const count = d.items?.length ?? d.itemCount ?? null
+      const noteStr = d.note ? ` · "${d.note}"` : ''
+      return count != null ? `${count} vaccine${count !== 1 ? 's' : ''}${noteStr}` : (d.reason ?? '—')
+    }
     case 'LOGOUT':
       return '—'
     default:
@@ -228,10 +268,19 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
       label: 'Action',
       render: (row) => {
         const actionText = ACTION_LABELS[row.action] ?? row.action
+        const showStatus = row.status != null &&
+          (row.entityType === 'stock_request' || row.entityType === 'approval')
         return (
-          <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
-            {actionText}
-          </span>
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+              {actionText}
+            </span>
+            {showStatus && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 w-fit">
+                {row.status.replace(/_/g, ' ')}
+              </span>
+            )}
+          </div>
         )
       }
     },

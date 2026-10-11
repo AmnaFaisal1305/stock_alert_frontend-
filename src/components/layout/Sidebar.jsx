@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, UserCog, LogOut, BookOpen, MapPin,
+  Syringe, PackagePlus, PackageOpen, ClipboardCheck, UserCog, LogOut, BookOpen, MapPin,
   ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -29,22 +29,40 @@ const NAV = {
     { to: '/district/audit-log',  label: 'Audit Log',           icon: ClipboardList   },
   ],
   facility_supervisor: [
-    { to: '/facility/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
-    { to: '/facility/thresholds',     label: 'Vaccines',      icon: Syringe         },
-    { to: '/facility/record-stock',   label: 'Record Stock',  icon: PackagePlus     },
-    { to: '/facility/stock-register', label: 'Stock Register',icon: BookOpen        },
-    { to: '/facility/workers',        label: 'Users Info',    icon: UserCog         },
-    { to: '/facility/audit-log',      label: 'Audit Log',     icon: ClipboardList   },
+    { to: '/facility/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
+    { to: '/facility/approvals',      label: 'Approvals',      icon: ClipboardCheck  },
+    { to: '/facility/record-stock',   label: 'Stock Requests', icon: PackageOpen     },
+    { to: '/facility/stock-register', label: 'Stock Register', icon: BookOpen        },
+    { to: '/facility/workers',        label: 'Users Info',     icon: UserCog         },
+    { to: '/facility/assign-vials',   label: 'Assign Vials',   icon: PackagePlus     },
+    { to: '/facility/day-end',        label: 'Day End',        icon: ClipboardList   },
+    { to: '/facility/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
   ],
   uc_supervisor: [
-    { to: '/uc/dashboard',   label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/uc/facilities',  label: 'Vaccine Performance',icon: Building2       },
-    { to: '/uc/users',       label: 'Users',              icon: Users           },
-    { to: '/uc/audit-log',   label: 'Audit Log',          icon: ClipboardList   },
+    { to: '/uc/dashboard',       label: 'Dashboard',          icon: LayoutDashboard },
+    { to: '/uc/facilities',      label: 'Vaccine Performance',icon: Building2       },
+    { to: '/uc/users',           label: 'Users',              icon: Users           },
+    { to: '/uc/stock-requests',  label: 'Stock Requests',     icon: PackageOpen     },
+    { to: '/uc/audit-log',       label: 'Audit Log',          icon: ClipboardList   },
   ],
   facility_worker: [
-    { to: '/worker/stock-entry', label: 'Stock Entry',  icon: Syringe         },
+    { to: '/worker/stock-entry', label: 'My Holdings',  icon: Syringe         },
     { to: '/worker/status',      label: 'Stock Status', icon: LayoutDashboard },
+  ],
+  facility_head: [
+    { to: '/head/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
+    { to: '/head/users',          label: 'Users',          icon: Users           },
+    { to: '/head/approvals',      label: 'Approvals',      icon: ClipboardCheck  },
+    { to: '/head/stock-requests', label: 'Stock Requests', icon: PackageOpen     },
+    { to: '/head/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
+  ],
+  observer: [
+    { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
+    { to: '/super-admin/districts',  label: 'Districts',        icon: Map             },
+    { to: '/super-admin/facilities', label: 'Facilities',       icon: Building2       },
+    { to: '/super-admin/vaccines',   label: 'Vaccines',         icon: Syringe         },
+    { to: '/super-admin/users',      label: 'Users',            icon: Users           },
+    { to: '/super-admin/audit-log',  label: 'Audit Log',        icon: ClipboardList   },
   ],
 }
 
@@ -54,6 +72,8 @@ const ROLE_SECTION_LABELS = {
   uc_supervisor:       'UC Supervisor',
   facility_supervisor: 'Facility',
   facility_worker:     'My Workspace',
+  facility_head:       'Facility Head',
+  observer:            'Observer',
 }
 
 const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollapse }) {
@@ -98,7 +118,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
         ].join(' ')}>
           <div className="w-9 h-9 flex-shrink-0">
             <img
-              src="/images/icon image.jpeg"
+              src="/images/icon-image.jpeg"
               alt="Logo"
               className="w-full h-full object-contain"
               style={{ mixBlendMode: 'screen', filter: 'invert(1) hue-rotate(180deg)' }}

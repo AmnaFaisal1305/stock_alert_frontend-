@@ -526,6 +526,9 @@ export default function SuperAdminDashboard() {
                                 {cell.consumed != null && (
                                   <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
                                 )}
+                                {cell.wasted != null && (
+                                  <p className="text-[10px] text-orange-500 mt-0.5">{cell.wasted} wasted</p>
+                                )}
                               </td>
                             )
                           })}

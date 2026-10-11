@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { useAuth } from '../../context/AuthContext'
 
 const DEFAULTS = { criticalDoses: 30, lowDoses: 60, criticalVials: 3, lowVials: 6 }
 
@@ -70,6 +71,7 @@ function VaccineForm({ initial, onSubmit, isPending, error, submitLabel }) {
 }
 
 export default function VaccineManagement() {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const [addOpen, setAddOpen]       = useState(false)
@@ -141,9 +143,11 @@ export default function VaccineManagement() {
             {isLoading ? 'Loading…' : `${vaccines.length} vaccine${vaccines.length !== 1 ? 's' : ''} · global, applies to all facilities`}
           </p>
         </div>
-        <Button onClick={() => { setAddOpen(true); setAddError('') }}>
-          <Plus size={16} /> Add Vaccine
-        </Button>
+        {user?.role !== 'observer' && (
+          <Button onClick={() => { setAddOpen(true); setAddError('') }}>
+            <Plus size={16} /> Add Vaccine
+          </Button>
+        )}
       </div>
 
       {/* Loading */}
@@ -192,16 +196,18 @@ export default function VaccineManagement() {
                     <Syringe size={13} className="text-primary flex-shrink-0" />
                     <span className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.name)}</span>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
-                      className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
-                      className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  {user?.role !== 'observer' && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
+                        className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
+                        className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-xs text-text-muted">
                   <span>Doses/Vial: <span className="font-semibold text-text">{v.dosesPerVial}</span></span>
@@ -223,14 +229,16 @@ export default function VaccineManagement() {
                 <span className="text-sm tabular-nums text-text">{v.criticalVials}</span>
                 <span className="text-sm tabular-nums text-text">{v.lowVials}</span>
                 <div className="flex items-center gap-1 justify-end">
-                  <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
-                    className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
-                    <Pencil size={13} />
-                  </button>
-                  <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
-                    className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                    <Trash2 size={13} />
-                  </button>
+                  {user?.role !== 'observer' && (<>
+                    <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </>)}
                 </div>
               </div>
             </div>

@@ -232,6 +232,92 @@ export async function createStockEntry(payload) {
   return request('POST', '/api/stock-entries', payload)
 }
 
+export async function assignVials(payload) {
+  return request('POST', '/api/stock-entries/assign', payload)
+}
+
+export async function recordDayEnd(payload) {
+  return request('POST', '/api/stock-entries/day-end', payload)
+}
+
+export async function getHoldings() {
+  return request('GET', '/api/stock-entries/holdings')
+}
+
+// ── Approvals ─────────────────────────────────────────────────────────────────
+
+export async function getApprovals(status) {
+  return request('GET', `/api/approvals${buildQs(status ? { status } : {})}`)
+}
+
+export async function createApproval(payload) {
+  return request('POST', '/api/approvals', payload)
+}
+
+export async function approveApproval(id) {
+  return request('PUT', `/api/approvals/${id}/approve`, {})
+}
+
+export async function rejectApproval(id, decisionReason) {
+  return request('PUT', `/api/approvals/${id}/reject`, { decisionReason })
+}
+
+export async function cancelApproval(id) {
+  return request('PUT', `/api/approvals/${id}/cancel`, {})
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export async function getNotifications(params) {
+  return request('GET', `/api/notifications${buildQs(params)}`)
+}
+
+export async function getUnreadCount() {
+  return request('GET', '/api/notifications/unread-count')
+}
+
+export async function markNotificationRead(id) {
+  return request('PUT', `/api/notifications/${id}/read`, {})
+}
+
+export async function markAllRead() {
+  return request('PUT', '/api/notifications/read-all', {})
+}
+
+// ── Stock requests ────────────────────────────────────────────────────────────
+
+export async function getStockRequests(status) {
+  return request('GET', `/api/stock-requests${buildQs(status ? { status } : {})}`)
+}
+
+export async function getStockRequest(id) {
+  return request('GET', `/api/stock-requests/${id}`)
+}
+
+export async function createStockRequest(payload) {
+  return request('POST', '/api/stock-requests', payload)
+}
+
+export async function recordSent(id, payload) {
+  return request('PUT', `/api/stock-requests/${id}/sent`, payload)
+}
+
+export async function recordReceived(id, payload) {
+  return request('PUT', `/api/stock-requests/${id}/received`, payload)
+}
+
+export async function approveStockRequest(id) {
+  return request('PUT', `/api/stock-requests/${id}/approve`, {})
+}
+
+export async function cancelStockRequest(id, reason) {
+  return request('PUT', `/api/stock-requests/${id}/cancel`, reason ? { reason } : {})
+}
+
+export async function declineStockRequest(id, reason) {
+  return request('PUT', `/api/stock-requests/${id}/decline`, { reason })
+}
+
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
 export async function getAuditLog({ limit, feed } = {}) {

@@ -1,441 +1,359 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  CheckCircle2, PackageCheck, ChevronRight, ChevronLeft,
-  Minus, Plus, LayoutDashboard, Syringe, PackagePlus, Undo2,
-} from 'lucide-react'
+import { PackageOpen, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getVaccines, getDashboard, createStockEntry } from '../../lib/api'
-import { useAuth } from '../../context/AuthContext'
-import Select from '../../components/ui/Select'
-import Input from '../../components/ui/Input'
+import {
+  getStockRequests, createStockRequest, recordReceived, cancelStockRequest, getVaccines,
+} from '../../lib/api'
 import Button from '../../components/ui/Button'
-import StatusBadge from '../../components/shared/StatusBadge'
-import RingGauge from '../../components/shared/RingGauge'
-import StepIndicator from '../../components/shared/StepIndicator'
+import Input from '../../components/ui/Input'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
-const STEP_LABELS = ['Select Vaccine', 'Entry Type', 'Details', 'Confirm']
+const STAGE_BADGE = {
+  awaiting_both:        'bg-amber-100 text-amber-700',
+  awaiting_sent:        'bg-amber-100 text-amber-700',
+  awaiting_received:    'bg-amber-100 text-amber-700',
+  figures_differ:       'bg-red-100 text-red-700',
+  ready_for_approval:   'bg-blue-100 text-blue-700',
+  completed:            'bg-green-100 text-green-700',
+  partially_fulfilled:  'bg-orange-100 text-orange-700',
+  cancelled:            'bg-gray-100 text-gray-500',
+  declined:             'bg-gray-100 text-gray-500',
+}
 
-export default function RecordStock() {
-  const { user } = useAuth()
-  const queryClient = useQueryClient()
+const STAGE_LABEL = {
+  awaiting_both:        'Awaiting Sent & Received',
+  awaiting_sent:        'Awaiting Sent',
+  awaiting_received:    'Awaiting Received',
+  figures_differ:       'Figures Differ',
+  ready_for_approval:   'Ready for Approval',
+  completed:            'Completed',
+  partially_fulfilled:  'Partially Fulfilled',
+  cancelled:            'Cancelled',
+  declined:             'Declined',
+}
 
-  const [step, setStep]             = useState(1)
-  const [vaccineId, setVaccineId]   = useState('')
-  const [entryType, setEntryType]   = useState('received')
-  const [vials, setVials]           = useState('')
-  const [batchNo, setBatchNo]       = useState('')
-  const [expiryDate, setExpiryDate] = useState('')
-  const [manufacturer, setManufacturer] = useState('')
-  const [remarks, setRemarks]       = useState('outreach')
-  const [done, setDone]             = useState(false)
-  const [result, setResult]         = useState(null)
+const OPEN_STAGES = new Set(['awaiting_both', 'awaiting_sent', 'awaiting_received', 'figures_differ'])
+const CAN_RECEIVE = new Set(['awaiting_both', 'awaiting_received'])
 
-  const { data: vaccineData }   = useQuery({ queryKey: ['vaccines'],  queryFn: getVaccines })
-  const { data: dashboardData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
-
-  const vaccineOptions = (vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
-
-  const stockByVaccineId = new Map(
-    (dashboardData?.facilities ?? [])
-      .filter((r) => r.facilityId === user?.facilityId)
-      .map((r) => [r.vaccineId, r])
+// ── Raise-request modal ────────────────────────────────────────────────────────
+function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
+  const [quantities, setQuantities] = useState(() =>
+    Object.fromEntries(vaccines.map(v => [v.id, '0']))
   )
+  const [note, setNote] = useState('')
+  const [error, setError] = useState(null)
 
-  const selectedVaccine = vaccineData?.vaccines?.find((v) => v.id === vaccineId)
-  const currentStock    = vaccineId ? stockByVaccineId.get(vaccineId) : null
-  const currentQty      = currentStock?.quantity ?? 0
-  const addVials        = parseInt(vials, 10) || 0
-  const dosesPerVial    = selectedVaccine?.dosesPerVial ?? 1
-  const addedDoses      = addVials * dosesPerVial
-  const newTotal        = currentQty + addedDoses
-  const status          = currentStock ? currentStock.status : null
-  const criticalDoses   = currentStock?.criticalDoses ?? 0
-  const pct             = currentStock?.quantity == null
-    ? 0
-    : criticalDoses > 0
-      ? Math.min(Math.round((currentQty / (criticalDoses * 2)) * 100), 100)
-      : 100
+  const items = vaccines
+    .map(v => ({ vaccineId: v.id, requestedVials: parseInt(quantities[v.id], 10) || 0 }))
+    .filter(it => it.requestedVials > 0)
 
-  const isReceivedValid = entryType === 'received'
-    ? batchNo.trim() && expiryDate && manufacturer.trim() && remarks
-    : true
-
-  const mutation = useMutation({
-    mutationFn: () => createStockEntry({
-      vaccineId,
-      vials: addVials,
-      entryType,
-      ...(entryType === 'received' ? {
-        batchNo: batchNo.trim(),
-        expiryDate,
-        manufacturer: manufacturer.trim(),
-        remarks,
-      } : {}),
-    }),
-    onSuccess: (data) => {
-      setResult({
-        vaccineName: selectedVaccine?.name,
-        addedVials: addVials,
-        addedDoses: data?.entry?.quantity ?? addedDoses,
-        newTotal,
-        entryType,
-      })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
-      setDone(true)
-    },
-  })
-
-  function reset() {
-    setStep(1); setVaccineId(''); setEntryType('received'); setVials('')
-    setBatchNo(''); setExpiryDate(''); setManufacturer('')
-    setRemarks('outreach'); setDone(false); setResult(null); mutation.reset()
-  }
-
-  function adjustVials(delta) {
-    const cur = parseInt(vials, 10) || 0
-    setVials(String(Math.min(1_000, Math.max(1, cur + delta))))
-  }
-
-  if (done) {
-    const isReturn = result?.entryType === 'returned'
-    return (
-      <div className="max-w-[480px] mx-auto pt-6 px-1">
-        <div className="bg-white rounded-2xl border border-surface-border p-8 flex flex-col items-center gap-6 text-center shadow-xl">
-          <div className="relative">
-            <div className="bg-success/5 p-5 rounded-2xl text-success border border-success/10 animate-pulse">
-              <CheckCircle2 size={48} strokeWidth={2.2} />
-            </div>
-            <span className="absolute inset-0 rounded-2xl bg-success/5 animate-ping" style={{ animationDuration: '1.8s' }} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-text tracking-tight">
-              {isReturn ? 'Return Logged!' : 'Delivery Stock Logged!'}
-            </h2>
-            <div className="bg-slate-50/70 border border-slate-100 rounded-xl px-5 py-3.5 mt-4 flex flex-col gap-1.5">
-              <p className="text-sm text-text-muted">
-                {isReturn ? 'Returned' : 'Received'}{' '}
-                <span className="font-extrabold text-primary text-base">+{result?.addedVials} vials</span>{' '}
-                ({result?.addedDoses} doses) of{' '}
-                <span className="font-extrabold text-text text-base" dir="rtl">{displayVaccineName(result?.vaccineName)}</span>
-              </p>
-              <div className="h-px bg-slate-200/60 my-1" />
-              <p className="text-xs text-text-muted font-medium">
-                New Projected Balance: <span className="font-extrabold text-success">{result?.newTotal} doses</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 w-full pt-2">
-            <Button variant="secondary" onClick={reset} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider">Record Another</Button>
-            <Link
-              to="/facility/dashboard"
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-primary text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-primary-dark transition-all shadow-sm shadow-primary/10 uppercase tracking-wider"
-            >
-              <LayoutDashboard size={14} /> Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
+  function handleSubmit() {
+    if (!items.length) { setError('Enter at least 1 vial for one vaccine.'); return }
+    onSubmit({ items, ...(note.trim() ? { note: note.trim() } : {}) })
   }
 
   return (
-    <div className="max-w-[520px] mx-auto pt-6 px-1 flex flex-col gap-5">
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">Record Stock</h1>
-        <p className="text-sm text-text-muted mt-0.5">Log vaccine deliveries received or doses returned to your facility</p>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-surface-border p-6 sm:p-8 shadow-xl">
-        <StepIndicator step={step} labels={STEP_LABELS} />
-
-        {/* ── Step 1: Select vaccine ── */}
-        {step === 1 && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-sm font-bold text-text mb-1">1. Select Vaccine</p>
-              <p className="text-xs text-text-muted mb-4">Choose the vaccine from the catalog.</p>
-              <Select
-                id="vaccine"
-                label="Vaccine type"
-                options={vaccineOptions}
-                placeholder="Choose vaccine from list..."
-                value={vaccineId}
-                onChange={(e) => setVaccineId(e.target.value)}
-                required
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-surface-border shadow-2xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
+          <p className="text-sm font-bold text-text">Raise Stock Request</p>
+          <button onClick={onClose} className="text-text-muted hover:text-text p-1 rounded"><X size={16} /></button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          <p className="text-xs text-text-muted">Enter the number of vials needed per vaccine (leave at 0 to skip).</p>
+          {vaccines.map(v => (
+            <div key={v.id} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-text flex-1">{displayVaccineName(v.name)}</span>
+              <Input
+                type="number"
+                min={0}
+                value={quantities[v.id]}
+                onChange={e => setQuantities(prev => ({ ...prev, [v.id]: e.target.value }))}
+                className="w-24 text-center"
               />
             </div>
-
-            {vaccineId && currentStock && (
-              <div className="bg-slate-50/60 rounded-xl border border-surface-border p-4 flex items-center gap-4 animate-in fade-in duration-200">
-                <RingGauge pct={pct} status={status} size={72} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-text-muted/70 uppercase tracking-widest">Current Balance</p>
-                  <p className="text-2xl font-extrabold text-text mt-0.5 tracking-tight">
-                    {currentQty} <span className="text-xs font-semibold text-text-muted/80">doses</span>
-                  </p>
-                  {selectedVaccine?.dosesPerVial && (
-                    <p className="text-xs text-text-muted/75 font-medium mt-0.5">{selectedVaccine.dosesPerVial} doses/vial</p>
-                  )}
-                </div>
-                <StatusBadge status={status} />
-              </div>
-            )}
-
-            <Button
-              onClick={() => setStep(2)}
-              disabled={!vaccineId}
-              className="w-full py-3 mt-1 font-bold text-xs uppercase tracking-wider"
-            >
-              Continue <ChevronRight size={15} />
-            </Button>
+          ))}
+          <div className="pt-2 space-y-1">
+            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Note (optional)</label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={2}
+              maxLength={500}
+              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
           </div>
-        )}
-
-        {/* ── Step 2: Entry type ── */}
-        {step === 2 && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-sm font-bold text-text mb-1">2. What are you recording?</p>
-              <p className="text-xs text-text-muted mb-4">Choose whether this is a delivery received or doses returned.</p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => setEntryType('received')}
-                className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 ${
-                  entryType === 'received'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-surface-border bg-slate-50/60 hover:border-primary/40'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl flex-shrink-0 ${entryType === 'received' ? 'bg-primary text-white' : 'bg-slate-100 text-text-muted'}`}>
-                  <PackagePlus size={20} />
-                </div>
-                <div>
-                  <p className="font-bold text-text text-sm">Received from District</p>
-                  <p className="text-xs text-text-muted mt-0.5">New stock arrived at your facility — requires shipment/batch details</p>
-                </div>
-                {entryType === 'received' && <CheckCircle2 size={18} className="ml-auto text-primary flex-shrink-0" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEntryType('returned')}
-                className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 ${
-                  entryType === 'returned'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-surface-border bg-slate-50/60 hover:border-primary/40'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl flex-shrink-0 ${entryType === 'returned' ? 'bg-primary text-white' : 'bg-slate-100 text-text-muted'}`}>
-                  <Undo2 size={20} />
-                </div>
-                <div>
-                  <p className="font-bold text-text text-sm">Returned to Facility</p>
-                  <p className="text-xs text-text-muted mt-0.5">Doses returned by field workers at end of day — no batch details required</p>
-                </div>
-                {entryType === 'returned' && <CheckCircle2 size={18} className="ml-auto text-primary flex-shrink-0" />}
-              </button>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setStep(1)} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider">
-                <ChevronLeft size={15} /> Back
-              </Button>
-              <Button onClick={() => setStep(3)} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider">
-                Continue <ChevronRight size={15} />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 3: Vials + batch details (received) or vials only (returned) ── */}
-        {step === 3 && (
-          <div className="flex flex-col gap-5">
-            {/* Selected vaccine summary */}
-            <div className="bg-slate-50/70 rounded-xl border border-surface-border px-5 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-red-50 text-primary">
-                  <Syringe size={14} />
-                </div>
-                <span className="text-sm font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
-              </div>
-              <span className="text-xs font-semibold text-text-muted capitalize">{entryType}</span>
-            </div>
-
-            {/* Vials */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-text" htmlFor="vials">
-                Number of Vials <span className="text-primary">*</span>
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <button type="button" onClick={() => adjustVials(-10)}
-                  className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-text-muted hover:text-text transition-all flex items-center justify-center flex-shrink-0 font-bold text-xs active:scale-95 cursor-pointer"
-                  aria-label="Decrease by 10">-10</button>
-                <button type="button" onClick={() => adjustVials(-1)}
-                  className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-text-muted hover:text-text transition-all flex items-center justify-center flex-shrink-0 active:scale-95 cursor-pointer"
-                  aria-label="Decrease by 1"><Minus size={14} strokeWidth={2.5} /></button>
-                <Input id="vials" type="number" min="1" max={1_000} placeholder="0"
-                  value={vials} onChange={(e) => setVials(e.target.value)}
-                  className="flex-1 text-center text-xl font-extrabold text-text bg-white px-3 py-2.5" />
-                <button type="button" onClick={() => adjustVials(1)}
-                  className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-red-50 hover:text-primary hover:border-primary/20 text-text-muted transition-all flex items-center justify-center flex-shrink-0 active:scale-95 cursor-pointer"
-                  aria-label="Increase by 1"><Plus size={14} strokeWidth={2.5} /></button>
-                <button type="button" onClick={() => adjustVials(10)}
-                  className="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-red-50 hover:text-primary hover:border-primary/20 text-text-muted transition-all flex items-center justify-center flex-shrink-0 font-bold text-xs active:scale-95 cursor-pointer"
-                  aria-label="Increase by 10">+10</button>
-              </div>
-              {selectedVaccine?.dosesPerVial && vials && addVials > 0 && (
-                <p className="text-xs text-text-muted mt-1">
-                  = <span className="font-bold text-text">{addedDoses} doses</span> ({selectedVaccine.dosesPerVial} doses/vial)
-                </p>
-              )}
-            </div>
-
-            {vials && addVials > 0 && (
-              <div className="bg-success/5 border border-success/15 rounded-xl px-5 py-3 text-xs text-success-dark">
-                <span className="font-bold uppercase tracking-wider text-[9px] opacity-75 block mb-0.5">Calculation Check</span>
-                <p className="font-medium text-text">
-                  {currentQty} + {addedDoses} doses = <span className="font-bold text-success-dark">{newTotal} doses projected</span>
-                </p>
-              </div>
-            )}
-
-            {addVials > 1_000 && (
-              <div className="bg-danger-bg border border-danger/10 rounded-xl px-5 py-3 text-xs text-danger">
-                <span className="font-bold">Maximum 1,000 vials per entry.</span>
-              </div>
-            )}
-
-            {/* Batch fields — received only */}
-            {entryType === 'received' && (
-              <div className="flex flex-col gap-4 pt-2 border-t border-surface-border">
-                <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Shipment / Batch Details</p>
-
-                <Input id="batch-no" label="Batch Number *" placeholder="e.g. B-2026-001"
-                  value={batchNo} onChange={(e) => setBatchNo(e.target.value)} required />
-
-                <Input id="expiry-date" label="Expiry Date *" type="date"
-                  value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required />
-
-                <Input id="manufacturer" label="Manufacturer *" placeholder="e.g. Serum Institute"
-                  value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} required />
-
-                {/* Remarks toggle */}
-                <div>
-                  <label className="block text-sm font-bold text-text mb-2">Remarks *</label>
-                  <div className="flex gap-2">
-                    {['outreach', 'fixed'].map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setRemarks(opt)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all capitalize ${
-                          remarks === opt
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-surface-border bg-slate-50 text-text-muted hover:border-primary/40'
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider">
-                <ChevronLeft size={15} /> Back
-              </Button>
-              <Button
-                onClick={() => setStep(4)}
-                disabled={!vials || addVials < 1 || addVials > 1_000 || !isReceivedValid}
-                className="flex-1 py-3 text-xs font-bold uppercase tracking-wider"
-              >
-                Review <ChevronRight size={15} />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 4: Confirm ── */}
-        {step === 4 && (
-          <div className="flex flex-col gap-5">
-            <div>
-              <p className="text-sm font-bold text-text mb-1">4. Confirm Details</p>
-              <p className="text-xs text-text-muted mb-4">Verify details before saving.</p>
-            </div>
-
-            <div className="rounded-xl border border-slate-100 overflow-hidden text-sm divide-y divide-slate-100 shadow-sm">
-              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Vaccine</span>
-                <span className="font-bold text-text" dir="rtl">{displayVaccineName(selectedVaccine?.name)}</span>
-              </div>
-              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Entry Type</span>
-                <span className="font-bold text-text capitalize">{entryType}</span>
-              </div>
-              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Previous Balance</span>
-                <span className="font-semibold text-text">{currentQty} doses</span>
-              </div>
-              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Vials</span>
-                <span className="font-bold text-primary">+{addVials}</span>
-              </div>
-              <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                <span className="text-text-muted">Doses Added</span>
-                <span className="font-bold text-primary">+{addedDoses}</span>
-              </div>
-              {entryType === 'received' && (
-                <>
-                  <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                    <span className="text-text-muted">Batch No.</span>
-                    <span className="font-semibold text-text">{batchNo}</span>
-                  </div>
-                  <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                    <span className="text-text-muted">Expiry Date</span>
-                    <span className="font-semibold text-text">{expiryDate}</span>
-                  </div>
-                  <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                    <span className="text-text-muted">Manufacturer</span>
-                    <span className="font-semibold text-text">{manufacturer}</span>
-                  </div>
-                  <div className="flex justify-between px-4 py-3 bg-slate-50/60">
-                    <span className="text-text-muted">Remarks</span>
-                    <span className="font-semibold text-text capitalize">{remarks}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex justify-between px-4 py-3 bg-success/5">
-                <span className="text-success-dark font-bold">Projected New Balance</span>
-                <span className="font-extrabold text-success-dark text-base">{newTotal} doses</span>
-              </div>
-            </div>
-
-            {mutation.isError && (
-              <p className="text-xs font-bold text-danger bg-danger-bg border border-danger/10 rounded-xl px-4 py-3">
-                {mutation.error?.message}
-              </p>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setStep(3)} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider" disabled={mutation.isPending}>
-                <ChevronLeft size={15} /> Edit
-              </Button>
-              <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="flex-1 py-3 text-xs font-bold uppercase tracking-wider">
-                <PackageCheck size={14} />
-                {mutation.isPending ? 'Saving…' : 'Confirm & Record'}
-              </Button>
-            </div>
-          </div>
-        )}
+          {error && <p className="text-sm text-danger">{error}</p>}
+        </div>
+        <div className="px-5 py-4 border-t border-surface-border flex gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isPending} className="flex-1">
+            {isPending ? 'Submitting…' : 'Submit Request'}
+          </Button>
+        </div>
       </div>
+    </div>
+  )
+}
+
+// ── Record-received panel ──────────────────────────────────────────────────────
+function RecordReceivedPanel({ req, onClose, onSubmit, isPending }) {
+  const [items, setItems] = useState(() =>
+    (req.items ?? []).map(it => ({
+      vaccineId: it.vaccineId,
+      vaccineName: it.vaccineName,
+      receivedVials: '',
+      batchNo: '',
+      expiryDate: '',
+      manufacturer: '',
+    }))
+  )
+  const [note, setNote] = useState('')
+  const [error, setError] = useState(null)
+
+  function update(idx, field, value) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
+  }
+
+  function handleSubmit() {
+    const payload = items.map(it => {
+      const vials = parseInt(it.receivedVials, 10) || 0
+      const base = { vaccineId: it.vaccineId, receivedVials: vials }
+      if (vials > 0) {
+        if (!it.batchNo.trim() || !it.expiryDate || !it.manufacturer.trim()) {
+          setError('Batch No, Expiry Date, and Manufacturer are required when receivedVials > 0.')
+          return null
+        }
+        return { ...base, batchNo: it.batchNo.trim(), expiryDate: it.expiryDate, manufacturer: it.manufacturer.trim() }
+      }
+      return base
+    })
+    if (payload.includes(null)) return
+    onSubmit({ items: payload, ...(note.trim() ? { note: note.trim() } : {}) })
+  }
+
+  return (
+    <div className="mt-3 bg-blue-50 rounded-xl border border-blue-200 p-4 space-y-4">
+      <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Record Received</p>
+      {items.map((it, idx) => (
+        <div key={it.vaccineId} className="space-y-2">
+          <p className="text-sm font-medium text-text">{displayVaccineName(it.vaccineName)}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="number" min={0}
+              placeholder="Received vials"
+              value={it.receivedVials}
+              onChange={e => update(idx, 'receivedVials', e.target.value)}
+            />
+            {(parseInt(it.receivedVials, 10) || 0) > 0 && (
+              <>
+                <Input placeholder="Batch No." value={it.batchNo} onChange={e => update(idx, 'batchNo', e.target.value)} />
+                <Input type="date" value={it.expiryDate} onChange={e => update(idx, 'expiryDate', e.target.value)} />
+                <Input placeholder="Manufacturer" value={it.manufacturer} onChange={e => update(idx, 'manufacturer', e.target.value)} />
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Note (optional)</label>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={2}
+          maxLength={500}
+          className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+        />
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <div className="flex gap-2">
+        <Button onClick={handleSubmit} disabled={isPending} className="flex-1">
+          {isPending ? 'Saving…' : 'Save Received'}
+        </Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+      </div>
+    </div>
+  )
+}
+
+// ── Request card ───────────────────────────────────────────────────────────────
+function RequestCard({ req }) {
+  const qc = useQueryClient()
+  const [expanded, setExpanded] = useState(false)
+  const [showReceive, setShowReceive] = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+
+  const isOpen = OPEN_STAGES.has(req.stage)
+  const hasFigures = req.items?.some(it => (it.sentVials ?? 0) > 0 || (it.receivedVials ?? 0) > 0)
+
+  const receiveMutation = useMutation({
+    mutationFn: (payload) => recordReceived(req.id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock-requests'] })
+      qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setShowReceive(false)
+    },
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelStockRequest(req.id, hasFigures ? cancelReason : undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock-requests'] })
+      qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setCancelConfirm(false)
+    },
+  })
+
+  return (
+    <div className="bg-surface rounded-xl border border-surface-border p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STAGE_BADGE[req.stage] ?? 'bg-gray-100 text-gray-500'}`}>
+              {STAGE_LABEL[req.stage] ?? req.stage}
+            </span>
+            <span className="text-xs text-text-muted">{req.items?.length ?? 0} vaccines</span>
+          </div>
+          <p className="text-xs text-text-muted">{new Date(req.createdAt).toLocaleDateString()}</p>
+          {req.note && <p className="text-xs text-text-muted italic truncate">"{req.note}"</p>}
+        </div>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="text-text-muted hover:text-text transition-colors p-1 flex-shrink-0"
+        >
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="pt-2 space-y-2">
+          {(req.items ?? []).map(it => (
+            <div key={it.vaccineId} className="text-xs text-text-muted flex justify-between">
+              <span>{displayVaccineName(it.vaccineName)}</span>
+              <span>Req: {it.requestedVials} · Sent: {it.sentVials ?? '—'} · Rcvd: {it.receivedVials ?? '—'}</span>
+            </div>
+          ))}
+
+          <div className="flex gap-2 pt-2 flex-wrap">
+            {CAN_RECEIVE.has(req.stage) && !showReceive && (
+              <Button onClick={() => setShowReceive(true)} className="text-xs">
+                Record Received
+              </Button>
+            )}
+            {isOpen && !cancelConfirm && (
+              <Button
+                variant="outline"
+                onClick={() => setCancelConfirm(true)}
+                className="text-xs text-danger border-danger/30 hover:bg-danger/5"
+              >
+                Cancel Request
+              </Button>
+            )}
+          </div>
+
+          {showReceive && (
+            <RecordReceivedPanel
+              req={req}
+              onClose={() => setShowReceive(false)}
+              onSubmit={(payload) => receiveMutation.mutate(payload)}
+              isPending={receiveMutation.isPending}
+            />
+          )}
+
+          {cancelConfirm && (
+            <div className="mt-3 bg-red-50 rounded-xl border border-red-200 p-4 space-y-3">
+              <p className="text-sm font-medium text-danger">Cancel this request?</p>
+              {hasFigures && (
+                <textarea
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="Reason for cancellation (required since figures were recorded)"
+                  rows={2}
+                  maxLength={500}
+                  className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+                />
+              )}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending || (hasFigures && !cancelReason.trim())}
+                  className="bg-danger hover:bg-danger/90 text-xs"
+                >
+                  {cancelMutation.isPending ? 'Cancelling…' : 'Confirm Cancel'}
+                </Button>
+                <Button variant="outline" onClick={() => setCancelConfirm(false)} className="text-xs">Back</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────────
+export default function RecordStock() {
+  const qc = useQueryClient()
+  const [showRaise, setShowRaise] = useState(false)
+
+  const { data: reqData, isLoading } = useQuery({
+    queryKey: ['stock-requests'],
+    queryFn: getStockRequests,
+    refetchInterval: 30_000,
+  })
+
+  const { data: vaccineData } = useQuery({
+    queryKey: ['vaccines'],
+    queryFn: getVaccines,
+    enabled: showRaise,
+  })
+
+  const requests = reqData?.stockRequests ?? []
+  const vaccines = vaccineData?.vaccines ?? []
+
+  const createMutation = useMutation({
+    mutationFn: (payload) => createStockRequest(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock-requests'] })
+      qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setShowRaise(false)
+    },
+  })
+
+  return (
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <PackageOpen size={22} className="text-primary" />
+          <div>
+            <h1 className="text-xl font-bold text-text">Stock Requests</h1>
+            <p className="text-sm text-text-muted">Request and track vaccine stock from the district</p>
+          </div>
+        </div>
+        <Button onClick={() => setShowRaise(true)} className="flex-shrink-0">
+          Raise Request
+        </Button>
+      </div>
+
+      {isLoading && <p className="text-sm text-text-muted">Loading…</p>}
+      {!isLoading && requests.length === 0 && (
+        <p className="text-sm text-text-muted">No stock requests yet.</p>
+      )}
+      <div className="space-y-3">
+        {requests.map(req => (
+          <RequestCard key={req.id} req={req} />
+        ))}
+      </div>
+
+      {showRaise && vaccines.length > 0 && (
+        <RaiseModal
+          vaccines={vaccines}
+          onClose={() => setShowRaise(false)}
+          onSubmit={(payload) => createMutation.mutate(payload)}
+          isPending={createMutation.isPending}
+        />
+      )}
     </div>
   )
 }

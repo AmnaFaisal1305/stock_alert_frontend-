@@ -3,6 +3,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { facilityStatus } from '../../lib/status'
 import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
@@ -17,6 +18,7 @@ import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
 
 export default function SuperAdminFacilityManagement() {
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const [open, setOpen]             = useState(false)
@@ -181,19 +183,21 @@ export default function SuperAdminFacilityManagement() {
           >
             View Stock <ArrowRight size={13} strokeWidth={2.2} />
           </RouterLink>
-          <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
-            <Pencil size={12} /> Rename
-          </Button>
-          {row.isActive ? (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}>
-              <UserX size={12} /> Deactivate
+          {user?.role !== 'observer' && (<>
+            <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
+              <Pencil size={12} /> Rename
             </Button>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg"
-              onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-              <UserCheck size={12} /> Activate
-            </Button>
-          )}
+            {row.isActive ? (
+              <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}>
+                <UserX size={12} /> Deactivate
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg"
+                onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
+                <UserCheck size={12} /> Activate
+              </Button>
+            )}
+          </>)}
         </div>
       ),
     },
@@ -212,12 +216,14 @@ export default function SuperAdminFacilityManagement() {
               : 'Loading facilities…'}
           </p>
         </div>
-        <button
-          onClick={() => { setOpen(true); setFormError('') }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
-        >
-          <Plus size={15} strokeWidth={2.5} /> Add Facility
-        </button>
+        {user?.role !== 'observer' && (
+          <button
+            onClick={() => { setOpen(true); setFormError('') }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
+          >
+            <Plus size={15} strokeWidth={2.5} /> Add Facility
+          </button>
+        )}
       </div>
 
       {/* Search + Filter */}
@@ -291,12 +297,14 @@ export default function SuperAdminFacilityManagement() {
                   <RouterLink to={`/super-admin/facilities/${row.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2 py-1">
                     View Stock <ArrowRight size={11} />
                   </RouterLink>
-                  <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
-                  {row.isActive ? (
-                    <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
-                  ) : (
-                    <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
-                  )}
+                  {user?.role !== 'observer' && (<>
+                    <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
+                    {row.isActive ? (
+                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
+                    )}
+                  </>)}
                 </div>
               </div>
             )}
