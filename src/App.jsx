@@ -50,6 +50,7 @@ const FacilityApprovals      = lazy(() => import('./pages/facility-supervisor/Ap
 const FacilityHeadApprovals  = lazy(() => import('./pages/facility-head/Approvals'))
 const FacilityHeadStockReqs  = lazy(() => import('./pages/facility-head/StockRequests'))
 const UCSupervisorStockReqs  = lazy(() => import('./pages/uc-supervisor/StockRequests'))
+const Analytics              = lazy(() => import('./pages/shared/Analytics'))
 
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
@@ -111,12 +112,14 @@ export default function App() {
                 <Route path="/super-admin/ucs"              element={<UCManagement />} />
                 <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
+                <Route path="/super-admin/analytics"       element={<Analytics />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
                 <Route path="/district/facilities"     element={<FacilityManagement />} />
                 <Route path="/district/facilities/:id" element={<FacilityDetail />} />
                 <Route path="/district/users"          element={<DistrictUsers />} />
                 <Route path="/district/audit-log"      element={<DistrictAuditLog />} />
+                <Route path="/district/analytics"      element={<Analytics />} />
 
                 <Route path="/facility/dashboard"    element={<FacilityDashboard />} />
                 <Route path="/facility/approvals"    element={<FacilityApprovals />} />
@@ -126,12 +129,14 @@ export default function App() {
                 <Route path="/facility/assign-vials" element={<AssignVials />} />
                 <Route path="/facility/day-end"      element={<DayEnd />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
+                <Route path="/facility/analytics"    element={<Analytics />} />
 
                 <Route path="/head/dashboard"      element={<FacilityHeadDashboard />} />
                 <Route path="/head/users"          element={<FacilityHeadUsers />} />
                 <Route path="/head/approvals"      element={<FacilityHeadApprovals />} />
                 <Route path="/head/stock-requests" element={<FacilityHeadStockReqs />} />
                 <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
+                <Route path="/head/analytics"      element={<Analytics />} />
 
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
                 <Route path="/uc/facilities"         element={<UCSupervisorFacilities />} />
@@ -139,6 +144,7 @@ export default function App() {
                 <Route path="/uc/users"              element={<UCSupervisorUsers />} />
                 <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
+                <Route path="/uc/analytics"          element={<Analytics />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />
                 <Route path="/worker/status"      element={<WorkerStatusView />} />

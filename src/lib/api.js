@@ -326,3 +326,9 @@ export async function getAuditLog({ limit, feed } = {}) {
   if (feed != null) params.feed = feed
   return request('GET', `/api/audit-log${buildQs(params)}`)
 }
+
+// ── Analytics (Sprint 6) ──────────────────────────────────────────────────────
+
+export async function getAnalytics({ from, to } = {}) {
+  return request('GET', `/api/analytics${buildQs({ from, to })}`)
+}
