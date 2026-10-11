@@ -187,7 +187,7 @@ function RequestCard({ req }) {
 export default function UCStockRequests() {
   const { data, isLoading } = useQuery({
     queryKey: ['stock-requests'],
-    queryFn: getStockRequests,
+    queryFn: () => getStockRequests(),
     refetchInterval: 30_000,
   })
 

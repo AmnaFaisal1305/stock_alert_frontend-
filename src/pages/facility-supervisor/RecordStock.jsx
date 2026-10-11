@@ -299,7 +299,7 @@ export default function RecordStock() {
 
   const { data: reqData, isLoading } = useQuery({
     queryKey: ['stock-requests'],
-    queryFn: getStockRequests,
+    queryFn: () => getStockRequests(),
     refetchInterval: 30_000,
   })
 

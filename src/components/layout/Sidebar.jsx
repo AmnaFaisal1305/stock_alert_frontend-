@@ -70,6 +70,7 @@ const NAV = {
   observer: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
     { to: '/super-admin/districts',  label: 'Districts',        icon: Map             },
+    { to: '/super-admin/ucs',        label: 'UC Management',   icon: MapPin          },
     { to: '/super-admin/facilities', label: 'Facilities',       icon: Building2       },
     { to: '/super-admin/vaccines',   label: 'Vaccines',         icon: Syringe         },
     { to: '/super-admin/users',      label: 'Users',            icon: Users           },

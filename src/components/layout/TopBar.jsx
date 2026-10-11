@@ -16,7 +16,9 @@ function useOnline() {
 }
 
 function useQueueState() {
-  return useSyncExternalStore(subscribe, () => ({ pending: getQueue().filter(i => i.status === 'pending').length, lastSynced: getLastSynced() }), () => ({ pending: 0, lastSynced: null }))
+  const pending    = useSyncExternalStore(subscribe, () => getQueue().filter(i => i.status === 'pending').length, () => 0)
+  const lastSynced = useSyncExternalStore(subscribe, getLastSynced, () => null)
+  return { pending, lastSynced }
 }
 
 const ROLE_LABELS = {
@@ -36,6 +38,8 @@ const PAGE_TITLES = {
   '/facility/thresholds':   'Vaccines & Thresholds',
   '/facility/workers':      'Users Info',
   '/facility/audit-log':    'Audit Log',
+  '/facility/assign-vials': 'Assign Vials',
+  '/facility/day-end':      'Day End',
   '/facility/stock-register': 'Stock Register',
   '/district/dashboard':    'Dashboard',
   '/district/facilities':   'Facilities',
