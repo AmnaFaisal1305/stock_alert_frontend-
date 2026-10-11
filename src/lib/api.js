@@ -232,10 +232,6 @@ export async function deleteVaccine(id) {
   return request('DELETE', `/api/vaccines/${id}`, {})
 }
 
-export async function updateVaccineStock(id, quantity) {
-  return request('PUT', `/api/vaccines/${id}/stock`, { quantity })
-}
-
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export async function getDashboard(params) {
