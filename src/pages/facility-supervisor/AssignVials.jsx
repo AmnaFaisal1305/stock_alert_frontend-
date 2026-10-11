@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import { PackagePlus, CheckCircle2 } from 'lucide-react'
+import { PackagePlus, CheckCircle2, WifiOff } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
+import { enqueue } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
@@ -31,6 +32,7 @@ export default function AssignVials() {
   const [rowErrors,   setRowErrors]   = useState({})   // vaccineId → string
   const [globalError, setGlobalError] = useState('')
   const [done,        setDone]        = useState(false)
+  const [savedOffline, setSavedOffline] = useState(false)
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({
     queryKey: ['vaccines'],
@@ -95,6 +97,13 @@ export default function AssignVials() {
 
     setGlobalError('')
     setRowErrors({})
+
+    if (!navigator.onLine) {
+      enqueue('assign', { clientRef: clientRef.current, occurredOn, workerId, items })
+      setSavedOffline(true)
+      return
+    }
+
     mutation.mutate({ clientRef: clientRef.current, occurredOn, workerId, items })
   }
 
@@ -106,11 +115,27 @@ export default function AssignVials() {
     setRowErrors({})
     setGlobalError('')
     setDone(false)
+    setSavedOffline(false)
   }
 
   if (loadingVaccines || loadingUsers) return (
     <div className="max-w-2xl mx-auto pt-6 px-1 flex flex-col gap-4">
       {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  )
+
+  if (savedOffline) return (
+    <div className="max-w-2xl mx-auto pt-12 px-4 flex flex-col items-center gap-6 text-center">
+      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
+        <WifiOff size={32} className="text-amber-500" />
+      </div>
+      <div>
+        <h2 className="text-lg font-bold text-text">Saved Offline</h2>
+        <p className="text-sm text-text-muted mt-1">
+          Your assignment has been queued and will sync automatically when you reconnect.
+        </p>
+      </div>
+      <Button variant="outline" onClick={handleReset}>Assign Again</Button>
     </div>
   )
 

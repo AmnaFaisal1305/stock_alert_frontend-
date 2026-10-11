@@ -1,13 +1,45 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-11 (session 4)  
+**Last updated:** 2026-10-11 (session 5)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-11 Session 4 (latest)
+## Session Log — 2026-10-11 Session 5 (latest)
+
+### What changed in session 5
+
+Implemented all remaining Client Requirements §7, §8, and §9 (PWA).
+
+**§9 — PWA: installable app, push notifications, session restore, offline queue, connectivity indicators**
+
+1. **Deps installed:** `vite-plugin-pwa`, `workbox-precaching`, `workbox-routing`, `workbox-strategies`
+2. **`vite.config.js`** — added `VitePWA({ strategies:'injectManifest', srcDir:'src', filename:'sw.js' })` with full manifest (name, short_name, theme_color `#006241`, display `standalone`, start_url `/`).
+3. **`public/icon.svg`** — new maskable app icon (brand-green syringe + cross mark).
+4. **`src/sw.js`** — custom service worker: `precacheAndRoute(self.__WB_MANIFEST)` for app shell; `NetworkFirst` runtime cache for `GET /api/*`; `push` event shows notification from JSON payload; `notificationclick` focuses existing tab or opens `data.url`.
+5. **`src/lib/api.js`** — added `getSession`, `getPushPublicKey`, `subscribePush`, `unsubscribePush`.
+6. **`src/lib/push.js`** (new) — `isPushSupported`, `enablePush` (permission → VAPID subscribe → backend POST), `disablePushForLogout` (best-effort DELETE + local unsubscribe).
+7. **`src/context/AuthContext.jsx`** — session restore: on mount, if no sessionStorage, calls `getSession()` (cookie-only) to restore user silently; `bootstrapping` flag prevents login flash on PWA relaunch; `logout` now calls `disablePushForLogout()` first.
+8. **`src/App.jsx`** — `AuthLayout` and `LoginRoute` show `<PageLoader />` while `bootstrapping` is true.
+9. **`src/components/layout/NotificationPanel.jsx`** — "Enable notifications" footer row (idle state → shows Enable button; granted → hidden; denied → shows "allow in browser settings"). Uses `enablePush()` on tap (satisfies iOS requirement for user-gesture).
+10. **`src/lib/offlineQueue.js`** (new) — localStorage-backed queue (`sst_offline_queue`), `enqueue/getQueue/replayQueue`; per-item status-code handling (`400`→error, `409`→regen clientRef+retry, `401`/5xx/network→stop); pub/sub for UI.
+11. **`src/hooks/useOfflineSync.js`** (new) — mounts in Layout; listens to `online` event + mount; runs `replayQueue()`; invalidates `['holdings','dashboard','audit-log']` on drain.
+12. **`src/components/layout/Layout.jsx`** — mounts `useOfflineSync`.
+13. **`src/components/layout/TopBar.jsx`** — connectivity dot (`WifiOff` icon when offline), pending-count badge, "Synced HH:MM" timestamp (via `useSyncExternalStore` on `subscribe`/`getQueue`/`getLastSynced`).
+14. **`src/pages/facility-supervisor/AssignVials.jsx`** + **`DayEnd.jsx`** — if `!navigator.onLine` on submit, enqueues with existing `clientRef` and shows "Saved Offline" confirmation screen instead of server round-trip.
+
+Build: `npm run build` clean. PWA plugin emits `dist/sw.js` (74 precached entries) + `dist/manifest.webmanifest`.
+
+**Risks:**
+- Cross-origin credentialed API caching in the SW is best-effort (may fail with CORS restrictions); app-shell precache + TanStack in-memory data is the real offline story.
+- iOS push requires Safari 16.4+ and app added to Home Screen.
+- Full push delivery requires a backend-triggered event; subscribe flow can be verified but delivery requires backend action.
+
+---
+
+## Session Log — 2026-10-11 Session 4
 
 ### What changed in session 4
 
@@ -41,7 +73,37 @@ Build: `npm run build` passed clean.
 - **`opening` entryType** (StockRegister/AuditLog/Analytics) — NOT browser-verifiable yet: `opening` rows only exist after the Sprint 8 go-live seeding script runs on the backend. Logic is in place and build-clean; no live data to render against.
 - Note: dev server must run on **port 5173** — the backend CORS allowlist rejects other ports (5174 fallback got blocked).
 
-Committed as `feat: Sprint 8 opening entryType + district/facility display gaps` (8 files). `CLAUDE.md` left uncommitted (unrelated pre-existing edit).
+Committed as `feat: Sprint 8 opening entryType + district/facility display gaps` (8 files). Pushed to `origin/main`. `CLAUDE.md` left uncommitted (unrelated pre-existing edit).
+
+### Requirement gap review (vs `Client Requirements.md` §1–§9)
+
+Reviewed `docs/Client Requirements.md`, `docs/QuestAnswer.md`, `docs/users.md` against the built app. §1–§6 and the §7 analytics screen were already built. **Three gaps found** (all frontend; none blocked on backend except PWA's push/offline):
+- **§8 — Dashboard demonstration/info screens** — was missing.
+- **§7 — downloadable Excel/PDF reports** — the analytics screen existed but the file export did not.
+- **§9 — PWA** (install, push, offline, sync indicators) — entirely missing.
+
+### §8 built — Dashboard Guide screens (frontend-only)
+
+- **New `src/pages/shared/DashboardGuide.jsx`** — one shared, role-keyed component (purpose, responsibilities, numbered workflow, dashboard sections). Matches existing design (primary header + white rounded-2xl cards + lucide icons, existing tokens).
+- **`src/App.jsx`** — lazy import + 6 routes: `/super-admin/guide`, `/district/guide`, `/uc/guide`, `/facility/guide`, `/head/guide`, `/worker/guide` (observer uses `/super-admin/guide`).
+- **`src/components/layout/Sidebar.jsx`** — `Compass` icon imported; "Guide" link added to all 7 role NAV configs.
+- Browser-verified: Super Admin guide renders correctly; content is role-specific.
+
+### §7 built — downloadable Excel/PDF reports (frontend-only)
+
+- **New `src/lib/reports.js`** — pivots analytics `movement` into **Monthly** and **Vaccinator-wise** reports; builds `.xlsx` (2 sheets) and `.pdf` (jsPDF + autotable). Pivot math self-checked (grouping, sums, store-row exclusion, net adjustment).
+- **`src/pages/shared/Analytics.jsx`** — Excel + PDF export buttons in the date-range card; disabled when no data; "Preparing…" state; inline error on failure.
+- **Deps added:** `xlsx`, `jspdf`, `jspdf-autotable` — **dynamically imported** inside the export handlers so they stay out of the initial bundle (confirmed as separate build chunks).
+- Browser-verified end-to-end with live backend data: Excel (Monthly 38 rows + Vaccinator-wise 15 rows, correct headers/values) and PDF (valid, 3 pages) both downloaded with zero console errors.
+- ⚠️ **Security note:** `npm audit` flags advisories coming mainly from the `xlsx` (SheetJS) npm package (known long-standing prototype-pollution / ReDoS). Still the standard community Excel lib; SheetJS now recommends their own CDN registry over npm, or switch to a CSV path if the advisory matters.
+
+### §9 PWA — still NOT implemented (status updated)
+
+- Confirmed absent from the codebase: no manifest, no service worker, no `vite-plugin-pwa`, no push/session API functions, no offline queue, no online/offline or "last synced" indicator.
+- **Backend Sprint 7 (push public-key, subscriptions, `GET /api/auth/session`) is now deployed** (per the product owner), so the frontend PWA work is **unblocked** — previously it was waiting on backend deploy.
+- Frontend scope remaining: installable manifest + icons + service worker; push subscribe/unsubscribe lifecycle; session restore; offline queue for `/assign` + `/day-end` with `clientRef` replay; online/offline + last-synced indicators; add `getSession`/`getPushPublicKey`/`subscribePush`/`unsubscribePush` to `api.js`.
+
+**Status at end of this entry:** §8 and §7 are built and browser-verified but **uncommitted** (awaiting commit permission). Next planned phase: manual role/workflow testing, then (separately) PWA.
 
 ---
 

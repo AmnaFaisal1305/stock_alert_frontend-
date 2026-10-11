@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import { useOfflineSync } from '../../hooks/useOfflineSync'
 
 export default function Layout({ children }) {
+  useOfflineSync()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 

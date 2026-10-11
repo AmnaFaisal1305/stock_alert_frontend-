@@ -76,6 +76,22 @@ export async function googleLogin(idToken) {
   return request('POST', '/api/auth/google', { idToken }, { skipAuthRedirect: true })
 }
 
+export async function getSession() {
+  return request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
+}
+
+export async function getPushPublicKey() {
+  return request('GET', '/api/push/public-key', undefined, { skipAuthRedirect: true })
+}
+
+export async function subscribePush(subscription) {
+  return request('POST', '/api/push/subscriptions', subscription)
+}
+
+export async function unsubscribePush(endpoint) {
+  return request('DELETE', '/api/push/subscriptions', { endpoint })
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export async function getUsers(params) {

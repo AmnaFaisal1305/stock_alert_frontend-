@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import * as api from '../lib/api'
+import { disablePushForLogout } from '../lib/push'
 
 const AuthContext = createContext(null)
 
@@ -28,15 +29,33 @@ function loadSession() {
 }
 
 export function AuthProvider({ children }) {
-  // useState initializer runs once — safe place to call the side-effectful setCsrfToken
   const [user, setUser] = useState(() => {
     const session = loadSession()
     if (session?.csrf) api.setCsrfToken(session.csrf)
     return session?.user ?? null
   })
 
+  // bootstrapping: true while we're attempting a cookie-based session restore on PWA launch
+  const [bootstrapping, setBootstrapping] = useState(() => !loadSession())
+
   const navigate    = useNavigate()
   const queryClient = useQueryClient()
+
+  // On PWA relaunch: sessionStorage is empty but the cookie may still be valid
+  useEffect(() => {
+    if (!bootstrapping) return
+    api.getSession()
+      .then(({ user: u, csrfToken }) => {
+        api.setCsrfToken(csrfToken)
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(u))
+        sessionStorage.setItem(CSRF_KEY, csrfToken)
+        setUser(u)
+      })
+      .catch(() => {
+        // no valid session — stay on login
+      })
+      .finally(() => setBootstrapping(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback((userData, csrfToken) => {
     queryClient.clear()
@@ -47,6 +66,7 @@ export function AuthProvider({ children }) {
   }, [queryClient])
 
   const logout = useCallback(async () => {
+    await disablePushForLogout()
     try {
       await api.logout()
     } catch {
@@ -63,7 +83,7 @@ export function AuthProvider({ children }) {
   const defaultRoute = user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login'
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, defaultRoute }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, defaultRoute, bootstrapping }}>
       {children}
     </AuthContext.Provider>
   )

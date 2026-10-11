@@ -1,11 +1,32 @@
-import { Bell, X, Check } from 'lucide-react'
+import { Bell, X, Check, BellPlus } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNotifications, markNotificationRead, markAllRead } from '../../lib/api'
+import { isPushSupported, enablePush } from '../../lib/push'
 
 const INVALIDATE_KEYS = [['notifications'], ['unread-count']]
 
 export default function NotificationPanel({ onClose }) {
   const qc = useQueryClient()
+  const [pushState, setPushState] = useState(() => {
+    if (!isPushSupported()) return 'unsupported'
+    if (Notification.permission === 'granted') return 'subscribed'
+    if (Notification.permission === 'denied') return 'denied'
+    return 'idle'
+  })
+  const [pushBusy, setPushBusy] = useState(false)
+
+  async function handleEnablePush() {
+    setPushBusy(true)
+    try {
+      const result = await enablePush()
+      setPushState(result === 'ok' ? 'subscribed' : result === 'denied' ? 'denied' : 'unsupported')
+    } catch {
+      setPushState('idle') // let them try again
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -80,6 +101,28 @@ export default function NotificationPanel({ onClose }) {
           </button>
         ))}
       </div>
+
+      {/* Push notifications opt-in */}
+      {pushState === 'idle' && (
+        <div className="border-t border-surface-border px-4 py-3 flex items-center justify-between gap-3 bg-surface-alt">
+          <div className="flex items-center gap-2 min-w-0">
+            <BellPlus size={14} className="text-primary flex-shrink-0" />
+            <p className="text-xs text-text-muted truncate">Enable push notifications</p>
+          </div>
+          <button
+            onClick={handleEnablePush}
+            disabled={pushBusy}
+            className="text-xs font-semibold text-primary hover:underline flex-shrink-0 disabled:opacity-50"
+          >
+            {pushBusy ? 'Enabling…' : 'Enable'}
+          </button>
+        </div>
+      )}
+      {pushState === 'denied' && (
+        <div className="border-t border-surface-border px-4 py-2 text-[11px] text-text-muted text-center">
+          Notifications blocked — allow them in browser settings
+        </div>
+      )}
     </div>
   )
 }

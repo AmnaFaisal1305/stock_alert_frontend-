@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAnalytics } from '../../lib/api'
+import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import Table from '../../components/shared/Table'
 import StatCard from '../../components/shared/StatCard'
 import DatePicker from '../../components/ui/DatePicker'
-import { Package, TrendingDown, AlertTriangle, Clock } from 'lucide-react'
+import Button from '../../components/ui/Button'
+import { Package, TrendingDown, AlertTriangle, Clock, FileSpreadsheet, FileText } from 'lucide-react'
 
 function defaultFrom() {
   const d = new Date()
@@ -25,6 +27,8 @@ export default function Analytics() {
   const [from, setFrom]     = useState(defaultFrom)
   const [to, setTo]         = useState(() => new Date().toISOString().split('T')[0])
   const [activeTab, setTab] = useState('movement')
+  const [exporting, setExporting]     = useState(null)   // 'xlsx' | 'pdf' | null
+  const [exportError, setExportError] = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['analytics', from, to],
@@ -143,6 +147,21 @@ export default function Analytics() {
       render: (r) => <span className="text-sm font-bold text-amber-600">{r.count}</span> },
   ]
 
+  async function runExport(kind) {
+    setExportError('')
+    setExporting(kind)
+    try {
+      const fn = kind === 'xlsx' ? exportAnalyticsExcel : exportAnalyticsPdf
+      await fn({ movement, from, to })
+    } catch {
+      setExportError('Could not generate the report. Please try again.')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const canExport = !isLoading && !isError && movement.length > 0
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
@@ -164,7 +183,33 @@ export default function Analytics() {
           <DatePicker id="analytics-from" label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
           <DatePicker id="analytics-to"   label="To"   value={to}   onChange={(e) => setTo(e.target.value)} />
         </div>
+
+        {/* Report downloads (§7) — Monthly + Vaccinator-wise, built from the loaded movement data */}
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <Button
+            variant="secondary" size="sm"
+            onClick={() => runExport('xlsx')}
+            disabled={!canExport || exporting !== null}
+            title={canExport ? 'Download Excel report' : 'No data to export'}
+          >
+            <FileSpreadsheet size={14} /> {exporting === 'xlsx' ? 'Preparing…' : 'Excel'}
+          </Button>
+          <Button
+            variant="secondary" size="sm"
+            onClick={() => runExport('pdf')}
+            disabled={!canExport || exporting !== null}
+            title={canExport ? 'Download PDF report' : 'No data to export'}
+          >
+            <FileText size={14} /> {exporting === 'pdf' ? 'Preparing…' : 'PDF'}
+          </Button>
+        </div>
       </div>
+
+      {exportError && (
+        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
+          {exportError}
+        </div>
+      )}
 
       {/* Summary stat cards — movement tab only */}
       {activeTab === 'movement' && !isLoading && !isError && (

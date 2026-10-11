@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Map, Building2, Users, ClipboardList,
   Syringe, PackagePlus, PackageOpen, ClipboardCheck, UserCog, LogOut, BookOpen, MapPin,
-  ChevronLeft, BarChart2,
+  ChevronLeft, BarChart2, Compass,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -22,6 +22,7 @@ const NAV = {
     { to: '/super-admin/users',      label: 'User Management', icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',       icon: ClipboardList   },
     { to: '/super-admin/analytics',  label: 'Analytics',       icon: BarChart2        },
+    { to: '/super-admin/guide',      label: 'Guide',           icon: Compass          },
   ],
   district_supervisor: [
     { to: '/district/dashboard',  label: 'Dashboard Analytics', icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const NAV = {
     { to: '/district/users',      label: 'Users',               icon: Users           },
     { to: '/district/audit-log',  label: 'Audit Log',           icon: ClipboardList   },
     { to: '/district/analytics',  label: 'Analytics',           icon: BarChart2        },
+    { to: '/district/guide',      label: 'Guide',               icon: Compass          },
   ],
   facility_supervisor: [
     { to: '/facility/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
@@ -40,6 +42,7 @@ const NAV = {
     { to: '/facility/day-end',        label: 'Day End',        icon: ClipboardList   },
     { to: '/facility/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
     { to: '/facility/analytics',      label: 'Analytics',      icon: BarChart2        },
+    { to: '/facility/guide',          label: 'Guide',          icon: Compass          },
   ],
   uc_supervisor: [
     { to: '/uc/dashboard',       label: 'Dashboard',          icon: LayoutDashboard },
@@ -48,10 +51,12 @@ const NAV = {
     { to: '/uc/stock-requests',  label: 'Stock Requests',     icon: PackageOpen     },
     { to: '/uc/audit-log',       label: 'Audit Log',          icon: ClipboardList   },
     { to: '/uc/analytics',       label: 'Analytics',          icon: BarChart2        },
+    { to: '/uc/guide',           label: 'Guide',              icon: Compass          },
   ],
   facility_worker: [
     { to: '/worker/stock-entry', label: 'My Holdings',  icon: Syringe         },
     { to: '/worker/status',      label: 'Stock Status', icon: LayoutDashboard },
+    { to: '/worker/guide',       label: 'Guide',        icon: Compass          },
   ],
   facility_head: [
     { to: '/head/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
@@ -60,6 +65,7 @@ const NAV = {
     { to: '/head/stock-requests', label: 'Stock Requests', icon: PackageOpen     },
     { to: '/head/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
     { to: '/head/analytics',      label: 'Analytics',      icon: BarChart2        },
+    { to: '/head/guide',          label: 'Guide',          icon: Compass          },
   ],
   observer: [
     { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
@@ -69,6 +75,7 @@ const NAV = {
     { to: '/super-admin/users',      label: 'Users',            icon: Users           },
     { to: '/super-admin/audit-log',  label: 'Audit Log',        icon: ClipboardList   },
     { to: '/super-admin/analytics',  label: 'Analytics',        icon: BarChart2        },
+    { to: '/super-admin/guide',      label: 'Guide',            icon: Compass          },
   ],
 }
 

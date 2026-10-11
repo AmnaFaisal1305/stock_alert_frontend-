@@ -51,6 +51,7 @@ const FacilityHeadApprovals  = lazy(() => import('./pages/facility-head/Approval
 const FacilityHeadStockReqs  = lazy(() => import('./pages/facility-head/StockRequests'))
 const UCSupervisorStockReqs  = lazy(() => import('./pages/uc-supervisor/StockRequests'))
 const Analytics              = lazy(() => import('./pages/shared/Analytics'))
+const DashboardGuide         = lazy(() => import('./pages/shared/DashboardGuide'))
 
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
@@ -72,13 +73,15 @@ const ROLE_DEFAULTS = {
 }
 
 function AuthLayout() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, bootstrapping } = useAuth()
+  if (bootstrapping) return <PageLoader />
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return <Layout><Outlet /></Layout>
 }
 
 function LoginRoute() {
-  const { isAuthenticated, defaultRoute } = useAuth()
+  const { isAuthenticated, defaultRoute, bootstrapping } = useAuth()
+  if (bootstrapping) return <PageLoader />
   if (isAuthenticated) return <Navigate to={defaultRoute} replace />
   return <LoginPage />
 }
@@ -113,6 +116,7 @@ export default function App() {
                 <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
                 <Route path="/super-admin/analytics"       element={<Analytics />} />
+                <Route path="/super-admin/guide"           element={<DashboardGuide />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
                 <Route path="/district/facilities"     element={<FacilityManagement />} />
@@ -120,6 +124,7 @@ export default function App() {
                 <Route path="/district/users"          element={<DistrictUsers />} />
                 <Route path="/district/audit-log"      element={<DistrictAuditLog />} />
                 <Route path="/district/analytics"      element={<Analytics />} />
+                <Route path="/district/guide"          element={<DashboardGuide />} />
 
                 <Route path="/facility/dashboard"    element={<FacilityDashboard />} />
                 <Route path="/facility/approvals"    element={<FacilityApprovals />} />
@@ -130,6 +135,7 @@ export default function App() {
                 <Route path="/facility/day-end"      element={<DayEnd />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
                 <Route path="/facility/analytics"    element={<Analytics />} />
+                <Route path="/facility/guide"        element={<DashboardGuide />} />
 
                 <Route path="/head/dashboard"      element={<FacilityHeadDashboard />} />
                 <Route path="/head/users"          element={<FacilityHeadUsers />} />
@@ -137,6 +143,7 @@ export default function App() {
                 <Route path="/head/stock-requests" element={<FacilityHeadStockReqs />} />
                 <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
                 <Route path="/head/analytics"      element={<Analytics />} />
+                <Route path="/head/guide"          element={<DashboardGuide />} />
 
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
                 <Route path="/uc/facilities"         element={<UCSupervisorFacilities />} />
@@ -145,9 +152,11 @@ export default function App() {
                 <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
                 <Route path="/uc/analytics"          element={<Analytics />} />
+                <Route path="/uc/guide"              element={<DashboardGuide />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />
                 <Route path="/worker/status"      element={<WorkerStatusView />} />
+                <Route path="/worker/guide"       element={<DashboardGuide />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

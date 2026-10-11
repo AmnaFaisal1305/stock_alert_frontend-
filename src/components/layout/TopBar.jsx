@@ -1,10 +1,23 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Bell, WifiOff } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
+import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
+
+function useOnline() {
+  return useSyncExternalStore(
+    (cb) => { window.addEventListener('online', cb); window.addEventListener('offline', cb); return () => { window.removeEventListener('online', cb); window.removeEventListener('offline', cb) } },
+    () => navigator.onLine,
+    () => true,
+  )
+}
+
+function useQueueState() {
+  return useSyncExternalStore(subscribe, () => ({ pending: getQueue().filter(i => i.status === 'pending').length, lastSynced: getLastSynced() }), () => ({ pending: 0, lastSynced: null }))
+}
 
 const ROLE_LABELS = {
   super_admin:         'Super Admin',
@@ -52,6 +65,8 @@ export default function TopBar({ onMenuClick }) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const bellRef  = useRef(null)
+  const isOnline = useOnline()
+  const { pending, lastSynced } = useQueueState()
 
   const initial   = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
   const pageTitle = PAGE_TITLES[pathname] ?? ''
@@ -99,6 +114,29 @@ export default function TopBar({ onMenuClick }) {
       {/* Right: notifications + role + user profile */}
       {user && (
         <div className="flex items-center gap-3.5">
+
+          {/* Connectivity indicator */}
+          {!isOnline ? (
+            <div className="flex items-center gap-1.5 text-amber-600" title="You are offline">
+              <WifiOff size={14} strokeWidth={2.2} />
+              {pending > 0 && (
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                  {pending} pending
+                </span>
+              )}
+            </div>
+          ) : (
+            pending > 0 && (
+              <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full" title={lastSynced ? `Last synced ${new Date(lastSynced).toLocaleTimeString()}` : undefined}>
+                {pending} syncing…
+              </span>
+            )
+          )}
+          {isOnline && !pending && lastSynced && (
+            <span className="text-[10px] text-text-muted hidden sm:inline" title={`Last synced ${new Date(lastSynced).toLocaleString()}`}>
+              Synced {new Date(lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
 
           {/* Bell — hidden for facility_worker */}
           {showBell && (
