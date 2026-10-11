@@ -41,7 +41,7 @@ export default function UserManagement() {
     { label: 'Facility Supervisor',  value: 'facility_supervisor' },
     { label: 'Facility Worker',      value: 'facility_worker' },
     { label: 'Facility Head',        value: 'facility_head' },
-    { label: 'Observer',             value: 'observer' },
+    { label: 'User Only',            value: 'observer' },
   ]
 
   const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
@@ -67,7 +67,7 @@ export default function UserManagement() {
     facility_supervisor: 'Facility supervisor',
     facility_worker:     'Facility worker',
     facility_head:       'Facility head',
-    observer:            'Observer',
+    observer:            'User Only',
   }
 
   const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' }
@@ -185,7 +185,7 @@ export default function UserManagement() {
     facility_supervisor: 'Facility Supervisor',
     facility_worker:     'Facility Worker',
     facility_head:       'Facility Head',
-    observer:            'Observer',
+    observer:            'User Only',
   }
 
   const activeRole = ROLE_FILTERS[roleFilter].value
@@ -408,7 +408,7 @@ export default function UserManagement() {
                 { value: 'facility_supervisor',  label: 'Facility Supervisor' },
                 { value: 'facility_worker',      label: 'Facility Worker' },
                 { value: 'facility_head',        label: 'Facility Head' },
-                { value: 'observer',             label: 'Observer' },
+                { value: 'observer',             label: 'User Only' },
               ].map(({ value, label }) => (
                 <button
                   key={value}

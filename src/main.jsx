@@ -1,4 +1,10 @@
 import { StrictMode, lazy, Suspense } from 'react'
+
+// Capture the install prompt before React hydrates — it can fire very early
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  window.__pwaInstallPrompt = e
+})
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'

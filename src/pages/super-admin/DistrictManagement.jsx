@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Plus, Pencil, Map as MapIcon,
-  ChevronDown, Building2, User, Mail, Loader2, MapPin,
+  ChevronDown, Building2, User, Loader2, MapPin,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {

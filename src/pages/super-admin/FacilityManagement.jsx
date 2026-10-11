@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2, UserPlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard } from '../../lib/api'
+import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, createUser } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { facilityStatus } from '../../lib/status'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -31,6 +31,10 @@ export default function SuperAdminFacilityManagement() {
 
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [deactivateError, setDeactivateError]   = useState('')
+
+  const [createSupTarget, setCreateSupTarget] = useState(null)
+  const [createSupForm, setCreateSupForm]     = useState({ firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' })
+  const [createSupError, setCreateSupError]   = useState('')
 
   const [toast, setToast]        = useState(null)
   const [searchQuery, setSearch] = useState('')
@@ -105,6 +109,34 @@ export default function SuperAdminFacilityManagement() {
       setToast({ message: `${target?.name ?? 'Facility'} activated.`, type: 'success' })
     },
     onError: (err) => setToast({ message: err.message, type: 'error' }),
+  })
+
+  const EMPTY_FAC_SUP_FORM = { firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }
+
+  const createSupMutation = useMutation({
+    mutationFn: () => createUser({
+      firstName: createSupForm.firstName, lastName: createSupForm.lastName,
+      zmid: createSupForm.zmid, email: createSupForm.email, password: createSupForm.password,
+      role: 'facility_supervisor', facilityId: createSupTarget.id,
+      ...(createSupForm.phone.trim() ? { phone: createSupForm.phone.trim() } : {}),
+      ...(createSupForm.cnic.trim() ? { cnic: createSupForm.cnic.trim() } : {}),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facilities'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setCreateSupTarget(null)
+      setCreateSupForm(EMPTY_FAC_SUP_FORM)
+      setCreateSupError('')
+      setToast({ message: 'Facility supervisor created successfully.', type: 'success' })
+    },
+    onError: (err) => setCreateSupError(
+      err.status === 409 && err.body?.error?.includes('ZMID')
+        ? 'This ZMID is already assigned to another account.'
+        : err.status === 409 && err.body?.error?.includes('active supervisor')
+        ? 'This facility already has an active supervisor.'
+        : err.message
+    ),
   })
 
   const statusByFacilityId = new Map(
@@ -201,6 +233,11 @@ export default function SuperAdminFacilityManagement() {
             View Stock <ArrowRight size={13} strokeWidth={2.2} />
           </RouterLink>
           {user?.role !== 'observer' && (<>
+            {!row.facilitySupervisorName && row.isActive && (
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}>
+                <UserPlus size={12} /> Create Supervisor
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
               <Pencil size={12} /> Rename
             </Button>
@@ -315,6 +352,11 @@ export default function SuperAdminFacilityManagement() {
                     View Stock <ArrowRight size={11} />
                   </RouterLink>
                   {user?.role !== 'observer' && (<>
+                    {!row.facilitySupervisorName && row.isActive && (
+                      <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}>
+                        <UserPlus size={12} /> Create Supervisor
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
                     {row.isActive ? (
                       <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
@@ -375,6 +417,49 @@ export default function SuperAdminFacilityManagement() {
         isPending={deactivateMutation.isPending}
         error={deactivateError}
       />
+
+      {/* Create Facility Supervisor modal */}
+      <Modal
+        open={!!createSupTarget}
+        onClose={() => { setCreateSupTarget(null); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}
+        title={`Create Facility Supervisor — ${createSupTarget?.name ?? ''}`}
+      >
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (/[<>]/.test(createSupForm.firstName) || /[<>]/.test(createSupForm.lastName)) {
+              setCreateSupError('Names cannot contain < or > characters.')
+              return
+            }
+            createSupMutation.mutate()
+          }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input id="fsup-fn" label="First Name" placeholder="Jane"
+              value={createSupForm.firstName} onChange={(e) => setCreateSupForm({ ...createSupForm, firstName: e.target.value })} required />
+            <Input id="fsup-ln" label="Last Name" placeholder="Doe"
+              value={createSupForm.lastName} onChange={(e) => setCreateSupForm({ ...createSupForm, lastName: e.target.value })} required />
+          </div>
+          <Input id="fsup-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-1001"
+            value={createSupForm.zmid} onChange={(e) => setCreateSupForm({ ...createSupForm, zmid: e.target.value })} required />
+          <Input id="fsup-email" label="Email" type="email" placeholder="supervisor@akuh.org"
+            value={createSupForm.email} onChange={(e) => { setCreateSupForm({ ...createSupForm, email: e.target.value }); setCreateSupError('') }} required />
+          <Input id="fsup-pw" label="Password (min 8 chars)" type="password" minLength={8}
+            value={createSupForm.password} onChange={(e) => setCreateSupForm({ ...createSupForm, password: e.target.value })} required />
+          <Input id="fsup-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
+            value={createSupForm.phone} onChange={(e) => setCreateSupForm({ ...createSupForm, phone: e.target.value })} />
+          <Input id="fsup-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
+            value={createSupForm.cnic} onChange={(e) => setCreateSupForm({ ...createSupForm, cnic: e.target.value })} />
+          {createSupError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{createSupError}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" type="button" onClick={() => { setCreateSupTarget(null); setCreateSupForm(EMPTY_FAC_SUP_FORM) }}>Cancel</Button>
+            <Button type="submit" disabled={createSupMutation.isPending}>
+              {createSupMutation.isPending ? 'Creating…' : 'Create Supervisor'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

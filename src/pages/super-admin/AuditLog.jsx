@@ -139,7 +139,7 @@ function formatDetails(row, vaccineNameById) {
   }
 }
 
-export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide activity history' }) {
+export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   const { user } = useAuth()
   
   const isDistrictSup = user?.role === 'district_supervisor'
@@ -236,12 +236,15 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
 
+  // Show facility/balance columns only when the tab is facility-level
+  const isFacilityTab = activeTab === 'facility_supervisor' || activeTab === 'facility_worker'
+
   const columns = [
     {
       key: 'createdAt',
       label: 'Date & Time',
       render: (row) => (
-        <div className="flex items-center gap-1.5 text-xs text-text font-semibold">
+        <div className="flex items-center gap-1.5 text-xs text-text font-semibold whitespace-nowrap">
           <Clock size={12} className="text-text-muted flex-shrink-0" />
           <span>
             {new Date(row.createdAt).toLocaleString('en-US', {
@@ -273,7 +276,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
           (row.entityType === 'stock_request' || row.entityType === 'approval')
         return (
           <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted whitespace-nowrap">
               {actionText}
             </span>
             {showStatus && (
@@ -285,31 +288,34 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
         )
       }
     },
-    { key: 'entityType',  label: 'Category', render: (row) => <span className="text-xs font-semibold text-text">{row.entityType}</span> },
-    // Conditionally include District column if user is NOT a district supervisor
+    { key: 'entityType', label: 'Category', render: (row) => <span className="text-xs font-semibold text-text">{row.entityType ?? '—'}</span> },
+    // District column: hide for district_supervisor (already scoped to one district)
     ...(!isDistrictSup ? [{
       key: 'districtName',
       label: 'District',
       render: (row) => <span className="text-xs font-medium text-text-muted">{row.districtName ?? '—'}</span>
     }] : []),
-    { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted">{row.facilityName ?? '—'}</span> },
-    {
-      key: 'balance',
-      label: 'Balance',
-      render: (row) => {
-        if (row.action !== 'STOCK_ENTRY' && row.action !== 'ADJUST_STOCK') {
-          return <span className="text-text-muted/50 text-xs">—</span>
+    // Facility + Balance: only relevant for facility-level tabs
+    ...(isFacilityTab ? [
+      { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted">{row.facilityName ?? '—'}</span> },
+      {
+        key: 'balance',
+        label: 'Balance',
+        render: (row) => {
+          if (row.action !== 'STOCK_ENTRY' && row.action !== 'ADJUST_STOCK') {
+            return <span className="text-text-muted/50 text-xs">—</span>
+          }
+          const bal = row.details?.newBalance
+          if (bal == null) return <span className="text-text-muted/50 text-xs">—</span>
+          return <span className="text-sm font-bold text-text tabular-nums">{bal} <span className="text-[10px] font-medium text-text-muted">doses</span></span>
         }
-        const bal = row.details?.newBalance
-        if (bal == null) return <span className="text-text-muted/50 text-xs">—</span>
-        return <span className="text-sm font-bold text-text">{bal} <span className="text-[10px] font-medium text-text-muted">doses</span></span>
-      }
-    },
+      },
+    ] : []),
     {
       key: 'details',
-      label: 'Details & Values',
+      label: 'Details',
       render: (row) => (
-        <p className="text-xs text-text-muted font-medium leading-relaxed break-words min-w-[180px] max-w-[340px]">
+        <p className="text-xs text-text-muted font-medium leading-relaxed break-words min-w-[160px] max-w-[320px]">
           {formatDetails(row, vaccineNameById)}
         </p>
       )
@@ -353,13 +359,13 @@ export default function AuditLog({ title = 'Audit Log', subtitle = 'System-wide 
   )
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-200">
 
-      {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
+      {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
-          <p className="text-sm text-white/70 mt-0.5">{subtitle}</p>
+          {subtitle && <p className="text-sm text-white/70 mt-0.5">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="relative flex h-2 w-2">

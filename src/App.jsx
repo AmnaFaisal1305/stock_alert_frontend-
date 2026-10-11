@@ -16,6 +16,7 @@ const SuperAdminFacilities  = lazy(() => import('./pages/super-admin/FacilityMan
 const SuperAdminUsers       = lazy(() => import('./pages/super-admin/UserManagement'))
 const SuperAdminAuditLog    = lazy(() => import('./pages/super-admin/AuditLog'))
 const UCManagement          = lazy(() => import('./pages/super-admin/UCManagement'))
+const UCDetail              = lazy(() => import('./pages/super-admin/UCDetail'))
 
 const DistrictDashboard     = lazy(() => import('./pages/district-supervisor/Dashboard'))
 const FacilityManagement    = lazy(() => import('./pages/district-supervisor/FacilityManagement'))
@@ -113,6 +114,7 @@ export default function App() {
                 <Route path="/super-admin/facilities/:id"   element={<FacilityDetail />} />
                 <Route path="/super-admin/users"            element={<SuperAdminUsers />} />
                 <Route path="/super-admin/ucs"              element={<UCManagement />} />
+                <Route path="/super-admin/ucs/:id"          element={<UCDetail />} />
                 <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
                 <Route path="/super-admin/analytics"       element={<Analytics />} />

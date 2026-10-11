@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Map as MapIcon, AlertCircle, AlertTriangle, Building2, Activity, TrendingUp, ArrowRight } from 'lucide-react'
+import { Map as MapIcon, AlertCircle, AlertTriangle, Building2, Activity, TrendingUp, ArrowRight, LayoutGrid, Table2 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -124,6 +124,7 @@ function AdminAlertBanner({ criticalCount, lowCount, criticalDistricts }) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function SuperAdminDashboard() {
   const [activeFilter, setActiveFilter] = useState('all')
+  const [districtView, setDistrictView] = useState('card')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard'],
@@ -523,10 +524,10 @@ export default function SuperAdminDashboard() {
                             return (
                               <td key={v.id} className={`px-4 py-3 text-center ${cfg.bg}/30`}>
                                 <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>
-                                {cell.consumed != null && (
+                                {cell.consumed > 0 && (
                                   <p className="text-[10px] text-text-muted mt-0.5">{cell.consumed} consumed</p>
                                 )}
-                                {cell.wasted != null && (
+                                {cell.wasted > 0 && (
                                   <p className="text-[10px] text-orange-500 mt-0.5">{cell.wasted} wasted</p>
                                 )}
                               </td>
@@ -553,6 +554,22 @@ export default function SuperAdminDashboard() {
                 {filteredDistricts.length} of {districts.length} district{districts.length !== 1 ? 's' : ''}
               </p>
             </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Card / Table toggle */}
+              <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-surface-border">
+                <button
+                  onClick={() => setDistrictView('card')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all ${districtView === 'card' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'}`}
+                >
+                  <LayoutGrid size={12} /> Cards
+                </button>
+                <button
+                  onClick={() => setDistrictView('table')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all ${districtView === 'table' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'}`}
+                >
+                  <Table2 size={12} /> Table
+                </button>
+              </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               {FILTERS.map(({ key, label }) => {
                 const cnt = key === 'all' ? counts.total : key === 'adequate' ? counts.adequate : counts[key]
@@ -577,56 +594,106 @@ export default function SuperAdminDashboard() {
                 )
               })}
             </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {filteredDistricts.map((d) => {
-              const cfg = STATUS_CFG[d.status] ?? STATUS_CFG.no_data
-              return (
-                <div
-                  key={d.id}
-                  className={`bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <p className="text-sm font-bold text-text leading-snug line-clamp-2">{d.name}</p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.pill}`}>
-                      {cfg.label}
-                    </span>
+          {districtView === 'card' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredDistricts.map((d) => {
+                const cfg = STATUS_CFG[d.status] ?? STATUS_CFG.no_data
+                return (
+                  <div
+                    key={d.id}
+                    className={`bg-white rounded-xl border border-surface-border border-l-4 ${cfg.borderL} p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <p className="text-sm font-bold text-text leading-snug line-clamp-2">{d.name}</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.pill}`}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-semibold text-text-muted mb-2">
+                      {d.facilityCount} facilit{d.facilityCount !== 1 ? 'ies' : 'y'}
+                    </p>
+                    <div className="flex gap-1.5 flex-wrap mb-2">
+                      {d.statusCounts.adequate > 0 && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                          {d.statusCounts.adequate} Normal
+                        </span>
+                      )}
+                      {d.statusCounts.low > 0 && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                          {d.statusCounts.low} Low
+                        </span>
+                      )}
+                      {d.statusCounts.critical > 0 && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+                          {d.statusCounts.critical} Critical
+                        </span>
+                      )}
+                      {d.statusCounts.no_data > 0 && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                          {d.statusCounts.no_data} No Data
+                        </span>
+                      )}
+                      {d.facilityCount === 0 && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
+                          No facilities
+                        </span>
+                      )}
+                    </div>
+                    <Link to={`/super-admin/districts/${d.id}`} className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5">
+                      View Details <ArrowRight size={10} />
+                    </Link>
                   </div>
-                  <p className="text-[10px] font-semibold text-text-muted mb-2">
-                    {d.facilityCount} facilit{d.facilityCount !== 1 ? 'ies' : 'y'}
-                  </p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {d.statusCounts.adequate > 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                        {d.statusCounts.adequate} Normal
-                      </span>
-                    )}
-                    {d.statusCounts.low > 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                        {d.statusCounts.low} Low
-                      </span>
-                    )}
-                    {d.statusCounts.critical > 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
-                        {d.statusCounts.critical} Critical
-                      </span>
-                    )}
-                    {d.statusCounts.no_data > 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                        {d.statusCounts.no_data} No Data
-                      </span>
-                    )}
-                    {d.facilityCount === 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
-                        No facilities
-                      </span>
-                    )}
+                )
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+              <div className="hidden sm:grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr_1fr_120px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-3 items-center">
+                {['District', 'Status', 'Facilities', 'Critical', 'Low', 'Normal', ''].map((h) => (
+                  <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{h}</span>
+                ))}
+              </div>
+              {filteredDistricts.length === 0 && (
+                <div className="px-6 py-10 text-center text-sm text-text-muted">No districts match current filter.</div>
+              )}
+              {filteredDistricts.map((d) => {
+                const cfg = STATUS_CFG[d.status] ?? STATUS_CFG.no_data
+                return (
+                  <div key={d.id} className="border-b border-surface-border last:border-b-0">
+                    {/* Mobile */}
+                    <div className="sm:hidden px-4 py-3 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-text truncate">{d.name}</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">{d.facilityCount} facilities · {d.statusCounts.critical} Critical · {d.statusCounts.low} Low</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.pill}`}>{cfg.label}</span>
+                        <Link to={`/super-admin/districts/${d.id}`} className="text-[10px] font-bold text-primary hover:underline">View</Link>
+                      </div>
+                    </div>
+                    {/* Desktop */}
+                    <div className="hidden sm:grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr_1fr_120px] px-5 py-3 gap-3 items-center hover:bg-slate-50/60 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapIcon size={13} className="text-text-muted/60 flex-shrink-0" />
+                        <span className="font-semibold text-sm text-text truncate">{d.name}</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${cfg.pill}`}>{cfg.label}</span>
+                      <span className="text-sm text-text tabular-nums">{d.facilityCount}</span>
+                      <span className={`text-sm font-semibold tabular-nums ${d.statusCounts.critical > 0 ? 'text-danger' : 'text-text-muted'}`}>{d.statusCounts.critical}</span>
+                      <span className={`text-sm font-semibold tabular-nums ${d.statusCounts.low > 0 ? 'text-warning-dark' : 'text-text-muted'}`}>{d.statusCounts.low}</span>
+                      <span className={`text-sm font-semibold tabular-nums ${d.statusCounts.adequate > 0 ? 'text-success-dark' : 'text-text-muted'}`}>{d.statusCounts.adequate}</span>
+                      <Link to={`/super-admin/districts/${d.id}`} className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5">
+                        View Details <ArrowRight size={11} />
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

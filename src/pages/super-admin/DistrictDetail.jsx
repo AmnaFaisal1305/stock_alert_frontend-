@@ -136,7 +136,16 @@ export default function DistrictDetail() {
                         {/* UC heading */}
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-2 h-2 rounded-full bg-primary/30 flex-shrink-0" />
-                          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">{uc.name}</h3>
+                          {uc.id !== '__none__' ? (
+                            <Link
+                              to={`/super-admin/ucs/${uc.id}`}
+                              className="text-xs font-bold text-primary uppercase tracking-wider hover:underline"
+                            >
+                              {uc.name}
+                            </Link>
+                          ) : (
+                            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">{uc.name}</h3>
+                          )}
                           <span className="text-[10px] text-text-muted bg-white border border-surface-border px-2 py-0.5 rounded font-semibold">
                             {uc.facilities.length} {uc.facilities.length === 1 ? 'facility' : 'facilities'}
                           </span>
