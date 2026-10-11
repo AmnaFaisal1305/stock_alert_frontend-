@@ -3,19 +3,23 @@ import { useLocation } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
-import { getDashboard } from '../../lib/api'
+import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 
 const ROLE_LABELS = {
   super_admin:         'Super Admin',
   district_supervisor: 'District Supervisor',
+  uc_supervisor:       'UC Supervisor',
   facility_supervisor: 'Facility Supervisor',
   facility_worker:     'Facility Worker',
+  facility_head:       'Facility Head',
+  observer:            'Observer',
 }
 
 const PAGE_TITLES = {
   '/facility/dashboard':    'Dashboard',
-  '/facility/record-stock': 'Record Stock',
+  '/facility/record-stock': 'Stock Requests',
+  '/facility/approvals':    'Approvals',
   '/facility/thresholds':   'Vaccines & Thresholds',
   '/facility/workers':      'Users Info',
   '/facility/audit-log':    'Audit Log',
@@ -35,6 +39,9 @@ const PAGE_TITLES = {
   '/uc/facilities':         'Facilities',
   '/uc/users':              'Users',
   '/uc/audit-log':          'Audit Log',
+  '/uc/stock-requests':     'Stock Requests',
+  '/head/approvals':        'Approvals',
+  '/head/stock-requests':   'Stock Requests',
   '/worker/stock-entry':    'Stock Entry',
   '/worker/status':         'Stock Status',
 }
@@ -51,15 +58,14 @@ export default function TopBar({ onMenuClick }) {
 
   const showBell = user?.role !== 'facility_worker'
 
-  const { data } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: getDashboard,
-    staleTime: 15_000,
+  const { data: countData } = useQuery({
+    queryKey: ['unread-count'],
+    queryFn: getUnreadCount,
+    refetchInterval: 30_000,
     enabled: showBell,
   })
 
-  // Extract critical vaccine rows — works for all roles that return data.facilities
-  const criticalAlerts = (data?.facilities ?? []).filter((r) => r.status === 'critical')
+  const unreadCount = countData?.count ?? 0
 
   // Close on outside click
   useEffect(() => {
@@ -105,16 +111,16 @@ export default function TopBar({ onMenuClick }) {
                   aria-label="Notifications"
                 >
                   <Bell size={18} strokeWidth={2.2} />
-                  {criticalAlerts.length > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-white">
-                      {criticalAlerts.length > 9 ? '9+' : criticalAlerts.length}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {open && (
                   <div ref={panelRef}>
-                    <NotificationPanel alerts={criticalAlerts} role={user.role} onClose={() => setOpen(false)} />
+                    <NotificationPanel onClose={() => setOpen(false)} />
                   </div>
                 )}
               </div>

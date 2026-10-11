@@ -5,9 +5,9 @@ import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
-const LoginPage             = lazy(() => import('./pages/Login/LoginPage'))
-const ForgotPassword        = lazy(() => import('./pages/Login/ForgotPassword'))
-const ResetPassword         = lazy(() => import('./pages/Login/ResetPassword'))
+const LoginPage             = lazy(() => import('./pages/login/LoginPage'))
+const ForgotPassword        = lazy(() => import('./pages/login/ForgotPassword'))
+const ResetPassword         = lazy(() => import('./pages/login/ResetPassword'))
 
 const SuperAdminDashboard   = lazy(() => import('./pages/super-admin/Dashboard'))
 const DistrictManagement    = lazy(() => import('./pages/super-admin/DistrictManagement'))
@@ -27,7 +27,6 @@ const FacilityDetail        = lazy(() => import('./pages/shared/FacilityDetail')
 const FacilityDashboard     = lazy(() => import('./pages/facility-supervisor/Dashboard'))
 const RecordStock           = lazy(() => import('./pages/facility-supervisor/RecordStock'))
 const StockRegister         = lazy(() => import('./pages/facility-supervisor/StockRegister'))
-const ThresholdManagement   = lazy(() => import('./pages/facility-supervisor/ThresholdManagement'))
 const WorkerManagement      = lazy(() => import('./pages/facility-supervisor/WorkerManagement'))
 const FacilityAuditLog      = lazy(() => import('./pages/facility-supervisor/AuditLog'))
 
@@ -40,6 +39,17 @@ const UCSupervisorUsers      = lazy(() => import('./pages/uc-supervisor/Users'))
 const UCSupervisorAuditLog   = lazy(() => import('./pages/uc-supervisor/AuditLog'))
 
 const SuperAdminVaccines     = lazy(() => import('./pages/super-admin/VaccineManagement'))
+
+const AssignVials            = lazy(() => import('./pages/facility-supervisor/AssignVials'))
+const DayEnd                 = lazy(() => import('./pages/facility-supervisor/DayEnd'))
+
+const FacilityHeadDashboard  = lazy(() => import('./pages/facility-head/Dashboard'))
+const FacilityHeadUsers      = lazy(() => import('./pages/facility-head/Users'))
+const FacilityHeadAuditLog   = lazy(() => import('./pages/facility-head/AuditLog'))
+const FacilityApprovals      = lazy(() => import('./pages/facility-supervisor/Approvals'))
+const FacilityHeadApprovals  = lazy(() => import('./pages/facility-head/Approvals'))
+const FacilityHeadStockReqs  = lazy(() => import('./pages/facility-head/StockRequests'))
+const UCSupervisorStockReqs  = lazy(() => import('./pages/uc-supervisor/StockRequests'))
 
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
@@ -56,6 +66,8 @@ const ROLE_DEFAULTS = {
   uc_supervisor:       '/uc/dashboard',
   facility_supervisor: '/facility/dashboard',
   facility_worker:     '/worker/stock-entry',
+  facility_head:       '/head/dashboard',
+  observer:            '/super-admin/dashboard',
 }
 
 function AuthLayout() {
@@ -107,16 +119,25 @@ export default function App() {
                 <Route path="/district/audit-log"      element={<DistrictAuditLog />} />
 
                 <Route path="/facility/dashboard"    element={<FacilityDashboard />} />
+                <Route path="/facility/approvals"    element={<FacilityApprovals />} />
                 <Route path="/facility/record-stock"    element={<RecordStock />} />
                 <Route path="/facility/stock-register"  element={<StockRegister />} />
-                <Route path="/facility/thresholds"   element={<ThresholdManagement />} />
                 <Route path="/facility/workers"      element={<WorkerManagement />} />
+                <Route path="/facility/assign-vials" element={<AssignVials />} />
+                <Route path="/facility/day-end"      element={<DayEnd />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
+
+                <Route path="/head/dashboard"      element={<FacilityHeadDashboard />} />
+                <Route path="/head/users"          element={<FacilityHeadUsers />} />
+                <Route path="/head/approvals"      element={<FacilityHeadApprovals />} />
+                <Route path="/head/stock-requests" element={<FacilityHeadStockReqs />} />
+                <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
 
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
                 <Route path="/uc/facilities"         element={<UCSupervisorFacilities />} />
                 <Route path="/uc/facilities/:id"     element={<FacilityDetail />} />
                 <Route path="/uc/users"              element={<UCSupervisorUsers />} />
+                <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />
