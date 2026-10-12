@@ -1,18 +1,20 @@
 import { useState } from 'react'
-import { ClipboardCheck, Syringe, CheckCircle2, XCircle, Clock, X } from 'lucide-react'
+import { ClipboardCheck, CheckCircle2, Clock, X, Settings, Package, AlertTriangle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDashboard, getApprovals, createApproval, cancelApproval } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
-const TABS = ['Stock Correction', 'Threshold Change']
+const TABS = [
+  { label: 'Stock Correction', icon: Package },
+  { label: 'Threshold Change', icon: Settings },
+]
 
-const STATUS_COLORS = {
-  pending:   'bg-amber-100 text-amber-700',
-  approved:  'bg-green-100 text-green-700',
-  rejected:  'bg-red-100 text-red-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+const TYPE_META = {
+  stock_correction: { label: 'Stock Correction', cls: 'bg-primary/5 text-primary border-primary/15', icon: Package },
+  threshold_change: { label: 'Threshold Change', cls: 'bg-warning-bg text-warning-dark border-warning/20', icon: Settings },
 }
 
 export default function Approvals() {
@@ -34,13 +36,11 @@ export default function Approvals() {
   const [thrError, setThrError] = useState(null)
   const [thrDone, setThrDone] = useState(false)
 
-  const { data: dashData, isLoading: dashLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => getDashboard(),
-  })
+  const { data: dashData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
   const vaccines = dashData
     ? [...new Map(dashData.facilities.map(r => [r.vaccineId, r])).values()]
     : []
+  const vaccineOptions = vaccines.map(r => ({ value: r.vaccineId, label: displayVaccineName(r.vaccineName) }))
 
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
     queryKey: ['approvals', 'pending'],
@@ -61,7 +61,9 @@ export default function Approvals() {
       setCorrDone(true)
       setCorrVaccineId(''); setCorrStoreVials(''); setCorrNote(''); setCorrError(null)
     },
-    onError: (err) => setCorrError(err.status === 409 ? 'A correction is already pending for this vaccine.' : (err.message || 'Submission failed')),
+    onError: (err) => setCorrError(
+      err.status === 409 ? 'A correction is already pending for this vaccine.' : (err.message || 'Submission failed')
+    ),
   })
 
   const thrMutation = useMutation({
@@ -80,9 +82,12 @@ export default function Approvals() {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setThrDone(true)
-      setThrVaccineId(''); setThrValues({ criticalDoses: '', lowDoses: '', criticalVials: '', lowVials: '' }); setThrNote(''); setThrReset(false); setThrError(null)
+      setThrVaccineId(''); setThrValues({ criticalDoses: '', lowDoses: '', criticalVials: '', lowVials: '' })
+      setThrNote(''); setThrReset(false); setThrError(null)
     },
-    onError: (err) => setThrError(err.status === 409 ? 'A threshold change is already pending for this vaccine.' : (err.message || 'Submission failed')),
+    onError: (err) => setThrError(
+      err.status === 409 ? 'A threshold change is already pending for this vaccine.' : (err.message || 'Submission failed')
+    ),
   })
 
   const cancelMutation = useMutation({
@@ -103,207 +108,301 @@ export default function Approvals() {
       criticalVials: String(row.criticalVials),
       lowVials:      String(row.lowVials),
     })
-    setThrReset(false)
-    setThrDone(false)
-    setThrError(null)
+    setThrReset(false); setThrDone(false); setThrError(null)
   }
 
   const corrValid = corrVaccineId && corrStoreVials !== '' && Number(corrStoreVials) >= 0 && corrNote.trim().length > 0
   const thrValid  = thrVaccineId && (thrReset || Object.values(thrValues).every(v => v !== ''))
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <ClipboardCheck size={22} className="text-primary" />
+    <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+
+      {/* Banner */}
+      <div className="bg-primary rounded-2xl px-5 py-5 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-text">Approvals</h1>
-          <p className="text-sm text-text-muted">Propose stock corrections and threshold changes</p>
+          <h1 className="text-xl font-bold text-white tracking-tight">Approvals</h1>
+          <p className="text-sm text-white/70 mt-0.5">Submit corrections and threshold changes for facility head review</p>
         </div>
+        <ClipboardCheck size={28} className="text-white/30 flex-shrink-0" />
       </div>
 
-      {/* Tab switcher */}
-      <div className="flex gap-2 border-b border-surface-border">
-        {TABS.map((t, i) => (
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit">
+        {TABS.map(({ label, icon: Icon }, i) => (
           <button
-            key={t}
+            key={label}
             onClick={() => { setTab(i); setCorrDone(false); setThrDone(false) }}
-            className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${tab === i ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              tab === i
+                ? 'bg-white text-primary shadow-sm border border-slate-200'
+                : 'text-text-muted hover:text-text'
+            }`}
           >
-            {t}
+            <Icon size={13} strokeWidth={2.2} />
+            {label}
           </button>
         ))}
       </div>
 
-      {/* ── Stock Correction ───────────────────────────────────────────────────── */}
+      {/* ── Stock Correction form ─────────────────────────────────────────────── */}
       {tab === 0 && (
-        <div className="bg-surface rounded-xl border border-surface-border p-5 space-y-5 max-w-lg">
-          <p className="text-sm text-text-muted">Set the new <strong>store total</strong> in vials (vials not held by any worker). The Head will approve the adjustment.</p>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Vaccine</label>
-            <select
-              value={corrVaccineId}
-              onChange={e => { setCorrVaccineId(e.target.value); setCorrDone(false); setCorrError(null) }}
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Select vaccine…</option>
-              {vaccines.map(r => (
-                <option key={r.vaccineId} value={r.vaccineId}>{displayVaccineName(r.vaccineName)}</option>
-              ))}
-            </select>
+        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 bg-slate-50 border-b border-surface-border flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Package size={15} className="text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-text">Stock Correction</h2>
+              <p className="text-xs text-text-muted mt-0.5">Set the new store total in vials (vials not held by any worker). The facility head will approve the adjustment.</p>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">New store total (vials)</label>
+          <div className="p-6 flex flex-col gap-5">
+            <Select
+              id="corr-vaccine"
+              label="Vaccine"
+              placeholder="Select vaccine…"
+              options={vaccineOptions}
+              value={corrVaccineId}
+              onChange={e => { setCorrVaccineId(e.target.value); setCorrDone(false); setCorrError(null) }}
+            />
+
             <Input
+              id="corr-vials"
+              label="New store total (vials)"
               type="number"
               min={0}
               value={corrStoreVials}
               onChange={e => { setCorrStoreVials(e.target.value); setCorrDone(false); setCorrError(null) }}
               placeholder="0"
             />
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="corr-note" className="text-sm font-semibold text-text">
+                Note <span className="text-danger">*</span>
+              </label>
+              <textarea
+                id="corr-note"
+                value={corrNote}
+                onChange={e => { setCorrNote(e.target.value); setCorrDone(false); setCorrError(null) }}
+                maxLength={500}
+                rows={3}
+                placeholder="e.g. Physical count on 10 Oct confirmed 12 vials in store"
+                className="w-full rounded-xl border border-surface-border bg-white px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
+              />
+              <p className="text-xs text-text-muted text-right">{corrNote.length}/500</p>
+            </div>
+
+            {corrError && (
+              <div className="flex items-start gap-2.5 bg-danger-bg border border-danger/15 rounded-xl px-4 py-3">
+                <AlertTriangle size={14} className="text-danger flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-danger font-medium">{corrError}</p>
+              </div>
+            )}
+            {corrDone && (
+              <div className="flex items-center gap-2.5 bg-success-bg border border-success/15 rounded-xl px-4 py-3">
+                <CheckCircle2 size={14} className="text-success-dark flex-shrink-0" />
+                <p className="text-sm text-success-dark font-medium">Submitted — awaiting facility head approval.</p>
+              </div>
+            )}
+
+            <Button
+              onClick={() => corrMutation.mutate()}
+              disabled={!corrValid || corrMutation.isPending}
+              className="w-full"
+            >
+              {corrMutation.isPending ? 'Submitting…' : 'Submit for Approval'}
+            </Button>
           </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Note <span className="text-danger">*</span></label>
-            <textarea
-              value={corrNote}
-              onChange={e => { setCorrNote(e.target.value); setCorrDone(false); setCorrError(null) }}
-              maxLength={500}
-              rows={3}
-              placeholder="e.g. Physical count on 10 Oct"
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            />
-            <p className="text-xs text-text-muted text-right">{corrNote.length}/500</p>
-          </div>
-
-          {corrError && <p className="text-sm text-danger">{corrError}</p>}
-          {corrDone && <p className="text-sm text-green-600 flex items-center gap-1"><CheckCircle2 size={14} /> Correction submitted — awaiting Head approval.</p>}
-
-          <Button
-            onClick={() => corrMutation.mutate()}
-            disabled={!corrValid || corrMutation.isPending}
-            className="w-full"
-          >
-            {corrMutation.isPending ? 'Submitting…' : 'Submit for Approval'}
-          </Button>
         </div>
       )}
 
-      {/* ── Threshold Change ───────────────────────────────────────────────────── */}
+      {/* ── Threshold Change form ────────────────────────────────────────────── */}
       {tab === 1 && (
-        <div className="bg-surface rounded-xl border border-surface-border p-5 space-y-5 max-w-lg">
-          <p className="text-sm text-text-muted">Override thresholds for one vaccine at this facility. The Head will approve the change.</p>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Vaccine</label>
-            <select
-              value={thrVaccineId}
-              onChange={e => selectVaccine(e.target.value)}
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Select vaccine…</option>
-              {vaccines.map(r => (
-                <option key={r.vaccineId} value={r.vaccineId}>{displayVaccineName(r.vaccineName)}</option>
-              ))}
-            </select>
+        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 bg-slate-50 border-b border-surface-border flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-warning-bg flex items-center justify-center flex-shrink-0">
+              <Settings size={15} className="text-warning-dark" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-text">Threshold Change</h2>
+              <p className="text-xs text-text-muted mt-0.5">Override alert thresholds for a vaccine at this facility. The facility head will approve the change.</p>
+            </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
-            <input type="checkbox" checked={thrReset} onChange={e => setThrReset(e.target.checked)} className="accent-primary" />
-            Reset to vaccine default (remove facility override)
-          </label>
+          <div className="p-6 flex flex-col gap-5">
+            <Select
+              id="thr-vaccine"
+              label="Vaccine"
+              placeholder="Select vaccine…"
+              options={vaccineOptions}
+              value={thrVaccineId}
+              onChange={e => selectVaccine(e.target.value)}
+            />
 
-          {!thrReset && (
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                ['criticalDoses', 'Critical Doses'],
-                ['lowDoses',      'Low Doses'],
-                ['criticalVials', 'Critical Vials'],
-                ['lowVials',      'Low Vials'],
-              ].map(([key, label]) => (
-                <div key={key} className="space-y-1">
-                  <label className="text-xs font-medium text-text-muted uppercase tracking-wide">{label}</label>
+            <label className="flex items-center gap-3 text-sm text-text cursor-pointer bg-slate-50 border border-surface-border rounded-xl px-4 py-3 hover:bg-slate-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={thrReset}
+                onChange={e => setThrReset(e.target.checked)}
+                className="accent-primary w-4 h-4 flex-shrink-0"
+              />
+              <span>Reset to vaccine default (remove facility override)</span>
+            </label>
+
+            {!thrReset && (
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  ['criticalDoses', 'Critical Doses'],
+                  ['lowDoses',      'Low Doses'],
+                  ['criticalVials', 'Critical Vials'],
+                  ['lowVials',      'Low Vials'],
+                ].map(([key, label]) => (
                   <Input
+                    key={key}
+                    id={key}
+                    label={label}
                     type="number"
                     min={0}
                     value={thrValues[key]}
                     onChange={e => { setThrValues(prev => ({ ...prev, [key]: e.target.value })); setThrDone(false); setThrError(null) }}
                   />
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="thr-note" className="text-sm font-semibold text-text">
+                Note <span className="text-text-muted font-normal text-xs">(optional)</span>
+              </label>
+              <textarea
+                id="thr-note"
+                value={thrNote}
+                onChange={e => setThrNote(e.target.value)}
+                maxLength={500}
+                rows={2}
+                placeholder="Reason for this threshold change…"
+                className="w-full rounded-xl border border-surface-border bg-white px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
+              />
             </div>
-          )}
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Note (optional)</label>
-            <textarea
-              value={thrNote}
-              onChange={e => setThrNote(e.target.value)}
-              maxLength={500}
-              rows={2}
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            />
+            {thrError && (
+              <div className="flex items-start gap-2.5 bg-danger-bg border border-danger/15 rounded-xl px-4 py-3">
+                <AlertTriangle size={14} className="text-danger flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-danger font-medium">{thrError}</p>
+              </div>
+            )}
+            {thrDone && (
+              <div className="flex items-center gap-2.5 bg-success-bg border border-success/15 rounded-xl px-4 py-3">
+                <CheckCircle2 size={14} className="text-success-dark flex-shrink-0" />
+                <p className="text-sm text-success-dark font-medium">Submitted — awaiting facility head approval.</p>
+              </div>
+            )}
+
+            <Button
+              onClick={() => thrMutation.mutate()}
+              disabled={!thrValid || thrMutation.isPending}
+              className="w-full"
+            >
+              {thrMutation.isPending ? 'Submitting…' : 'Submit for Approval'}
+            </Button>
           </div>
-
-          {thrError && <p className="text-sm text-danger">{thrError}</p>}
-          {thrDone && <p className="text-sm text-green-600 flex items-center gap-1"><CheckCircle2 size={14} /> Threshold change submitted — awaiting Head approval.</p>}
-
-          <Button
-            onClick={() => thrMutation.mutate()}
-            disabled={!thrValid || thrMutation.isPending}
-            className="w-full"
-          >
-            {thrMutation.isPending ? 'Submitting…' : 'Submit for Approval'}
-          </Button>
         </div>
       )}
 
-      {/* ── Pending Approvals ─────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">Pending Approvals</h2>
-        {pendingLoading && <p className="text-sm text-text-muted">Loading…</p>}
-        {!pendingLoading && pending.length === 0 && (
-          <p className="text-sm text-text-muted">No pending approvals.</p>
-        )}
-        {pending.map(a => (
-          <div key={a.id} className="bg-surface rounded-xl border border-surface-border p-4 flex items-start justify-between gap-4">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                  {a.type === 'stock_correction' ? 'Stock Correction' : 'Threshold Change'}
-                </span>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Clock size={11} /> Pending
-                </span>
+      {/* ── Pending Approvals ──────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-4 rounded-full bg-amber-400" />
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Pending Approvals</h2>
+          {pending.length > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+              {pending.length}
+            </span>
+          )}
+        </div>
+
+        {pendingLoading && (
+          <div className="flex flex-col gap-2">
+            {[1, 2].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-surface-border p-5 animate-pulse">
+                <div className="flex gap-2 mb-3">
+                  <div className="h-5 bg-slate-100 rounded-lg w-28" />
+                  <div className="h-5 bg-slate-100 rounded-lg w-16" />
+                </div>
+                <div className="h-4 bg-slate-100 rounded w-36" />
               </div>
-              <p className="text-sm font-medium text-text truncate">{displayVaccineName(a.vaccineName)}</p>
-              {a.type === 'stock_correction' && (
-                <p className="text-xs text-text-muted">New store total: <strong>{a.payload?.storeVials} vials</strong></p>
-              )}
-              {a.type === 'threshold_change' && a.payload?.thresholds && (
-                <p className="text-xs text-text-muted">
-                  Critical: {a.payload.thresholds.criticalDoses}d / {a.payload.thresholds.criticalVials}v &nbsp;·&nbsp;
-                  Low: {a.payload.thresholds.lowDoses}d / {a.payload.thresholds.lowVials}v
-                </p>
-              )}
-              {a.type === 'threshold_change' && !a.payload?.thresholds && (
-                <p className="text-xs text-text-muted">Reset to vaccine default</p>
-              )}
-              {a.note && <p className="text-xs text-text-muted italic">"{a.note}"</p>}
-            </div>
-            <button
-              onClick={() => cancelMutation.mutate(a.id)}
-              disabled={cancelMutation.isPending}
-              className="flex-shrink-0 text-text-muted hover:text-danger transition-colors p-1 rounded"
-              title="Cancel"
-            >
-              <X size={16} />
-            </button>
+            ))}
           </div>
-        ))}
+        )}
+
+        {!pendingLoading && pending.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-12 border border-dashed border-surface-border rounded-2xl text-text-muted bg-white">
+            <CheckCircle2 size={28} className="opacity-20" />
+            <p className="text-sm font-semibold text-text">No pending approvals</p>
+            <p className="text-xs">Submitted requests will appear here.</p>
+          </div>
+        )}
+
+        {pending.map(a => {
+          const meta = TYPE_META[a.type] ?? { label: a.type, cls: 'bg-slate-100 text-slate-500 border-slate-200', icon: ClipboardCheck }
+          const MetaIcon = meta.icon
+          return (
+            <div key={a.id} className="bg-white rounded-2xl border border-surface-border shadow-sm p-5 flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+                {/* Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border ${meta.cls}`}>
+                    <MetaIcon size={10} strokeWidth={2.5} />
+                    {meta.label}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                    <Clock size={10} /> Pending
+                  </span>
+                </div>
+
+                {/* Vaccine name */}
+                <p className="text-sm font-bold text-text">{displayVaccineName(a.vaccineName)}</p>
+
+                {/* Payload details */}
+                {a.type === 'stock_correction' && (
+                  <p className="text-xs text-text-muted">
+                    New store total: <span className="font-semibold text-text">{a.payload?.storeVials} vials</span>
+                  </p>
+                )}
+                {a.type === 'threshold_change' && a.payload?.thresholds && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[11px] bg-danger-bg text-danger border border-danger/15 px-2 py-0.5 rounded-lg font-semibold">
+                      Critical: {a.payload.thresholds.criticalDoses}d / {a.payload.thresholds.criticalVials}v
+                    </span>
+                    <span className="text-[11px] bg-warning-bg text-warning-dark border border-warning/15 px-2 py-0.5 rounded-lg font-semibold">
+                      Low: {a.payload.thresholds.lowDoses}d / {a.payload.thresholds.lowVials}v
+                    </span>
+                  </div>
+                )}
+                {a.type === 'threshold_change' && !a.payload?.thresholds && (
+                  <p className="text-xs text-text-muted italic">Reset to vaccine default</p>
+                )}
+
+                {/* Note */}
+                {a.note && (
+                  <p className="text-xs text-text-muted italic border-l-2 border-slate-200 pl-2.5">"{a.note}"</p>
+                )}
+              </div>
+
+              <button
+                onClick={() => cancelMutation.mutate(a.id)}
+                disabled={cancelMutation.isPending}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-danger hover:bg-danger/5 transition-all cursor-pointer disabled:opacity-40"
+                title="Cancel approval"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )
+        })}
       </div>
+
     </div>
   )
 }

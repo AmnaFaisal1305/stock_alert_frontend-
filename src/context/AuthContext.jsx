@@ -62,6 +62,9 @@ export function AuthProvider({ children }) {
     api.setCsrfToken(csrfToken)
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData))
     sessionStorage.setItem(CSRF_KEY, csrfToken)
+    // reset PWA prompt dismissal so prompts appear for each new login
+    sessionStorage.removeItem('sst_notif_card')
+    sessionStorage.removeItem('sst_install_card')
     setUser(userData)
   }, [queryClient])
 

@@ -66,9 +66,8 @@ function StockCard({ row, dosesPerVial }) {
   const neverRecorded = row.recordedAt === null
 
   return (
-    <Link
-      to="/facility/thresholds"
-      className={`group bg-surface rounded-xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-4 flex gap-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200`}
+    <div
+      className={`bg-surface rounded-xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-4 flex gap-4`}
     >
       {/* Ring gauge */}
       <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1">
@@ -125,7 +124,7 @@ function StockCard({ row, dosesPerVial }) {
           </span>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -145,9 +144,6 @@ function AlertBanner({ criticalCount, lowCount, noDataCount, healthyCount, total
           </p>
           <p className="text-xs text-danger/70 mt-0.5">Restock as soon as possible to avoid service interruption</p>
         </div>
-        <Link to="/facility/thresholds" className="flex items-center gap-1 text-xs font-semibold text-danger hover:underline flex-shrink-0">
-          View Details <ArrowRight size={12} />
-        </Link>
       </div>
     )
   }
@@ -161,9 +157,6 @@ function AlertBanner({ criticalCount, lowCount, noDataCount, healthyCount, total
           </p>
           <p className="text-xs text-warning-dark/70 mt-0.5">Plan restocking before levels become critical</p>
         </div>
-        <Link to="/facility/thresholds" className="flex items-center gap-1 text-xs font-semibold text-warning-dark hover:underline flex-shrink-0">
-          View Details <ArrowRight size={12} />
-        </Link>
       </div>
     )
   }

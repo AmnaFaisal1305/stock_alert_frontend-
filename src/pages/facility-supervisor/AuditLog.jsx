@@ -7,6 +7,7 @@ import {
   UserPlus, UserX, ClipboardList, KeyRound,
   UserCheck, Search, Shield, ArrowUp, ArrowDown, Users,
   RefreshCcw, Trash2, ChevronLeft, ChevronRight,
+  CheckCircle2, XCircle, Send,
 } from 'lucide-react'
 import Select from '../../components/ui/Select'
 import DatePicker from '../../components/ui/DatePicker'
@@ -30,89 +31,181 @@ function formatFullDate(isoStr) {
 }
 
 const ACTION_META = {
-  STOCK_ENTRY:      { label: 'Stock Entry',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Package   },
-  ADJUST_STOCK:     { label: 'Stock Correction',   pill: 'bg-primary/5 text-primary border-primary/10',       icon: RefreshCcw },
-  LOGOUT:           { label: 'Logout',             pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound  },
-  CREATE_VACCINE:   { label: 'Vaccine Added',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe   },
-  EDIT_VACCINE:     { label: 'Vaccine Renamed',    pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: Tag       },
-  DELETE_VACCINE:   { label: 'Vaccine Deleted',    pill: 'bg-danger-bg text-danger border-danger/15',         icon: Trash2    },
-  SET_THRESHOLD:    { label: 'Threshold Updated',  pill: 'bg-warning-bg text-warning-dark border-warning/15', icon: Settings  },
-  CREATE_USER:      { label: 'Worker Added',       pill: 'bg-primary/5 text-primary border-primary/10',       icon: UserPlus  },
-  ACTIVATE_USER:    { label: 'Worker Activated',   pill: 'bg-success-bg text-success-dark border-success/15', icon: UserCheck },
-  DEACTIVATE_USER:  { label: 'Worker Deactivated', pill: 'bg-danger-bg text-danger border-danger/15',         icon: UserX     },
-  RESET_PASSWORD:   { label: 'Password Reset',     pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound  },
+  STOCK_ENTRY:            { label: 'Stock Entry',         pill: 'bg-primary/5 text-primary border-primary/10',       icon: Package      },
+  ADJUST_STOCK:           { label: 'Stock Correction',    pill: 'bg-primary/5 text-primary border-primary/10',       icon: RefreshCcw   },
+  LOGOUT:                 { label: 'Logout',              pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound     },
+  CREATE_VACCINE:         { label: 'Vaccine Added',       pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe      },
+  EDIT_VACCINE:           { label: 'Vaccine Renamed',     pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: Tag          },
+  DELETE_VACCINE:         { label: 'Vaccine Deleted',     pill: 'bg-danger-bg text-danger border-danger/15',         icon: Trash2       },
+  SET_THRESHOLD:          { label: 'Threshold Updated',   pill: 'bg-warning-bg text-warning-dark border-warning/15', icon: Settings     },
+  CREATE_USER:            { label: 'Worker Added',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: UserPlus     },
+  ACTIVATE_USER:          { label: 'Worker Activated',    pill: 'bg-success-bg text-success-dark border-success/15', icon: UserCheck    },
+  DEACTIVATE_USER:        { label: 'Worker Deactivated',  pill: 'bg-danger-bg text-danger border-danger/15',         icon: UserX        },
+  RESET_PASSWORD:         { label: 'Password Reset',      pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound     },
+  STOCK_REQUEST_CREATE:   { label: 'Stock Requested',     pill: 'bg-primary/5 text-primary border-primary/10',       icon: ClipboardList },
+  STOCK_REQUEST_SENT:     { label: 'Request Sent',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Send         },
+  STOCK_REQUEST_RECEIVED: { label: 'Request Received',    pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
+  STOCK_REQUEST_APPROVE:  { label: 'Request Approved',    pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
+  STOCK_REQUEST_CANCEL:   { label: 'Request Cancelled',   pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: XCircle      },
+  STOCK_REQUEST_DECLINE:  { label: 'Request Declined',    pill: 'bg-danger-bg text-danger border-danger/15',         icon: XCircle      },
+  APPROVAL_REQUEST:       { label: 'Approval Requested',  pill: 'bg-primary/5 text-primary border-primary/10',       icon: ClipboardList },
+  APPROVAL_APPROVE:       { label: 'Approval Approved',   pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
+  APPROVAL_DECLINE:       { label: 'Approval Declined',   pill: 'bg-danger-bg text-danger border-danger/15',         icon: XCircle      },
+  APPROVAL_CANCEL:        { label: 'Approval Cancelled',  pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: XCircle      },
+  STOCK_ASSIGN:           { label: 'Stock Assigned',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
+  STOCK_RECEIVE:          { label: 'Stock Received',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
+  STOCK_DAY_END:          { label: 'Day End',             pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: ClipboardList },
 }
 
-function parseEntry(action, details, vaccineNameById) {
-  if (!details) return { subject: null, quantity: null, qtyType: null }
-  const vaccineName = (id) => vaccineNameById?.[id] ?? null
+function parseEntry(action, details, vaccineNameById, workerNameById) {
+  if (!details) return { vaccineName: null, vials: null, vialsDir: null, detail: null }
+  const vn = (id) => vaccineNameById?.[id] ?? null
+  const wn = (id) => workerNameById?.[id] ?? null
+
   switch (action) {
     case 'STOCK_ENTRY': {
-      const { vaccineId, quantity, entryType } = details
+      const name = details.vaccineName ? displayVaccineName(details.vaccineName) : vn(details.vaccineId)
       return {
-        subject:  vaccineName(vaccineId),
-        quantity: quantity != null ? `${quantity} doses` : null,
-        qtyType:  entryType === 'used' ? 'out' : 'in',
+        vaccineName: name,
+        vials: details.vials ?? details.quantity ?? null,
+        vialsDir: details.entryType === 'used' ? 'out' : 'in',
+        detail: details.entryType ?? null,
       }
     }
     case 'ADJUST_STOCK': {
-      const { vaccineId, delta } = details
+      const name = details.vaccineName ? displayVaccineName(details.vaccineName) : vn(details.vaccineId)
+      const delta = details.delta ?? null
       return {
-        subject:  vaccineName(vaccineId),
-        quantity: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null,
-        qtyType:  delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral',
+        vaccineName: name,
+        vials: delta != null ? `${delta > 0 ? '+' : ''}${delta}` : null,
+        vialsDir: delta > 0 ? 'in' : delta < 0 ? 'out' : 'neutral',
+        detail: details.reason ?? null,
       }
     }
     case 'SET_THRESHOLD': {
-      const { vaccineId, minQuantity } = details
+      const name = details.vaccineName ? displayVaccineName(details.vaccineName) : vn(details.vaccineId)
       return {
-        subject:  vaccineName(vaccineId),
-        quantity: minQuantity != null ? `Min: ${minQuantity}` : null,
-        qtyType:  'neutral',
+        vaccineName: name,
+        vials: details.minQuantity != null ? String(details.minQuantity) : null,
+        vialsDir: 'neutral',
+        detail: 'Min threshold',
       }
     }
     case 'CREATE_VACCINE':
-      return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
     case 'DELETE_VACCINE':
-      return { subject: details.name ?? vaccineName(details.vaccineId), quantity: null, qtyType: null }
+      return { vaccineName: details.name ?? vn(details.vaccineId), vials: null, vialsDir: null, detail: null }
     case 'EDIT_VACCINE': {
       const { oldName, newName, name, vaccineId } = details
-      const resolvedName = newName ?? name ?? vaccineName(vaccineId)
+      const resolved = newName ?? name ?? vn(vaccineId)
       return {
-        subject:  oldName && resolvedName ? `${oldName} → ${resolvedName}` : (resolvedName ?? null),
-        quantity: null, qtyType: null,
+        vaccineName: oldName && resolved ? `${oldName} → ${resolved}` : (resolved ?? null),
+        vials: null, vialsDir: null, detail: null,
       }
     }
     case 'CREATE_USER':
-      return { subject: details.email ?? null, quantity: null, qtyType: null }
-    default: {
-      const first = Object.entries(details).find(([k]) => !k.toLowerCase().includes('id'))
-      return { subject: first ? String(first[1]) : null, quantity: null, qtyType: null }
+      return { vaccineName: null, vials: null, vialsDir: null, detail: details.email ?? null }
+    case 'ACTIVATE_USER':
+    case 'DEACTIVATE_USER':
+    case 'RESET_PASSWORD':
+      return { vaccineName: null, vials: null, vialsDir: null, detail: details.email ?? details.name ?? null }
+    case 'STOCK_REQUEST_CREATE':
+    case 'STOCK_REQUEST_SENT':
+    case 'STOCK_REQUEST_RECEIVED':
+    case 'STOCK_REQUEST_APPROVE':
+    case 'STOCK_REQUEST_CANCEL':
+    case 'STOCK_REQUEST_DECLINE': {
+      if (details.items?.length) {
+        const names = details.items
+          .map(item => item.vaccineName ? displayVaccineName(item.vaccineName) : vn(item.vaccineId))
+          .filter(Boolean)
+        const total = details.items.reduce((sum, item) =>
+          sum + (item.requestedVials ?? item.sentVials ?? item.receivedVials ?? item.fulfilledVials ?? 0), 0)
+        return {
+          vaccineName: names.length === 1 ? names[0] : names.length > 1 ? `${names.length} vaccines` : null,
+          vials: total || null,
+          vialsDir: 'in',
+          detail: details.note ?? null,
+        }
+      }
+      return { vaccineName: null, vials: details.itemCount ?? null, vialsDir: null, detail: details.note ?? details.reason ?? null }
     }
+    case 'APPROVAL_REQUEST':
+    case 'APPROVAL_APPROVE':
+    case 'APPROVAL_DECLINE':
+    case 'APPROVAL_CANCEL': {
+      const name = details.vaccineName ? displayVaccineName(details.vaccineName) : vn(details.vaccineId)
+      // stock_correction stores vials as payload.storeVials; threshold_change has no vial count
+      const payloadVials = details.payload?.storeVials ?? null
+      const typeLabel = details.type ? details.type.replace(/_/g, ' ') : null
+      return {
+        vaccineName: name,
+        vials: payloadVials,
+        vialsDir: payloadVials != null ? 'neutral' : null,
+        detail: details.note ?? typeLabel,
+      }
+    }
+    case 'STOCK_ASSIGN':
+    case 'STOCK_RECEIVE': {
+      // items array: [{ vials, vaccineId, vaccineName }]
+      const workerName = wn(details.workerId)
+      if (details.items?.length) {
+        const names = details.items
+          .map(item => item.vaccineName ? displayVaccineName(item.vaccineName) : vn(item.vaccineId))
+          .filter(Boolean)
+        const total = details.items.reduce((sum, item) => sum + (item.vials ?? 0), 0)
+        return {
+          vaccineName: names.length === 1 ? names[0] : names.length > 1 ? `${names.length} vaccines` : null,
+          vials: total || null,
+          vialsDir: 'in',
+          detail: workerName ? `Assigned to ${workerName}` : null,
+        }
+      }
+      const name = details.vaccineName ? displayVaccineName(details.vaccineName) : vn(details.vaccineId)
+      return { vaccineName: name, vials: details.vials ?? null, vialsDir: 'in', detail: workerName ? `Assigned to ${workerName}` : null }
+    }
+    case 'STOCK_DAY_END': {
+      // items: [{ usedVials, vaccineId, vaccineName, wastedVials, returnedVials }]
+      if (details.items?.length) {
+        const names = details.items
+          .map(item => item.vaccineName ? displayVaccineName(item.vaccineName) : vn(item.vaccineId))
+          .filter(Boolean)
+        const totalUsed = details.items.reduce((sum, item) => sum + (item.usedVials ?? 0), 0)
+        return {
+          vaccineName: names.length === 1 ? names[0] : names.length > 1 ? `${names.length} vaccines` : null,
+          vials: totalUsed || null,
+          vialsDir: 'out',
+          detail: null,
+        }
+      }
+      return { vaccineName: null, vials: null, vialsDir: null, detail: null }
+    }
+    default:
+      return { vaccineName: null, vials: null, vialsDir: null, detail: null }
   }
 }
 
 // ─── Column Headers ───────────────────────────────────────────────────────────
 function ColumnHeaders() {
   return (
-    <div className="hidden sm:grid grid-cols-[160px_1fr_120px_200px] gap-3 px-5 py-3 bg-slate-50 border-b border-surface-border">
+    <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 px-5 py-3 bg-slate-50 border-b border-surface-border">
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</span>
-      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine / Subject</span>
-      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses / Detail</span>
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vials</span>
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Details</span>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Date &amp; Time</span>
     </div>
   )
 }
 
 // ─── Entry Row ────────────────────────────────────────────────────────────────
-function EntryRow({ entry, vaccineNameById }) {
+function EntryRow({ entry, vaccineNameById, workerNameById }) {
   const meta    = ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-slate-50 text-text-muted border-slate-200', icon: ClipboardList }
   const IconCmp = meta.icon
-  const { subject, quantity, qtyType } = parseEntry(entry.action, entry.details, vaccineNameById)
+  const { vaccineName, vials, vialsDir, detail } = parseEntry(entry.action, entry.details, vaccineNameById, workerNameById)
 
-  const qtyColor = qtyType === 'in'
+  const vialsColor = vialsDir === 'in'
     ? 'text-success-dark'
-    : qtyType === 'out'
+    : vialsDir === 'out'
       ? 'text-warning-dark'
       : 'text-text-muted'
 
@@ -125,40 +218,38 @@ function EntryRow({ entry, vaccineNameById }) {
             <IconCmp size={12} strokeWidth={2.2} />
             {meta.label}
           </span>
-          {quantity && (
-            <div className={`flex items-center gap-1 text-xs font-bold flex-shrink-0 ${qtyColor}`}>
-              {qtyType === 'in'  && <ArrowUp size={12} strokeWidth={2.5} />}
-              {qtyType === 'out' && <ArrowDown size={12} strokeWidth={2.5} />}
-              {quantity}
+          {vials != null && (
+            <div className={`flex items-center gap-1 text-xs font-bold flex-shrink-0 ${vialsColor}`}>
+              {vialsDir === 'in'  && <ArrowUp size={12} strokeWidth={2.5} />}
+              {vialsDir === 'out' && <ArrowDown size={12} strokeWidth={2.5} />}
+              {vials}
             </div>
           )}
         </div>
-        <p className="text-sm font-semibold text-text">
-          {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
-        </p>
+        {vaccineName && <p className="text-sm font-semibold text-text">{vaccineName}</p>}
+        {detail && <p className="text-xs text-text-muted mt-0.5">{detail}</p>}
         <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
           <Clock size={10} className="flex-shrink-0" />
           <span>{formatFullDate(entry.createdAt)}</span>
         </div>
       </div>
       {/* Desktop row */}
-      <div className="hidden sm:grid grid-cols-[160px_1fr_120px_200px] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
+      <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
           <IconCmp size={12} strokeWidth={2.2} />
           {meta.label}
         </span>
-        <p className="text-sm font-semibold text-text break-words" title={subject ?? undefined}>
-          {subject ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
+        <p className="text-sm font-semibold text-text break-words" title={vaccineName ?? undefined}>
+          {vaccineName ?? <span className="text-text-muted italic text-xs font-normal">—</span>}
         </p>
-        {quantity ? (
-          <div className={`flex items-center gap-1 text-xs font-bold ${qtyColor}`}>
-            {qtyType === 'in'  && <ArrowUp   size={12} strokeWidth={2.5} />}
-            {qtyType === 'out' && <ArrowDown  size={12} strokeWidth={2.5} />}
-            {quantity}
-          </div>
-        ) : (
-          <span className="text-xs text-text-muted font-normal">—</span>
-        )}
+        <div className={`flex items-center gap-1 text-xs font-bold ${vialsColor}`}>
+          {vialsDir === 'in'  && vials != null && <ArrowUp   size={12} strokeWidth={2.5} />}
+          {vialsDir === 'out' && vials != null && <ArrowDown  size={12} strokeWidth={2.5} />}
+          {vials != null ? vials : <span className="text-xs text-text-muted font-normal">—</span>}
+        </div>
+        <p className="text-xs text-text-muted break-words">
+          {detail ?? <span className="opacity-40">—</span>}
+        </p>
         <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
           <Clock size={12} className="flex-shrink-0" />
           <span>{formatFullDate(entry.createdAt)}</span>
@@ -214,7 +305,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 }
 
 // ─── Supervisor Tab Content ───────────────────────────────────────────────────
-function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, setCurrentPage }) {
+function SupervisorTab({ name, email, entries, vaccineNameById, workerNameById, currentPage, setCurrentPage }) {
   const displayName = name ?? email
   const itemsPerPage = 10
   const totalPages = Math.ceil(entries.length / itemsPerPage)
@@ -252,7 +343,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, set
         <>
           <ColumnHeaders />
           <div className="divide-y divide-surface-border">
-            {paginatedEntries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} />)}
+            {paginatedEntries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} workerNameById={workerNameById} />)}
           </div>
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </>
@@ -262,7 +353,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, currentPage, set
 }
 
 // ─── Worker Card ──────────────────────────────────────────────────────────────
-function WorkerCard({ worker, entries, vaccineNameById }) {
+function WorkerCard({ worker, entries, vaccineNameById, workerNameById }) {
   const [workerPage, setWorkerPage] = useState(1)
   const workerName = worker.name ?? worker.email
   const itemsPerPage = 5
@@ -307,7 +398,7 @@ function WorkerCard({ worker, entries, vaccineNameById }) {
         <>
           <ColumnHeaders />
           <div className="divide-y divide-surface-border">
-            {paginatedEntries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} />)}
+            {paginatedEntries.map((entry, i) => <EntryRow key={i} entry={entry} vaccineNameById={vaccineNameById} workerNameById={workerNameById} />)}
           </div>
           <Pagination currentPage={workerPage} totalPages={totalPages} onPageChange={setWorkerPage} />
         </>
@@ -317,7 +408,7 @@ function WorkerCard({ worker, entries, vaccineNameById }) {
 }
 
 // ─── Workers Tab Content ──────────────────────────────────────────────────────
-function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameById }) {
+function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameById, workerNameById }) {
   const filteredWorkers = workers.filter((w) =>
     !search || (w.name ?? w.email).toLowerCase().includes(search.toLowerCase())
   )
@@ -360,6 +451,7 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
           worker={worker}
           entries={workerEntriesFn(worker)}
           vaccineNameById={vaccineNameById}
+          workerNameById={workerNameById}
         />
       ))}
     </div>
@@ -384,6 +476,7 @@ export default function FacilitySupervisorAuditLog() {
   const workers = (userData?.users ?? []).filter((u) => u.role === 'facility_worker')
   const logs    = logData?.auditLog ?? []
   const vaccineNameById = Object.fromEntries((vaccineData?.vaccines ?? []).map((v) => [v.id, displayVaccineName(v.name)]))
+  const workerNameById  = Object.fromEntries((userData?.users ?? []).map((u) => [u.id, u.name ?? u.email]))
 
   const hasFilters = !!(actionFilter || startDateFilter || endDateFilter)
 
@@ -510,9 +603,21 @@ export default function FacilitySupervisorAuditLog() {
             label="Action Type"
             placeholder="All Actions"
             options={[
-              { value: 'STOCK_ENTRY',  label: 'Stock Entry' },
-              { value: 'ADJUST_STOCK', label: 'Stock Correction' },
-              { value: 'LOGOUT',       label: 'Logout' },
+              { value: 'STOCK_ENTRY',            label: 'Stock Entry' },
+              { value: 'ADJUST_STOCK',            label: 'Stock Correction' },
+              { value: 'STOCK_REQUEST_CREATE',    label: 'Stock Requested' },
+              { value: 'STOCK_REQUEST_SENT',      label: 'Request Sent' },
+              { value: 'STOCK_REQUEST_RECEIVED',  label: 'Request Received' },
+              { value: 'STOCK_REQUEST_APPROVE',   label: 'Request Approved' },
+              { value: 'STOCK_REQUEST_CANCEL',    label: 'Request Cancelled' },
+              { value: 'STOCK_REQUEST_DECLINE',   label: 'Request Declined' },
+              { value: 'APPROVAL_REQUEST',        label: 'Approval Requested' },
+              { value: 'APPROVAL_APPROVE',        label: 'Approval Approved' },
+              { value: 'APPROVAL_DECLINE',        label: 'Approval Declined' },
+              { value: 'APPROVAL_CANCEL',         label: 'Approval Cancelled' },
+              { value: 'STOCK_ASSIGN',            label: 'Stock Assigned' },
+              { value: 'STOCK_DAY_END',           label: 'Day End' },
+              { value: 'LOGOUT',                  label: 'Logout' },
             ]}
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
@@ -567,6 +672,7 @@ export default function FacilitySupervisorAuditLog() {
               email={user?.email}
               entries={filteredSupervisorEntries}
               vaccineNameById={vaccineNameById}
+              workerNameById={workerNameById}
               currentPage={currentPage}
               setCurrentPage={setCurrentPage}
             />
@@ -578,6 +684,7 @@ export default function FacilitySupervisorAuditLog() {
               search={search}
               setSearch={setSearch}
               vaccineNameById={vaccineNameById}
+              workerNameById={workerNameById}
             />
           )}
         </div>

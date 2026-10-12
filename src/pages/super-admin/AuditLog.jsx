@@ -128,8 +128,16 @@ function formatDetails(row, vaccineNameById) {
     case 'STOCK_REQUEST_APPROVE':
     case 'STOCK_REQUEST_CANCEL':
     case 'STOCK_REQUEST_DECLINE': {
-      const count = d.items?.length ?? d.itemCount ?? null
       const noteStr = d.note ? ` · "${d.note}"` : ''
+      if (d.items?.length) {
+        const parts = d.items.map(item => {
+          const name = item.vaccineName ? displayVaccineName(item.vaccineName) : vaccineName(item.vaccineId)
+          const vials = item.requestedVials ?? item.sentVials ?? item.receivedVials ?? item.fulfilledVials
+          return vials != null ? `${name} (${vials} vials)` : name
+        })
+        return parts.join(', ') + noteStr
+      }
+      const count = d.itemCount ?? null
       return count != null ? `${count} vaccine${count !== 1 ? 's' : ''}${noteStr}` : (d.reason ?? '—')
     }
     case 'LOGOUT':
@@ -311,6 +319,54 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         }
       },
     ] : []),
+    // Vaccine column — shows for any action that carries a vaccine reference
+    {
+      key: 'vaccine_name',
+      label: 'Vaccine',
+      render: (row) => {
+        const d = row.details
+        if (!d) return <span className="text-text-muted/50 text-xs">—</span>
+        // Direct vaccineName field (STOCK_ENTRY, ADJUST_STOCK, APPROVAL_*)
+        if (d.vaccineName) {
+          return <span className="text-xs font-semibold text-text">{displayVaccineName(d.vaccineName)}</span>
+        }
+        // Items array (STOCK_REQUEST_*)
+        if (d.items?.length) {
+          const names = d.items.map(item =>
+            item.vaccineName
+              ? displayVaccineName(item.vaccineName)
+              : (vaccineNameById[item.vaccineId] ?? null)
+          ).filter(Boolean)
+          if (!names.length) return <span className="text-text-muted/50 text-xs">—</span>
+          return (
+            <span className="text-xs font-semibold text-text">
+              {names.length === 1 ? names[0] : `${names.length} vaccines`}
+            </span>
+          )
+        }
+        return <span className="text-text-muted/50 text-xs">—</span>
+      }
+    },
+    // Vials column — shows quantity in vials for stock-related actions
+    {
+      key: 'vials',
+      label: 'Vials',
+      render: (row) => {
+        const d = row.details
+        if (!d) return <span className="text-text-muted/50 text-xs">—</span>
+        // STOCK_ENTRY: backend sends d.vials
+        if (row.action === 'STOCK_ENTRY' && d.vials != null) {
+          return <span className="text-sm font-bold text-text tabular-nums">{d.vials}</span>
+        }
+        // STOCK_REQUEST_*: sum vials across items
+        if (row.action?.startsWith('STOCK_REQUEST') && d.items?.length) {
+          const total = d.items.reduce((sum, item) =>
+            sum + (item.requestedVials ?? item.sentVials ?? item.receivedVials ?? item.fulfilledVials ?? 0), 0)
+          return <span className="text-sm font-bold text-text tabular-nums">{total}</span>
+        }
+        return <span className="text-text-muted/50 text-xs">—</span>
+      }
+    },
     {
       key: 'details',
       label: 'Details',

@@ -55,6 +55,14 @@ function WorkerCard({ worker, ucName, confirmingId, onConfirmDeactivate, onCance
         </div>
       )}
 
+      {(worker.zmid || worker.phone || worker.cnic) && (
+        <div className="flex flex-col gap-1 text-xs px-1">
+          {worker.zmid  && <span className="text-text-muted">ZMID: <span className="font-semibold text-text">{worker.zmid}</span></span>}
+          {worker.phone && <span className="text-text-muted">Phone: <span className="font-semibold text-text">{worker.phone}</span></span>}
+          {worker.cnic  && <span className="text-text-muted">CNIC: <span className="font-semibold text-text">{worker.cnic}</span></span>}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 pt-1 border-t border-surface-border">
         <Button
           variant="ghost" size="sm" className="w-full justify-center"
