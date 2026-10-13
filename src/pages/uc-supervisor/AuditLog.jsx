@@ -9,9 +9,16 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, Award, Users } from 'lucide
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const ACTION_LABELS = {
-  LOGOUT:        'Logout',
-  STOCK_ENTRY:   'Stock Entry',
-  ADJUST_STOCK:  'Stock Correction',
+  LOGOUT:                    'Logout',
+  STOCK_ENTRY:               'Stock Entry',
+  ADJUST_STOCK:              'Stock Correction',
+  STOCK_REQUEST_CREATE:      'Stock Requested',
+  STOCK_REQUEST_SENT:        'Request Sent',
+  STOCK_REQUEST_RECEIVED:    'Stock Received',
+  STOCK_REQUEST_APPROVE:     'Request Approved',
+  STOCK_REQUEST_CANCEL:      'Request Cancelled',
+  STOCK_REQUEST_CLOSE_SHORT: 'Request Closed Short',
+  STOCK_REQUEST_DECLINE:     'Request Declined',
 }
 
 const TABS = [

@@ -33,9 +33,13 @@ function RequestCard({ req }) {
   const qc = useQueryClient()
   const [expanded, setExpanded] = useState(false)
   const [mismatchRows, setMismatchRows] = useState(null)
+  const [approveNote, setApproveNote] = useState('')
+
+  const needsNote = req.stage === 'ready_for_approval' &&
+    (req.items ?? []).some(it => (it.receivedVials ?? 0) < (it.outstandingVials ?? it.requestedVials))
 
   const approveMutation = useMutation({
-    mutationFn: () => approveStockRequest(req.id),
+    mutationFn: () => approveStockRequest(req.id, approveNote.trim() || undefined),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-requests'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
@@ -77,7 +81,9 @@ function RequestCard({ req }) {
               <thead className="bg-slate-50 text-text-muted uppercase tracking-wide">
                 <tr>
                   <th className="px-3 py-2 text-left">Vaccine</th>
-                  <th className="px-3 py-2 text-center">Requested</th>
+                  <th className="px-3 py-2 text-center">Req</th>
+                  <th className="px-3 py-2 text-center">Fulfilled</th>
+                  <th className="px-3 py-2 text-center">Left</th>
                   <th className="px-3 py-2 text-center">Sent</th>
                   <th className="px-3 py-2 text-center">Received</th>
                 </tr>
@@ -87,6 +93,8 @@ function RequestCard({ req }) {
                   <tr key={it.vaccineId}>
                     <td className="px-3 py-2 text-text">{displayVaccineName(it.vaccineName)}</td>
                     <td className="px-3 py-2 text-center text-text">{it.requestedVials}</td>
+                    <td className="px-3 py-2 text-center text-text">{it.fulfilledVials ?? 0}</td>
+                    <td className="px-3 py-2 text-center text-text">{it.outstandingVials ?? it.requestedVials}</td>
                     <td className="px-3 py-2 text-center text-text">{it.sentVials ?? '—'}</td>
                     <td className="px-3 py-2 text-center text-text">{it.receivedVials ?? '—'}</td>
                   </tr>
@@ -106,14 +114,37 @@ function RequestCard({ req }) {
             </div>
           )}
 
+          {req.shortfallNote && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Shortfall note: "{req.shortfallNote}"
+            </p>
+          )}
+
           {req.stage === 'ready_for_approval' && (
-            <Button
-              onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending}
-              className="w-full text-xs"
-            >
-              {approveMutation.isPending ? 'Approving…' : 'Approve Stock Request'}
-            </Button>
+            <div className="space-y-2">
+              {needsNote && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-muted uppercase tracking-wide">
+                    Shortfall note <span className="text-danger">*</span>
+                  </label>
+                  <textarea
+                    value={approveNote}
+                    onChange={e => setApproveNote(e.target.value)}
+                    placeholder="Explain why this delivery is short (required)"
+                    rows={2}
+                    maxLength={500}
+                    className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
+                </div>
+              )}
+              <Button
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending || (needsNote && !approveNote.trim())}
+                className="w-full text-xs"
+              >
+                {approveMutation.isPending ? 'Approving…' : 'Approve Stock Request'}
+              </Button>
+            </div>
           )}
         </div>
       )}

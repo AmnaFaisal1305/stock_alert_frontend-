@@ -40,7 +40,9 @@ function RequestCard({ req }) {
   const [showSent, setShowSent] = useState(false)
   const [declineMode, setDeclineMode] = useState(false)
   const [sentItems, setSentItems] = useState(() =>
-    (req.items ?? []).map(it => ({ vaccineId: it.vaccineId, vaccineName: it.vaccineName, sentVials: '' }))
+    (req.items ?? [])
+      .filter(it => (it.outstandingVials ?? it.requestedVials) > 0)
+      .map(it => ({ vaccineId: it.vaccineId, vaccineName: it.vaccineName, sentVials: '' }))
   )
   const [sentNote, setSentNote] = useState('')
   const [declineReason, setDeclineReason] = useState('')
@@ -99,11 +101,21 @@ function RequestCard({ req }) {
       {expanded && (
         <div className="pt-2 space-y-2">
           {(req.items ?? []).map(it => (
-            <div key={it.vaccineId} className="text-xs text-text-muted flex justify-between">
-              <span>{displayVaccineName(it.vaccineName)}</span>
-              <span>Req: {it.requestedVials} · Sent: {it.sentVials ?? '—'} · Rcvd: {it.receivedVials ?? '—'}</span>
+            <div key={it.vaccineId} className="text-xs text-text-muted flex justify-between gap-2">
+              <span className="flex-1">{displayVaccineName(it.vaccineName)}</span>
+              <span>
+                Req: {it.requestedVials}
+                {(it.fulfilledVials ?? 0) > 0 && ` · Done: ${it.fulfilledVials} · Left: ${it.outstandingVials ?? 0}`}
+                {' · '}Sent: {it.sentVials ?? '—'} · Rcvd: {it.receivedVials ?? '—'}
+              </span>
             </div>
           ))}
+
+          {req.shortfallNote && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Shortfall note: "{req.shortfallNote}"
+            </p>
+          )}
 
           <div className="flex gap-2 pt-2 flex-wrap">
             {CAN_SEND.has(req.stage) && !showSent && (

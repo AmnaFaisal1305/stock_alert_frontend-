@@ -318,8 +318,8 @@ export async function recordReceived(id, payload) {
   return request('PUT', `/api/stock-requests/${id}/received`, payload)
 }
 
-export async function approveStockRequest(id) {
-  return request('PUT', `/api/stock-requests/${id}/approve`, {})
+export async function approveStockRequest(id, note) {
+  return request('PUT', `/api/stock-requests/${id}/approve`, note ? { note } : {})
 }
 
 export async function cancelStockRequest(id, reason) {

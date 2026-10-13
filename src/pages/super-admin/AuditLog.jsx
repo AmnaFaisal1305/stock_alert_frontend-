@@ -53,8 +53,9 @@ const ACTION_LABELS = {
   STOCK_REQUEST_SENT:     'Stock Sent Recorded',
   STOCK_REQUEST_RECEIVED: 'Stock Received Recorded',
   STOCK_REQUEST_APPROVE:  'Stock Request Approved',
-  STOCK_REQUEST_CANCEL:   'Stock Request Cancelled',
-  STOCK_REQUEST_DECLINE:  'Stock Request Declined',
+  STOCK_REQUEST_CANCEL:      'Stock Request Cancelled',
+  STOCK_REQUEST_CLOSE_SHORT: 'Request Closed Short',
+  STOCK_REQUEST_DECLINE:     'Stock Request Declined',
 }
 
 function formatDetails(row, vaccineNameById) {
@@ -127,6 +128,7 @@ function formatDetails(row, vaccineNameById) {
     case 'STOCK_REQUEST_RECEIVED':
     case 'STOCK_REQUEST_APPROVE':
     case 'STOCK_REQUEST_CANCEL':
+    case 'STOCK_REQUEST_CLOSE_SHORT':
     case 'STOCK_REQUEST_DECLINE': {
       const noteStr = d.note ? ` · "${d.note}"` : ''
       if (d.items?.length) {
@@ -233,6 +235,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         { id: 'all',                 label: 'All',                  icon: Building2 },
         { id: 'district_supervisor', label: 'District Supervisor',  icon: Shield },
         { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
+        { id: 'facility_head',       label: 'Facility Heads',       icon: Building2 },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
@@ -240,6 +243,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         { id: 'super_admin',         label: 'Super Admin',          icon: ShieldAlert },
         { id: 'district_supervisor', label: 'District Supervisors', icon: Shield },
         { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
+        { id: 'facility_head',       label: 'Facility Heads',       icon: Building2 },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]

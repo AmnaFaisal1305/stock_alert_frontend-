@@ -46,8 +46,9 @@ const ACTION_META = {
   STOCK_REQUEST_SENT:     { label: 'Request Sent',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Send         },
   STOCK_REQUEST_RECEIVED: { label: 'Request Received',    pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
   STOCK_REQUEST_APPROVE:  { label: 'Request Approved',    pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
-  STOCK_REQUEST_CANCEL:   { label: 'Request Cancelled',   pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: XCircle      },
-  STOCK_REQUEST_DECLINE:  { label: 'Request Declined',    pill: 'bg-danger-bg text-danger border-danger/15',         icon: XCircle      },
+  STOCK_REQUEST_CANCEL:      { label: 'Request Cancelled',   pill: 'bg-slate-50 text-text-muted border-slate-200', icon: XCircle },
+  STOCK_REQUEST_CLOSE_SHORT: { label: 'Request Closed Short', pill: 'bg-slate-50 text-text-muted border-slate-200', icon: XCircle },
+  STOCK_REQUEST_DECLINE:     { label: 'Request Declined',     pill: 'bg-danger-bg text-danger border-danger/15',    icon: XCircle },
   APPROVAL_REQUEST:       { label: 'Approval Requested',  pill: 'bg-primary/5 text-primary border-primary/10',       icon: ClipboardList },
   APPROVAL_APPROVE:       { label: 'Approval Approved',   pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
   APPROVAL_DECLINE:       { label: 'Approval Declined',   pill: 'bg-danger-bg text-danger border-danger/15',         icon: XCircle      },
@@ -113,6 +114,7 @@ function parseEntry(action, details, vaccineNameById, workerNameById) {
     case 'STOCK_REQUEST_RECEIVED':
     case 'STOCK_REQUEST_APPROVE':
     case 'STOCK_REQUEST_CANCEL':
+    case 'STOCK_REQUEST_CLOSE_SHORT':
     case 'STOCK_REQUEST_DECLINE': {
       if (details.items?.length) {
         const names = details.items
@@ -609,7 +611,8 @@ export default function FacilitySupervisorAuditLog() {
               { value: 'STOCK_REQUEST_SENT',      label: 'Request Sent' },
               { value: 'STOCK_REQUEST_RECEIVED',  label: 'Request Received' },
               { value: 'STOCK_REQUEST_APPROVE',   label: 'Request Approved' },
-              { value: 'STOCK_REQUEST_CANCEL',    label: 'Request Cancelled' },
+              { value: 'STOCK_REQUEST_CANCEL',      label: 'Request Cancelled' },
+              { value: 'STOCK_REQUEST_CLOSE_SHORT', label: 'Request Closed Short' },
               { value: 'STOCK_REQUEST_DECLINE',   label: 'Request Declined' },
               { value: 'APPROVAL_REQUEST',        label: 'Approval Requested' },
               { value: 'APPROVAL_APPROVE',        label: 'Approval Approved' },

@@ -99,14 +99,16 @@ function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
 // ── Record-received panel ──────────────────────────────────────────────────────
 function RecordReceivedPanel({ req, onClose, onSubmit, isPending }) {
   const [items, setItems] = useState(() =>
-    (req.items ?? []).map(it => ({
-      vaccineId: it.vaccineId,
-      vaccineName: it.vaccineName,
-      receivedVials: '',
-      batchNo: '',
-      expiryDate: '',
-      manufacturer: '',
-    }))
+    (req.items ?? [])
+      .filter(it => (it.outstandingVials ?? it.requestedVials) > 0)
+      .map(it => ({
+        vaccineId: it.vaccineId,
+        vaccineName: it.vaccineName,
+        receivedVials: '',
+        batchNo: '',
+        expiryDate: '',
+        manufacturer: '',
+      }))
   )
   const [note, setNote] = useState('')
   const [error, setError] = useState(null)
@@ -185,7 +187,9 @@ function RequestCard({ req }) {
   const [cancelReason, setCancelReason] = useState('')
 
   const isOpen = OPEN_STAGES.has(req.stage)
+  const isCloseShort = req.status === 'partially_fulfilled' && !req.closedAt
   const hasFigures = req.items?.some(it => (it.sentVials ?? 0) > 0 || (it.receivedVials ?? 0) > 0)
+  const reasonRequired = isCloseShort || hasFigures
 
   const receiveMutation = useMutation({
     mutationFn: (payload) => recordReceived(req.id, payload),
@@ -197,7 +201,7 @@ function RequestCard({ req }) {
   })
 
   const cancelMutation = useMutation({
-    mutationFn: () => cancelStockRequest(req.id, hasFigures ? cancelReason : undefined),
+    mutationFn: () => cancelStockRequest(req.id, reasonRequired ? cancelReason : undefined),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock-requests'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
@@ -229,11 +233,21 @@ function RequestCard({ req }) {
       {expanded && (
         <div className="pt-2 space-y-2">
           {(req.items ?? []).map(it => (
-            <div key={it.vaccineId} className="text-xs text-text-muted flex justify-between">
-              <span>{displayVaccineName(it.vaccineName)}</span>
-              <span>Req: {it.requestedVials} · Sent: {it.sentVials ?? '—'} · Rcvd: {it.receivedVials ?? '—'}</span>
+            <div key={it.vaccineId} className="text-xs text-text-muted flex justify-between gap-2">
+              <span className="flex-1">{displayVaccineName(it.vaccineName)}</span>
+              <span>
+                Req: {it.requestedVials}
+                {(it.fulfilledVials ?? 0) > 0 && ` · Done: ${it.fulfilledVials} · Left: ${it.outstandingVials ?? 0}`}
+                {' · '}Sent: {it.sentVials ?? '—'} · Rcvd: {it.receivedVials ?? '—'}
+              </span>
             </div>
           ))}
+
+          {req.shortfallNote && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Shortfall note: "{req.shortfallNote}"
+            </p>
+          )}
 
           <div className="flex gap-2 pt-2 flex-wrap">
             {CAN_RECEIVE.has(req.stage) && !showReceive && (
@@ -241,13 +255,13 @@ function RequestCard({ req }) {
                 Record Received
               </Button>
             )}
-            {isOpen && !cancelConfirm && (
+            {(isOpen || isCloseShort) && !cancelConfirm && (
               <Button
                 variant="outline"
                 onClick={() => setCancelConfirm(true)}
                 className="text-xs text-danger border-danger/30 hover:bg-danger/5"
               >
-                Cancel Request
+                {isCloseShort ? 'Close Short' : 'Cancel Request'}
               </Button>
             )}
           </div>
@@ -263,12 +277,14 @@ function RequestCard({ req }) {
 
           {cancelConfirm && (
             <div className="mt-3 bg-red-50 rounded-xl border border-red-200 p-4 space-y-3">
-              <p className="text-sm font-medium text-danger">Cancel this request?</p>
-              {hasFigures && (
+              <p className="text-sm font-medium text-danger">
+                {isCloseShort ? 'Close this request short?' : 'Cancel this request?'}
+              </p>
+              {reasonRequired && (
                 <textarea
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
-                  placeholder="Reason for cancellation (required since figures were recorded)"
+                  placeholder={isCloseShort ? 'Reason for closing short (required)' : 'Reason for cancellation (required since figures were recorded)'}
                   rows={2}
                   maxLength={500}
                   className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
@@ -277,10 +293,10 @@ function RequestCard({ req }) {
               <div className="flex gap-2">
                 <Button
                   onClick={() => cancelMutation.mutate()}
-                  disabled={cancelMutation.isPending || (hasFigures && !cancelReason.trim())}
+                  disabled={cancelMutation.isPending || (reasonRequired && !cancelReason.trim())}
                   className="bg-danger hover:bg-danger/90 text-xs"
                 >
-                  {cancelMutation.isPending ? 'Cancelling…' : 'Confirm Cancel'}
+                  {cancelMutation.isPending ? 'Submitting…' : isCloseShort ? 'Confirm Close Short' : 'Confirm Cancel'}
                 </Button>
                 <Button variant="outline" onClick={() => setCancelConfirm(false)} className="text-xs">Back</Button>
               </div>
