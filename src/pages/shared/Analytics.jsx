@@ -11,6 +11,7 @@ import Table from '../../components/shared/Table'
 import StatCard from '../../components/shared/StatCard'
 import DatePicker from '../../components/ui/DatePicker'
 import Button from '../../components/ui/Button'
+import PageHeader from '../../components/shared/PageHeader'
 import {
   Package, TrendingDown, AlertTriangle, Clock, FileSpreadsheet, FileText,
   BarChart2, Activity, Percent, CheckCircle2,
@@ -73,7 +74,7 @@ function ChartTooltip({ active, payload, label, nameKey }) {
   if (!active || !payload?.length) return null
   const title = nameKey ? (payload[0]?.payload?.[nameKey] ?? label) : label
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3.5 py-3 text-xs min-w-[150px] max-w-[230px]">
+    <div className="bg-surface border border-surface-border rounded-xl shadow-lg px-3.5 py-3 text-xs min-w-[150px] max-w-[230px]">
       <p className="font-bold text-text mb-2 leading-tight break-words">{title}</p>
       {payload.map((p) =>
         (p.value ?? 0) > 0 ? (
@@ -103,7 +104,7 @@ function EmptyChart({ message = 'No data for this period' }) {
 // ── Chart card wrapper ────────────────────────────────────────────────────────
 function ChartCard({ title, subtitle, icon: Icon, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
       <div className="px-5 py-3.5 border-b border-surface-border flex items-center gap-2.5">
         {Icon && (
           <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
@@ -370,17 +371,14 @@ export default function Analytics() {
     <div className="flex flex-col gap-5 animate-in fade-in duration-200">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Analytics</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            Stock movement · Remaining inventory · Requests · Approvals
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb="Analytics"
+        title="Analytics"
+        subtitle="Stock movement · Remaining inventory · Requests · Approvals"
+      />
 
       {/* ── Date range controls ──────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-surface-border px-4 sm:px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+      <div className="bg-surface rounded-2xl border border-surface-border px-4 sm:px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Clock size={13} className="text-primary" />
           <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Period</span>
@@ -441,7 +439,7 @@ export default function Analytics() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto -mx-1 px-1 pb-0.5">
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit min-w-max">
+        <div className="flex gap-1 p-1 bg-surface-chip rounded-xl w-fit min-w-max">
           {TABS.map((t) => {
             const count = !isLoading && !isError ? tabCounts[t.id] : null
             return (
@@ -450,7 +448,7 @@ export default function Analytics() {
                 onClick={() => setTab(t.id)}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                   activeTab === t.id
-                    ? 'bg-white text-primary shadow-sm'
+                    ? 'bg-surface text-primary shadow-sm'
                     : 'text-text-muted hover:text-text'
                 }`}
               >
@@ -459,7 +457,7 @@ export default function Analytics() {
                   <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${
                     activeTab === t.id
                       ? 'bg-primary/10 text-primary'
-                      : 'bg-slate-200 text-text-muted'
+                      : 'bg-surface-chip text-text-muted'
                   }`}>
                     {count}
                   </span>
@@ -474,11 +472,11 @@ export default function Analytics() {
       {isLoading && (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-slate-50 border border-slate-200 rounded-2xl animate-pulse" />)}
+            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-surface-alt border border-surface-border rounded-2xl animate-pulse" />)}
           </div>
-          <div className="h-[300px] bg-slate-50 border border-slate-200 rounded-2xl animate-pulse" />
+          <div className="h-[300px] bg-surface-alt border border-surface-border rounded-2xl animate-pulse" />
           <div className="flex flex-col gap-2">
-            {[1,2,3,4].map((i) => <div key={i} className="h-12 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+            {[1,2,3,4].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
           </div>
         </div>
       )}
@@ -676,7 +674,7 @@ export default function Analytics() {
                 </ChartCard>
 
                 {/* Donut — overall status split (1/3 width on desktop) */}
-                <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+                <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
                   <div className="px-5 py-3.5 border-b border-surface-border flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
                       <CheckCircle2 size={13} className="text-primary" />
@@ -711,7 +709,7 @@ export default function Analytics() {
                                 if (!active || !payload?.length) return null
                                 const d = payload[0].payload
                                 return (
-                                  <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3.5 py-2.5 text-xs">
+                                  <div className="bg-surface border border-surface-border rounded-xl shadow-lg px-3.5 py-2.5 text-xs">
                                     <p className="font-bold text-text">{d.name}</p>
                                     <p className="text-text-muted mt-0.5">{d.value.toLocaleString()} requests</p>
                                   </div>

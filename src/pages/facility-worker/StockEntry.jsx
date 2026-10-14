@@ -36,13 +36,13 @@ export default function StockEntry() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="text-center py-14 border border-dashed border-slate-200 bg-white rounded-2xl text-text-muted px-4">
+        <div className="text-center py-14 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted px-4">
           <Syringe size={28} className="mx-auto mb-3 text-text-muted/30" />
           <p className="font-bold text-sm">No vials assigned yet</p>
           <p className="text-xs mt-1 text-text-muted/70">Your supervisor will assign vials to you each morning.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">

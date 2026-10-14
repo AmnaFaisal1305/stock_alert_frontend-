@@ -6,6 +6,7 @@ import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import StatusBadge from '../../components/shared/StatusBadge'
 import SkeletonCard from '../../components/shared/SkeletonCard'
+import PageHeader from '../../components/shared/PageHeader'
 import { statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -29,7 +30,7 @@ function VaccineCard({ v }) {
     'border-surface-border'
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${borderColor}`}>
+    <div className={`bg-surface rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${borderColor}`}>
       <div className={`h-1 ${accentBar}`} />
       <div className="p-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
@@ -46,7 +47,7 @@ function VaccineCard({ v }) {
           </div>
         </div>
 
-        <div className="h-px bg-slate-100" />
+        <div className="h-px bg-surface-border" />
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-0.5">
@@ -71,7 +72,7 @@ function VaccineCard({ v }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-50">
+        <div className="flex items-center gap-1.5 pt-1 border-t border-surface-border">
           <Calendar size={11} className="text-text-muted/50 flex-shrink-0" />
           <p className="text-[10px] font-semibold text-text-muted/70 uppercase tracking-wider">
             {v.recordedAt
@@ -116,11 +117,11 @@ export default function FacilityDetail() {
   })
 
   const filterPills = [
-    { key: 'all',      label: 'All',      count: allVaccines.length,                                        activeClass: 'bg-primary text-white border-primary'     },
-    { key: 'critical', label: 'Critical', count: counts.critical ?? 0, icon: AlertCircle,                   activeClass: 'bg-danger text-white border-danger'       },
-    { key: 'low',      label: 'Low Stock',count: counts.low ?? 0,      icon: AlertTriangle,                 activeClass: 'bg-warning text-white border-warning'     },
-    { key: 'adequate', label: 'Normal',   count: counts.adequate ?? 0, icon: CheckCircle2,                  activeClass: 'bg-success text-white border-success'     },
-    { key: 'no_data',  label: 'No Data',  count: counts.no_data ?? 0,  icon: HelpCircle,                   activeClass: 'bg-slate-500 text-white border-slate-500' },
+    { key: 'all',      label: 'All',      count: allVaccines.length,                                        activeClass: 'bg-primary text-white border-primary'              },
+    { key: 'critical', label: 'Critical', count: counts.critical ?? 0, icon: AlertCircle,                   activeClass: 'bg-danger text-white border-danger'                },
+    { key: 'low',      label: 'Low Stock',count: counts.low ?? 0,      icon: AlertTriangle,                 activeClass: 'bg-warning text-white border-warning'              },
+    { key: 'adequate', label: 'Normal',   count: counts.adequate ?? 0, icon: CheckCircle2,                  activeClass: 'bg-success text-white border-success'              },
+    { key: 'no_data',  label: 'No Data',  count: counts.no_data ?? 0,  icon: HelpCircle,                   activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
   ]
 
   const hasActiveFilter = statusFilter !== 'all' || searchQuery !== ''
@@ -138,9 +139,9 @@ export default function FacilityDetail() {
 
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-[88px] bg-slate-100 rounded-2xl" />
+          <div className="h-[88px] bg-surface-chip rounded-2xl" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-surface-alt border border-surface-border rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} lines={3} />)}
@@ -157,27 +158,20 @@ export default function FacilityDetail() {
       {!isLoading && !isError && facility && (
         <>
           {/* Page Header */}
-          <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-white tracking-tight">{facility.name}</h1>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  facility.isActive
-                    ? 'bg-white/20 text-white border border-white/30'
-                    : 'bg-white/10 text-white/60 border border-white/20'
-                }`}>
-                  {facility.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <p className="text-sm text-white/70 mt-0.5">
-                {facility.districtName} District
-                {facility.facilitySupervisorName ? ` · ${facility.facilitySupervisorName}` : ''}
-              </p>
-            </div>
-            <div className="p-3 rounded-xl bg-white/10 flex-shrink-0">
-              <Building2 size={20} className="text-white/80" strokeWidth={2} />
-            </div>
-          </div>
+          <PageHeader
+            breadcrumb="Facility"
+            title={facility.name}
+            subtitle={`${facility.districtName} District${facility.facilitySupervisorName ? ` · ${facility.facilitySupervisorName}` : ''}`}
+            actions={
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                facility.isActive
+                  ? 'bg-success-bg text-success-dark border-success/15'
+                  : 'bg-surface-chip text-text-muted border-surface-border'
+              }`}>
+                {facility.isActive ? 'Active' : 'Inactive'}
+              </span>
+            }
+          />
 
           {/* Status Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -185,7 +179,7 @@ export default function FacilityDetail() {
               <button
                 key={label}
                 onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
-                className={`bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm text-left transition-all duration-150 ${
+                className={`bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm text-left transition-all duration-150 ${
                   statusFilter === key ? 'ring-2 ring-primary/30 border-primary/30' : 'hover:shadow-md'
                 }`}
               >
@@ -213,22 +207,22 @@ export default function FacilityDetail() {
                 Vaccine Inventory
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
+                <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
                   {filteredVaccines.length} of {allVaccines.length} vaccines
                 </span>
                 {allVaccines.length > 0 && (
-                  <div className="flex items-center gap-0.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+                  <div className="flex items-center gap-0.5 bg-surface border border-surface-border rounded-xl p-1 shadow-sm">
                     <button
                       onClick={() => setView('cards')}
                       title="Card view"
-                      className={`p-1.5 rounded-lg transition-all ${view === 'cards' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+                      className={`p-1.5 rounded-lg transition-all ${view === 'cards' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
                     >
                       <LayoutGrid size={14} />
                     </button>
                     <button
                       onClick={() => setView('table')}
                       title="Table view"
-                      className={`p-1.5 rounded-lg transition-all ${view === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-slate-50 hover:text-text'}`}
+                      className={`p-1.5 rounded-lg transition-all ${view === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
                     >
                       <List size={14} />
                     </button>
@@ -247,7 +241,7 @@ export default function FacilityDetail() {
                     placeholder="Search vaccine..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
                   />
                 </div>
 
@@ -259,7 +253,7 @@ export default function FacilityDetail() {
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
                         statusFilter === key
                           ? activeClass
-                          : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                          : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
                       }`}
                     >
                       {Icon && <Icon size={10} />}
@@ -281,13 +275,13 @@ export default function FacilityDetail() {
             )}
 
             {allVaccines.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+              <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
                 <Syringe size={36} className="mx-auto mb-3 opacity-20" />
                 <p className="font-bold text-text">No vaccines configured</p>
                 <p className="text-xs mt-1">No vaccine records have been set up for this facility yet.</p>
               </div>
             ) : filteredVaccines.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+              <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
                 <Search size={28} className="mx-auto mb-3 opacity-20" />
                 <p className="font-bold text-text">No matches</p>
                 <p className="text-xs mt-1">Try adjusting the search or status filter.</p>
@@ -300,8 +294,8 @@ export default function FacilityDetail() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-surface-border shadow-sm">
-              <div className="bg-white min-w-[640px]">
-                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+              <div className="bg-surface min-w-[640px]">
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-surface-alt border-b border-surface-border gap-4 items-center">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock</span>
@@ -318,7 +312,7 @@ export default function FacilityDetail() {
                   return (
                     <div
                       key={v.vaccineId}
-                      className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-slate-50/60 transition-colors"
+                      className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-surface-alt/60 transition-colors"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`w-1 h-7 rounded-full flex-shrink-0 ${
@@ -344,7 +338,7 @@ export default function FacilityDetail() {
                         <span className="text-xs text-text-muted italic">Not set</span>
                       )}
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="flex-1 h-2 rounded-full bg-surface-chip overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${
                             v.status === 'critical' ? 'bg-danger' :
                             v.status === 'low'      ? 'bg-warning' :
