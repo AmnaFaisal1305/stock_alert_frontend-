@@ -155,7 +155,7 @@ function RequestCard({ req }) {
                   onChange={e => setSentNote(e.target.value)}
                   rows={2}
                   maxLength={500}
-                  className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -176,7 +176,7 @@ function RequestCard({ req }) {
                 placeholder="Reason for declining (required)"
                 rows={2}
                 maxLength={500}
-                className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+                className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
               />
               <div className="flex gap-2">
                 <Button

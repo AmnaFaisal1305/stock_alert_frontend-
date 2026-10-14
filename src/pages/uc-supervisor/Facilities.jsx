@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import PageHeader from '../../components/shared/PageHeader'
 import { getFacilities, getDashboard } from '../../lib/api'
 import { facilityStatus } from '../../lib/status'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -79,7 +80,7 @@ export default function UCSupervisorFacilities() {
         row.facilitySupervisorName ? (
           <span className="text-xs font-bold text-text">{row.facilitySupervisorName}</span>
         ) : (
-          <span className="text-[10px] font-bold text-text-muted/70 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
+          <span className="text-[10px] font-bold text-text-muted/70 bg-surface-alt border border-surface-border px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
         )
       ),
     },
@@ -103,14 +104,11 @@ export default function UCSupervisorFacilities() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Vaccine Performance</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            {isLoading ? 'Loading…' : `${facilities.length} facilit${facilities.length !== 1 ? 'ies' : 'y'} in your union councils`}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb="UC Supervisor › Facilities"
+        title="Vaccine Performance"
+        subtitle={isLoading ? undefined : `${facilities.length} ${facilities.length !== 1 ? 'Facilities' : 'Facility'} in your union councils`}
+      />
 
       {/* Search + Filter row */}
       {!isLoading && !isError && facilities.length > 0 && (
@@ -127,7 +125,7 @@ export default function UCSupervisorFacilities() {
               { key: 'critical', label: 'Critical',  count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'       },
               { key: 'low',      label: 'Low',       count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'     },
               { key: 'adequate', label: 'Normal',    count: statusCounts.adequate,  activeClass: 'bg-success text-white border-success'     },
-              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,   activeClass: 'bg-slate-500 text-white border-slate-500' },
+              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,   activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
             ].map(({ key, label, count, activeClass }) => (
               <button
                 key={key}
@@ -135,7 +133,7 @@ export default function UCSupervisorFacilities() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
                   statusFilter === key
                     ? activeClass
-                    : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                    : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
                 }`}
               >
                 {key === 'critical' && <AlertCircle size={11} />}
@@ -153,7 +151,7 @@ export default function UCSupervisorFacilities() {
       {/* Skeletons */}
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -171,7 +169,7 @@ export default function UCSupervisorFacilities() {
             rows={paginatedFacilities}
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}"` : 'No facilities found.'}
             mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-slate-50">
+              <div className="px-4 py-3 hover:bg-surface-alt">
                 <div className="flex items-center gap-2 min-w-0 mb-1">
                   <Building2 size={12} className="text-text-muted/70 flex-shrink-0" />
                   <RouterLink to={`/uc/facilities/${row.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">

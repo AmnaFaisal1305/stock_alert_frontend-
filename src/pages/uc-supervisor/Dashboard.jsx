@@ -1,12 +1,13 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle, AlertCircle, CheckCircle2, Building2,
-  ArrowRight, Search, X, ChevronDown, Check, MapPin, Layers,
+  ArrowRight, Search,
 } from 'lucide-react'
 import { getDashboard, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import PageHeader from '../../components/shared/PageHeader'
 import StatCard from '../../components/shared/StatCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { facilityStatus, statusConfig } from '../../lib/status'
@@ -104,9 +105,9 @@ export default function UCSupervisorDashboard() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 animate-pulse">
-        <div className="h-24 bg-slate-100 rounded-2xl" />
+        <div className="h-24 bg-surface-chip rounded-2xl" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
@@ -126,19 +127,11 @@ export default function UCSupervisorDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      {/* Header banner */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
-        <p className="text-sm text-white/70 font-semibold">
-          {user.ucNames?.length ? user.ucNames.join(' · ') : 'UC Supervisor Dashboard'}
-        </p>
-        <p className="text-white font-bold text-lg mt-1">{user.name}</p>
-        <div className="flex flex-wrap gap-3 mt-4">
-          <div className="bg-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
-            <span className="text-xl font-bold text-white">{facilityCount}</span>
-            <span className="text-xs font-semibold text-white/70">Facilities</span>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb="UC Supervisor"
+        title={user.ucNames?.length ? user.ucNames.join(' · ') : 'My Union Councils'}
+        subtitle={facilityCount ? `${facilityCount} ${facilityCount === 1 ? 'Facility' : 'Facilities'}` : undefined}
+      />
 
       {/* Alert banners */}
       {counts.critical > 0 && (
@@ -222,7 +215,7 @@ export default function UCSupervisorDashboard() {
               placeholder="Search facilities…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+              className="w-full pl-10 pr-3.5 py-2 text-sm border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
             />
           </div>
 
@@ -241,7 +234,7 @@ export default function UCSupervisorDashboard() {
                 'px-3 py-2 rounded-xl text-xs font-semibold border transition-all',
                 statusFilter === opt.value
                   ? 'bg-primary text-white border-primary shadow-sm'
-                  : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text',
+                  : 'bg-surface text-text-muted border-surface-border hover:border-primary/40 hover:text-text',
               ].join(' ')}
             >
               {opt.label}
@@ -259,8 +252,8 @@ export default function UCSupervisorDashboard() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+        <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-surface-alt border-b border-surface-border gap-4 items-center">
             {['Facility', 'Town', 'UC', 'Supervisor', 'Last Activity', 'Status'].map((h) => (
               <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{h}</span>
             ))}
@@ -279,7 +272,7 @@ export default function UCSupervisorDashboard() {
               return (
                 <div key={f.id} className={`border-b border-surface-border last:border-b-0 border-l-4 ${leftBorder}`}>
                   {/* Mobile card */}
-                  <div className="sm:hidden px-4 py-3 hover:bg-slate-50/60 transition-colors">
+                  <div className="sm:hidden px-4 py-3 hover:bg-surface-alt/60 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <Building2 size={12} className="text-text-muted/60 flex-shrink-0" />
@@ -301,7 +294,7 @@ export default function UCSupervisorDashboard() {
                     </div>
                   </div>
                   {/* Desktop row */}
-                  <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center hover:bg-slate-50/60 transition-colors">
+                  <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center hover:bg-surface-alt/60 transition-colors">
                     <div className="flex items-center gap-2 min-w-0">
                       <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
                       <Link to={`/uc/facilities/${f.id}`} className="font-bold text-text text-sm truncate hover:text-primary transition-colors">
@@ -333,12 +326,12 @@ export default function UCSupervisorDashboard() {
       {vaccineColumns.length > 0 && facilityRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Live Stock &amp; Consumption</h2>
-          <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse" style={{ minWidth: `${200 + vaccineColumns.length * 150}px` }}>
                 <thead>
-                  <tr className="bg-slate-50 border-b border-surface-border">
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-slate-50 z-10">
+                  <tr className="bg-surface-alt border-b border-surface-border">
+                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-surface-alt z-10">
                       Facility
                     </th>
                     {vaccineColumns.map((v) => (
@@ -350,14 +343,14 @@ export default function UCSupervisorDashboard() {
                 </thead>
                 <tbody className="divide-y divide-surface-border">
                   {facilityRows.map((fRow) => (
-                    <tr key={fRow.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-white z-10">
+                    <tr key={fRow.id} className="hover:bg-surface-alt/40 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-surface z-10">
                         {fRow.name}
                       </td>
                       {vaccineColumns.map((v) => {
                         const cell = fRow.vaccines.get(v.id)
-                        if (!cell) return <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-slate-50/50">—</td>
-                        const bg = cell.status === 'critical' ? 'bg-danger-bg/40' : cell.status === 'low' ? 'bg-warning-bg/40' : cell.status === 'adequate' ? 'bg-success-bg/30' : 'bg-slate-50/50'
+                        if (!cell) return <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-surface-alt/50">—</td>
+                        const bg = cell.status === 'critical' ? 'bg-danger-bg/40' : cell.status === 'low' ? 'bg-warning-bg/40' : cell.status === 'adequate' ? 'bg-success-bg/30' : 'bg-surface-alt/50'
                         return (
                           <td key={v.id} className={`px-4 py-3 text-center ${bg}`}>
                             <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>
