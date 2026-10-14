@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Building2, AlertCircle, AlertTriangle, CheckCircle2, User } from 'lucide-react'
+import PageHeader from '../../components/shared/PageHeader'
 import { useQuery } from '@tanstack/react-query'
 import { getUnionCouncils, getFacilities, getDashboard } from '../../lib/api'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -65,9 +66,9 @@ export default function UCDetail() {
 
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-6 bg-slate-100 rounded w-1/4" />
+          <div className="h-6 bg-surface-chip rounded w-1/4" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
@@ -83,35 +84,31 @@ export default function UCDetail() {
 
       {!isLoading && uc && (
         <>
-          {/* Banner */}
-          <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl font-bold text-white tracking-tight">{uc.name}</h1>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    uc.isActive
-                      ? 'bg-white/20 text-white border border-white/30'
-                      : 'bg-white/10 text-white/60 border border-white/20'
-                  }`}>
-                    {uc.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <p className="text-sm text-white/70 mt-0.5">
-                  {uc.townName} · {uc.districtName} · {facilities.length} {facilities.length === 1 ? 'facility' : 'facilities'}
-                </p>
-              </div>
-              {uc.ucSupervisorName && (
-                <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-3 py-2">
-                  <User size={13} className="text-white/70 flex-shrink-0" />
-                  <div>
-                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider">UC Supervisor</p>
-                    <p className="text-sm font-bold text-white">{uc.ucSupervisorName}</p>
+          <PageHeader
+            breadcrumb="Super Admin › UC Management › UC Detail"
+            title={uc.name}
+            subtitle={`${uc.townName} · ${uc.districtName} · ${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'}`}
+            actions={
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  uc.isActive
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'bg-surface-chip text-text-muted border border-surface-border'
+                }`}>
+                  {uc.isActive ? 'Active' : 'Inactive'}
+                </span>
+                {uc.ucSupervisorName && (
+                  <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
+                    <User size={13} className="text-primary flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">UC Supervisor</p>
+                      <p className="text-sm font-bold text-text">{uc.ucSupervisorName}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
+              </div>
+            }
+          />
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -141,12 +138,12 @@ export default function UCDetail() {
                     <Link
                       key={f.id}
                       to={`/super-admin/facilities/${f.id}`}
-                      className="bg-white rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200"
+                      className="bg-surface rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="p-2 rounded-lg bg-red-50 text-primary mt-0.5 flex-shrink-0">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5 flex-shrink-0">
                               <Building2 size={16} />
                             </div>
                             <div className="min-w-0">
@@ -162,7 +159,7 @@ export default function UCDetail() {
                         </div>
 
                         {hasAny && (
-                          <div className="flex gap-1.5 pt-3 border-t border-slate-100 flex-wrap">
+                          <div className="flex gap-1.5 pt-3 border-t border-surface-border flex-wrap">
                             {sc.critical > 0 && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-danger-bg text-danger border border-danger/10">
                                 {sc.critical} Critical

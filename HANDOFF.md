@@ -1,13 +1,136 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-11 (session 5)  
+**Last updated:** 2026-10-14 (session 7 — UI/UX redesign)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-11 Session 5 (latest)
+## Session Log — 2026-10-14 Session 7 (latest) — UI/UX Redesign
+
+### Goal
+
+Adopt a "clinical Material" design language from `reference design/` (11 HTML mockups: `admin-01` through `admin-08`, `fs-01` through `fs-05`). Kill the saturated AI-generated look (green `#006241` banners, white surfaces, per-screen bespoke headers). Replace with: warm paper background, forest-green sidebar, Figtree webfont, thin large greeting headers, breadcrumbs, 18 px rounded cards, muted pastel status pills, and dark mode.
+
+**Branch:** `redesign/ui-clinical-material`  
+**Commit with Phases 1 + 2:** `069d8ad`  
+**Pre-existing uncommitted files** (from before this session, intentionally left unstaged): `AuthContext.jsx`, `api.js`, `sw.js`, `vite.config.js`
+
+---
+
+### Architecture: CSS-variable design tokens
+
+All semantic color tokens are routed through CSS custom properties in `src/index.css` as **RGB channel triplets** (e.g. `--pri: 47 66 52`). Tailwind maps them via `rgb(var(--token) / <alpha-value>)` so opacity modifiers (`bg-primary/5`, `ring-danger/20`) keep working.
+
+`tailwind.config.js` maps: `primary`, `secondary`, `success`, `warning`, `danger`, `surface`, `text`, `epi-dark` — all to CSS variables.
+
+New tokens added: `borderRadius.card = '1.125rem'` (18 px), `fontFamily.sans` → Figtree Variable.
+
+Dark mode is **manual-only** (toggled via TopBar Sun/Moon button, stored as `sst_theme` in `localStorage`, applied via `data-theme="dark"` on `<html>`). Auto `prefers-color-scheme` is intentionally NOT enabled yet — screens are being converted one by one and unconverted screens would look broken in auto-dark.
+
+---
+
+### Phase 1 — Foundation (DONE, committed in `069d8ad`)
+
+| File | What changed |
+|---|---|
+| `tailwind.config.js` | Full rewrite — CSS-var token map, Figtree font, `card` radius |
+| `src/index.css` | CSS variable token sets for light + dark; Tailwind base styles on tokens |
+| `src/main.jsx` | Added `import '@fontsource-variable/figtree'` |
+| `index.html` | Removed Google Fonts Inter CDN; added `theme-color` meta; added no-flash inline script for dark mode |
+| `src/hooks/useTheme.js` | New — manual-only dark/light toggle via `useSyncExternalStore` |
+| `src/components/shared/PageHeader.jsx` | New — reference-design page header: breadcrumb + thin 34–38 px title + subtitle + actions slot |
+| `src/components/layout/TopBar.jsx` | Added dark mode toggle (Sun/Moon), token colors throughout |
+| `src/components/layout/Layout.jsx` | PWA prompt card on tokens |
+| `src/lib/status.js` | Updated `gaugeHex` values to reference palette; `no_data.bg` → `bg-surface-chip` |
+| `src/components/shared/StatCard.jsx` | Rewritten to reference KPI style (corner icon tile, thin value, eyebrow label) |
+| `src/components/shared/RingGauge.jsx` | Track circle now CSS-var driven |
+| `src/components/ui/Input.jsx` | `bg-white` → `bg-surface`, `rounded-lg` → `rounded-xl` |
+| `src/components/ui/Select.jsx` | All surfaces and borders on tokens |
+| `src/components/ui/Modal.jsx` | `bg-white` → `bg-surface` |
+| `src/components/shared/Table.jsx` | All surfaces/borders on tokens (note: mobile fallback row at line 74 still has one `hover:bg-slate-50/50` — harmless, fix later) |
+
+---
+
+### Phase 2 — Flagship: Super Admin Dashboard (DONE, committed in `069d8ad`)
+
+`src/pages/super-admin/Dashboard.jsx` — fully rebuilt:
+- `PageHeader` with greeting (Good morning/afternoon/evening), breadcrumb, Live pill
+- Local `C` and `STATUS_CFG` constants deleted — now uses `gaugeHex()` + `statusConfig()` from `status.js`
+- `useTheme` for Recharts chart neutrals (axisColor, gridColor, tickStrong resolve to concrete hex at render time — SVG attributes can't read CSS vars)
+- All district/facility cards use token classes, no hardcoded colors
+- Filter chips: `bg-surface-chip text-text` pattern
+- Skeletons on `bg-surface-alt` / `bg-surface border-surface-border`
+- Verified in browser (agent-browser, live backend): light mode ✓, dark mode ✓, 0 console errors
+
+---
+
+### Phase 3 — Screen-by-screen rollout (IN PROGRESS)
+
+**Conversion pattern (proven on DistrictManagement):**
+1. Add `import PageHeader from '../../components/shared/PageHeader'`
+2. Replace `<div className="bg-primary rounded-2xl ...">` banner with `<PageHeader breadcrumb="Super Admin › ..." title="..." subtitle={...} actions={...} />`
+3. Batch-replace hardcoded neutrals:
+   - `bg-white` → `bg-surface`
+   - `bg-slate-50` → `bg-surface-alt`
+   - `bg-slate-100` → `bg-surface-chip`
+   - `border-slate-200` / `border-slate-100` → `border-surface-border`
+   - `hover:bg-slate-50` → `hover:bg-surface-alt`
+   - `hover:bg-slate-100` → `hover:bg-surface-alt`
+   - `hover:bg-slate-50/60` → `hover:bg-surface-alt/60`
+   - `bg-slate-50/80` → `bg-surface-alt/80`
+   - `bg-slate-200/50` → `bg-surface-alt/50`
+   - `border-slate-200/80` → `border-surface-border/80`
+4. Run `npm run build` — must be clean
+5. Browser-verify in both light and dark
+
+**Screens completed:**
+| File | Status |
+|---|---|
+| `src/pages/super-admin/DistrictManagement.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/UCManagement.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/AuditLog.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/FacilityManagement.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/UCDetail.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/DistrictDetail.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/UserManagement.jsx` | ✅ Done — **uncommitted** |
+| `src/pages/super-admin/VaccineManagement.jsx` | ✅ Done — **uncommitted** |
+
+**All 8 super-admin screens done. Ready to commit this batch, then continue with other roles.**
+
+**Screens remaining — super-admin:** None.
+
+**Screens remaining — other roles (after super-admin batch):**
+- `src/pages/district-supervisor/` — Dashboard, FacilityManagement, DistrictUsers, DistrictAuditLog
+- `src/pages/uc-supervisor/` — Dashboard, Facilities, Users, StockRequests, AuditLog
+- `src/pages/facility-head/` — Dashboard, Users, Approvals, StockRequests, AuditLog
+- `src/pages/facility-supervisor/` — Dashboard, Approvals, RecordStock, StockRegister, WorkerManagement, AssignVials, DayEnd, AuditLog
+- `src/pages/shared/` — FacilityDetail, Analytics, DashboardGuide
+- `src/pages/facility-worker/` — StockEntry, StatusView (design fresh — phone-first, not in reference)
+- `src/pages/login/` — LoginPage, ForgotPassword, ResetPassword (align to new language)
+
+**After full rollout:**
+- Re-enable `@media (prefers-color-scheme: dark)` block in `src/index.css` (auto dark mode for OS users)
+- Update `.impeccable/design.json` to reflect new tokens (currently stale — describes old blue `#1F6FEB` system)
+- Update `PRODUCT.md` — the "no webfont" and "no gradient" rules are now superseded by Figtree + dark mode decision
+- Update `CLAUDE.md` — note `reference design/` as source of truth; flag `.impeccable/design.json` as stale
+
+---
+
+### Important notes for next session
+
+1. **Dev server must be on port 5173** — backend CORS allowlist rejects 5174
+2. **Login credentials for browser testing:** `admin@akuh.pilot` / `alwasya` (super admin)
+3. **Branch is `redesign/ui-clinical-material`** — do not merge to main until full rollout is done and dark mode is QA'd across all roles
+4. **The `DistrictManagement.jsx` conversion is uncommitted** — it should go into the first super-admin batch commit along with the other super-admin screens
+5. **`reference design/` folder** is the source of truth for visual language, not `.impeccable/design.json` (which is stale)
+6. **Do NOT add `@media (prefers-color-scheme: dark)` yet** — it's intentionally absent until all screens are converted
+7. **Recharts SVG attributes** cannot read CSS variables — always use `useTheme()` to get concrete hex values for chart colors: `const { resolved } = useTheme()` then `const axisColor = resolved === 'dark' ? '#9AA39C' : '#9CA3AF'`
+
+---
+
+## Session Log — 2026-10-11 Session 5
 
 ### What changed in session 5
 
@@ -558,33 +681,29 @@ Old WhatsApp-named images (`WhatsApp Image 2026-08-21 at 2.10.03 AM.jpeg` etc.) 
 
 ---
 
-## What To Do Next (pending work)
+## What To Do Next
 
-### Sprint 7 — Push notifications + offline sync (backend NOT yet deployed — defer)
+### ① UI/UX Redesign — Phase 3 rollout (ACTIVE — session 7)
 
-When the backend is deployed, implement:
+Read **Session Log — 2026-10-14 Session 7** above for the full picture. Short version:
 
-1. **Push notification subscription** — `GET /api/push/public-key` → `POST /api/push/subscriptions` (send `PushSubscription.toJSON()`). Call `DELETE /api/push/subscriptions` before logout. VAPID Web Push API.
+**Working branch:** `redesign/ui-clinical-material`
 
-2. **Session restore for offline PWA** — `GET /api/auth/session` returns same shape as `/login`. Use this to restore user + fresh CSRF token on PWA restart without requiring re-login. Add `getSession` to `api.js`.
+**Immediately next:** Convert the 7 remaining super-admin screens using the proven pattern from `DistrictManagement.jsx`, then commit the whole batch. Then continue role by role: district-supervisor → uc-supervisor → facility-head → facility-supervisor → shared → facility-worker (fresh design) → login.
 
-3. **Service worker** — required for Web Push and offline queuing of `/assign` + `/day-end` submissions.
+**Conversion pattern (copy-paste this for each screen):**
+1. `import PageHeader from '../../components/shared/PageHeader'`
+2. Replace `<div className="bg-primary rounded-2xl ...">` banner → `<PageHeader breadcrumb="..." title="..." subtitle={...} actions={...} />`
+3. Swap hardcoded neutrals: `bg-white`→`bg-surface`, `bg-slate-50`→`bg-surface-alt`, `bg-slate-100`→`bg-surface-chip`, `border-slate-*`→`border-surface-border`, `hover:bg-slate-*`→`hover:bg-surface-alt`
+4. `npm run build` — must pass clean
+5. Browser-verify in light + dark (login: `admin@akuh.pilot` / `alwasya`, port **5173 only**)
 
-Add to `api.js` when Sprint 7 deploys:
-```js
-export async function getSession() {
-  return request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
-}
-export async function getPushPublicKey() {
-  return request('GET', '/api/push/public-key')
-}
-export async function subscribePush(subscription) {
-  return request('POST', '/api/push/subscriptions', subscription)
-}
-export async function unsubscribePush(endpoint) {
-  return request('DELETE', '/api/push/subscriptions', { endpoint })
-}
-```
+**After full rollout:**
+- Re-add `@media (prefers-color-scheme: dark)` block to `src/index.css`
+- Update `PRODUCT.md`, `CLAUDE.md`, `.impeccable/design.json`
 
-### Minor cleanup
-None remaining — dead code removed in session 6.
+---
+
+### ② Remaining functional work (not yet started)
+
+All client requirements §1–§9 were completed in sessions 1–6 (see session logs below). No known functional gaps remain. The only pending work is the UI/UX redesign above.

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2, UserPlus } from 'lucide-react'
+import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, createUser } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -195,7 +196,7 @@ export default function SuperAdminFacilityManagement() {
             <p className="text-xs font-bold text-text">{row.facilitySupervisorName}</p>
           </div>
         ) : (
-          <span className="text-[10px] font-bold text-text-muted/70 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
+          <span className="text-[10px] font-bold text-text-muted/70 bg-surface-alt border border-surface-border px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
         )
       ),
     },
@@ -260,25 +261,16 @@ export default function SuperAdminFacilityManagement() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      {/* Header */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Facility Management</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            {!isLoading
-              ? `${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'} registered across all districts`
-              : 'Loading facilities…'}
-          </p>
-        </div>
-        {user?.role !== 'observer' && (
-          <button
-            onClick={() => { setOpen(true); setFormError('') }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
-          >
+      <PageHeader
+        breadcrumb="Super Admin › Facility Management"
+        title="Facility Management"
+        subtitle={!isLoading ? `${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'} registered across all districts` : 'Loading facilities…'}
+        actions={user?.role !== 'observer' && (
+          <Button onClick={() => { setOpen(true); setFormError('') }}>
             <Plus size={15} strokeWidth={2.5} /> Add Facility
-          </button>
+          </Button>
         )}
-      </div>
+      />
 
       {/* Search + Filter */}
       {!isLoading && !isError && facilities.length > 0 && (
@@ -295,7 +287,7 @@ export default function SuperAdminFacilityManagement() {
               { key: 'critical', label: 'Critical',  count: statusCounts.critical,    activeClass: 'bg-danger text-white border-danger',      icon: AlertCircle  },
               { key: 'low',      label: 'Low',       count: statusCounts.low,         activeClass: 'bg-warning text-white border-warning',    icon: AlertTriangle},
               { key: 'adequate', label: 'Normal',     count: statusCounts.adequate,   activeClass: 'bg-success text-white border-success',    icon: CheckCircle2 },
-              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,    activeClass: 'bg-slate-500 text-white border-slate-500', icon: null         },
+              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,    activeClass: 'bg-surface-chip text-text-muted border-surface-border', icon: null         },
             ].map(({ key, label, count, activeClass, icon: Icon }) => (
               <button
                 key={key}
@@ -317,7 +309,7 @@ export default function SuperAdminFacilityManagement() {
 
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -334,7 +326,7 @@ export default function SuperAdminFacilityManagement() {
             rows={paginated}
             emptyMessage={searchQuery ? `No facilities match "${searchQuery}".` : 'No facilities registered yet.'}
             mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-slate-50">
+              <div className="px-4 py-3 hover:bg-surface-alt">
                 <div className="flex items-start justify-between gap-2 mb-1.5">
                   <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-bold text-sm text-text hover:text-primary transition-colors flex items-center gap-1.5 min-w-0">
                     <Building2 size={13} className="text-text-muted/70 flex-shrink-0" />

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Building2, AlertCircle, AlertTriangle, CheckCircle2, MapPin } from 'lucide-react'
+import PageHeader from '../../components/shared/PageHeader'
 import { useQuery } from '@tanstack/react-query'
 import { getDistrict } from '../../lib/api'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -62,9 +63,9 @@ export default function DistrictDetail() {
 
       {isLoading && (
         <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-6 bg-slate-100 rounded w-1/4" />
+          <div className="h-6 bg-surface-chip rounded w-1/4" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
@@ -80,24 +81,20 @@ export default function DistrictDetail() {
 
       {!isLoading && !isError && district && (
         <>
-          {/* Banner */}
-          <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-white tracking-tight">{district.name}</h1>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  district.isActive
-                    ? 'bg-white/20 text-white border border-white/30'
-                    : 'bg-white/10 text-white/60 border border-white/20'
-                }`}>
-                  {district.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <p className="text-sm text-white/70 mt-0.5">
-                {towns.length} {towns.length === 1 ? 'town' : 'towns'} · {totalUCs} {totalUCs === 1 ? 'UC' : 'UCs'} · {district.facilityCount} {district.facilityCount === 1 ? 'facility' : 'facilities'}
-              </p>
-            </div>
-          </div>
+          <PageHeader
+            breadcrumb="Super Admin › District Management › District Detail"
+            title={district.name}
+            subtitle={`${towns.length} ${towns.length === 1 ? 'town' : 'towns'} · ${totalUCs} ${totalUCs === 1 ? 'UC' : 'UCs'} · ${district.facilityCount} ${district.facilityCount === 1 ? 'facility' : 'facilities'}`}
+            actions={
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                district.isActive
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'bg-surface-chip text-text-muted border border-surface-border'
+              }`}>
+                {district.isActive ? 'Active' : 'Inactive'}
+              </span>
+            }
+          />
 
           {/* Stat cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -157,12 +154,12 @@ export default function DistrictDetail() {
                             <Link
                               key={f.id}
                               to={`/super-admin/facilities/${f.id}`}
-                              className="bg-white rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200"
+                              className="bg-surface rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
                             >
                               <div className="flex flex-col gap-3">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex items-start gap-2.5 min-w-0">
-                                    <div className="p-2 rounded-lg bg-red-50 text-primary mt-0.5 flex-shrink-0">
+                                    <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5 flex-shrink-0">
                                       <Building2 size={16} />
                                     </div>
                                     <div className="min-w-0">
@@ -178,7 +175,7 @@ export default function DistrictDetail() {
                                 </div>
 
                                 {f.statusCounts && (f.statusCounts.critical > 0 || f.statusCounts.low > 0 || f.statusCounts.adequate > 0) && (
-                                  <div className="flex gap-1.5 pt-3 border-t border-slate-100 flex-wrap">
+                                  <div className="flex gap-1.5 pt-3 border-t border-surface-border flex-wrap">
                                     {f.statusCounts.critical > 0 && (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-danger-bg text-danger border border-danger/10">
                                         {f.statusCounts.critical} Critical
