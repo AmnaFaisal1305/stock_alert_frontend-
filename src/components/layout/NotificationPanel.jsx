@@ -53,7 +53,7 @@ export default function NotificationPanel({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[340px] bg-white rounded-2xl border border-surface-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+    <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[340px] bg-surface rounded-2xl border border-surface-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
         <p className="text-xs font-bold text-text uppercase tracking-wider">Notifications</p>
         <div className="flex items-center gap-2">

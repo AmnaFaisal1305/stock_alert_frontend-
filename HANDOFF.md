@@ -1,13 +1,129 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-14 (session 7 — UI/UX redesign)  
+**Last updated:** 2026-10-15 (session 9 — delivery readiness fixes)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-14 Session 7 (latest) — UI/UX Redesign
+## Session Log — 2026-10-15 Session 9 (latest) — Delivery Readiness Fixes
+
+### Goal
+
+Pre-delivery audit: fix every user-facing bug that could cause a silent failure or confusing experience. Six frontend fixes applied and `BACKEND_FIXES.md` fully populated for the backend developer.
+
+### What changed
+
+| Fix | File | Change |
+|---|---|---|
+| 1 | `src/context/AuthContext.jsx` | `sst:session-expired` handler now clears `sst_auth_signal` from localStorage, so the next login correctly re-fires the cross-tab broadcast event |
+| 2 | `src/context/AuthContext.jsx` | Added cross-tab session sync via `localStorage` storage events — logout in one tab now logs out all open tabs; opening a new tab while logged in elsewhere auto-restores the session via cookie |
+| 3 | `src/components/layout/NotificationPanel.jsx` | `bg-white` → `bg-surface` on panel container — was white in dark mode (Phase 3 miss) |
+| 4 | `src/pages/facility-supervisor/RecordStock.jsx` | Added `Toast` import + toast state + `onError` on `createMutation`; added `mutError` state + `onError` on `receiveMutation` and `cancelMutation` in `RequestCard` — all three mutations were previously silent on failure |
+| 5 | `src/pages/facility-head/Approvals.jsx` | Added `Toast` import + toast state + `onError` on both `approveMutation` and `rejectMutation` — most consequential actions in the app, were silent on failure |
+| 6 | `src/pages/uc-supervisor/StockRequests.jsx` | Added `mutError` state + `onError` on both `sentMutation` and `declineMutation` in `RequestCard` — silent on failure |
+| 7 | `src/components/layout/TopBar.jsx` | Added 14 missing `PAGE_TITLES` entries: all `/head/*` routes, all `/*/analytics`, all `/*/guide` — mobile TopBar was showing no title on these pages |
+| 8 | `BACKEND_FIXES.md` | Created at project root with 7 items for the backend developer (session restore, CSRF on restore, logout cookie invalidation, session TTL, role auth, push delivery, per-device subscriptions) |
+
+### Cross-tab auth — how it works
+
+`AuthContext.jsx` uses `localStorage` storage events (which fire in every tab **except** the writer):
+
+- **Login / session restore** → `localStorage.setItem('sst_auth_signal', '1')` — other open tabs call `GET /api/auth/session` via cookie to sync
+- **Logout** → `localStorage.removeItem('sst_auth_signal')` + `localStorage.setItem('sst_logout_ts', Date.now())` — other open tabs clear state and redirect to `/login`
+- **Session expiry (401)** → `localStorage.removeItem('sst_auth_signal')` — clears the key so the next login correctly re-fires a `storage` event in other tabs
+
+Note: if `GET /api/auth/session` itself returns 401 for a valid cookie (see `BACKEND_FIXES.md` item 1), new tabs will still see the login page — that is a backend fix.
+
+### Build
+
+`npm run build` passes clean (✓ 2533 modules, no errors).
+
+### Post-rollout tasks remaining (from session 8)
+
+- **Re-enable `@media (prefers-color-scheme: dark)`** in `src/index.css` — intentionally absent until all screens were converted. Now safe.
+- **Update `.impeccable/design.json`** — stale, describes old blue `#1F6FEB` system.
+- **Update `PRODUCT.md`** — "no webfont" and "no gradient" rules superseded by Figtree + dark mode.
+- **Update `CLAUDE.md`** — note `reference design/` as source of truth; flag `.impeccable/design.json` as stale.
+- **Commit unstaged files** — `AuthContext.jsx`, `api.js`, `sw.js`, `vite.config.js` + the new session-9 edits.
+
+---
+
+## Session Log — 2026-10-15 Session 8 — Phase 3 Rollout Complete
+
+### Goal
+
+Complete the screen-by-screen Clinical Material token rollout (Phase 3) across every remaining role. All screens are now converted. Branch pushed to GitHub; Vercel preview deployment is **Ready**.
+
+**Branch:** `redesign/ui-clinical-material`  
+**Preview URL:** `https://stock-alert-frontend-4xh9dy7ub-amnas-projects-6f5bf05c.vercel.app`
+
+### Commits added this session
+
+| Commit | What |
+|---|---|
+| `9404c51` | super-admin screens (8 files) |
+| `14ead4a` | district-supervisor screens |
+| `d7b9c7c` | uc-supervisor screens |
+| `02164a6` | facility-head screens |
+| `40f0c10` | facility-supervisor screens (incl. AuditLog Full Write) |
+| `a7a98b0` | shared pages + facility-worker pages |
+| `86267f7` | login screens |
+
+### Phase 3 — All screens status
+
+| File | Status |
+|---|---|
+| `src/pages/super-admin/DistrictManagement.jsx` | ✅ Done |
+| `src/pages/super-admin/UCManagement.jsx` | ✅ Done |
+| `src/pages/super-admin/AuditLog.jsx` | ✅ Done |
+| `src/pages/super-admin/FacilityManagement.jsx` | ✅ Done |
+| `src/pages/super-admin/UCDetail.jsx` | ✅ Done |
+| `src/pages/super-admin/DistrictDetail.jsx` | ✅ Done |
+| `src/pages/super-admin/UserManagement.jsx` | ✅ Done |
+| `src/pages/super-admin/VaccineManagement.jsx` | ✅ Done |
+| `src/pages/district-supervisor/Dashboard.jsx` | ✅ Done |
+| `src/pages/district-supervisor/FacilityManagement.jsx` | ✅ Done |
+| `src/pages/district-supervisor/DistrictUsers.jsx` | ✅ Done |
+| `src/pages/district-supervisor/DistrictAuditLog.jsx` | ✅ Done |
+| `src/pages/uc-supervisor/Dashboard.jsx` | ✅ Done |
+| `src/pages/uc-supervisor/Facilities.jsx` | ✅ Done |
+| `src/pages/uc-supervisor/Users.jsx` | ✅ Done |
+| `src/pages/uc-supervisor/StockRequests.jsx` | ✅ Done |
+| `src/pages/uc-supervisor/AuditLog.jsx` | ✅ Done |
+| `src/pages/facility-head/FacilityHeadDashboard.jsx` | ✅ Done |
+| `src/pages/facility-head/FacilityHeadUsers.jsx` | ✅ Done |
+| `src/pages/facility-head/FacilityHeadApprovals.jsx` | ✅ Done |
+| `src/pages/facility-head/FacilityHeadStockRequests.jsx` | ✅ Done |
+| `src/pages/facility-head/FacilityHeadAuditLog.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/Dashboard.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/Approvals.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/RecordStock.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/StockRegister.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/WorkerManagement.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/AssignVials.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/DayEnd.jsx` | ✅ Done |
+| `src/pages/facility-supervisor/AuditLog.jsx` | ✅ Done (Full Write — dense multi-location changes) |
+| `src/pages/shared/FacilityDetail.jsx` | ✅ Done (PageHeader inside conditional data block) |
+| `src/pages/shared/Analytics.jsx` | ✅ Done |
+| `src/pages/shared/DashboardGuide.jsx` | ✅ Done (apostrophe/delimiter fix on 23 strings) |
+| `src/pages/facility-worker/StockEntry.jsx` | ✅ Done |
+| `src/pages/facility-worker/StatusView.jsx` | ✅ Done |
+| `src/pages/login/LoginPage.jsx` | ✅ Done |
+| `src/pages/login/ForgotPassword.jsx` | ✅ Done |
+| `src/pages/login/ResetPassword.jsx` | ✅ Done |
+
+### Known gotchas discovered this session
+
+- **Apostrophes in JS string literals** — `DashboardGuide.jsx` data object had possessives/contractions (`system's`, `facility's`, `don't`, etc.) in single-quoted strings. The straight apostrophe `'` ends the string literal mid-word. Fix: change outer delimiter to `"` for affected strings.
+- **PageHeader inside conditional block** — `FacilityDetail.jsx` only has `facility.name` after data loads, so `<PageHeader>` lives inside `{!isLoading && !isError && facility && ...}` rather than at the top of the JSX tree like every other page.
+- **Full Write vs targeted Edit threshold** — files with 10+ non-unique `bg-white` occurrences (AuditLog, DashboardGuide, FacilityDetail, Analytics) require Full Write. Fewer than 8 unique locations → targeted Edits.
+- **`Building2` import** in `FacilityDetail.jsx` is now unused (was only in the old banner). Minor lint warning; not a build error.
+
+---
+
+## Session Log — 2026-10-14 Session 7 — UI/UX Redesign
 
 ### Goal
 
@@ -683,27 +799,29 @@ Old WhatsApp-named images (`WhatsApp Image 2026-08-21 at 2.10.03 AM.jpeg` etc.) 
 
 ## What To Do Next
 
-### ① UI/UX Redesign — Phase 3 rollout (ACTIVE — session 7)
+### ① Commit and push session 9 changes
 
-Read **Session Log — 2026-10-14 Session 7** above for the full picture. Short version:
+These files are edited but uncommitted on `redesign/ui-clinical-material`:
+- `src/context/AuthContext.jsx` (cross-tab sync + session-expiry signal fix)
+- `src/components/layout/NotificationPanel.jsx` (dark mode fix)
+- `src/pages/facility-supervisor/RecordStock.jsx` (onError handlers)
+- `src/pages/facility-head/Approvals.jsx` (onError handlers)
+- `src/pages/uc-supervisor/StockRequests.jsx` (onError handlers)
+- `src/components/layout/TopBar.jsx` (14 missing PAGE_TITLES)
+- `BACKEND_FIXES.md` (new file — for backend dev)
+- `src/lib/api.js`, `src/sw.js`, `vite.config.js` (pre-existing, never staged)
 
-**Working branch:** `redesign/ui-clinical-material`
+### ② Send `BACKEND_FIXES.md` to the backend developer
 
-**Immediately next:** Convert the 7 remaining super-admin screens using the proven pattern from `DistrictManagement.jsx`, then commit the whole batch. Then continue role by role: district-supervisor → uc-supervisor → facility-head → facility-supervisor → shared → facility-worker (fresh design) → login.
+`BACKEND_FIXES.md` at the project root lists 7 items. Items 1, 2, 4, and 5 are **High** priority and must be resolved before delivery. Items 3, 6, 7 are Medium.
 
-**Conversion pattern (copy-paste this for each screen):**
-1. `import PageHeader from '../../components/shared/PageHeader'`
-2. Replace `<div className="bg-primary rounded-2xl ...">` banner → `<PageHeader breadcrumb="..." title="..." subtitle={...} actions={...} />`
-3. Swap hardcoded neutrals: `bg-white`→`bg-surface`, `bg-slate-50`→`bg-surface-alt`, `bg-slate-100`→`bg-surface-chip`, `border-slate-*`→`border-surface-border`, `hover:bg-slate-*`→`hover:bg-surface-alt`
-4. `npm run build` — must pass clean
-5. Browser-verify in light + dark (login: `admin@akuh.pilot` / `alwasya`, port **5173 only**)
+### ③ Merge `redesign/ui-clinical-material` to `main`
 
-**After full rollout:**
-- Re-add `@media (prefers-color-scheme: dark)` block to `src/index.css`
-- Update `PRODUCT.md`, `CLAUDE.md`, `.impeccable/design.json`
+Before merging:
+1. **QA in both light and dark mode** across all roles — verify no token falls back to transparent.
+2. **Re-enable auto dark mode:** Add `@media (prefers-color-scheme: dark) { ... }` in `src/index.css`. All screens converted, now safe.
+3. **Update docs:** `.impeccable/design.json` (stale, describes old blue system), `PRODUCT.md` (no-webfont / no-gradient rules superseded), `CLAUDE.md` (note `reference design/` as source of truth).
 
----
+### ④ Remaining functional work
 
-### ② Remaining functional work (not yet started)
-
-All client requirements §1–§9 were completed in sessions 1–6 (see session logs below). No known functional gaps remain. The only pending work is the UI/UX redesign above.
+All client requirements §1–§9 were completed in sessions 1–6. No known frontend functional gaps remain. Outstanding issues are backend-side (see `BACKEND_FIXES.md`).

@@ -3,6 +3,7 @@ import { ClipboardCheck, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApprovals, approveApproval, rejectApproval } from '../../lib/api'
 import Button from '../../components/ui/Button'
+import Toast from '../../components/ui/Toast'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const TABS = ['Pending', 'History']
@@ -121,6 +122,7 @@ function ApprovalRow({ a, onApprove, onReject, approvePending, rejectPending }) 
 export default function FacilityHeadApprovals() {
   const qc = useQueryClient()
   const [tab, setTab] = useState(0)
+  const [toast, setToast] = useState(null)
 
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
     queryKey: ['approvals', 'pending'],
@@ -143,6 +145,7 @@ export default function FacilityHeadApprovals() {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
     },
+    onError: (err) => setToast({ message: err.message || 'Failed to approve. Please try again.', type: 'error' }),
   })
 
   const rejectMutation = useMutation({
@@ -151,6 +154,7 @@ export default function FacilityHeadApprovals() {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
     },
+    onError: (err) => setToast({ message: err.message || 'Failed to reject. Please try again.', type: 'error' }),
   })
 
   return (
@@ -225,6 +229,8 @@ export default function FacilityHeadApprovals() {
           ))}
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

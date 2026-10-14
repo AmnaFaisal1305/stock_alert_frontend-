@@ -39,6 +39,7 @@ function RequestCard({ req }) {
   const [expanded, setExpanded] = useState(false)
   const [showSent, setShowSent] = useState(false)
   const [declineMode, setDeclineMode] = useState(false)
+  const [mutError, setMutError] = useState('')
   const [sentItems, setSentItems] = useState(() =>
     (req.items ?? [])
       .filter(it => (it.outstandingVials ?? it.requestedVials) > 0)
@@ -58,6 +59,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowSent(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to record sent. Please try again.'),
   })
 
   const declineMutation = useMutation({
@@ -67,6 +69,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setDeclineMode(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to decline request. Please try again.'),
   })
 
   function submitSent() {
@@ -97,6 +100,8 @@ function RequestCard({ req }) {
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
+      {mutError && <p className="text-sm text-danger mt-1">{mutError}</p>}
 
       {expanded && (
         <div className="pt-2 space-y-2">

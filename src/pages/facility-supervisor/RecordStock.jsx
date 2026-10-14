@@ -6,6 +6,7 @@ import {
 } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Toast from '../../components/ui/Toast'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const STAGE_BADGE = {
@@ -185,6 +186,7 @@ function RequestCard({ req }) {
   const [showReceive, setShowReceive] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [mutError, setMutError] = useState('')
 
   const isOpen = OPEN_STAGES.has(req.stage)
   const isCloseShort = req.status === 'partially_fulfilled' && !req.closedAt
@@ -198,6 +200,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowReceive(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to record received. Please try again.'),
   })
 
   const cancelMutation = useMutation({
@@ -207,6 +210,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setCancelConfirm(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to cancel request. Please try again.'),
   })
 
   return (
@@ -229,6 +233,8 @@ function RequestCard({ req }) {
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
+      {mutError && <p className="text-sm text-danger mt-1">{mutError}</p>}
 
       {expanded && (
         <div className="pt-2 space-y-2">
@@ -312,6 +318,7 @@ function RequestCard({ req }) {
 export default function RecordStock() {
   const qc = useQueryClient()
   const [showRaise, setShowRaise] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const { data: reqData, isLoading } = useQuery({
     queryKey: ['stock-requests'],
@@ -335,6 +342,7 @@ export default function RecordStock() {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowRaise(false)
     },
+    onError: (err) => setToast({ message: err.message || 'Failed to raise request. Please try again.', type: 'error' }),
   })
 
   return (
@@ -370,6 +378,8 @@ export default function RecordStock() {
           isPending={createMutation.isPending}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

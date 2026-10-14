@@ -1,9 +1,12 @@
 const BASE_URL = import.meta.env.VITE_API_URL
 
 let _csrfToken = null
+// Guard: dispatch sst:session-expired at most once per session; reset on fresh login
+let _sessionExpiredDispatched = false
 
 export function setCsrfToken(token) {
   _csrfToken = token
+  if (token) _sessionExpiredDispatched = false
 }
 
 export function getCsrfToken() {
@@ -26,7 +29,10 @@ async function request(method, path, body, { skipAuthRedirect = false } = {}) {
   if (res.status === 401 && !skipAuthRedirect) {
     sessionStorage.removeItem('sst_user')
     sessionStorage.removeItem('sst_csrf')
-    window.location.replace('/login')
+    if (!_sessionExpiredDispatched) {
+      _sessionExpiredDispatched = true
+      window.dispatchEvent(new CustomEvent('sst:session-expired'))
+    }
     throw Object.assign(new Error('Session expired'), { status: 401 })
   }
 
