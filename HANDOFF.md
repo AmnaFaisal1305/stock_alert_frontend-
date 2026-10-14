@@ -1,9 +1,55 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-15 (session 9 — merged to main)  
+**Last updated:** 2026-10-15 (session 10 — reference design layout rollout)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
+
+---
+
+## Session Log — 2026-10-15 Session 10 (latest) — Reference Design Layout Rollout
+
+### Goal
+
+Rebuild 6 facility-supervisor screens to match the reference HTML mockups in `reference design/`, implementing new interaction patterns while keeping all existing query/mutation/validation/offline logic intact.
+
+### What changed
+
+| Screen | File | Layout change |
+|---|---|---|
+| Assign Vials | `src/pages/facility-supervisor/AssignVials.jsx` | Replaced `Select` dropdown with sticky worker-picker sidebar card; vaccines rendered as grouped tiles (Birth & Oral / Injectables / Pentavalent / MR / Other) with −/input/+ steppers; date picker in card header; summary chips + total in footer |
+| Day End | `src/pages/facility-supervisor/DayEnd.jsx` | Same worker-picker sidebar pattern; vaccines shown in VACCINE/HELD/USED/RETURNED/WASTED flex table; footer shows running totals |
+| Approvals | `src/pages/facility-supervisor/Approvals.jsx` | Two-column layout (form left, "How It Works" steps card right sticky); "My Requests" button in PageHeader `actions` opens a slide-out drawer (`w-[460px]`, fixed right edge + overlay, Escape to close) containing Pending/History tabs |
+| Stock Requests (facility supervisor) | `src/pages/facility-supervisor/RecordStock.jsx` | Added 4 filter stat cards (All/Awaiting/Completed/Cancelled with dot indicators); each request card shows a 3-step pipeline (Requested → Sent → Received) filled based on stage; "Raise Request" moved to PageHeader actions |
+| Stock Requests (UC supervisor) | `src/pages/uc-supervisor/StockRequests.jsx` | Same 4 filter cards + pipeline; existing Record Sent / Decline actions preserved in expanded area |
+| Stock Requests (facility head) | `src/pages/facility-head/StockRequests.jsx` | Same 4 filter cards + pipeline; existing Approve action preserved in expanded area |
+
+### Key implementation notes
+
+- **VACCINE_GROUPS uses English names** — API returns `"BCG"`, `"OPV (Polio)"`, etc., not `"Vaccine 01"` format. `displayVaccineName("BCG")` falls through to return `"BCG"` as-is.
+- **Pipeline step logic** — `pipelineStep(stage)` returns 3 for `completed/partially_fulfilled`, 2 for `awaiting_received/figures_differ/ready_for_approval/completed/partially_fulfilled`, 1 otherwise. Line between step i and i+1 fills when `pStep >= i + 2`.
+- **Stepper uses raw `<button>` and `<input>`** — special tile pattern, not `src/components/ui/` (intentional exception; reference design calls for inline number control).
+- **Filter cards use inline `style` for dot colors** — exact hex values (`#1d2b25`, `#e0a21b`, `#2f8f4e`, `#9aa39d`) more precise than available token classes.
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `255979a` | fix(approvals): add history view + fix approved/rejected not showing |
+| `b821d59` | feat(ui): phase 3 — reference design rollout for 6 screens |
+
+### Browser-tested (facility supervisor login: `akuh.info123@gmail.com` / `12345678`)
+
+| Screen | Result |
+|---|---|
+| Assign Vials | ✅ Worker picker, grouped tiles (Birth & Oral / Injectables / Pentavalent / MR / Other), steppers, footer |
+| Day End | ✅ Worker picker, HELD/USED/RETURNED/WASTED table, footer totals |
+| Approvals | ✅ 2-column layout, drawer opens/closes, History tab loads real data |
+| RecordStock filter cards | ✅ 4 cards with correct counts, filter switches correctly |
+| RecordStock pipeline | ✅ Awaiting Sent & Received = step 1 only; Awaiting Received = steps 1–2; Completed = all 3 |
+| UC + Facility Head StockRequests | Not directly testable (no credentials for those roles) — code is identical to RecordStock filter/pipeline pattern |
+
+`npm run build` passes clean. Pushed to `main`.
 
 ---
 
