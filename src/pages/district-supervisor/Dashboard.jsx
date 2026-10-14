@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle, AlertCircle, CheckCircle2, Building2,
-  User, MapPin, ArrowRight, Search, ChevronDown, Check, X, Layers,
+  MapPin, ArrowRight, Search, ChevronDown, Check, X, Layers,
 } from 'lucide-react'
 import { getDashboard, getFacilities, getTowns, getUnionCouncils } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import PageHeader from '../../components/shared/PageHeader'
 import StatCard from '../../components/shared/StatCard'
 import SkeletonCard from '../../components/shared/SkeletonCard'
 import { facilityStatus, statusConfig } from '../../lib/status'
@@ -67,7 +68,7 @@ function FilterChip({ icon: Icon, placeholder, options, value, onChange, disable
           'inline-flex items-center gap-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer select-none',
           isActive
             ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 pl-3.5 pr-2.5 py-2'
-            : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text shadow-sm pl-3.5 pr-3 py-2',
+            : 'bg-surface text-text-muted border-surface-border hover:border-primary/40 hover:text-text shadow-sm pl-3.5 pr-3 py-2',
           disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : '',
           open && !isActive ? 'border-primary ring-2 ring-primary/10 text-text' : '',
         ].join(' ')}
@@ -92,10 +93,9 @@ function FilterChip({ icon: Icon, placeholder, options, value, onChange, disable
         <div
           ref={dropdownRef}
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
-          className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+          className="bg-surface border border-surface-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          {/* dropdown header */}
-          <div className="px-3.5 pt-3 pb-2 border-b border-slate-100">
+          <div className="px-3.5 pt-3 pb-2 border-b border-surface-border">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
               {options.length} {placeholder.replace('All ', '')}
             </p>
@@ -114,20 +114,18 @@ function FilterChip({ icon: Icon, placeholder, options, value, onChange, disable
                     onClick={() => handleSelect(opt.value)}
                     className={[
                       'w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors cursor-pointer group',
-                      isSel ? 'bg-primary/5' : 'hover:bg-slate-50',
+                      isSel ? 'bg-primary/5' : 'hover:bg-surface-alt',
                     ].join(' ')}
                   >
-                    {/* icon badge */}
                     <div className={[
                       'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
                       isSel
                         ? 'bg-primary text-white shadow-sm shadow-primary/20'
-                        : 'bg-slate-100 text-text-muted group-hover:bg-primary/10 group-hover:text-primary',
+                        : 'bg-surface-chip text-text-muted group-hover:bg-primary/10 group-hover:text-primary',
                     ].join(' ')}>
                       <Icon size={13} />
                     </div>
 
-                    {/* label + sublabel */}
                     <div className="flex-1 min-w-0">
                       <p className={['text-sm font-semibold truncate', isSel ? 'text-primary' : 'text-text'].join(' ')}>
                         {opt.label}
@@ -313,9 +311,9 @@ export default function DistrictDashboard() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 animate-pulse">
-        <div className="h-24 bg-slate-100 rounded-2xl" />
+        <div className="h-24 bg-surface-chip rounded-2xl" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-slate-50 border border-slate-200 rounded-2xl" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
           {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
@@ -335,35 +333,16 @@ export default function DistrictDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      {/* §1.2 Analytics banner */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
-        <p className="text-sm text-white/70 font-semibold">
-          District: <span className="text-white font-bold">{districtName ?? '—'}</span>
-        </p>
-        <div className="flex flex-wrap items-center gap-4 mt-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80">
-            <User size={12} className="opacity-70" /> {user.name}
-          </span>
-          {province && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <MapPin size={12} className="opacity-70" /> {province}
-            </span>
-          )}
-        </div>
-        {/* Stat chips */}
-        <div className="flex flex-wrap gap-3 mt-4">
-          {[
-            { label: 'Towns',      value: townCount },
-            { label: 'UCs',        value: ucCount },
-            { label: 'Facilities', value: facilityCount },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
-              <span className="text-xl font-bold text-white">{value}</span>
-              <span className="text-xs font-semibold text-white/70">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb="District Supervisor"
+        title={districtName ?? 'My District'}
+        subtitle={[
+          province,
+          townCount     ? `${townCount} ${townCount === 1 ? 'Town' : 'Towns'}` : null,
+          ucCount       ? `${ucCount} UCs` : null,
+          facilityCount ? `${facilityCount} ${facilityCount === 1 ? 'Facility' : 'Facilities'}` : null,
+        ].filter(Boolean).join(' · ') || undefined}
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -392,10 +371,10 @@ export default function DistrictDashboard() {
         )}
       </div>
 
-      {/* §1.2 Alert Banner */}
+      {/* Alert Banner */}
       <AlertBanner criticalCount={counts.critical} lowCount={counts.low} />
 
-      {/* §1.3 Performance Summary — 3 stat cards */}
+      {/* Performance Summary — 3 stat cards */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Stock Status</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -426,7 +405,7 @@ export default function DistrictDashboard() {
         </div>
       </div>
 
-      {/* §1.4 Facility-Level Performance Table */}
+      {/* Facility-Level Performance Table */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Facility Performance</h2>
@@ -437,7 +416,6 @@ export default function DistrictDashboard() {
 
         {/* Search + Filters */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Search */}
           <div className="relative w-full sm:w-56">
             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
@@ -445,17 +423,17 @@ export default function DistrictDashboard() {
               placeholder="Search facilities…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+              className="w-full pl-10 pr-3.5 py-2 text-sm border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
             />
           </div>
 
           {/* Status filter pills */}
           {[
-            { value: '',          label: 'All' },
-            { value: 'critical',  label: 'Critical' },
-            { value: 'low',       label: 'Low Stock' },
-            { value: 'adequate',  label: 'Normal' },
-            { value: 'no-data',   label: 'No Data' },
+            { value: '',         label: 'All' },
+            { value: 'critical', label: 'Critical' },
+            { value: 'low',      label: 'Low Stock' },
+            { value: 'adequate', label: 'Normal' },
+            { value: 'no-data',  label: 'No Data' },
           ].map((opt) => (
             <button
               key={opt.value}
@@ -465,7 +443,7 @@ export default function DistrictDashboard() {
                 'px-3 py-2 rounded-xl text-xs font-semibold border transition-all',
                 statusFilter === opt.value
                   ? 'bg-primary text-white border-primary shadow-sm'
-                  : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text',
+                  : 'bg-surface text-text-muted border-surface-border hover:border-primary/40 hover:text-text',
               ].join(' ')}
             >
               {opt.label}
@@ -493,7 +471,6 @@ export default function DistrictDashboard() {
             disabled={(ucData?.unionCouncils ?? []).filter((uc) => uc.isActive && (!fpTownFilter || uc.townId === fpTownFilter)).length === 0}
           />
 
-          {/* Clear filters */}
           {(search || statusFilter || fpTownFilter || fpUcFilter) && (
             <button
               type="button"
@@ -505,8 +482,8 @@ export default function DistrictDashboard() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-4 items-center">
+        <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-3 bg-surface-alt border-b border-surface-border gap-4 items-center">
             {['Facility', 'Town', 'UC', 'Supervisor', 'Last Activity', 'Status'].map((h) => (
               <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{h}</span>
             ))}
@@ -525,7 +502,7 @@ export default function DistrictDashboard() {
               return (
                 <div key={f.id} className={`border-b border-surface-border last:border-b-0 border-l-4 ${leftBorder}`}>
                   {/* Mobile card */}
-                  <div className="sm:hidden px-4 py-3 hover:bg-slate-50/60 transition-colors">
+                  <div className="sm:hidden px-4 py-3 hover:bg-surface-alt/60 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <Building2 size={12} className="text-text-muted/60 flex-shrink-0" />
@@ -547,7 +524,7 @@ export default function DistrictDashboard() {
                     </div>
                   </div>
                   {/* Desktop row */}
-                  <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center hover:bg-slate-50/60 transition-colors">
+                  <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_80px] px-5 py-4 gap-4 items-center hover:bg-surface-alt/60 transition-colors">
                     <div className="flex items-center gap-2 min-w-0">
                       <Building2 size={13} className="text-text-muted/60 flex-shrink-0" />
                       <Link to={`/district/facilities/${f.id}`} className="font-bold text-text text-sm truncate hover:text-primary transition-colors">
@@ -575,17 +552,17 @@ export default function DistrictDashboard() {
         </div>
       </div>
 
-      {/* §1.5 Vaccine Live Stock & Consumption Matrix */}
+      {/* Vaccine Live Stock & Consumption Matrix */}
       {vaccineColumns.length > 0 && facilityRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Live Stock &amp; Consumption</h2>
 
-          <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse" style={{ minWidth: `${200 + vaccineColumns.length * 150}px` }}>
                 <thead>
-                  <tr className="bg-slate-50 border-b border-surface-border">
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-slate-50 z-10">
+                  <tr className="bg-surface-alt border-b border-surface-border">
+                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left whitespace-nowrap border-r border-surface-border sticky left-0 bg-surface-alt z-10">
                       Facility
                     </th>
                     {vaccineColumns.map((v) => (
@@ -597,18 +574,18 @@ export default function DistrictDashboard() {
                 </thead>
                 <tbody className="divide-y divide-surface-border">
                   {facilityRows.map((fRow) => (
-                    <tr key={fRow.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-white z-10">
+                    <tr key={fRow.id} className="hover:bg-surface-alt/40 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-text whitespace-nowrap border-r border-surface-border sticky left-0 bg-surface z-10">
                         {fRow.name}
                       </td>
                       {vaccineColumns.map((v) => {
                         const cell = fRow.vaccines.get(v.id)
                         if (!cell) {
                           return (
-                            <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-slate-50/50">—</td>
+                            <td key={v.id} className="px-4 py-3 text-center text-text-muted bg-surface-alt/50">—</td>
                           )
                         }
-                        const bg = cell.status === 'critical' ? 'bg-danger-bg/40' : cell.status === 'low' ? 'bg-warning-bg/40' : cell.status === 'adequate' ? 'bg-success-bg/30' : 'bg-slate-50/50'
+                        const bg = cell.status === 'critical' ? 'bg-danger-bg/40' : cell.status === 'low' ? 'bg-warning-bg/40' : cell.status === 'adequate' ? 'bg-success-bg/30' : 'bg-surface-alt/50'
                         return (
                           <td key={v.id} className={`px-4 py-3 text-center ${bg}`}>
                             <p className="font-bold text-text tabular-nums">{cell.quantity ?? '—'}</p>

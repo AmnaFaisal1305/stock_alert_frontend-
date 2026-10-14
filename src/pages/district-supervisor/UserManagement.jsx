@@ -28,7 +28,7 @@ function SupervisorCard({ user, facilityName, ucName, ucNames }) {
     <div className={`bg-surface rounded-xl border border-surface-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md ${!isActive ? 'opacity-60' : ''}`}>
       <div className="flex flex-col items-center gap-3 text-center">
         {/* Role badge */}
-        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-text-muted border border-surface-border">
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-surface-chip text-text-muted border border-surface-border">
           {ROLE_BADGE[user.role] ?? user.role}
         </span>
 
