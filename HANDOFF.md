@@ -36,7 +36,9 @@ Pre-delivery audit: fix every user-facing bug that could cause a silent failure 
 
 Note: if `GET /api/auth/session` itself returns 401 for a valid cookie (see `BACKEND_FIXES.md` item 1), new tabs will still see the login page — that is a backend fix.
 
-### Build
+### Commit
+
+`c745da2` — pushed to `origin/redesign/ui-clinical-material`
 
 `npm run build` passes clean (✓ 2533 modules, no errors).
 
