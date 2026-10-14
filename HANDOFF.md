@@ -1,6 +1,6 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-15 (session 9 — delivery readiness fixes)  
+**Last updated:** 2026-10-15 (session 9 — merged to main)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
@@ -36,9 +36,12 @@ Pre-delivery audit: fix every user-facing bug that could cause a silent failure 
 
 Note: if `GET /api/auth/session` itself returns 401 for a valid cookie (see `BACKEND_FIXES.md` item 1), new tabs will still see the login page — that is a backend fix.
 
-### Commit
+### Commits
 
-`c745da2` — pushed to `origin/redesign/ui-clinical-material`
+`c745da2` — delivery fixes (pushed to `redesign/ui-clinical-material`)  
+`45ded32` — HANDOFF.md update  
+`d6f43ff` — auto dark mode + design docs (PRODUCT.md, CLAUDE.md, index.css)  
+`e75fa65` — **merged to `main`** ✅
 
 `npm run build` passes clean (✓ 2533 modules, no errors).
 
@@ -801,29 +804,28 @@ Old WhatsApp-named images (`WhatsApp Image 2026-08-21 at 2.10.03 AM.jpeg` etc.) 
 
 ## What To Do Next
 
-### ① Commit and push session 9 changes
+### ① Send `BACKEND_FIXES.md` to the backend developer
 
-These files are edited but uncommitted on `redesign/ui-clinical-material`:
-- `src/context/AuthContext.jsx` (cross-tab sync + session-expiry signal fix)
-- `src/components/layout/NotificationPanel.jsx` (dark mode fix)
-- `src/pages/facility-supervisor/RecordStock.jsx` (onError handlers)
-- `src/pages/facility-head/Approvals.jsx` (onError handlers)
-- `src/pages/uc-supervisor/StockRequests.jsx` (onError handlers)
-- `src/components/layout/TopBar.jsx` (14 missing PAGE_TITLES)
-- `BACKEND_FIXES.md` (new file — for backend dev)
-- `src/lib/api.js`, `src/sw.js`, `vite.config.js` (pre-existing, never staged)
+`BACKEND_FIXES.md` at the project root lists 7 items. Items 1, 2, 4, and 5 are **High** priority and should be resolved before final delivery:
 
-### ② Send `BACKEND_FIXES.md` to the backend developer
+| # | Issue | Priority |
+|---|---|---|
+| 1 | `GET /api/auth/session` — returns 401 for valid cookies in new tabs | High |
+| 2 | `GET /api/auth/session` — response missing `csrfToken` field | High |
+| 3 | `POST /api/auth/logout` — session cookie not invalidated server-side | Medium |
+| 4 | Session TTL too short / not rolling — causes unexpected mid-session logout | High |
+| 5 | No role-based route authorization — cross-role data not blocked | High |
+| 6 | Push delivery — backend never calls Web Push API | High |
+| 7 | Per-device push subscriptions — unsubscribe on one device affects all | Medium |
 
-`BACKEND_FIXES.md` at the project root lists 7 items. Items 1, 2, 4, and 5 are **High** priority and must be resolved before delivery. Items 3, 6, 7 are Medium.
+### ② QA in production
 
-### ③ Merge `redesign/ui-clinical-material` to `main`
+The redesign branch is now merged to `main`. Test the live Vercel deployment in both light and dark mode across all 7 roles. Key things to verify:
+- Dark mode auto-triggers on a device with OS dark mode set
+- No surface falls back to white in dark mode
+- TopBar shows page titles on all routes (Analytics, Guide, head/* pages)
+- Mutation errors show toast/inline messages (RecordStock, Approvals, StockRequests)
 
-Before merging:
-1. **QA in both light and dark mode** across all roles — verify no token falls back to transparent.
-2. **Re-enable auto dark mode:** Add `@media (prefers-color-scheme: dark) { ... }` in `src/index.css`. All screens converted, now safe.
-3. **Update docs:** `.impeccable/design.json` (stale, describes old blue system), `PRODUCT.md` (no-webfont / no-gradient rules superseded), `CLAUDE.md` (note `reference design/` as source of truth).
-
-### ④ Remaining functional work
+### ③ Remaining functional work
 
 All client requirements §1–§9 were completed in sessions 1–6. No known frontend functional gaps remain. Outstanding issues are backend-side (see `BACKEND_FIXES.md`).
