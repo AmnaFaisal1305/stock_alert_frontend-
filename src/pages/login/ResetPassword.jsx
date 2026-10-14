@@ -51,7 +51,7 @@ export default function ResetPassword() {
       </div>
 
       {/* Form panel */}
-      <div className="flex-1 bg-white flex flex-col items-center justify-center px-8 py-10">
+      <div className="flex-1 bg-surface flex flex-col items-center justify-center px-8 py-10">
         <div className="w-full max-w-[480px]">
 
           {/* Brand header */}
@@ -61,7 +61,7 @@ export default function ResetPassword() {
               alt="Aga Khan University Hospital Logo"
               className="h-16 object-contain"
             />
-            <div className="h-px w-full bg-slate-100" />
+            <div className="h-px w-full bg-surface-chip" />
             <div className="text-center">
               <p className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1">
                 The Aga Khan University Hospital
