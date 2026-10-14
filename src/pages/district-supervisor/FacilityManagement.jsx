@@ -90,7 +90,7 @@ export default function FacilityManagement() {
         row.facilitySupervisorName ? (
           <span className="text-xs font-bold text-text">{row.facilitySupervisorName}</span>
         ) : (
-          <span className="text-[10px] font-bold text-text-muted/70 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
+          <span className="text-[10px] font-bold text-text-muted/70 bg-surface-alt border border-surface-border px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
         )
       ),
     },
@@ -139,7 +139,7 @@ export default function FacilityManagement() {
               { key: 'critical', label: 'Critical', count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'       },
               { key: 'low',      label: 'Low',      count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'     },
               { key: 'adequate', label: 'Normal',    count: statusCounts.adequate,  activeClass: 'bg-success text-white border-success'     },
-              { key: 'no_data',  label: 'No Data',  count: statusCounts.no_data,   activeClass: 'bg-slate-500 text-white border-slate-500' },
+              { key: 'no_data',  label: 'No Data',  count: statusCounts.no_data,   activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
             ].map(({ key, label, count, activeClass }) => (
               <button
                 key={key}
@@ -147,7 +147,7 @@ export default function FacilityManagement() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
                   statusFilter === key
                     ? activeClass
-                    : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                    : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
                 }`}
               >
                 {key === 'critical' && <AlertCircle size={11} />}
@@ -165,7 +165,7 @@ export default function FacilityManagement() {
       {/* Skeletons */}
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -183,7 +183,7 @@ export default function FacilityManagement() {
             rows={paginatedFacilities}
             emptyMessage={searchQuery ? `No clinics match "${searchQuery}"` : 'No clinics configured yet.'}
             mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-slate-50">
+              <div className="px-4 py-3 hover:bg-surface-alt">
                 <div className="flex items-center gap-2 min-w-0 mb-1">
                   <Building2 size={12} className="text-text-muted/70 flex-shrink-0" />
                   <RouterLink to={`/district/facilities/${row.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">

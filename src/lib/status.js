@@ -4,19 +4,19 @@
 export const STATUS_CONFIG = {
   critical: {
     dot: 'bg-danger', text: 'text-danger-dark', bg: 'bg-danger-bg', label: 'Critical',
-    borderL: 'border-l-danger', ring: 'ring-1 ring-danger/20', gaugeHex: '#EF4444',
+    borderL: 'border-l-danger', ring: 'ring-1 ring-danger/20', gaugeHex: '#C5483F',
   },
   low: {
     dot: 'bg-warning', text: 'text-warning-dark', bg: 'bg-warning-bg', label: 'Low',
-    borderL: 'border-l-warning', ring: 'ring-1 ring-warning/20', gaugeHex: '#F59E0B',
+    borderL: 'border-l-warning', ring: 'ring-1 ring-warning/20', gaugeHex: '#E0A53A',
   },
   adequate: {
     dot: 'bg-success', text: 'text-success-dark', bg: 'bg-success-bg', label: 'Normal',
-    borderL: 'border-l-success', ring: 'ring-1 ring-success/20', gaugeHex: '#10B981',
+    borderL: 'border-l-success', ring: 'ring-1 ring-success/20', gaugeHex: '#2F9E66',
   },
   no_data: {
-    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-alt', label: 'Stock Not Updated',
-    borderL: 'border-l-secondary', ring: 'ring-1 ring-secondary/20', gaugeHex: '#64748B',
+    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-chip', label: 'Stock Not Updated',
+    borderL: 'border-l-secondary', ring: 'ring-1 ring-secondary/20', gaugeHex: '#9AA39C',
   },
 }
 

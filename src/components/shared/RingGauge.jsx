@@ -10,7 +10,7 @@ export default function RingGauge({ pct, status, size = 72 }) {
       aria-label={`${pct}% of minimum threshold`}
     >
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E5E7EB" strokeWidth={6} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" className="text-surface-border" strokeWidth={6} />
         <circle
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke={gaugeHex(status)} strokeWidth={6}

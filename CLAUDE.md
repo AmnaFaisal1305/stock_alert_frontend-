@@ -41,6 +41,8 @@ Use this for: designing new screens, improving layouts, choosing color/typograph
 
 Use impeccable for: reviewing UI before shipping, critiquing a layout for clinical clarity, polishing spacing/contrast/hierarchy. The project's design system is stored in `.impeccable/design.json` — impeccable commands load it automatically. Read `PRODUCT.md` first so critiques align with the product's clinical, minimal brand.
 
+**Design source of truth:** `reference design/` (HTML mockups `admin-01`–`admin-08`, `fs-01`–`fs-05`) is the canonical visual reference. `.impeccable/design.json` has been updated to reflect the Clinical Material token system (forest green, warm paper, Figtree, dark mode) as of 2026-10-15.
+
 **Design principles for this project (from `PRODUCT.md`):**
 - Status at a glance — red/amber/green must be scannable in under a second
 - Precision over decoration — numbers and statuses are the product

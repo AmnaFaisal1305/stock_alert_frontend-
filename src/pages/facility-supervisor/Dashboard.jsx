@@ -189,8 +189,8 @@ function ActivityFeed({ logs, vaccineNameById }) {
   )
 
   return (
-    <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-slate-50">
+    <div className="bg-surface rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-surface-alt">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Activity size={13} className="text-primary" />
@@ -209,7 +209,7 @@ function ActivityFeed({ logs, vaccineNameById }) {
         </div>
       ) : (
         <>
-          <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 px-5 py-2.5 bg-slate-50/70 border-b border-surface-border">
+          <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_1fr] gap-3 px-5 py-2.5 bg-surface-alt/70 border-b border-surface-border">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Worker</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Doses / When</span>
@@ -218,7 +218,7 @@ function ActivityFeed({ logs, vaccineNameById }) {
             {entries.map((entry, i) => {
               const vacName = vaccineNameById?.[entry.details?.vaccineId] ?? '—'
               return (
-                <div key={i} className="hover:bg-slate-50/50 transition-colors">
+                <div key={i} className="hover:bg-surface-alt/50 transition-colors">
                   {/* Mobile row */}
                   <div className="sm:hidden px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
@@ -448,22 +448,22 @@ export default function FacilityDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
           {/* Vaccine Consumption */}
-          <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-slate-50">
+          <div className="bg-surface rounded-xl border border-surface-border overflow-hidden shadow-sm flex flex-col">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-surface-alt">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Syringe size={13} className="text-primary" />
                 </div>
                 <h2 className="text-sm font-semibold text-text">Vaccine Consumption</h2>
               </div>
-              <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2 py-0.5 rounded-full tabular-nums">
+              <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2 py-0.5 rounded-full tabular-nums">
                 {rows.length} vaccines
               </span>
             </div>
 
             {!isError && rows.length > 0 ? (
               <>
-                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-slate-50/70 border-b border-surface-border gap-3">
+                <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-2.5 bg-surface-alt/70 border-b border-surface-border gap-3">
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Stock</span>
                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Consumed</span>
@@ -474,7 +474,7 @@ export default function FacilityDashboard() {
                   {rows.map((row) => (
                     <div key={row.vaccineId}>
                       {/* Mobile row */}
-                      <div className="sm:hidden px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                      <div className="sm:hidden px-4 py-3 hover:bg-surface-alt/50 transition-colors">
                         <p className="text-sm font-semibold text-text mb-1">{displayVaccineName(row.vaccineName)}</p>
                         <div className="grid grid-cols-4 gap-x-3 text-xs">
                           <div>
@@ -500,7 +500,7 @@ export default function FacilityDashboard() {
                         </div>
                       </div>
                       {/* Desktop row */}
-                      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-slate-50/50 transition-colors">
+                      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] px-5 py-3 gap-3 items-center hover:bg-surface-alt/50 transition-colors">
                         <p className="text-sm font-semibold text-text truncate">{displayVaccineName(row.vaccineName)}</p>
                         <p className="text-sm font-bold text-text text-right tabular-nums">
                           {row.quantity ?? '—'}

@@ -4,7 +4,7 @@ import { getAuditLog, getVaccines } from '../../lib/api'
 import Table from '../../components/shared/Table'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
-import Button from '../../components/ui/Button'
+import PageHeader from '../../components/shared/PageHeader'
 import { ChevronLeft, ChevronRight, Calendar, Clock, Award, Users } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -27,10 +27,10 @@ const TABS = [
 ]
 
 export default function UCSupervisorAuditLog() {
-  const [activeTab, setActiveTab]     = useState('facility_supervisor')
-  const [dateFilter, setDateFilter]   = useState('')
+  const [activeTab, setActiveTab]       = useState('facility_supervisor')
+  const [dateFilter, setDateFilter]     = useState('')
   const [actionFilter, setActionFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage]   = useState(1)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['audit-log'],
@@ -106,7 +106,7 @@ export default function UCSupervisorAuditLog() {
       key: 'action',
       label: 'Action',
       render: (row) => (
-        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-surface-alt border border-surface-border text-text-muted">
           {ACTION_LABELS[row.action] ?? row.action}
         </span>
       )
@@ -126,15 +126,14 @@ export default function UCSupervisorAuditLog() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Audit Log</h1>
-          <p className="text-sm text-white/70 mt-0.5">Activity in your union councils</p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb="UC Supervisor"
+        title="Audit Log"
+        subtitle="Activity in your union councils"
+      />
 
       {!isLoading && !isError && (
-        <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-surface-chip border border-surface-border rounded-xl w-fit">
           {TABS.map((t) => {
             const Icon = t.icon
             const active = activeTab === t.id
@@ -144,13 +143,13 @@ export default function UCSupervisorAuditLog() {
                 key={t.id}
                 onClick={() => { setActiveTab(t.id); setCurrentPage(1) }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                  active ? 'bg-white text-primary shadow-sm border border-slate-200' : 'text-text-muted hover:text-text'
+                  active ? 'bg-surface text-primary shadow-sm border border-surface-border' : 'text-text-muted hover:text-text'
                 }`}
               >
                 <Icon size={13} strokeWidth={2.2} />
                 {t.label}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  active ? 'bg-primary/10 text-primary' : 'bg-white text-text-muted border border-slate-200'
+                  active ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted border border-surface-border'
                 }`}>
                   {count}
                 </span>
@@ -160,7 +159,7 @@ export default function UCSupervisorAuditLog() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
+      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-2 text-text-muted">
           <Calendar size={14} className="text-primary" />
           <h2 className="text-xs font-bold uppercase tracking-wider">Filter</h2>
@@ -183,7 +182,7 @@ export default function UCSupervisorAuditLog() {
           />
         </div>
         {(dateFilter || actionFilter) && (
-          <div className="flex justify-end border-t border-slate-50 pt-3">
+          <div className="flex justify-end border-t border-surface-border pt-3">
             <button
               onClick={() => { setDateFilter(''); setActionFilter(''); setCurrentPage(1) }}
               className="text-xs text-primary font-bold hover:underline"
@@ -196,7 +195,7 @@ export default function UCSupervisorAuditLog() {
 
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -213,9 +212,9 @@ export default function UCSupervisorAuditLog() {
             rows={paginated}
             emptyMessage={(dateFilter || actionFilter) ? 'No entries match your filters.' : 'No activity recorded yet.'}
             mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-slate-50/50">
+              <div className="px-4 py-3 hover:bg-surface-alt/50 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+                  <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-surface-alt border border-surface-border text-text-muted">
                     {ACTION_LABELS[row.action] ?? row.action}
                   </span>
                   <div className="flex items-center gap-1 text-[10px] text-text-muted flex-shrink-0">
@@ -231,27 +230,27 @@ export default function UCSupervisorAuditLog() {
           />
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
+            <div className="flex items-center justify-between bg-surface px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
               <p className="text-xs text-text-muted font-semibold hidden sm:block">
                 Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
                 <span className="font-extrabold text-text">{totalPages}</span>
               </p>
-              <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+              <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-surface-border bg-surface-chip p-0.5 gap-1">
                 <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}
-                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 cursor-pointer">
+                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 cursor-pointer">
                   <ChevronLeft size={16} />
                 </button>
                 {Array.from({ length: totalPages }).map((_, i) => {
                   const p = i + 1
                   return (
                     <button key={p} onClick={() => setCurrentPage(p)}
-                      className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${p === currentPage ? 'bg-primary text-white' : 'text-text-muted hover:bg-white'}`}>
+                      className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${p === currentPage ? 'bg-primary text-white' : 'text-text-muted hover:bg-surface'}`}>
                       {p}
                     </button>
                   )
                 })}
                 <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 cursor-pointer">
+                  className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 cursor-pointer">
                   <ChevronRight size={16} />
                 </button>
               </nav>

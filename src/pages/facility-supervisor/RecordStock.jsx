@@ -6,6 +6,7 @@ import {
 } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Toast from '../../components/ui/Toast'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const STAGE_BADGE = {
@@ -54,7 +55,7 @@ function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-surface-border shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-surface-border shadow-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
           <p className="text-sm font-bold text-text">Raise Stock Request</p>
           <button onClick={onClose} className="text-text-muted hover:text-text p-1 rounded"><X size={16} /></button>
@@ -80,7 +81,7 @@ function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
               onChange={e => setNote(e.target.value)}
               rows={2}
               maxLength={500}
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -164,7 +165,7 @@ function RecordReceivedPanel({ req, onClose, onSubmit, isPending }) {
           onChange={e => setNote(e.target.value)}
           rows={2}
           maxLength={500}
-          className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+          className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
         />
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -185,6 +186,7 @@ function RequestCard({ req }) {
   const [showReceive, setShowReceive] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [mutError, setMutError] = useState('')
 
   const isOpen = OPEN_STAGES.has(req.stage)
   const isCloseShort = req.status === 'partially_fulfilled' && !req.closedAt
@@ -198,6 +200,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowReceive(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to record received. Please try again.'),
   })
 
   const cancelMutation = useMutation({
@@ -207,6 +210,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setCancelConfirm(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to cancel request. Please try again.'),
   })
 
   return (
@@ -229,6 +233,8 @@ function RequestCard({ req }) {
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
+      {mutError && <p className="text-sm text-danger mt-1">{mutError}</p>}
 
       {expanded && (
         <div className="pt-2 space-y-2">
@@ -287,7 +293,7 @@ function RequestCard({ req }) {
                   placeholder={isCloseShort ? 'Reason for closing short (required)' : 'Reason for cancellation (required since figures were recorded)'}
                   rows={2}
                   maxLength={500}
-                  className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+                  className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
                 />
               )}
               <div className="flex gap-2">
@@ -312,6 +318,7 @@ function RequestCard({ req }) {
 export default function RecordStock() {
   const qc = useQueryClient()
   const [showRaise, setShowRaise] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const { data: reqData, isLoading } = useQuery({
     queryKey: ['stock-requests'],
@@ -335,6 +342,7 @@ export default function RecordStock() {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowRaise(false)
     },
+    onError: (err) => setToast({ message: err.message || 'Failed to raise request. Please try again.', type: 'error' }),
   })
 
   return (
@@ -370,6 +378,8 @@ export default function RecordStock() {
           isPending={createMutation.isPending}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

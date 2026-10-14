@@ -25,7 +25,7 @@ function StockCard({ row }) {
   const ringClass   = cfg.ring
 
   return (
-    <div className={`bg-white rounded-2xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200`}>
+    <div className={`bg-surface rounded-2xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-200`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <div className="p-1.5 rounded-lg bg-red-50 text-primary">
@@ -36,7 +36,7 @@ function StockCard({ row }) {
         <StatusBadge status={row.status} />
       </div>
 
-      <div className="flex items-center text-xs pt-1 border-t border-slate-50 mt-1 font-medium">
+      <div className="flex items-center text-xs pt-1 border-t border-surface-border mt-1 font-medium">
         {!hasData ? (
           <span className="italic text-text-muted">Not recorded yet</span>
         ) : outOfStock ? (
@@ -99,7 +99,7 @@ export default function WorkerStatusView() {
           <SummaryPill icon={AlertCircle} label="Critical" count={criticalCount}
             colorClass="bg-danger-bg border-danger/20 text-danger" />
           <SummaryPill icon={HelpCircle} label="No data" count={noDataCount}
-            colorClass="bg-slate-50 border-slate-200 text-text-muted" />
+            colorClass="bg-surface-alt border-surface-border text-text-muted" />
         </div>
       )}
 
@@ -113,7 +113,7 @@ export default function WorkerStatusView() {
       </div>
 
       {!isLoading && !isError && rows.length === 0 && (
-        <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm px-6 max-w-md mx-auto">
+        <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm px-6 max-w-md mx-auto">
           <Syringe size={40} className="mx-auto mb-3 text-text-muted/40 animate-pulse" />
           <p className="font-bold text-text">No Vaccines Configured</p>
           <p className="text-xs text-text-muted/80 mt-1 max-w-[280px] mx-auto leading-relaxed">Please ask your facility supervisor to configure your vaccine catalog and alerts.</p>

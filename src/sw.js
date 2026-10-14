@@ -1,19 +1,10 @@
 import { precacheAndRoute } from 'workbox-precaching'
-import { registerRoute } from 'workbox-routing'
-import { NetworkFirst } from 'workbox-strategies'
 
 // Precache the app shell (Workbox injects the manifest at build time)
 precacheAndRoute(self.__WB_MANIFEST)
 
-// shortcut: GET-only API caching, credentials not cached — read-only fallback when offline
-const API_ORIGIN = self.location.hostname === 'localhost'
-  ? 'http://localhost:3000'
-  : 'https://smart-stock-alert-be.vercel.app'
-
-registerRoute(
-  ({ url, request }) => url.origin === API_ORIGIN && request.method === 'GET',
-  new NetworkFirst({ cacheName: 'api-cache', networkTimeoutSeconds: 5 }),
-)
+// API routes with credentials:include cannot be cached cross-origin by the Cache API.
+// NetworkFirst was a no-op that added CORS risk in strict environments — removed.
 
 // Push notification handler
 self.addEventListener('push', (event) => {

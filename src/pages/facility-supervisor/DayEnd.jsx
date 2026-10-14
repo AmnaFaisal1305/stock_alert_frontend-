@@ -196,7 +196,7 @@ export default function DayEnd() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-5 flex flex-col gap-4">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm p-5 flex flex-col gap-4">
           <Select
             id="worker"
             label="Worker"
@@ -219,7 +219,7 @@ export default function DayEnd() {
         )}
 
         {assignedVaccines.length > 0 && (
-          <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
             <div className="px-5 py-3 border-b border-surface-border bg-surface-alt">
               <div className="grid grid-cols-[1fr_64px_64px_64px] gap-2 text-xs font-bold text-text-muted uppercase tracking-wider">
                 <span>Vaccine</span>

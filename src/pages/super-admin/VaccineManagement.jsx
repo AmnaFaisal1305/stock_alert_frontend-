@@ -154,7 +154,7 @@ export default function VaccineManagement() {
       {isLoading && (
         <div className="flex flex-col gap-3">
           {[1,2,3,4,5].map((i) => (
-            <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />
+            <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />
           ))}
         </div>
       )}
@@ -177,8 +177,8 @@ export default function VaccineManagement() {
 
       {/* Table */}
       {!isLoading && !isError && vaccines.length > 0 && (
-        <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-          <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3 bg-slate-50 border-b border-surface-border gap-3 items-center">
+        <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3 bg-surface-alt border-b border-surface-border gap-3 items-center">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Doses/Vial</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Crit. Doses</span>
@@ -190,7 +190,7 @@ export default function VaccineManagement() {
           {vaccines.map((v) => (
             <div key={v.id} className="border-b border-surface-border last:border-b-0">
               {/* Mobile card */}
-              <div className="sm:hidden px-4 py-3 hover:bg-slate-50/60 transition-colors">
+              <div className="sm:hidden px-4 py-3 hover:bg-surface-alt/60 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Syringe size={13} className="text-primary flex-shrink-0" />
@@ -199,7 +199,7 @@ export default function VaccineManagement() {
                   {user?.role !== 'observer' && (
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
-                        className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                         <Pencil size={13} />
                       </button>
                       <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"
@@ -218,7 +218,7 @@ export default function VaccineManagement() {
                 </div>
               </div>
               {/* Desktop row */}
-              <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3.5 gap-3 items-center hover:bg-slate-50/60 transition-colors">
+              <div className="hidden sm:grid grid-cols-[2fr_80px_90px_90px_90px_90px_100px] px-5 py-3.5 gap-3 items-center hover:bg-surface-alt/60 transition-colors">
                 <div className="flex items-center gap-2 min-w-0">
                   <Syringe size={13} className="text-primary flex-shrink-0" />
                   <span className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.name)}</span>
@@ -231,7 +231,7 @@ export default function VaccineManagement() {
                 <div className="flex items-center gap-1 justify-end">
                   {user?.role !== 'observer' && (<>
                     <button onClick={() => { setEditing(v); setEditError('') }} title="Edit"
-                      className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                      className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                       <Pencil size={13} />
                     </button>
                     <button onClick={() => { setDeleteTarget(v); setDeleteError('') }} title="Delete"

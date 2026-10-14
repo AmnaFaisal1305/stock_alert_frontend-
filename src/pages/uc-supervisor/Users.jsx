@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getUsers } from '../../lib/api'
 import SkeletonCard from '../../components/shared/SkeletonCard'
+import PageHeader from '../../components/shared/PageHeader'
 import { Users, UserCheck, UserX, Building2, MapPin, Search } from 'lucide-react'
 
 const AVATAR_COLORS = [
@@ -29,7 +30,7 @@ function UserCard({ user }) {
     <div className={`bg-surface rounded-xl border border-surface-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md ${!isActive ? 'opacity-60' : ''}`}>
       <div className="flex flex-col items-center gap-3 text-center">
         {/* Role badge */}
-        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-text-muted border border-surface-border">
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-surface-chip text-text-muted border border-surface-border">
           {ROLE_BADGE[user.role] ?? user.role}
         </span>
 
@@ -112,15 +113,11 @@ export default function UCSupervisorUsers() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Users</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            {isLoading ? 'Loading…' : `${users.length} user${users.length !== 1 ? 's' : ''} in your union councils`}
-          </p>
-        </div>
-        <Users size={22} className="text-white/30 flex-shrink-0" />
-      </div>
+      <PageHeader
+        breadcrumb="UC Supervisor › Users"
+        title="Users"
+        subtitle={isLoading ? undefined : `${users.length} ${users.length !== 1 ? 'Users' : 'User'} in your union councils`}
+      />
 
       {/* Stats chips */}
       {!isLoading && users.length > 0 && (
@@ -148,7 +145,7 @@ export default function UCSupervisorUsers() {
             placeholder="Search by name, email, facility or UC…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
           />
         </div>
       )}

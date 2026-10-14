@@ -1,17 +1,15 @@
 export default function StatCard({ label, value, icon: Icon, colorClass = 'text-primary', subtitle, unit }) {
   return (
-    <div className="bg-white rounded-2xl border border-surface-border p-3 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md w-full">
+    <div className="relative bg-surface rounded-card border border-surface-border p-4 sm:p-5 w-full">
       {Icon && (
-        <div className={`p-2.5 sm:p-3 rounded-xl bg-slate-50 ${colorClass} flex-shrink-0 flex items-center justify-center`}>
+        <div className={`absolute top-4 right-4 w-9 h-9 rounded-xl bg-surface-alt ${colorClass} flex items-center justify-center`}>
           <Icon size={18} strokeWidth={2.2} />
         </div>
       )}
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{label}</p>
-        <p className="text-xl sm:text-2xl font-extrabold text-text mt-0.5 tracking-tight">{value}</p>
-        {unit && <p className="text-xs font-semibold text-text-muted mt-0.5 truncate">{unit}</p>}
-        {subtitle && <p className="text-[10px] text-text-muted/75 font-medium mt-0.5 truncate">{subtitle}</p>}
-      </div>
+      <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider truncate pr-10">{label}</p>
+      <p className="text-3xl sm:text-[34px] font-light text-text mt-2.5 leading-none tracking-tight tabular-nums">{value}</p>
+      {unit && <p className="text-xs font-semibold text-text-muted mt-1.5 truncate">{unit}</p>}
+      {subtitle && <p className="text-xs text-text-muted mt-1.5 truncate">{subtitle}</p>}
     </div>
   )
 }

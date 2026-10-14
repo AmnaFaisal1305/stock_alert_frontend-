@@ -25,7 +25,7 @@ export default function Input({
           id={id}
           type={inputType}
           className={[
-            'w-full rounded-lg border px-3.5 py-2 text-sm text-text bg-white shadow-sm transition-all',
+            'w-full rounded-xl border px-3.5 py-2 text-sm text-text bg-surface shadow-sm transition-all',
             'placeholder:text-text-muted/60',
             'focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10',
             isPassword ? 'pr-10' : '',

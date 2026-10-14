@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import PageHeader from '../../components/shared/PageHeader'
 
 function humanizeKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
@@ -151,7 +152,7 @@ function formatDetails(row, vaccineNameById) {
 
 export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   const { user } = useAuth()
-  
+
   const isDistrictSup = user?.role === 'district_supervisor'
   const defaultTab = isDistrictSup ? 'all' : 'super_admin'
 
@@ -288,11 +289,11 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
           (row.entityType === 'stock_request' || row.entityType === 'approval')
         return (
           <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted whitespace-nowrap">
+            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-surface-alt border border-surface-border text-text-muted whitespace-nowrap">
               {actionText}
             </span>
             {showStatus && (
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 w-fit">
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-chip border border-surface-border text-text-muted w-fit">
                 {row.status.replace(/_/g, ' ')}
               </span>
             )}
@@ -395,9 +396,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   }
 
   const auditMobileCard = (row) => (
-    <div className="px-4 py-3 hover:bg-slate-50/50">
+    <div className="px-4 py-3 hover:bg-surface-alt/50">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-text-muted">
+        <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded bg-surface-alt border border-surface-border text-text-muted">
           {ACTION_LABELS[row.action] ?? row.action}
         </span>
         <div className="flex items-center gap-1 text-[10px] text-text-muted font-semibold flex-shrink-0">
@@ -421,27 +422,27 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
 
-      {/* ── Page Header ─────────────────────────────────────────────── */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
-          {subtitle && <p className="text-sm text-white/70 mt-0.5">{subtitle}</p>}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-          </span>
-          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest hidden sm:block">
-            Live · Auto-refreshing
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb={isDistrictSup ? 'District Supervisor › Audit Log' : 'Super Admin › Audit Log'}
+        title={title}
+        subtitle={subtitle || undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest hidden sm:block">
+              Live · Auto-refreshing
+            </span>
+          </div>
+        }
+      />
 
       {/* Tabs list */}
       {!isLoading && !isError && (
         <div className="overflow-x-auto max-w-full -mx-1 px-1 pb-0.5">
-        <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit min-w-max">
+        <div className="flex gap-1 p-1 bg-surface-chip border border-surface-border rounded-xl w-fit min-w-max">
           {tabs.map((t) => {
             const Icon = t.icon
             const active = activeTab === t.id
@@ -452,14 +453,14 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                 onClick={() => handleTabChange(t.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                   active
-                    ? 'bg-white text-primary shadow-sm border border-slate-200'
+                    ? 'bg-surface text-primary shadow-sm border border-surface-border'
                     : 'text-text-muted hover:text-text'
                 }`}
               >
                 <Icon size={13} strokeWidth={2.2} />
                 {t.label}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  active ? 'bg-primary/10 text-primary' : 'bg-white text-text-muted border border-slate-200'
+                  active ? 'bg-primary/10 text-primary' : 'bg-surface text-text-muted border border-surface-border'
                 }`}>
                   {count}
                 </span>
@@ -475,8 +476,8 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         <>
           {!selectedFacility ? (
             /* Facility list */
-            <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-              <div className="hidden sm:grid grid-cols-[2fr_1.5fr_1fr] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-4 items-center">
+            <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+              <div className="hidden sm:grid grid-cols-[2fr_1.5fr_1fr] px-6 py-3.5 bg-surface-alt border-b border-surface-border gap-4 items-center">
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Facility</span>
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor</span>
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right">Activity</span>
@@ -491,7 +492,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                       {/* Mobile card */}
                       <button
                         onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
-                        className="sm:hidden w-full px-4 py-3 hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
+                        className="sm:hidden w-full px-4 py-3 hover:bg-surface-alt/60 transition-colors text-left cursor-pointer"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -499,7 +500,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                             <span className="font-bold text-text text-sm truncate">{f.name}</span>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted'}`}>
                               {count} {count === 1 ? 'log' : 'logs'}
                             </span>
                             <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
@@ -512,7 +513,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                       {/* Desktop row */}
                       <button
                         onClick={() => { setSelectedFacility(f); setDrillPage(1) }}
-                        className="hidden sm:grid w-full grid-cols-[2fr_1.5fr_1fr] px-6 py-4 gap-4 items-center hover:bg-slate-50/60 transition-colors text-left cursor-pointer"
+                        className="hidden sm:grid w-full grid-cols-[2fr_1.5fr_1fr] px-6 py-4 gap-4 items-center hover:bg-surface-alt/60 transition-colors text-left cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Building2 size={14} className="text-text-muted/60 flex-shrink-0" />
@@ -522,7 +523,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                           {f.facilitySupervisorName ?? 'Unstaffed'}
                         </span>
                         <div className="flex justify-end items-center gap-1.5">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted'}`}>
                             {count} {count === 1 ? 'log' : 'logs'}
                           </span>
                           <ArrowLeft size={13} className="text-text-muted/50 rotate-180" />
@@ -545,7 +546,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                 </button>
                 <span className="text-text-muted/40">·</span>
                 <span className="text-sm font-bold text-text">{selectedFacility.name}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${drillLogs.length > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-muted'}`}>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${drillLogs.length > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted'}`}>
                   {drillLogs.length} {drillLogs.length === 1 ? 'entry' : 'entries'}
                 </span>
               </div>
@@ -556,27 +557,27 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                 mobileCard={auditMobileCard}
               />
               {drillTotalPages > 1 && (
-                <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
+                <div className="flex items-center justify-between bg-surface px-5 py-4 rounded-2xl border border-surface-border shadow-sm">
                   <p className="text-xs text-text-muted font-semibold hidden sm:block">
                     Page <span className="font-extrabold text-text">{drillPage}</span> of{' '}
                     <span className="font-extrabold text-text">{drillTotalPages}</span>
                   </p>
-                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-surface-border bg-surface-chip p-0.5 gap-1">
                     <button onClick={() => setDrillPage(drillPage - 1)} disabled={drillPage === 1}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 transition-all cursor-pointer">
                       <ChevronLeft size={16} />
                     </button>
                     {Array.from({ length: drillTotalPages }).map((_, i) => {
                       const p = i + 1
                       return (
                         <button key={p} onClick={() => setDrillPage(p)}
-                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${p === drillPage ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-white'}`}>
+                          className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${p === drillPage ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface'}`}>
                           {p}
                         </button>
                       )
                     })}
                     <button onClick={() => setDrillPage(drillPage + 1)} disabled={drillPage === drillTotalPages}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer">
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 transition-all cursor-pointer">
                       <ChevronRight size={16} />
                     </button>
                   </nav>
@@ -589,7 +590,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
 
       {/* Filter panel */}
       {activeTab !== 'all' && (
-      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
+      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-2 text-text-muted">
           <Calendar size={14} className="text-primary" />
           <h2 className="text-xs font-bold uppercase tracking-wider">Filter tab logs</h2>
@@ -625,7 +626,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         })()}
 
         {hasFilters && (
-          <div className="flex justify-end border-t border-slate-50 pt-3">
+          <div className="flex justify-end border-t border-surface-border pt-3">
             <button
               onClick={() => {
                 setDateFilter('')
@@ -643,7 +644,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
 
       {isLoading && activeTab !== 'all' && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -664,7 +665,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
 
           {/* Pagination bar */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
+            <div className="flex items-center justify-between border-t border-surface-border bg-surface px-5 py-4 mt-2 rounded-2xl border border-surface-border shadow-sm">
               <div className="flex flex-1 justify-between sm:hidden">
                 <Button variant="secondary" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
                   Previous
@@ -681,11 +682,11 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                   </p>
                 </div>
                 <div>
-                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1" aria-label="Pagination">
+                  <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-surface-border bg-surface-chip p-0.5 gap-1" aria-label="Pagination">
                     <button
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -698,7 +699,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                           className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                             p === currentPage
                               ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                              : 'text-text-muted hover:bg-white'
+                              : 'text-text-muted hover:bg-surface'
                           }`}
                         >
                           {p}
@@ -708,7 +709,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
                     <button
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
+                      className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-55 disabled:hover:bg-transparent transition-all cursor-pointer"
                     >
                       <ChevronRight size={16} />
                     </button>

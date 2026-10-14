@@ -75,9 +75,9 @@ export default function Select({
           disabled={disabled}
           onClick={openDropdown}
           className={[
-            'w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm text-text bg-white shadow-sm transition-all text-left cursor-pointer select-none',
+            'w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm text-text bg-surface shadow-sm transition-all text-left cursor-pointer select-none',
             'focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10',
-            disabled ? 'bg-slate-50 text-text-muted cursor-not-allowed opacity-60' : '',
+            disabled ? 'bg-surface-alt text-text-muted cursor-not-allowed opacity-60' : '',
             error ? 'border-danger focus:border-danger focus:ring-danger/10' : 'border-surface-border',
             isOpen ? 'border-primary ring-4 ring-primary/10' : '',
             className,
@@ -97,7 +97,7 @@ export default function Select({
           <div
             ref={dropdownRef}
             style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
-            className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+            className="bg-surface border border-surface-border rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
           >
             {options.length === 0 ? (
               <div className="px-4 py-2.5 text-xs text-text-muted italic">No options available</div>
@@ -113,7 +113,7 @@ export default function Select({
                       'w-full flex items-start justify-between gap-2 px-4 py-2.5 text-sm font-semibold text-left transition-colors cursor-pointer select-none',
                       isSelected
                         ? 'bg-primary/5 text-primary font-bold'
-                        : 'text-text hover:bg-slate-50 hover:text-text',
+                        : 'text-text hover:bg-surface-alt hover:text-text',
                     ].join(' ')}
                   >
                     <span className="flex-1 min-w-0 whitespace-normal break-words">{opt.label}</span>

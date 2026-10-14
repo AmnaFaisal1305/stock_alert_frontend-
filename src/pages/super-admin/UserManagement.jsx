@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, RotateCcw, UserX, UserCheck, User } from 'lucide-react'
+import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -204,7 +205,7 @@ export default function UserManagement() {
       label: nameColLabel,
       render: (row) => (
         <div className="flex items-center gap-2 font-bold text-text">
-          <div className="w-6 h-6 rounded bg-slate-100 text-text-muted flex items-center justify-center flex-shrink-0">
+          <div className="w-6 h-6 rounded bg-surface-chip text-text-muted flex items-center justify-center flex-shrink-0">
             <User size={12} />
           </div>
           <div className="min-w-0">
@@ -281,25 +282,16 @@ export default function UserManagement() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
       
-      {/* ── Page Header — AKUH maroon banner ───────────────────────── */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">User Management</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            {!isLoading && `${users.length} ${users.length === 1 ? 'user' : 'users'} registered under system`}
-            {isLoading && 'Loading users…'}
-          </p>
-        </div>
-        {authUser?.role !== 'observer' && (
-          <button
-            onClick={() => { setCreateOpen(true); setFormError('') }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-bold hover:bg-white/90 transition-all flex-shrink-0 shadow-sm"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            Add User
-          </button>
+      <PageHeader
+        breadcrumb="Super Admin › User Management"
+        title="User Management"
+        subtitle={isLoading ? 'Loading users…' : `${users.length} ${users.length === 1 ? 'user' : 'users'} registered under system`}
+        actions={authUser?.role !== 'observer' && (
+          <Button onClick={() => { setCreateOpen(true); setFormError('') }}>
+            <Plus size={15} strokeWidth={2.5} /> Add User
+          </Button>
         )}
-      </div>
+      />
 
       {/* Search + Role filters */}
       {!isLoading && !isError && users.length > 0 && (
@@ -317,12 +309,12 @@ export default function UserManagement() {
                   key={f.label}
                   onClick={() => { setRoleFilter(i); setCurrentPage(1) }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
-                    active ? 'bg-primary text-white' : 'text-text-muted hover:bg-slate-50'
+                    active ? 'bg-primary text-white' : 'text-text-muted hover:bg-surface-alt'
                   }`}
                 >
                   {f.label}
                   <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${
-                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-text-muted'
+                    active ? 'bg-white/20 text-white' : 'bg-surface-chip text-text-muted'
                   }`}>
                     {roleCounts[i]}
                   </span>
@@ -336,7 +328,7 @@ export default function UserManagement() {
       {/* Loading Skeletons */}
       {isLoading && (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
         </div>
       )}
 
@@ -361,7 +353,7 @@ export default function UserManagement() {
               const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker' || row.role === 'facility_head'
               const assignment = isFacilityRole ? row.facilityName : row.role === 'uc_supervisor' ? (row.ucNames ?? []).join(', ') || 'No UCs' : row.districtName
               return (
-                <div className="px-4 py-3 hover:bg-slate-50">
+                <div className="px-4 py-3 hover:bg-surface-alt">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="min-w-0">
                       <p className="font-bold text-sm text-text truncate">{row.name ?? '—'}</p>
@@ -457,7 +449,7 @@ export default function UserManagement() {
                   {ucOptions.map((uc) => {
                     const checked = form.ucIds.includes(uc.value)
                     return (
-                      <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                      <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-alt transition-colors">
                         <input
                           type="checkbox"
                           checked={checked}
@@ -534,7 +526,7 @@ export default function UserManagement() {
               {ucOptions.map((uc) => {
                 const checked = reassignUcIds.includes(uc.value)
                 return (
-                  <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                  <label key={uc.value} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-alt transition-colors">
                     <input
                       type="checkbox"
                       checked={checked}

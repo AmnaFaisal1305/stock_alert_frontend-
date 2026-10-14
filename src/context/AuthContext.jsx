@@ -49,6 +49,7 @@ export function AuthProvider({ children }) {
         api.setCsrfToken(csrfToken)
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(u))
         sessionStorage.setItem(CSRF_KEY, csrfToken)
+        localStorage.setItem('sst_auth_signal', '1')
         setUser(u)
       })
       .catch(() => {
@@ -56,6 +57,53 @@ export function AuthProvider({ children }) {
       })
       .finally(() => setBootstrapping(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cross-tab auth sync via localStorage storage events (storage events fire in all tabs
+  // except the one that wrote, making them perfect for broadcasting login/logout).
+  useEffect(() => {
+    function handleStorage(e) {
+      if (e.key === 'sst_logout_ts') {
+        // Another tab logged out — clear this tab too
+        if (!user) return
+        queryClient.clear()
+        api.setCsrfToken(null)
+        sessionStorage.removeItem(SESSION_KEY)
+        sessionStorage.removeItem(CSRF_KEY)
+        setUser(null)
+        navigate('/login', { replace: true })
+      }
+      if (e.key === 'sst_auth_signal' && !user) {
+        // Another tab logged in — pick up the session via cookie
+        api.getSession()
+          .then(({ user: u, csrfToken }) => {
+            api.setCsrfToken(csrfToken)
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(u))
+            sessionStorage.setItem(CSRF_KEY, csrfToken)
+            setUser(u)
+          })
+          .catch(() => {})
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [user, navigate, queryClient])
+
+  // Handle session expiry from any tab without a full page reload.
+  // api.js dispatches this event instead of window.location.replace('/login'),
+  // preventing the bootstrapping getSession() from silently re-authenticating
+  // as whoever owns the current cookie (fixes cross-tab switching + logout loops).
+  useEffect(() => {
+    const handle = () => {
+      queryClient.clear()
+      api.setCsrfToken(null)
+      // Clear the auth signal so the next login re-fires the storage event in other tabs
+      localStorage.removeItem('sst_auth_signal')
+      setUser(null)
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('sst:session-expired', handle)
+    return () => window.removeEventListener('sst:session-expired', handle)
+  }, [navigate, queryClient])
 
   const login = useCallback((userData, csrfToken) => {
     queryClient.clear()
@@ -65,6 +113,7 @@ export function AuthProvider({ children }) {
     // reset PWA prompt dismissal so prompts appear for each new login
     sessionStorage.removeItem('sst_notif_card')
     sessionStorage.removeItem('sst_install_card')
+    localStorage.setItem('sst_auth_signal', '1')
     setUser(userData)
   }, [queryClient])
 
@@ -79,6 +128,8 @@ export function AuthProvider({ children }) {
     api.setCsrfToken(null)
     sessionStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(CSRF_KEY)
+    localStorage.removeItem('sst_auth_signal')
+    localStorage.setItem('sst_logout_ts', Date.now().toString())
     setUser(null)
     navigate('/login', { replace: true })
   }, [navigate, queryClient])

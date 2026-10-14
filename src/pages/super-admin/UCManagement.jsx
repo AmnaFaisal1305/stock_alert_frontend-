@@ -17,6 +17,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import Table from '../../components/shared/Table'
+import PageHeader from '../../components/shared/PageHeader'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 const TABS = ['Towns', 'Union Councils']
@@ -35,7 +36,7 @@ function UCExpandedPanel({ ucId }) {
 
   if (isLoading) {
     return (
-      <div className="border-t border-primary/10 bg-slate-50 px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
+      <div className="border-t border-primary/10 bg-surface-alt px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
         <Loader2 size={14} className="animate-spin flex-shrink-0" />
         Loading facilities…
       </div>
@@ -47,7 +48,7 @@ function UCExpandedPanel({ ucId }) {
 
   if (facilities.length === 0) {
     return (
-      <div className="border-t border-primary/10 bg-slate-50/80 px-8 py-5 flex items-center gap-3 text-text-muted">
+      <div className="border-t border-primary/10 bg-surface-alt/80 px-8 py-5 flex items-center gap-3 text-text-muted">
         <Building2 size={16} className="opacity-30 flex-shrink-0" />
         <p className="text-sm font-medium">No facilities registered under this UC.</p>
       </div>
@@ -55,7 +56,7 @@ function UCExpandedPanel({ ucId }) {
   }
 
   return (
-    <div className="border-t border-primary/10 bg-slate-50/80 px-6 py-5">
+    <div className="border-t border-primary/10 bg-surface-alt/80 px-6 py-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {facilities.map((f) => {
           const facDash = byFacility.find((b) => b.facilityId === f.id)
@@ -68,7 +69,7 @@ function UCExpandedPanel({ ucId }) {
             <Link
               key={f.id}
               to={`/super-admin/facilities/${f.id}`}
-              className={`group bg-slate-50 rounded-lg border border-surface-border border-l-4 ${cfg.borderL} p-3.5 flex flex-col gap-2.5 hover:bg-white hover:shadow-md transition-all duration-200`}
+              className={`group bg-surface-alt rounded-lg border border-surface-border border-l-4 ${cfg.borderL} p-3.5 flex flex-col gap-2.5 hover:bg-surface hover:shadow-md transition-all duration-200`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -86,7 +87,7 @@ function UCExpandedPanel({ ucId }) {
                 {f.facilitySupervisorName ?? 'Unstaffed'}
               </p>
 
-              <div className="flex flex-wrap gap-1 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap gap-1 pt-2 border-t border-surface-border">
                 {sc.critical > 0 && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
                     {sc.critical} Critical
@@ -186,7 +187,7 @@ function TownsTab() {
     { key: 'actions', label: '', render: (t) => (
       <div className="flex items-center gap-1 justify-end">
         <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
-          title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+          title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
           <Pencil size={13} />
         </button>
         {t.isActive ? (
@@ -213,13 +214,13 @@ function TownsTab() {
         </Button>
       </div>
 
-      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}</div>}
+      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
       {isError && <p className="text-sm text-danger">Failed to load towns.</p>}
       {!isLoading && !isError && (
         <Table columns={columns} rows={filtered} rowKey={(t) => t.id}
           emptyMessage={search ? `No towns match "${search}".` : 'No towns yet.'}
           mobileCard={(t) => (
-            <div className="px-4 py-3 hover:bg-slate-50">
+            <div className="px-4 py-3 hover:bg-surface-alt">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Map size={12} className="text-primary flex-shrink-0" />
@@ -228,7 +229,7 @@ function TownsTab() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Badge type={t.isActive ? 'active' : 'inactive'} />
                   <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
-                    title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                    title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                     <Pencil size={13} />
                   </button>
                   {t.isActive ? (
@@ -392,14 +393,14 @@ function UCsTab() {
         </Button>
       </div>
 
-      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />)}</div>}
+      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
       {isError && <p className="text-sm text-danger">Failed to load union councils.</p>}
 
       {!isLoading && !isError && (
-        <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+        <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
 
           {/* Column headers — desktop only */}
-          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_2fr_240px] px-6 py-3.5 bg-slate-50 border-b border-surface-border gap-4 items-center">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_2fr_240px] px-6 py-3.5 bg-surface-alt border-b border-surface-border gap-4 items-center">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">UC Name</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Town</span>
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District</span>
@@ -457,12 +458,12 @@ function UCsTab() {
                     </button>
                     {uc.ucSupervisorName && (
                       <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                         <UserPlus size={13} />
                       </button>
                     )}
                     <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                       <Pencil size={13} />
                     </button>
                     {uc.isActive ? (
@@ -482,7 +483,7 @@ function UCsTab() {
                 {/* ── Desktop row ── */}
                 <div className={[
                   'hidden sm:grid grid-cols-[2fr_1fr_1fr_2fr_240px] px-6 py-4 gap-4 items-center transition-colors duration-150',
-                  isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-slate-50/60',
+                  isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-surface-alt/60',
                 ].join(' ')}>
 
                   <div className="flex items-center gap-2 min-w-0">
@@ -524,12 +525,12 @@ function UCsTab() {
                     </button>
                     {uc.ucSupervisorName && (
                       <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                         <UserPlus size={13} />
                       </button>
                     )}
                     <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-slate-100 hover:text-text transition-colors">
+                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
                       <Pencil size={13} />
                     </button>
                     {uc.isActive ? (
@@ -589,7 +590,7 @@ function UCsTab() {
         title={assignTarget?.ucSupervisorName ? 'Reassign UC Supervisor' : 'Assign UC Supervisor'}
       >
         <div className="flex flex-col gap-4">
-          <div className="bg-slate-50 border border-surface-border rounded-xl px-4 py-3 text-sm">
+          <div className="bg-surface-alt border border-surface-border rounded-xl px-4 py-3 text-sm">
             <p className="font-bold text-text">{assignTarget?.name}</p>
             <p className="text-xs text-text-muted mt-0.5">{assignTarget?.townName} · {assignTarget?.districtName}</p>
             {assignTarget?.ucSupervisorName && (
@@ -647,20 +648,20 @@ export default function UCManagement() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
-      {/* Header */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
-        <h1 className="text-xl font-bold text-white tracking-tight">UC Management</h1>
-        <p className="text-sm text-white/70 mt-0.5">Manage Towns and Union Councils · District → Town → UC → Facility</p>
-      </div>
+      <PageHeader
+        breadcrumb="Super Admin › UC Management"
+        title="UC Management"
+        subtitle="Manage Towns and Union Councils · District → Town → UC → Facility"
+      />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-surface-chip rounded-xl p-1 w-fit">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-              tab === t ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:text-text'
+              tab === t ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
             }`}
           >
             {t}

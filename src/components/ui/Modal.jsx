@@ -54,12 +54,12 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
-      <div ref={dialogRef} className={`relative bg-white rounded-2xl border border-surface-border shadow-2xl w-full ${maxWidth} z-10 flex flex-col max-h-[calc(100vh-2rem)]`}>
+      <div ref={dialogRef} className={`relative bg-surface rounded-2xl border border-surface-border shadow-2xl w-full ${maxWidth} z-10 flex flex-col max-h-[calc(100vh-2rem)]`}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-surface-border flex-shrink-0">
           <h2 className="text-lg font-bold text-text tracking-tight">{title}</h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 -mr-2 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-10 h-10 -mr-2 flex items-center justify-center rounded-xl hover:bg-surface-alt transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close"
           >
             <X size={18} className="text-text-muted" />

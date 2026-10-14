@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, WifiOff } from 'lucide-react'
+import { Bell, WifiOff, Sun, Moon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
+import { useTheme } from '../../hooks/useTheme'
 
 function useOnline() {
   return useSyncExternalStore(
@@ -57,15 +58,30 @@ const PAGE_TITLES = {
   '/uc/users':              'Users',
   '/uc/audit-log':          'Audit Log',
   '/uc/stock-requests':     'Stock Requests',
+  '/head/dashboard':        'Dashboard',
   '/head/approvals':        'Approvals',
   '/head/stock-requests':   'Stock Requests',
+  '/head/users':            'Users',
+  '/head/audit-log':        'Audit Log',
+  '/head/analytics':        'Analytics',
+  '/head/guide':            'Guide',
+  '/super-admin/analytics': 'Analytics',
+  '/super-admin/guide':     'Guide',
+  '/district/analytics':    'Analytics',
+  '/district/guide':        'Guide',
+  '/facility/analytics':    'Analytics',
+  '/facility/guide':        'Guide',
+  '/uc/analytics':          'Analytics',
+  '/uc/guide':              'Guide',
   '/worker/stock-entry':    'Stock Entry',
   '/worker/status':         'Stock Status',
+  '/worker/guide':          'Guide',
 }
 
 export default function TopBar({ onMenuClick }) {
   const { user } = useAuth()
   const { pathname } = useLocation()
+  const { resolved, toggle } = useTheme()
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const bellRef  = useRef(null)
@@ -98,12 +114,12 @@ export default function TopBar({ onMenuClick }) {
   }, [open])
 
   return (
-    <header className="h-16 bg-white border-b border-surface-border flex items-center justify-between px-4 sm:px-6 flex-shrink-0 shadow-sm z-30">
+    <header className="h-16 bg-surface border-b border-surface-border flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-30">
       {/* Left: Mobile Menu Button + page title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="p-2 -ml-1 text-secondary hover:text-text hover:bg-slate-100 rounded-xl lg:hidden transition-colors"
+          className="p-2 -ml-1 text-text-muted hover:text-text hover:bg-surface-alt rounded-xl lg:hidden transition-colors"
           aria-label="Open sidebar"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -142,6 +158,16 @@ export default function TopBar({ onMenuClick }) {
             </span>
           )}
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-surface-alt hover:text-text transition-colors"
+            aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {resolved === 'dark' ? <Sun size={18} strokeWidth={2.2} /> : <Moon size={18} strokeWidth={2.2} />}
+          </button>
+
           {/* Bell — hidden for facility_worker */}
           {showBell && (
             <>
@@ -149,12 +175,12 @@ export default function TopBar({ onMenuClick }) {
                 <button
                   ref={bellRef}
                   onClick={() => setOpen((v) => !v)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-slate-100 hover:text-text transition-colors relative"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-surface-alt hover:text-text transition-colors relative"
                   aria-label="Notifications"
                 >
                   <Bell size={18} strokeWidth={2.2} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-white">
+                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-surface">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}

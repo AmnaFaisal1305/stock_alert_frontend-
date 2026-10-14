@@ -39,6 +39,7 @@ function RequestCard({ req }) {
   const [expanded, setExpanded] = useState(false)
   const [showSent, setShowSent] = useState(false)
   const [declineMode, setDeclineMode] = useState(false)
+  const [mutError, setMutError] = useState('')
   const [sentItems, setSentItems] = useState(() =>
     (req.items ?? [])
       .filter(it => (it.outstandingVials ?? it.requestedVials) > 0)
@@ -58,6 +59,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowSent(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to record sent. Please try again.'),
   })
 
   const declineMutation = useMutation({
@@ -67,6 +69,7 @@ function RequestCard({ req }) {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setDeclineMode(false)
     },
+    onError: (err) => setMutError(err.message || 'Failed to decline request. Please try again.'),
   })
 
   function submitSent() {
@@ -97,6 +100,8 @@ function RequestCard({ req }) {
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
+      {mutError && <p className="text-sm text-danger mt-1">{mutError}</p>}
 
       {expanded && (
         <div className="pt-2 space-y-2">
@@ -155,7 +160,7 @@ function RequestCard({ req }) {
                   onChange={e => setSentNote(e.target.value)}
                   rows={2}
                   maxLength={500}
-                  className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -176,7 +181,7 @@ function RequestCard({ req }) {
                 placeholder="Reason for declining (required)"
                 rows={2}
                 maxLength={500}
-                className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+                className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
               />
               <div className="flex gap-2">
                 <Button
