@@ -38,7 +38,7 @@ function ApprovalRow({ a, onApprove, onReject, approvePending, rejectPending }) 
       {/* Current vs. proposed */}
       {a.type === 'stock_correction' && a.current && (
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-gray-50 rounded-lg p-3">
+          <div className="bg-surface-alt rounded-lg p-3">
             <p className="text-xs text-text-muted mb-1">Current store</p>
             <p className="font-semibold text-text">{a.current.storeVials} vials</p>
           </div>
@@ -51,7 +51,7 @@ function ApprovalRow({ a, onApprove, onReject, approvePending, rejectPending }) 
 
       {a.type === 'threshold_change' && a.current && (
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+          <div className="bg-surface-alt rounded-lg p-3 space-y-1">
             <p className="text-xs text-text-muted mb-1">Current thresholds</p>
             <p className="text-xs text-text">Critical: {a.current.criticalDoses}d / {a.current.criticalVials}v</p>
             <p className="text-xs text-text">Low: {a.current.lowDoses}d / {a.current.lowVials}v</p>
@@ -98,7 +98,7 @@ function ApprovalRow({ a, onApprove, onReject, approvePending, rejectPending }) 
             placeholder="Reason for rejection (required)"
             rows={2}
             maxLength={500}
-            className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
           />
           <div className="flex gap-2">
             <Button

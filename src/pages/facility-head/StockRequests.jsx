@@ -78,7 +78,7 @@ function RequestCard({ req }) {
         <div className="pt-2 space-y-2">
           <div className="rounded-xl border border-surface-border overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 text-text-muted uppercase tracking-wide">
+              <thead className="bg-surface-alt text-text-muted uppercase tracking-wide">
                 <tr>
                   <th className="px-3 py-2 text-left">Vaccine</th>
                   <th className="px-3 py-2 text-center">Req</th>
@@ -133,7 +133,7 @@ function RequestCard({ req }) {
                     placeholder="Explain why this delivery is short (required)"
                     rows={2}
                     maxLength={500}
-                    className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                   />
                 </div>
               )}
