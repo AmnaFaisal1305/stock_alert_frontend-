@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Select from '../../components/ui/Select'
 import DatePicker from '../../components/ui/DatePicker'
+import PageHeader from '../../components/shared/PageHeader'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,31 +32,31 @@ function formatFullDate(isoStr) {
 }
 
 const ACTION_META = {
-  STOCK_ENTRY:            { label: 'Stock Entry',         pill: 'bg-primary/5 text-primary border-primary/10',       icon: Package      },
-  ADJUST_STOCK:           { label: 'Stock Correction',    pill: 'bg-primary/5 text-primary border-primary/10',       icon: RefreshCcw   },
-  LOGOUT:                 { label: 'Logout',              pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound     },
-  CREATE_VACCINE:         { label: 'Vaccine Added',       pill: 'bg-success-bg text-success-dark border-success/15', icon: Syringe      },
-  EDIT_VACCINE:           { label: 'Vaccine Renamed',     pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: Tag          },
-  DELETE_VACCINE:         { label: 'Vaccine Deleted',     pill: 'bg-danger-bg text-danger border-danger/15',         icon: Trash2       },
-  SET_THRESHOLD:          { label: 'Threshold Updated',   pill: 'bg-warning-bg text-warning-dark border-warning/15', icon: Settings     },
-  CREATE_USER:            { label: 'Worker Added',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: UserPlus     },
-  ACTIVATE_USER:          { label: 'Worker Activated',    pill: 'bg-success-bg text-success-dark border-success/15', icon: UserCheck    },
-  DEACTIVATE_USER:        { label: 'Worker Deactivated',  pill: 'bg-danger-bg text-danger border-danger/15',         icon: UserX        },
-  RESET_PASSWORD:         { label: 'Password Reset',      pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: KeyRound     },
-  STOCK_REQUEST_CREATE:   { label: 'Stock Requested',     pill: 'bg-primary/5 text-primary border-primary/10',       icon: ClipboardList },
-  STOCK_REQUEST_SENT:     { label: 'Request Sent',        pill: 'bg-primary/5 text-primary border-primary/10',       icon: Send         },
-  STOCK_REQUEST_RECEIVED: { label: 'Request Received',    pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
-  STOCK_REQUEST_APPROVE:  { label: 'Request Approved',    pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
-  STOCK_REQUEST_CANCEL:      { label: 'Request Cancelled',   pill: 'bg-slate-50 text-text-muted border-slate-200', icon: XCircle },
-  STOCK_REQUEST_CLOSE_SHORT: { label: 'Request Closed Short', pill: 'bg-slate-50 text-text-muted border-slate-200', icon: XCircle },
-  STOCK_REQUEST_DECLINE:     { label: 'Request Declined',     pill: 'bg-danger-bg text-danger border-danger/15',    icon: XCircle },
-  APPROVAL_REQUEST:       { label: 'Approval Requested',  pill: 'bg-primary/5 text-primary border-primary/10',       icon: ClipboardList },
-  APPROVAL_APPROVE:       { label: 'Approval Approved',   pill: 'bg-success-bg text-success-dark border-success/15', icon: CheckCircle2 },
-  APPROVAL_DECLINE:       { label: 'Approval Declined',   pill: 'bg-danger-bg text-danger border-danger/15',         icon: XCircle      },
-  APPROVAL_CANCEL:        { label: 'Approval Cancelled',  pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: XCircle      },
-  STOCK_ASSIGN:           { label: 'Stock Assigned',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
-  STOCK_RECEIVE:          { label: 'Stock Received',      pill: 'bg-success-bg text-success-dark border-success/15', icon: Package      },
-  STOCK_DAY_END:          { label: 'Day End',             pill: 'bg-slate-50 text-text-muted border-slate-200',      icon: ClipboardList },
+  STOCK_ENTRY:            { label: 'Stock Entry',         pill: 'bg-primary/5 text-primary border-primary/10',             icon: Package      },
+  ADJUST_STOCK:           { label: 'Stock Correction',    pill: 'bg-primary/5 text-primary border-primary/10',             icon: RefreshCcw   },
+  LOGOUT:                 { label: 'Logout',              pill: 'bg-surface-alt text-text-muted border-surface-border',    icon: KeyRound     },
+  CREATE_VACCINE:         { label: 'Vaccine Added',       pill: 'bg-success-bg text-success-dark border-success/15',       icon: Syringe      },
+  EDIT_VACCINE:           { label: 'Vaccine Renamed',     pill: 'bg-surface-alt text-text-muted border-surface-border',    icon: Tag          },
+  DELETE_VACCINE:         { label: 'Vaccine Deleted',     pill: 'bg-danger-bg text-danger border-danger/15',               icon: Trash2       },
+  SET_THRESHOLD:          { label: 'Threshold Updated',   pill: 'bg-warning-bg text-warning-dark border-warning/15',       icon: Settings     },
+  CREATE_USER:            { label: 'Worker Added',        pill: 'bg-primary/5 text-primary border-primary/10',             icon: UserPlus     },
+  ACTIVATE_USER:          { label: 'Worker Activated',    pill: 'bg-success-bg text-success-dark border-success/15',       icon: UserCheck    },
+  DEACTIVATE_USER:        { label: 'Worker Deactivated',  pill: 'bg-danger-bg text-danger border-danger/15',               icon: UserX        },
+  RESET_PASSWORD:         { label: 'Password Reset',      pill: 'bg-surface-alt text-text-muted border-surface-border',    icon: KeyRound     },
+  STOCK_REQUEST_CREATE:   { label: 'Stock Requested',     pill: 'bg-primary/5 text-primary border-primary/10',             icon: ClipboardList },
+  STOCK_REQUEST_SENT:     { label: 'Request Sent',        pill: 'bg-primary/5 text-primary border-primary/10',             icon: Send         },
+  STOCK_REQUEST_RECEIVED: { label: 'Request Received',    pill: 'bg-success-bg text-success-dark border-success/15',       icon: Package      },
+  STOCK_REQUEST_APPROVE:  { label: 'Request Approved',    pill: 'bg-success-bg text-success-dark border-success/15',       icon: CheckCircle2 },
+  STOCK_REQUEST_CANCEL:      { label: 'Request Cancelled',   pill: 'bg-surface-alt text-text-muted border-surface-border', icon: XCircle },
+  STOCK_REQUEST_CLOSE_SHORT: { label: 'Request Closed Short', pill: 'bg-surface-alt text-text-muted border-surface-border', icon: XCircle },
+  STOCK_REQUEST_DECLINE:     { label: 'Request Declined',     pill: 'bg-danger-bg text-danger border-danger/15',           icon: XCircle },
+  APPROVAL_REQUEST:       { label: 'Approval Requested',  pill: 'bg-primary/5 text-primary border-primary/10',             icon: ClipboardList },
+  APPROVAL_APPROVE:       { label: 'Approval Approved',   pill: 'bg-success-bg text-success-dark border-success/15',       icon: CheckCircle2 },
+  APPROVAL_DECLINE:       { label: 'Approval Declined',   pill: 'bg-danger-bg text-danger border-danger/15',               icon: XCircle      },
+  APPROVAL_CANCEL:        { label: 'Approval Cancelled',  pill: 'bg-surface-alt text-text-muted border-surface-border',    icon: XCircle      },
+  STOCK_ASSIGN:           { label: 'Stock Assigned',      pill: 'bg-success-bg text-success-dark border-success/15',       icon: Package      },
+  STOCK_RECEIVE:          { label: 'Stock Received',      pill: 'bg-success-bg text-success-dark border-success/15',       icon: Package      },
+  STOCK_DAY_END:          { label: 'Day End',             pill: 'bg-surface-alt text-text-muted border-surface-border',    icon: ClipboardList },
 }
 
 function parseEntry(action, details, vaccineNameById, workerNameById) {
@@ -189,7 +190,7 @@ function parseEntry(action, details, vaccineNameById, workerNameById) {
 // ─── Column Headers ───────────────────────────────────────────────────────────
 function ColumnHeaders() {
   return (
-    <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 px-5 py-3 bg-slate-50 border-b border-surface-border">
+    <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 px-5 py-3 bg-surface-alt border-b border-surface-border">
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Action</span>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vials</span>
@@ -201,7 +202,7 @@ function ColumnHeaders() {
 
 // ─── Entry Row ────────────────────────────────────────────────────────────────
 function EntryRow({ entry, vaccineNameById, workerNameById }) {
-  const meta    = ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-slate-50 text-text-muted border-slate-200', icon: ClipboardList }
+  const meta    = ACTION_META[entry.action] ?? { label: entry.action ?? '—', pill: 'bg-surface-alt text-text-muted border-surface-border', icon: ClipboardList }
   const IconCmp = meta.icon
   const { vaccineName, vials, vialsDir, detail } = parseEntry(entry.action, entry.details, vaccineNameById, workerNameById)
 
@@ -214,7 +215,7 @@ function EntryRow({ entry, vaccineNameById, workerNameById }) {
   return (
     <div>
       {/* Mobile card */}
-      <div className="sm:hidden px-4 py-3 hover:bg-slate-50/50 transition-colors">
+      <div className="sm:hidden px-4 py-3 hover:bg-surface-alt/50 transition-colors">
         <div className="flex items-start justify-between gap-2 mb-1.5">
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
             <IconCmp size={12} strokeWidth={2.2} />
@@ -236,7 +237,7 @@ function EntryRow({ entry, vaccineNameById, workerNameById }) {
         </div>
       </div>
       {/* Desktop row */}
-      <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
+      <div className="hidden sm:grid grid-cols-[160px_1fr_80px_1fr_180px] gap-3 items-center px-5 py-3 hover:bg-surface-alt/50 transition-colors">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border w-fit ${meta.pill}`}>
           <IconCmp size={12} strokeWidth={2.2} />
           {meta.label}
@@ -265,16 +266,16 @@ function EntryRow({ entry, vaccineNameById, workerNameById }) {
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4">
+    <div className="flex items-center justify-between border-t border-surface-border bg-surface px-5 py-4">
       <p className="text-xs text-text-muted font-semibold hidden sm:block">
         Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
         <span className="font-extrabold text-text">{totalPages}</span>
       </p>
-      <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-1">
+      <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm border border-surface-border bg-surface-chip p-0.5 gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 transition-all cursor-pointer"
         >
           <ChevronLeft size={16} />
         </button>
@@ -287,7 +288,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
               className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 p === currentPage
                   ? 'bg-primary text-white shadow-sm shadow-primary/10'
-                  : 'text-text-muted hover:bg-white'
+                  : 'text-text-muted hover:bg-surface'
               }`}
             >
               {p}
@@ -297,7 +298,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-surface disabled:opacity-40 transition-all cursor-pointer"
         >
           <ChevronRight size={16} />
         </button>
@@ -314,8 +315,8 @@ function SupervisorTab({ name, email, entries, vaccineNameById, workerNameById, 
   const paginatedEntries = entries.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-      <div className="px-5 py-4 bg-slate-50 border-b border-surface-border flex items-center justify-between gap-3">
+    <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+      <div className="px-5 py-4 bg-surface-alt border-b border-surface-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm border border-primary/20">
             {displayName ? displayName[0].toUpperCase() : 'S'}
@@ -326,7 +327,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, workerNameById, 
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg">
+          <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg">
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-primary/5 text-primary border border-primary/10">
@@ -336,7 +337,7 @@ function SupervisorTab({ name, email, entries, vaccineNameById, workerNameById, 
       </div>
 
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-5 py-12 text-text-muted text-center bg-white">
+        <div className="flex flex-col items-center gap-2 px-5 py-12 text-text-muted text-center bg-surface">
           <ClipboardList size={32} className="opacity-20 flex-shrink-0" />
           <p className="text-sm font-bold text-text">No supervisor actions matched</p>
           <p className="text-xs">Try adjusting your filter criteria above.</p>
@@ -363,8 +364,8 @@ function WorkerCard({ worker, entries, vaccineNameById, workerNameById }) {
   const paginatedEntries = entries.slice((workerPage - 1) * itemsPerPage, workerPage * itemsPerPage)
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-      <div className="px-5 py-4 bg-slate-50 border-b border-surface-border flex items-center justify-between gap-3">
+    <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+      <div className="px-5 py-4 bg-surface-alt border-b border-surface-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className={`w-9 h-9 rounded-xl ${avatarBg(workerName)} text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm`}>
             {workerName[0].toUpperCase()}
@@ -376,14 +377,14 @@ function WorkerCard({ worker, entries, vaccineNameById, workerNameById }) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {entries.length > 0 && (
-            <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg">
+            <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg">
               {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
             </span>
           )}
           <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
             worker.isActive
               ? 'bg-success-bg text-success-dark border-success/15'
-              : 'bg-white border-surface-border text-text-muted'
+              : 'bg-surface border-surface-border text-text-muted'
           }`}>
             {worker.isActive ? <UserCheck size={10} strokeWidth={2.2} /> : <UserX size={10} strokeWidth={2.2} />}
             {worker.isActive ? 'Active' : 'Inactive'}
@@ -425,13 +426,13 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
             placeholder="Search worker by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+            className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
           />
         </div>
       )}
 
       {workers.length === 0 && (
-        <div className="text-center py-14 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+        <div className="text-center py-14 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
           <Users size={36} className="mx-auto mb-3 opacity-20" />
           <p className="font-bold text-text">No workers registered</p>
           <p className="text-xs mt-1">Add workers in Worker Management to trace their logs.</p>
@@ -439,7 +440,7 @@ function WorkersTab({ workers, workerEntriesFn, search, setSearch, vaccineNameBy
       )}
 
       {workers.length > 0 && filteredWorkers.length === 0 && (
-        <div className="text-center py-10 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+        <div className="text-center py-10 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
           <p className="text-sm font-semibold">No workers match "{search}"</p>
           <button onClick={() => setSearch('')} className="text-xs text-primary font-bold hover:underline mt-1.5">
             Clear search
@@ -522,32 +523,20 @@ export default function FacilitySupervisorAuditLog() {
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
 
-      {/* Banner — matches admin style */}
-      <div className="bg-primary rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Audit Log</h1>
-          <p className="text-sm text-white/70 mt-0.5">
-            Actions logged by you and stock entries recorded by your workers
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-          </span>
-          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest hidden sm:block">
-            Live · Auto-refreshing
-          </span>
-        </div>
-      </div>
+      {/* Header */}
+      <PageHeader
+        breadcrumb="Facility Supervisor"
+        title="Audit Log"
+        subtitle="Actions logged by you and stock entries recorded by your workers"
+      />
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-surface-chip border border-surface-border rounded-xl w-fit">
         <button
           onClick={() => { setTab('supervisor'); setCurrentPage(1) }}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
             tab === 'supervisor'
-              ? 'bg-white text-primary shadow-sm border border-slate-200'
+              ? 'bg-surface text-primary shadow-sm border border-surface-border'
               : 'text-text-muted hover:text-text'
           }`}
         >
@@ -555,7 +544,7 @@ export default function FacilitySupervisorAuditLog() {
           Supervisor Actions
           {!isLoading && (
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-              tab === 'supervisor' ? 'bg-primary/10 text-primary' : 'bg-white text-text-muted border border-slate-200'
+              tab === 'supervisor' ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted border border-surface-border'
             }`}>
               {filteredSupervisorEntries.length}
             </span>
@@ -565,7 +554,7 @@ export default function FacilitySupervisorAuditLog() {
           onClick={() => { setTab('workers'); setSearch('') }}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
             tab === 'workers'
-              ? 'bg-white text-primary shadow-sm border border-slate-200'
+              ? 'bg-surface text-primary shadow-sm border border-surface-border'
               : 'text-text-muted hover:text-text'
           }`}
         >
@@ -573,7 +562,7 @@ export default function FacilitySupervisorAuditLog() {
           Worker Entries
           {!isLoading && (
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-              tab === 'workers' ? 'bg-primary/10 text-primary' : 'bg-white text-text-muted border border-slate-200'
+              tab === 'workers' ? 'bg-primary/10 text-primary' : 'bg-surface-chip text-text-muted border border-surface-border'
             }`}>
               {workerTotal}
             </span>
@@ -582,7 +571,7 @@ export default function FacilitySupervisorAuditLog() {
       </div>
 
       {/* Filter Panel */}
-      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
+      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-1 h-4 rounded-full bg-primary/40" />
@@ -648,13 +637,13 @@ export default function FacilitySupervisorAuditLog() {
       {isLoading && (
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-2xl border border-surface-border p-5 animate-pulse shadow-sm">
+            <div key={i} className="bg-surface rounded-2xl border border-surface-border p-5 animate-pulse shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-slate-100" />
-                <div className="h-4 bg-slate-100 rounded w-48" />
+                <div className="w-9 h-9 rounded-xl bg-surface-chip" />
+                <div className="h-4 bg-surface-chip rounded w-48" />
               </div>
-              <div className="h-3 bg-slate-100 rounded w-full mt-2" />
-              <div className="h-3 bg-slate-100 rounded w-3/4 mt-2" />
+              <div className="h-3 bg-surface-chip rounded w-full mt-2" />
+              <div className="h-3 bg-surface-chip rounded w-3/4 mt-2" />
             </div>
           ))}
         </div>

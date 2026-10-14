@@ -5,6 +5,7 @@ import { getDashboard, getApprovals, createApproval, cancelApproval } from '../.
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import PageHeader from '../../components/shared/PageHeader'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const TABS = [
@@ -117,24 +118,22 @@ export default function Approvals() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
 
-      {/* Banner */}
-      <div className="bg-primary rounded-2xl px-5 py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Approvals</h1>
-          <p className="text-sm text-white/70 mt-0.5">Submit corrections and threshold changes for facility head review</p>
-        </div>
-        <ClipboardCheck size={28} className="text-white/30 flex-shrink-0" />
-      </div>
+      {/* Header */}
+      <PageHeader
+        breadcrumb="Facility Supervisor"
+        title="Approvals"
+        subtitle="Submit corrections and threshold changes for facility head review"
+      />
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-slate-200/50 border border-slate-200/80 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-surface-chip border border-surface-border rounded-xl w-fit">
         {TABS.map(({ label, icon: Icon }, i) => (
           <button
             key={label}
             onClick={() => { setTab(i); setCorrDone(false); setThrDone(false) }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               tab === i
-                ? 'bg-white text-primary shadow-sm border border-slate-200'
+                ? 'bg-surface text-primary shadow-sm border border-surface-border'
                 : 'text-text-muted hover:text-text'
             }`}
           >
@@ -146,8 +145,8 @@ export default function Approvals() {
 
       {/* ── Stock Correction form ─────────────────────────────────────────────── */}
       {tab === 0 && (
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 bg-slate-50 border-b border-surface-border flex items-start gap-3">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 bg-surface-alt border-b border-surface-border flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Package size={15} className="text-primary" />
             </div>
@@ -188,7 +187,7 @@ export default function Approvals() {
                 maxLength={500}
                 rows={3}
                 placeholder="e.g. Physical count on 10 Oct confirmed 12 vials in store"
-                className="w-full rounded-xl border border-surface-border bg-white px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
+                className="w-full rounded-xl border border-surface-border bg-surface px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
               />
               <p className="text-xs text-text-muted text-right">{corrNote.length}/500</p>
             </div>
@@ -219,8 +218,8 @@ export default function Approvals() {
 
       {/* ── Threshold Change form ────────────────────────────────────────────── */}
       {tab === 1 && (
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 bg-slate-50 border-b border-surface-border flex items-start gap-3">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 bg-surface-alt border-b border-surface-border flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-warning-bg flex items-center justify-center flex-shrink-0">
               <Settings size={15} className="text-warning-dark" />
             </div>
@@ -240,7 +239,7 @@ export default function Approvals() {
               onChange={e => selectVaccine(e.target.value)}
             />
 
-            <label className="flex items-center gap-3 text-sm text-text cursor-pointer bg-slate-50 border border-surface-border rounded-xl px-4 py-3 hover:bg-slate-100 transition-colors">
+            <label className="flex items-center gap-3 text-sm text-text cursor-pointer bg-surface-alt border border-surface-border rounded-xl px-4 py-3 hover:bg-surface-chip transition-colors">
               <input
                 type="checkbox"
                 checked={thrReset}
@@ -282,7 +281,7 @@ export default function Approvals() {
                 maxLength={500}
                 rows={2}
                 placeholder="Reason for this threshold change…"
-                className="w-full rounded-xl border border-surface-border bg-white px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
+                className="w-full rounded-xl border border-surface-border bg-surface px-4 py-2.5 text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none placeholder:text-text-muted/50"
               />
             </div>
 
@@ -325,19 +324,19 @@ export default function Approvals() {
         {pendingLoading && (
           <div className="flex flex-col gap-2">
             {[1, 2].map(i => (
-              <div key={i} className="bg-white rounded-2xl border border-surface-border p-5 animate-pulse">
+              <div key={i} className="bg-surface rounded-2xl border border-surface-border p-5 animate-pulse">
                 <div className="flex gap-2 mb-3">
-                  <div className="h-5 bg-slate-100 rounded-lg w-28" />
-                  <div className="h-5 bg-slate-100 rounded-lg w-16" />
+                  <div className="h-5 bg-surface-chip rounded-lg w-28" />
+                  <div className="h-5 bg-surface-chip rounded-lg w-16" />
                 </div>
-                <div className="h-4 bg-slate-100 rounded w-36" />
+                <div className="h-4 bg-surface-chip rounded w-36" />
               </div>
             ))}
           </div>
         )}
 
         {!pendingLoading && pending.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-12 border border-dashed border-surface-border rounded-2xl text-text-muted bg-white">
+          <div className="flex flex-col items-center gap-2 py-12 border border-dashed border-surface-border rounded-2xl text-text-muted bg-surface">
             <CheckCircle2 size={28} className="opacity-20" />
             <p className="text-sm font-semibold text-text">No pending approvals</p>
             <p className="text-xs">Submitted requests will appear here.</p>
@@ -345,10 +344,10 @@ export default function Approvals() {
         )}
 
         {pending.map(a => {
-          const meta = TYPE_META[a.type] ?? { label: a.type, cls: 'bg-slate-100 text-slate-500 border-slate-200', icon: ClipboardCheck }
+          const meta = TYPE_META[a.type] ?? { label: a.type, cls: 'bg-surface-chip text-text-muted border-surface-border', icon: ClipboardCheck }
           const MetaIcon = meta.icon
           return (
-            <div key={a.id} className="bg-white rounded-2xl border border-surface-border shadow-sm p-5 flex items-start justify-between gap-4">
+            <div key={a.id} className="bg-surface rounded-2xl border border-surface-border shadow-sm p-5 flex items-start justify-between gap-4">
               <div className="flex flex-col gap-2.5 min-w-0 flex-1">
                 {/* Badges */}
                 <div className="flex items-center gap-2 flex-wrap">
@@ -386,7 +385,7 @@ export default function Approvals() {
 
                 {/* Note */}
                 {a.note && (
-                  <p className="text-xs text-text-muted italic border-l-2 border-slate-200 pl-2.5">"{a.note}"</p>
+                  <p className="text-xs text-text-muted italic border-l-2 border-surface-border pl-2.5">"{a.note}"</p>
                 )}
               </div>
 

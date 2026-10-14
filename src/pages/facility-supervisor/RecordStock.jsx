@@ -54,7 +54,7 @@ function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-surface-border shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-surface-border shadow-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
           <p className="text-sm font-bold text-text">Raise Stock Request</p>
           <button onClick={onClose} className="text-text-muted hover:text-text p-1 rounded"><X size={16} /></button>
@@ -80,7 +80,7 @@ function RaiseModal({ vaccines, onClose, onSubmit, isPending }) {
               onChange={e => setNote(e.target.value)}
               rows={2}
               maxLength={500}
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -164,7 +164,7 @@ function RecordReceivedPanel({ req, onClose, onSubmit, isPending }) {
           onChange={e => setNote(e.target.value)}
           rows={2}
           maxLength={500}
-          className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+          className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
         />
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -287,7 +287,7 @@ function RequestCard({ req }) {
                   placeholder={isCloseShort ? 'Reason for closing short (required)' : 'Reason for cancellation (required since figures were recorded)'}
                   rows={2}
                   maxLength={500}
-                  className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+                  className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
                 />
               )}
               <div className="flex gap-2">

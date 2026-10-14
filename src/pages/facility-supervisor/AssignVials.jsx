@@ -165,7 +165,7 @@ export default function AssignVials() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm p-5 flex flex-col gap-4">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm p-5 flex flex-col gap-4">
           <Select
             id="worker"
             label="Worker"
@@ -183,7 +183,7 @@ export default function AssignVials() {
           />
         </div>
 
-        <div className="bg-white rounded-2xl border border-surface-border shadow-sm overflow-hidden">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-surface-border bg-surface-alt">
             <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine Quantities (vials)</p>
           </div>

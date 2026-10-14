@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import Select from '../../components/ui/Select'
+import PageHeader from '../../components/shared/PageHeader'
 import { BookOpen, Syringe } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -12,7 +13,7 @@ const ENTRY_TYPE_PILLS = [
   { key: 'used',         label: 'Consumed',       activeClass: 'bg-danger text-white border-danger'         },
   { key: 'returned',     label: 'Returned',       activeClass: 'bg-warning text-white border-warning'       },
   { key: 'wasted',       label: 'Wasted',         activeClass: 'bg-orange-500 text-white border-orange-500' },
-  { key: 'ADJUST_STOCK', label: 'Corrected',      activeClass: 'bg-slate-500 text-white border-slate-500'   },
+  { key: 'ADJUST_STOCK', label: 'Corrected',      activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
   { key: 'STOCK_DAY_END', label: 'Day End',       activeClass: 'bg-indigo-500 text-white border-indigo-500' },
 ]
 
@@ -121,16 +122,14 @@ export default function StockRegister() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
 
       {/* Header */}
-      <div className="bg-primary rounded-2xl px-6 py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Stock Register</h1>
-          <p className="text-sm text-white/70 mt-0.5">EPI inward &amp; outward vaccine ledger</p>
-        </div>
-        <BookOpen size={22} className="text-white/30 flex-shrink-0" />
-      </div>
+      <PageHeader
+        breadcrumb="Facility Supervisor"
+        title="Stock Register"
+        subtitle="EPI inward & outward vaccine ledger"
+      />
 
       {/* Vaccine selector */}
-      <div className="bg-white rounded-2xl border border-surface-border p-5 shadow-sm">
+      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
         <Select
           id="vaccine-select"
           label="Select Vaccine"
@@ -146,14 +145,14 @@ export default function StockRegister() {
       {isLoading && (
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-slate-50 border border-slate-200 rounded-xl animate-pulse" />
+            <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />
           ))}
         </div>
       )}
 
       {/* No vaccine selected */}
       {!isLoading && !selectedVaccineId && (
-        <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
+        <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
           <Syringe size={36} className="mx-auto mb-3 opacity-20" />
           <p className="font-bold text-text">No vaccine selected</p>
           <p className="text-xs mt-1">Select a vaccine above to view its inward &amp; outward ledger.</p>
@@ -169,7 +168,7 @@ export default function StockRegister() {
               <Syringe size={14} className="text-primary flex-shrink-0" />
               <span className="text-sm font-bold text-text">{displayVaccineName(selectedName)}</span>
             </div>
-            <span className="text-[10px] font-bold text-text-muted bg-white border border-surface-border px-2.5 py-1 rounded-lg">
+            <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg">
               {filteredEntries.length}{entryTypeFilter !== 'all' ? ` of ${entries.length}` : ''} {entries.length === 1 ? 'entry' : 'entries'}
             </span>
           </div>
@@ -184,7 +183,7 @@ export default function StockRegister() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
                     entryTypeFilter === key
                       ? activeClass
-                      : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
+                      : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
                   }`}
                 >
                   {label}
@@ -194,14 +193,14 @@ export default function StockRegister() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[960px] text-sm border-collapse">
 
                 {/* Column headers */}
                 <thead>
                   {/* Row 1: group labels */}
-                  <tr className="bg-slate-50 border-b border-surface-border">
+                  <tr className="bg-surface-alt border-b border-surface-border">
                     <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left border-r border-surface-border whitespace-nowrap align-middle">
                       Date &amp; Time
                     </th>
@@ -219,7 +218,7 @@ export default function StockRegister() {
                     </th>
                   </tr>
                   {/* Row 2: sub-column labels */}
-                  <tr className="bg-slate-50 border-b border-surface-border">
+                  <tr className="bg-surface-alt border-b border-surface-border">
                     <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-left whitespace-nowrap">
                       Manufacturer
                     </th>
@@ -263,11 +262,11 @@ export default function StockRegister() {
                           case 'returned':     return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }
                           case 'wasted':       return { label: 'Wasted',   cls: 'bg-orange-50 text-orange-600' }
                           case 'STOCK_DAY_END': return { label: 'Day End', cls: 'bg-indigo-50 text-indigo-600' }
-                          default:             return { label: 'Corrected', cls: 'bg-slate-100 text-text-muted' }
+                          default:             return { label: 'Corrected', cls: 'bg-surface-chip text-text-muted' }
                         }
                       })()
                       return (
-                      <tr key={i} className="hover:bg-slate-50/40 transition-colors">
+                      <tr key={i} className="hover:bg-surface-alt/40 transition-colors">
 
                         {/* Date */}
                         <td className="px-4 py-3 whitespace-nowrap">
