@@ -2,13 +2,13 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
   const getKey = (row, i) => rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i)
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-surface-border bg-surface shadow-sm overflow-hidden">
 
       {/* ── Desktop table (sm+) ─────────────────────────────────────── */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
-            <tr className="border-b border-surface-border bg-slate-50/75">
+            <tr className="border-b border-surface-border bg-surface-alt/75">
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -30,7 +30,7 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
               rows.map((row, i) => (
                 <tr
                   key={getKey(row, i)}
-                  className={`hover:bg-slate-50/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}
+                  className={`hover:bg-surface-alt/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-6 py-4 align-top text-text font-medium">
@@ -61,7 +61,7 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
-                <tr className="border-b border-surface-border bg-slate-50/75">
+                <tr className="border-b border-surface-border bg-surface-alt/75">
                   {columns.map((col) => (
                     <th key={col.key} className="px-4 py-3 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap">
                       {col.label}

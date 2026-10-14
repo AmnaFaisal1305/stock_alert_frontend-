@@ -1,14 +1,15 @@
 import { StrictMode, lazy, Suspense } from 'react'
+import { createRoot } from 'react-dom/client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import '@fontsource-variable/figtree'
+import './index.css'
+import App from './App.jsx'
 
 // Capture the install prompt before React hydrates — it can fire very early
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault()
   window.__pwaInstallPrompt = e
 })
-import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import './index.css'
-import App from './App.jsx'
 
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() => import('@tanstack/react-query-devtools').then((m) => ({ default: m.ReactQueryDevtools })))
@@ -17,7 +18,8 @@ const ReactQueryDevtools = import.meta.env.DEV
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // never retry a 401 — it would double-dispatch sst:session-expired
+      retry: (failureCount, error) => error?.status !== 401 && failureCount < 1,
       staleTime: 30_000,
       refetchOnWindowFocus: true,
     },

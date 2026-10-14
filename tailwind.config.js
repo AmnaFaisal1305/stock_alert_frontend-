@@ -1,4 +1,10 @@
 /** @type {import('tailwindcss').Config} */
+
+// Semantic colours are backed by CSS variables (channel triplets) defined in
+// src/index.css, so a single token set drives both light and dark themes and
+// Tailwind opacity modifiers (bg-primary/5, ring-danger/20) keep working.
+const v = (name) => `rgb(var(${name}) / <alpha-value>)`
+
 export default {
   content: [
     "./index.html",
@@ -7,18 +13,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary:      { DEFAULT: '#006241', light: '#00754A', dark: '#1E3932', bg: '#EAF4EF' },
-        secondary:    { DEFAULT: '#64748B', light: '#94A3B8', dark: '#334155' },
-        success:      { DEFAULT: '#10B981', light: '#34D399', dark: '#065F46', bg: '#ECFDF5' },
-        warning:      { DEFAULT: '#F59E0B', light: '#FBBF24', dark: '#92400E', bg: '#FFFBEB' },
-        danger:       { DEFAULT: '#EF4444', light: '#F87171', dark: '#991B1B', bg: '#FEF2F2' },
-        surface:      { DEFAULT: '#FFFFFF', alt: '#f2f0eb', border: '#edeae5' },
-        text:         { DEFAULT: '#0F172A', muted: '#475569', inverse: '#FFFFFF' },
-        'epi-dark':   '#1E3932',
-        'epi-mint':   '#d4e9e2',
+        primary:      { DEFAULT: v('--pri'), light: v('--pri-light'), dark: v('--side'), bg: v('--pri-bg') },
+        secondary:    { DEFAULT: v('--neutral'), light: v('--mut'), dark: v('--ink') },
+        success:      { DEFAULT: v('--ok'),   light: v('--ok'),   dark: v('--ok-text'),   bg: v('--ok-bg') },
+        warning:      { DEFAULT: v('--low'),  light: v('--low'),  dark: v('--low-text'),  bg: v('--low-bg') },
+        danger:       { DEFAULT: v('--crit'), light: v('--crit'), dark: v('--crit-text'), bg: v('--crit-bg') },
+        info:         { DEFAULT: v('--info'), dark: v('--info-text'), bg: v('--info-bg') },
+        surface:      { DEFAULT: v('--card'), alt: v('--bg'), border: v('--line'), chip: v('--chip') },
+        text:         { DEFAULT: v('--ink'), muted: v('--mut'), inverse: '#FFFFFF' },
+        'epi-dark':   v('--side'),
+        'epi-mint':   v('--ok-bg'),
+      },
+      borderRadius: {
+        card: '1.125rem', // 18px — reference card radius
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['"Figtree Variable"', 'Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'toast-in': {

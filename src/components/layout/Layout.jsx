@@ -67,7 +67,7 @@ function PWAPrompts() {
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3 w-[288px] pointer-events-none">
 
       {showNotif && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
@@ -96,7 +96,7 @@ function PWAPrompts() {
             </button>
             <button
               onClick={dismissNotif}
-              className="flex-1 bg-slate-100 text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+              className="flex-1 bg-surface-alt text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-surface-border transition-colors"
             >
               Not now
             </button>
@@ -105,7 +105,7 @@ function PWAPrompts() {
       )}
 
       {showInstall && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
+        <div className="bg-surface rounded-2xl border border-surface-border shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
@@ -133,7 +133,7 @@ function PWAPrompts() {
             </button>
             <button
               onClick={dismissInstall}
-              className="flex-1 bg-slate-100 text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+              className="flex-1 bg-surface-alt text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-surface-border transition-colors"
             >
               Not now
             </button>
