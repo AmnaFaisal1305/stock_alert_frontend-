@@ -38,10 +38,42 @@
     color-scheme: light;
   }
 
-  /* Dark tokens — manual only (applied via [data-theme=dark]). Auto
-     prefers-color-scheme switching is intentionally NOT used yet: screens are
-     being converted to tokens screen-by-screen, so until the rollout is done we
-     only go dark when the user explicitly toggles it. */
+  /* Dark tokens — applied via [data-theme=dark] (manual toggle) or via
+     prefers-color-scheme (OS default). All screens are now on tokens so auto
+     dark mode is safe to enable. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:          23  27  24;
+      --card:        33  38  34;
+      --line:        48  54  49;
+      --ink:        236 239 235;
+      --mut:        154 163 156;
+      --chip:        42  48  43;
+      --side:        29  39  33;
+      --pri:         74 110  82;
+      --pri-light:   90 130  98;
+      --pri-bg:      36  56  43;
+
+      --ok:         143 208 162;
+      --ok-bg:       36  56  43;
+      --ok-text:    143 208 162;
+      --low:        233 192 111;
+      --low-bg:      64  52  15;
+      --low-text:   233 192 111;
+      --crit:       240 164 157;
+      --crit-bg:     67  35  31;
+      --crit-text:  240 164 157;
+      --info:       158 192 240;
+      --info-bg:     34  49  73;
+      --info-text:  158 192 240;
+      --neutral:    154 163 156;
+      --neutral-bg:  42  48  43;
+      --neutral-text:169 177 171;
+
+      color-scheme: dark;
+    }
+  }
+
   :root[data-theme="dark"] {
     --bg:          23  27  24;
     --card:        33  38  34;

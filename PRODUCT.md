@@ -23,6 +23,12 @@ Smart Stock Alert tracks vaccine stock levels across districts and facilities so
 
 Clinical, trustworthy, efficient. This is hospital-grade software, not a consumer product — it should read as precise and dependable rather than playful or decorative. Every number and status needs to feel authoritative; this is the kind of tool where a user's trust in the data directly affects whether they act on it (reorder now vs. wait).
 
+## Visual Language
+
+The interface uses the **Clinical Material** design language: warm paper surfaces, a forest-green sidebar, the Figtree Variable webfont, thin large greeting headers (via the `PageHeader` component), and full dark mode (manual toggle + OS auto). Source of truth for the visual language is the `reference design/` folder (HTML mockups `admin-01` through `admin-08`, `fs-01` through `fs-05`).
+
+The design token system lives in `src/index.css` (CSS variable channel triplets) and `tailwind.config.js` (token map). Every color in the UI routes through these tokens — never hardcoded hex or Tailwind slate/zinc/white classes.
+
 ## Anti-references
 
 Not a consumer or marketing-style app — no gradient-heavy hero treatments, no playful illustration, no "delight" flourishes that don't serve the workflow. This is a work tool used under time pressure, not a product being sold. Motion, color, and copy should always serve faster comprehension of stock status, never decoration for its own sake.
