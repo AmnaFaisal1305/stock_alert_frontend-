@@ -7,11 +7,11 @@
 
 ---
 
-## Session Log — 2026-10-15 Session 9 (latest) — Delivery Readiness Fixes
+## Session Log — 2026-10-15 Session 9 (latest) — Delivery Readiness + Merged to Main
 
 ### Goal
 
-Pre-delivery audit: fix every user-facing bug that could cause a silent failure or confusing experience. Six frontend fixes applied and `BACKEND_FIXES.md` fully populated for the backend developer.
+Pre-delivery audit: fix every user-facing bug, complete remaining post-rollout tasks, and merge to main.
 
 ### What changed
 
@@ -36,22 +36,27 @@ Pre-delivery audit: fix every user-facing bug that could cause a silent failure 
 
 Note: if `GET /api/auth/session` itself returns 401 for a valid cookie (see `BACKEND_FIXES.md` item 1), new tabs will still see the login page — that is a backend fix.
 
+### Also completed this session
+
+| Task | Status |
+|---|---|
+| Re-enable `@media (prefers-color-scheme: dark)` in `src/index.css` | ✅ Done |
+| Update `.impeccable/design.json` to Clinical Material tokens | ✅ Done (gitignored — local only) |
+| Update `PRODUCT.md` — Visual Language section added | ✅ Done |
+| Update `CLAUDE.md` — `reference design/` noted as source of truth | ✅ Done |
+| Merge `redesign/ui-clinical-material` → `main` | ✅ Done |
+
 ### Commits
 
-`c745da2` — delivery fixes (pushed to `redesign/ui-clinical-material`)  
-`45ded32` — HANDOFF.md update  
-`d6f43ff` — auto dark mode + design docs (PRODUCT.md, CLAUDE.md, index.css)  
-`e75fa65` — **merged to `main`** ✅
+| Hash | What |
+|---|---|
+| `c745da2` | Delivery fixes (cross-tab auth, onError handlers, TopBar titles, dark mode panel, BACKEND_FIXES.md, api.js, sw.js, vite.config.js) |
+| `45ded32` | HANDOFF.md update |
+| `d6f43ff` | Auto dark mode + design docs (index.css, PRODUCT.md, CLAUDE.md) |
+| `e75fa65` | **Merge to `main`** ✅ |
+| `c388f88` | HANDOFF.md final update |
 
-`npm run build` passes clean (✓ 2533 modules, no errors).
-
-### Post-rollout tasks remaining (from session 8)
-
-- **Re-enable `@media (prefers-color-scheme: dark)`** in `src/index.css` — intentionally absent until all screens were converted. Now safe.
-- **Update `.impeccable/design.json`** — stale, describes old blue `#1F6FEB` system.
-- **Update `PRODUCT.md`** — "no webfont" and "no gradient" rules superseded by Figtree + dark mode.
-- **Update `CLAUDE.md`** — note `reference design/` as source of truth; flag `.impeccable/design.json` as stale.
-- **Commit unstaged files** — `AuthContext.jsx`, `api.js`, `sw.js`, `vite.config.js` + the new session-9 edits.
+`npm run build` passes clean (✓ 2533 modules, no errors). Branch `main` is live on Vercel.
 
 ---
 
