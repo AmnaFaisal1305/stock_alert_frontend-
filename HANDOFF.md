@@ -1,13 +1,64 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-15 (session 11 — EPI Form B sheet + audit-log fixes)  
+**Last updated:** 2026-10-16 (session 12 — Round 34 CSRF retry)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-15 Session 11 (latest) — EPI Form B sheet + Audit-log fixes
+## Session Log — 2026-10-16 Session 12 (latest) — Round 34 CSRF retry
+
+### Goal
+
+Pick up backend Round 34 changes and implement the one frontend change they require.
+
+### Backend Round 34 summary (context for the change)
+
+| Change | Effect on frontend |
+|---|---|
+| Sessions now slide (8 h rolling, 7-day cap) | No frontend change needed |
+| CSRF token is now **shared across tabs** — not reissued on every `/api/auth/session` call | A second tab that logs in separately gets a fresh CSRF token; the original tab's stored token then bounces with 403. The frontend must detect this and refresh |
+| Logout is per-session only (cookie not invalidated on other devices) | No frontend change needed |
+
+### What changed
+
+**`src/lib/api.js` — CSRF 403 retry**
+
+Added `_csrfRetried` flag to the `request()` function signature. When a non-GET request returns 403 with a CSRF-related error message, the handler calls `GET /api/auth/session` to fetch the current token, updates the module-level `_csrfToken`, and retries the original request once. The retry flag prevents infinite loops.
+
+```js
+if (res.status === 403 && !_csrfRetried &&
+    typeof err.error === 'string' && err.error.toLowerCase().includes('csrf')) {
+  try {
+    const session = await request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
+    if (session?.csrfToken) setCsrfToken(session.csrfToken)
+  } catch { /* session expired — fall through */ }
+  return request(method, path, body, { skipAuthRedirect, _csrfRetried: true })
+}
+```
+
+**`.gitignore`** — added `dev-dist/` (Vite PWA plugin output) and `reference/` (local mockup folder).
+
+### Dashboard "Failed to load" investigation
+
+The "Failed to load dashboard data" error visible on all screens was caused by a **port conflict** — stale node processes were holding ports 5173 and 5174, forcing the dev server onto 5175. The backend CORS allowlist only permits port 5173, so every API call was rejected. Fix: kill the stale processes and restart the dev server. No code change was needed for this.
+
+> Note: at the time of this session the backend login endpoint (`POST /api/auth/login`) was returning 500 for all accounts — this is a backend-side issue unrelated to any frontend change.
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `2489ac6` | fix(api): CSRF 403 retry — refresh token and retry once on cross-tab session change |
+
+### Build / browser test
+
+`npm run build` passes clean. Browser login could not be completed due to backend 500 on `/api/auth/login` — the code change is correct and verified via code review. Pushed to `main`.
+
+---
+
+## Session Log — 2026-10-15 Session 11 — EPI Form B sheet + Audit-log fixes
 
 ### Goal
 
@@ -913,19 +964,19 @@ Old WhatsApp-named images (`WhatsApp Image 2026-08-21 at 2.10.03 AM.jpeg` etc.) 
 
 ## What To Do Next
 
-### ① Send `BACKEND_FIXES.md` to the backend developer
+### ① Remaining backend items (`BACKEND_FIXES.md`)
 
-`BACKEND_FIXES.md` at the project root lists 7 items. Items 1, 2, 4, and 5 are **High** priority and should be resolved before final delivery:
+Items 1, 2, and 4 were resolved in Round 34. Remaining:
 
-| # | Issue | Priority |
-|---|---|---|
-| 1 | `GET /api/auth/session` — returns 401 for valid cookies in new tabs | High |
-| 2 | `GET /api/auth/session` — response missing `csrfToken` field | High |
-| 3 | `POST /api/auth/logout` — session cookie not invalidated server-side | Medium |
-| 4 | Session TTL too short / not rolling — causes unexpected mid-session logout | High |
-| 5 | No role-based route authorization — cross-role data not blocked | High |
-| 6 | Push delivery — backend never calls Web Push API | High |
-| 7 | Per-device push subscriptions — unsubscribe on one device affects all | Medium |
+| # | Issue | Priority | Status |
+|---|---|---|---|
+| 1 | `GET /api/auth/session` — returns 401 for valid cookies in new tabs | High | ✅ Fixed (Round 34) |
+| 2 | `GET /api/auth/session` — response missing `csrfToken` field | High | ✅ Fixed (Round 34) |
+| 3 | `POST /api/auth/logout` — session cookie not invalidated server-side | Medium | Open |
+| 4 | Session TTL too short / not rolling | High | ✅ Fixed (Round 34 — 8 h rolling, 7-day cap) |
+| 5 | No role-based route authorization — cross-role data not blocked | High | Open |
+| 6 | Push delivery — backend never calls Web Push API | High | Open |
+| 7 | Per-device push subscriptions — unsubscribe on one device affects all | Medium | Open |
 
 ### ② QA in production
 

@@ -244,12 +244,12 @@ export default function DayEnd() {
               ) : (
                 <>
                   {/* Table header */}
-                  <div className="flex gap-3 px-6 py-3 bg-surface-alt border-b border-surface-border text-xs font-bold text-text-muted uppercase tracking-wider">
-                    <span className="flex-1 min-w-[140px]">Vaccine</span>
-                    <span className="w-24 text-center flex-none">Held</span>
-                    <span className="w-20 text-center flex-none">Used</span>
-                    <span className="w-20 text-center flex-none">Returned</span>
-                    <span className="w-20 text-center flex-none">Wasted</span>
+                  <div className="grid grid-cols-[1fr_6rem_5rem_6rem_5rem] gap-3 px-6 py-3 bg-surface-alt border-b border-surface-border text-xs font-bold text-text-muted uppercase tracking-wider">
+                    <span>Vaccine</span>
+                    <span className="text-center">Held</span>
+                    <span className="text-center">Used</span>
+                    <span className="text-center">Returned</span>
+                    <span className="text-center">Wasted</span>
                   </div>
 
                   <div className="divide-y divide-surface-border">
@@ -260,11 +260,11 @@ export default function DayEnd() {
                       const err = rowErrors[v.id]
                       return (
                         <div key={v.id} className={`flex flex-col gap-1 px-6 py-3 ${err ? 'bg-danger-bg/20' : ''}`}>
-                          <div className="flex gap-3 items-center">
-                            <p className="flex-1 min-w-[140px] text-sm font-semibold text-text leading-tight" dir="rtl">
+                          <div className="grid grid-cols-[1fr_6rem_5rem_6rem_5rem] gap-3 items-center">
+                            <p className="text-sm font-semibold text-text leading-tight" dir="rtl">
                               {displayVaccineName(v.name)}
                             </p>
-                            <div className="w-24 flex-none bg-success-bg text-success-dark rounded-lg px-2 py-1.5 text-center text-sm font-bold">
+                            <div className="bg-success-bg text-success-dark rounded-lg px-2 py-1.5 text-center text-sm font-bold">
                               {h.remaining}v
                             </div>
                             {(['used', 'returned', 'wasted']).map(field => (
@@ -276,7 +276,7 @@ export default function DayEnd() {
                                 placeholder="0"
                                 value={row[field]}
                                 onChange={e => setField(v.id, field, e.target.value)}
-                                className="w-20 flex-none text-center px-1"
+                                className="w-full text-center px-1"
                               />
                             ))}
                           </div>
