@@ -221,7 +221,7 @@ export default function UCSupervisorAuditLog() {
           <Table
             columns={columns}
             rows={paginated}
-            emptyMessage={(dateFilter || actionFilter) ? 'No entries match your filters.' : 'No activity recorded yet.'}
+            emptyMessage={(dateFrom || dateTo || actionFilter) ? 'No entries match your filters.' : 'No activity recorded yet.'}
             mobileCard={(row) => (
               <div className="px-4 py-3 hover:bg-surface-alt/50 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-1.5">
