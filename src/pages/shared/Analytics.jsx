@@ -121,13 +121,6 @@ function ChartCard({ title, subtitle, icon: Icon, children }) {
   )
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
-function SectionLabel({ children }) {
-  return (
-    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-0.5 mb-3">{children}</p>
-  )
-}
-
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'movement',  label: 'Movement'          },
@@ -452,16 +445,7 @@ export default function Analytics() {
                     : 'text-text-muted hover:text-text'
                 }`}
               >
-                {t.label}
-                {count !== null && count > 0 && (
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${
-                    activeTab === t.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-surface-chip text-text-muted'
-                  }`}>
-                    {count}
-                  </span>
-                )}
+                {count !== null && count > 0 ? `${t.label} ${count}` : t.label}
               </button>
             )
           })}
@@ -568,7 +552,6 @@ export default function Analytics() {
 
               {/* Movement table */}
               <div>
-                <SectionLabel>Detailed Breakdown — per vaccine</SectionLabel>
                 <Table
                   columns={movementColumns}
                   rows={vaccineMovement}
@@ -628,7 +611,6 @@ export default function Analytics() {
 
               {/* Remaining table */}
               <div>
-                <SectionLabel>Per Facility Breakdown</SectionLabel>
                 <Table
                   columns={remainingColumns}
                   rows={remaining}
@@ -738,7 +720,6 @@ export default function Analytics() {
 
               {/* Requests table */}
               <div>
-                <SectionLabel>Monthly Breakdown</SectionLabel>
                 <Table
                   columns={requestColumns}
                   rows={requestsByMonth}
@@ -808,7 +789,6 @@ export default function Analytics() {
 
               {/* Approvals table */}
               <div>
-                <SectionLabel>Approval Queue</SectionLabel>
                 <Table
                   columns={approvalsColumns}
                   rows={pendingApprovals}

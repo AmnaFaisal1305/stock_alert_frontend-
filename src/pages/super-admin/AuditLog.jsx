@@ -6,7 +6,7 @@ import Table from '../../components/shared/Table'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
-import { ChevronLeft, ChevronRight, Calendar, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Shield, Clock, Users, ShieldAlert, Award, Building2, ArrowLeft } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import PageHeader from '../../components/shared/PageHeader'
 
@@ -158,7 +158,8 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
 
   const [activeTab, setActiveTab]         = useState(defaultTab)
   const [selectedFacility, setSelectedFacility] = useState(null)
-  const [dateFilter, setDateFilter]       = useState('')
+  const [dateFrom, setDateFrom]           = useState('')
+  const [dateTo, setDateTo]               = useState('')
   const [actionFilter, setActionFilter]   = useState('')
   const [currentPage, setCurrentPage]     = useState(1)
   const [drillPage, setDrillPage]         = useState(1)
@@ -180,7 +181,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
     [vaccineData]
   )
 
-  const hasFilters = !!(dateFilter || actionFilter)
+  const hasFilters = !!(dateFrom || dateTo || actionFilter)
   const logs       = data?.auditLog ?? []
   const facilities = facilityData?.facilities ?? []
 
@@ -188,14 +189,13 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
     if (activeTab === 'all') return []
     const tabLogs = logs.filter((l) => l.actorRole === activeTab)
     return tabLogs.filter((l) => {
-      if (dateFilter) {
-        const lDate = l.createdAt?.split('T')[0]
-        if (lDate !== dateFilter) return false
-      }
+      const lDate = l.createdAt?.split('T')[0]
+      if (dateFrom && lDate < dateFrom) return false
+      if (dateTo   && lDate > dateTo)   return false
       if (actionFilter && l.action !== actionFilter) return false
       return true
     })
-  }, [logs, activeTab, dateFilter, actionFilter])
+  }, [logs, activeTab, dateFrom, dateTo, actionFilter])
 
   const itemsPerPage = 10
   const totalPages   = Math.ceil(filtered.length / itemsPerPage)
@@ -249,8 +249,10 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
         { id: 'facility_worker',     label: 'Workers',              icon: Users },
       ]
 
-  // Show facility/balance columns only when the tab is facility-level
+  // Show facility columns when tab is facility-level
   const isFacilityTab = activeTab === 'facility_supervisor' || activeTab === 'facility_worker'
+  // Show vaccine/vials/details only for tabs where it's meaningful
+  const showVaccineVialsDetails = activeTab === 'uc_supervisor' || activeTab === 'facility_head' || activeTab === 'facility_supervisor'
 
   const columns = [
     {
@@ -308,79 +310,64 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
       label: 'District',
       render: (row) => <span className="text-xs font-medium text-text-muted">{row.districtName ?? '—'}</span>
     }] : []),
-    // Facility + Balance: only relevant for facility-level tabs
+    // Facility: only relevant for facility-level tabs
     ...(isFacilityTab ? [
       { key: 'facilityName', label: 'Facility', render: (row) => <span className="text-xs font-medium text-text-muted">{row.facilityName ?? '—'}</span> },
+    ] : []),
+    // Vaccine / Vials / Details — only for tabs where stock data is meaningful
+    ...(showVaccineVialsDetails ? [
       {
-        key: 'balance',
-        label: 'Balance',
+        key: 'vaccine_name',
+        label: 'Vaccine',
         render: (row) => {
-          if (row.action !== 'STOCK_ENTRY' && row.action !== 'ADJUST_STOCK') {
-            return <span className="text-text-muted/50 text-xs">—</span>
+          const d = row.details
+          if (!d) return <span className="text-text-muted/50 text-xs">—</span>
+          if (d.vaccineName) {
+            return <span className="text-xs font-semibold text-text">{displayVaccineName(d.vaccineName)}</span>
           }
-          const bal = row.details?.newBalance
-          if (bal == null) return <span className="text-text-muted/50 text-xs">—</span>
-          return <span className="text-sm font-bold text-text tabular-nums">{bal} <span className="text-[10px] font-medium text-text-muted">doses</span></span>
+          if (d.items?.length) {
+            const names = d.items.map(item =>
+              item.vaccineName
+                ? displayVaccineName(item.vaccineName)
+                : (vaccineNameById[item.vaccineId] ?? null)
+            ).filter(Boolean)
+            if (!names.length) return <span className="text-text-muted/50 text-xs">—</span>
+            return (
+              <span className="text-xs font-semibold text-text">
+                {names.length === 1 ? names[0] : `${names.length} vaccines`}
+              </span>
+            )
+          }
+          return <span className="text-text-muted/50 text-xs">—</span>
         }
       },
+      {
+        key: 'vials',
+        label: 'Vials',
+        render: (row) => {
+          const d = row.details
+          if (!d) return <span className="text-text-muted/50 text-xs">—</span>
+          if (row.action === 'STOCK_ENTRY' && d.vials != null) {
+            return <span className="text-sm font-bold text-text tabular-nums">{d.vials}</span>
+          }
+          if (row.action?.startsWith('STOCK_REQUEST') && d.items?.length) {
+            const total = d.items.reduce((sum, item) =>
+              sum + (item.requestedVials ?? item.sentVials ?? item.receivedVials ?? item.fulfilledVials ?? 0), 0)
+            return <span className="text-sm font-bold text-text tabular-nums">{total}</span>
+          }
+          return <span className="text-text-muted/50 text-xs">—</span>
+        }
+      },
+      {
+        key: 'details',
+        label: 'Details',
+        render: (row) => (
+          <p className="text-xs text-text-muted font-medium leading-relaxed break-words min-w-[160px] max-w-[320px]">
+            {formatDetails(row, vaccineNameById)}
+          </p>
+        )
+      },
     ] : []),
-    // Vaccine column — shows for any action that carries a vaccine reference
-    {
-      key: 'vaccine_name',
-      label: 'Vaccine',
-      render: (row) => {
-        const d = row.details
-        if (!d) return <span className="text-text-muted/50 text-xs">—</span>
-        // Direct vaccineName field (STOCK_ENTRY, ADJUST_STOCK, APPROVAL_*)
-        if (d.vaccineName) {
-          return <span className="text-xs font-semibold text-text">{displayVaccineName(d.vaccineName)}</span>
-        }
-        // Items array (STOCK_REQUEST_*)
-        if (d.items?.length) {
-          const names = d.items.map(item =>
-            item.vaccineName
-              ? displayVaccineName(item.vaccineName)
-              : (vaccineNameById[item.vaccineId] ?? null)
-          ).filter(Boolean)
-          if (!names.length) return <span className="text-text-muted/50 text-xs">—</span>
-          return (
-            <span className="text-xs font-semibold text-text">
-              {names.length === 1 ? names[0] : `${names.length} vaccines`}
-            </span>
-          )
-        }
-        return <span className="text-text-muted/50 text-xs">—</span>
-      }
-    },
-    // Vials column — shows quantity in vials for stock-related actions
-    {
-      key: 'vials',
-      label: 'Vials',
-      render: (row) => {
-        const d = row.details
-        if (!d) return <span className="text-text-muted/50 text-xs">—</span>
-        // STOCK_ENTRY: backend sends d.vials
-        if (row.action === 'STOCK_ENTRY' && d.vials != null) {
-          return <span className="text-sm font-bold text-text tabular-nums">{d.vials}</span>
-        }
-        // STOCK_REQUEST_*: sum vials across items
-        if (row.action?.startsWith('STOCK_REQUEST') && d.items?.length) {
-          const total = d.items.reduce((sum, item) =>
-            sum + (item.requestedVials ?? item.sentVials ?? item.receivedVials ?? item.fulfilledVials ?? 0), 0)
-          return <span className="text-sm font-bold text-text tabular-nums">{total}</span>
-        }
-        return <span className="text-text-muted/50 text-xs">—</span>
-      }
-    },
-    {
-      key: 'details',
-      label: 'Details',
-      render: (row) => (
-        <p className="text-xs text-text-muted font-medium leading-relaxed break-words min-w-[160px] max-w-[320px]">
-          {formatDetails(row, vaccineNameById)}
-        </p>
-      )
-    },
   ]
 
   const getCount = (tabId) => {
@@ -393,6 +380,9 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
     setCurrentPage(1)
     setSelectedFacility(null)
     setDrillPage(1)
+    setDateFrom('')
+    setDateTo('')
+    setActionFilter('')
   }
 
   const auditMobileCard = (row) => (
@@ -589,58 +579,59 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
       )}
 
       {/* Filter panel */}
-      {activeTab !== 'all' && (
-      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-text-muted">
-          <Calendar size={14} className="text-primary" />
-          <h2 className="text-xs font-bold uppercase tracking-wider">Filter tab logs</h2>
-        </div>
-
-        {(() => {
-          const DISTRICT_ACTIONS = new Set(['STOCK_ENTRY', 'ADJUST_STOCK', 'LOGOUT'])
-          const STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
-          const visibleActions = Object.entries(ACTION_LABELS).filter(([k]) => {
-            if (isDistrictSup) return DISTRICT_ACTIONS.has(k)
-            if (activeTab === 'facility_worker') return STOCK_ONLY.has(k)
-            return true
-          })
-          return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            id="action-filter"
-            label="Filter by action"
-            placeholder="All Action Types"
-            options={visibleActions.map(([k, v]) => ({ value: k, label: v }))}
-            value={actionFilter}
-            onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
-          />
-
-          <DatePicker
-            id="date-filter"
-            label="Filter by date"
-            value={dateFilter}
-            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
-          />
-        </div>
-          )
-        })()}
-
-        {hasFilters && (
-          <div className="flex justify-end border-t border-surface-border pt-3">
-            <button
-              onClick={() => {
-                setDateFilter('')
-                setActionFilter('')
-                setCurrentPage(1)
-              }}
-              className="text-xs text-primary font-bold hover:underline transition-all"
+      {activeTab !== 'all' && (() => {
+        const DISTRICT_ACTIONS = new Set(['STOCK_ENTRY', 'ADJUST_STOCK', 'LOGOUT'])
+        const STOCK_ONLY = new Set(['STOCK_ENTRY', 'ADJUST_STOCK'])
+        const visibleActions = Object.entries(ACTION_LABELS).filter(([k]) => {
+          if (isDistrictSup) return DISTRICT_ACTIONS.has(k)
+          if (activeTab === 'facility_worker') return STOCK_ONLY.has(k)
+          return true
+        })
+        return (
+          <div className="bg-surface rounded-2xl border border-surface-border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3">
+            <select
+              value={actionFilter}
+              onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
+              className="bg-surface border border-surface-border rounded-xl px-3 py-2 text-sm text-text font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
             >
-              Reset Filters
-            </button>
+              <option value="">All action types</option>
+              {visibleActions.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-text-muted">From</span>
+              <DatePicker
+                id="date-from"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1) }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-text-muted">To</span>
+              <DatePicker
+                id="date-to"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1) }}
+              />
+            </div>
+
+            {hasFilters && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setDateFrom(''); setDateTo(''); setActionFilter(''); setCurrentPage(1) }}
+              >
+                Clear
+              </Button>
+            )}
+
+            <span className="ml-auto text-xs font-bold text-text-muted tabular-nums">
+              {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+            </span>
           </div>
-        )}
-      </div>
-      )}
+        )
+      })()}
 
       {isLoading && activeTab !== 'all' && (
         <div className="flex flex-col gap-3">

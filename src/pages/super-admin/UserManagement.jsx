@@ -301,7 +301,7 @@ export default function UserManagement() {
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
             placeholder="Search by name or email..."
           />
-          <div className="flex items-center gap-1.5 bg-white border border-surface-border rounded-xl p-1 shadow-sm">
+          <div className="flex items-center gap-1.5 bg-surface border border-surface-border rounded-xl p-1 shadow-sm">
             {ROLE_FILTERS.map((f, i) => {
               const active = roleFilter === i
               return (
@@ -393,7 +393,7 @@ export default function UserManagement() {
           {/* Role selector */}
           <div>
             <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Role</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {[
                 { value: 'district_supervisor',  label: 'District Supervisor' },
                 { value: 'uc_supervisor',        label: 'UC Supervisor' },
@@ -409,7 +409,7 @@ export default function UserManagement() {
                   className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center leading-snug ${
                     form.role === value
                       ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white text-text-muted border-surface-border hover:border-primary/40 hover:text-text'
+                      : 'bg-surface text-text-muted border-surface-border hover:border-primary/40 hover:text-text'
                   }`}
                 >
                   {label}
