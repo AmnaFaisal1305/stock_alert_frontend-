@@ -53,6 +53,7 @@ const FacilityHeadStockReqs  = lazy(() => import('./pages/facility-head/StockReq
 const UCSupervisorStockReqs  = lazy(() => import('./pages/uc-supervisor/StockRequests'))
 const Analytics              = lazy(() => import('./pages/shared/Analytics'))
 const DashboardGuide         = lazy(() => import('./pages/shared/DashboardGuide'))
+const FormBSheet             = lazy(() => import('./pages/shared/FormBSheet'))
 
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
@@ -118,6 +119,7 @@ export default function App() {
                 <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
                 <Route path="/super-admin/analytics"       element={<Analytics />} />
+                <Route path="/super-admin/sheet"           element={<FormBSheet />} />
                 <Route path="/super-admin/guide"           element={<DashboardGuide />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
@@ -137,6 +139,7 @@ export default function App() {
                 <Route path="/facility/day-end"      element={<DayEnd />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
                 <Route path="/facility/analytics"    element={<Analytics />} />
+                <Route path="/facility/sheet"        element={<FormBSheet />} />
                 <Route path="/facility/guide"        element={<DashboardGuide />} />
 
                 <Route path="/head/dashboard"      element={<FacilityHeadDashboard />} />
@@ -145,6 +148,7 @@ export default function App() {
                 <Route path="/head/stock-requests" element={<FacilityHeadStockReqs />} />
                 <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
                 <Route path="/head/analytics"      element={<Analytics />} />
+                <Route path="/head/sheet"          element={<FormBSheet />} />
                 <Route path="/head/guide"          element={<DashboardGuide />} />
 
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
@@ -154,6 +158,7 @@ export default function App() {
                 <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
                 <Route path="/uc/analytics"          element={<Analytics />} />
+                <Route path="/uc/sheet"              element={<FormBSheet />} />
                 <Route path="/uc/guide"              element={<DashboardGuide />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />

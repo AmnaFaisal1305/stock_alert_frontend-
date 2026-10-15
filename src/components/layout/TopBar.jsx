@@ -76,6 +76,10 @@ const PAGE_TITLES = {
   '/worker/stock-entry':    'Stock Entry',
   '/worker/status':         'Stock Status',
   '/worker/guide':          'Guide',
+  '/super-admin/sheet':     'EPI Form B',
+  '/facility/sheet':        'EPI Form B',
+  '/head/sheet':            'EPI Form B',
+  '/uc/sheet':              'EPI Form B',
 }
 
 export default function TopBar({ onMenuClick }) {

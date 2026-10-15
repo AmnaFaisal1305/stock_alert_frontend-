@@ -350,3 +350,13 @@ export async function getAuditLog({ limit, feed } = {}) {
 export async function getAnalytics({ from, to } = {}) {
   return request('GET', `/api/analytics${buildQs({ from, to })}`)
 }
+
+// ── EPI Form B monthly sheet (Round 33) ───────────────────────────────────────
+
+export async function getSheet(facilityId, month) {
+  return request('GET', `/api/sheets/${facilityId}${buildQs({ month })}`)
+}
+
+export async function saveSheet(facilityId, { month, rows, signatures }) {
+  return request('PUT', `/api/sheets/${facilityId}`, { month, rows, signatures })
+}
