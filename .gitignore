@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+dev-dist/
 
 # Environment files — never commit secrets
 .env
@@ -29,3 +30,6 @@ Thumbs.db
 
 # Documentation (internal dev docs, not part of the app)
 docs/
+
+# Local reference files (mockups, screenshots)
+reference/

@@ -13,7 +13,7 @@ export function getCsrfToken() {
   return _csrfToken
 }
 
-async function request(method, path, body, { skipAuthRedirect = false } = {}) {
+async function request(method, path, body, { skipAuthRedirect = false, _csrfRetried = false } = {}) {
   const headers = { 'Content-Type': 'application/json' }
   if (method !== 'GET' && _csrfToken) {
     headers['x-csrf-token'] = _csrfToken
@@ -43,6 +43,17 @@ async function request(method, path, body, { skipAuthRedirect = false } = {}) {
     } catch {
       err = { error: res.statusText }
     }
+
+    // Another tab logged in → new CSRF token issued. Refresh and retry once.
+    if (res.status === 403 && !_csrfRetried &&
+        typeof err.error === 'string' && err.error.toLowerCase().includes('csrf')) {
+      try {
+        const session = await request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
+        if (session?.csrfToken) setCsrfToken(session.csrfToken)
+      } catch { /* session expired — fall through to throw below */ }
+      return request(method, path, body, { skipAuthRedirect, _csrfRetried: true })
+    }
+
     const error = new Error(err.error ?? 'Request failed')
     error.status = res.status
     error.fields = err.fields ?? null
