@@ -154,7 +154,8 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   const { user } = useAuth()
 
   const isDistrictSup = user?.role === 'district_supervisor'
-  const defaultTab = isDistrictSup ? 'all' : 'super_admin'
+  const isFacilityHead = user?.role === 'facility_head'
+  const defaultTab = isDistrictSup ? 'all' : isFacilityHead ? 'facility_supervisor' : 'super_admin'
 
   const [activeTab, setActiveTab]         = useState(defaultTab)
   const [selectedFacility, setSelectedFacility] = useState(null)
@@ -231,7 +232,14 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
   const drillTotalPages = Math.ceil(drillLogs.length / itemsPerPage)
   const drillPaginated  = drillLogs.slice((drillPage - 1) * itemsPerPage, drillPage * itemsPerPage)
 
-  const tabs = isDistrictSup
+  const tabs = isFacilityHead
+    ? [
+        { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
+        { id: 'facility_head',       label: 'Facility Heads',       icon: Building2 },
+        { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },
+        { id: 'facility_worker',     label: 'Workers',              icon: Users },
+      ]
+    : isDistrictSup
     ? [
         { id: 'all',                 label: 'All',                  icon: Building2 },
         { id: 'district_supervisor', label: 'District Supervisor',  icon: Shield },
@@ -413,7 +421,7 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
 
       <PageHeader
-        breadcrumb={isDistrictSup ? 'District Supervisor › Audit Log' : 'Super Admin › Audit Log'}
+        breadcrumb={isFacilityHead ? 'Facility Head › Audit Log' : isDistrictSup ? 'District Supervisor › Audit Log' : 'Super Admin › Audit Log'}
         title={title}
         subtitle={subtitle || undefined}
         actions={

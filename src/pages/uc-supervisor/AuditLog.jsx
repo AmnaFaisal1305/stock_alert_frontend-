@@ -12,6 +12,8 @@ const ACTION_LABELS = {
   LOGOUT:                    'Logout',
   STOCK_ENTRY:               'Stock Entry',
   ADJUST_STOCK:              'Stock Correction',
+  STOCK_ASSIGN:              'Vials Assigned',
+  STOCK_DAY_END:             'Day End Recorded',
   STOCK_REQUEST_CREATE:      'Stock Requested',
   STOCK_REQUEST_SENT:        'Request Sent',
   STOCK_REQUEST_RECEIVED:    'Stock Received',
@@ -71,8 +73,18 @@ export default function UCSupervisorAuditLog() {
       }
       case 'ADJUST_STOCK':
         return `Corrected ${d.delta > 0 ? '+' : ''}${d.delta} (${d.previousBalance} → ${d.newBalance}) — ${vaccineName(d.vaccineId)}`
+      case 'STOCK_ASSIGN': {
+        const items = d.items ?? []
+        return `${items.length} vaccine${items.length !== 1 ? 's' : ''} assigned to ${d.workerEmail ?? d.workerId ?? 'worker'}`
+      }
+      case 'STOCK_DAY_END': {
+        const items = d.items ?? []
+        return `Day-end recorded for ${items.length} vaccine${items.length !== 1 ? 's' : ''} — ${d.workerEmail ?? d.workerId ?? 'worker'}`
+      }
       default:
-        return Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(', ')
+        return Object.entries(d)
+          .map(([k, v]) => `${k}: ${v && typeof v === 'object' ? JSON.stringify(v) : v}`)
+          .join(', ')
     }
   }
 
