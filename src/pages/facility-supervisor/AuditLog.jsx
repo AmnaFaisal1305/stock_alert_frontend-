@@ -9,8 +9,8 @@ import {
   RefreshCcw, Trash2, ChevronLeft, ChevronRight,
   CheckCircle2, XCircle, Send,
 } from 'lucide-react'
-import Select from '../../components/ui/Select'
 import DatePicker from '../../components/ui/DatePicker'
+import Button from '../../components/ui/Button'
 import PageHeader from '../../components/shared/PageHeader'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -570,67 +570,49 @@ export default function FacilitySupervisorAuditLog() {
         </button>
       </div>
 
-      {/* Filter Panel */}
-      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-primary/40" />
-            <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">Filter Logs</h2>
-          </div>
-          {hasFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-xs text-primary font-bold hover:underline transition-all"
-            >
-              Reset All
-            </button>
-          )}
+      {/* Filter bar */}
+      <div className="bg-surface rounded-2xl border border-surface-border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3">
+        <select
+          value={actionFilter}
+          onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
+          className="bg-surface border border-surface-border rounded-xl px-3 py-2 text-sm text-text font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+        >
+          <option value="">All action types</option>
+          <option value="STOCK_ENTRY">Stock Entry</option>
+          <option value="ADJUST_STOCK">Stock Correction</option>
+          <option value="STOCK_REQUEST_CREATE">Stock Requested</option>
+          <option value="STOCK_REQUEST_SENT">Request Sent</option>
+          <option value="STOCK_REQUEST_RECEIVED">Request Received</option>
+          <option value="STOCK_REQUEST_APPROVE">Request Approved</option>
+          <option value="STOCK_REQUEST_CANCEL">Request Cancelled</option>
+          <option value="STOCK_REQUEST_CLOSE_SHORT">Request Closed Short</option>
+          <option value="STOCK_REQUEST_DECLINE">Request Declined</option>
+          <option value="APPROVAL_REQUEST">Approval Requested</option>
+          <option value="APPROVAL_APPROVE">Approval Approved</option>
+          <option value="APPROVAL_DECLINE">Approval Declined</option>
+          <option value="APPROVAL_CANCEL">Approval Cancelled</option>
+          <option value="STOCK_ASSIGN">Stock Assigned</option>
+          <option value="STOCK_DAY_END">Day End</option>
+          <option value="LOGOUT">Logout</option>
+        </select>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-text-muted">From</span>
+          <DatePicker id="start-date" value={startDateFilter} max={endDateFilter || undefined} onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1) }} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select
-            id="action-filter"
-            label="Action Type"
-            placeholder="All Actions"
-            options={[
-              { value: 'STOCK_ENTRY',            label: 'Stock Entry' },
-              { value: 'ADJUST_STOCK',            label: 'Stock Correction' },
-              { value: 'STOCK_REQUEST_CREATE',    label: 'Stock Requested' },
-              { value: 'STOCK_REQUEST_SENT',      label: 'Request Sent' },
-              { value: 'STOCK_REQUEST_RECEIVED',  label: 'Request Received' },
-              { value: 'STOCK_REQUEST_APPROVE',   label: 'Request Approved' },
-              { value: 'STOCK_REQUEST_CANCEL',      label: 'Request Cancelled' },
-              { value: 'STOCK_REQUEST_CLOSE_SHORT', label: 'Request Closed Short' },
-              { value: 'STOCK_REQUEST_DECLINE',   label: 'Request Declined' },
-              { value: 'APPROVAL_REQUEST',        label: 'Approval Requested' },
-              { value: 'APPROVAL_APPROVE',        label: 'Approval Approved' },
-              { value: 'APPROVAL_DECLINE',        label: 'Approval Declined' },
-              { value: 'APPROVAL_CANCEL',         label: 'Approval Cancelled' },
-              { value: 'STOCK_ASSIGN',            label: 'Stock Assigned' },
-              { value: 'STOCK_DAY_END',           label: 'Day End' },
-              { value: 'LOGOUT',                  label: 'Logout' },
-            ]}
-            value={actionFilter}
-            onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
-          />
-
-          <DatePicker
-            id="start-date"
-            label="From Date"
-            value={startDateFilter}
-            max={endDateFilter || undefined}
-            onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1) }}
-          />
-
-          <DatePicker
-            id="end-date"
-            label="To Date"
-            value={endDateFilter}
-            min={startDateFilter || undefined}
-            onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1) }}
-          />
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-text-muted">To</span>
+          <DatePicker id="end-date" value={endDateFilter} min={startDateFilter || undefined} onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1) }} />
         </div>
+
+        {hasFilters && (
+          <Button variant="secondary" size="sm" onClick={resetFilters}>Clear</Button>
+        )}
+
+        <span className="ml-auto text-xs font-bold text-text-muted tabular-nums">
+          {workerTotal + filteredSupervisorEntries.length} {workerTotal + filteredSupervisorEntries.length === 1 ? 'entry' : 'entries'}
+        </span>
       </div>
 
       {/* Skeleton */}

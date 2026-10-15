@@ -2,10 +2,10 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import Table from '../../components/shared/Table'
-import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
+import DatePicker from '../../components/ui/DatePicker'
+import Button from '../../components/ui/Button'
 import PageHeader from '../../components/shared/PageHeader'
-import { ChevronLeft, ChevronRight, Calendar, Clock, Award, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Award, Users } from 'lucide-react'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const ACTION_LABELS = {
@@ -30,7 +30,8 @@ const TABS = [
 
 export default function UCSupervisorAuditLog() {
   const [activeTab, setActiveTab]       = useState('facility_supervisor')
-  const [dateFilter, setDateFilter]     = useState('')
+  const [dateFrom, setDateFrom]         = useState('')
+  const [dateTo, setDateTo]             = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [currentPage, setCurrentPage]   = useState(1)
 
@@ -50,11 +51,12 @@ export default function UCSupervisorAuditLog() {
   const filtered = useMemo(() => {
     return logs.filter((l) => {
       if (l.actorRole !== activeTab) return false
-      if (dateFilter && l.createdAt?.split('T')[0] !== dateFilter) return false
+      if (dateFrom && l.createdAt?.split('T')[0] < dateFrom) return false
+      if (dateTo   && l.createdAt?.split('T')[0] > dateTo)   return false
       if (actionFilter && l.action !== actionFilter) return false
       return true
     })
-  }, [logs, activeTab, dateFilter, actionFilter])
+  }, [logs, activeTab, dateFrom, dateTo, actionFilter])
 
   const itemsPerPage = 10
   const totalPages = Math.ceil(filtered.length / itemsPerPage)
@@ -171,38 +173,35 @@ export default function UCSupervisorAuditLog() {
         </div>
       )}
 
-      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-text-muted">
-          <Calendar size={14} className="text-primary" />
-          <h2 className="text-xs font-bold uppercase tracking-wider">Filter</h2>
+      <div className="bg-surface rounded-2xl border border-surface-border px-4 py-3 shadow-sm flex flex-wrap items-center gap-3">
+        <select
+          value={actionFilter}
+          onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
+          className="bg-surface border border-surface-border rounded-xl px-3 py-2 text-sm text-text font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+        >
+          <option value="">All action types</option>
+          {Object.entries(ACTION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-text-muted">From</span>
+          <DatePicker id="date-from" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1) }} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            id="action-filter"
-            label="Filter by action"
-            placeholder="All Action Types"
-            options={Object.entries(ACTION_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-            value={actionFilter}
-            onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1) }}
-          />
-          <Input
-            id="date-filter"
-            label="Filter by date"
-            type="date"
-            value={dateFilter}
-            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
-          />
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-text-muted">To</span>
+          <DatePicker id="date-to" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1) }} />
         </div>
-        {(dateFilter || actionFilter) && (
-          <div className="flex justify-end border-t border-surface-border pt-3">
-            <button
-              onClick={() => { setDateFilter(''); setActionFilter(''); setCurrentPage(1) }}
-              className="text-xs text-primary font-bold hover:underline"
-            >
-              Reset Filters
-            </button>
-          </div>
+
+        {(dateFrom || dateTo || actionFilter) && (
+          <Button variant="secondary" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); setActionFilter(''); setCurrentPage(1) }}>
+            Clear
+          </Button>
         )}
+
+        <span className="ml-auto text-xs font-bold text-text-muted tabular-nums">
+          {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+        </span>
       </div>
 
       {isLoading && (
