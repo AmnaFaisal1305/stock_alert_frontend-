@@ -18,6 +18,25 @@ const VACCINE_GROUPS = [
   ['Other',         ['TCV', 'T (TD)', 'D (TD)', 'HPV']],
 ]
 
+const VACCINE_SUBTITLES = {
+  'BCG':              'Tuberculosis',
+  'OPV (Polio)':      'Oral polio',
+  'Rota':             'Rotavirus',
+  'IPV':              'Inactivated polio',
+  'Pneumococcal':     'PCV',
+  'D (Pentavalent)':  'Diphtheria',
+  'T (Pentavalent)':  'Tetanus',
+  'P (Pentavalent)':  'Pertussis',
+  'Hep B (Pentavalent)': 'Hepatitis B',
+  'Hib (Pentavalent)': 'Haemophilus',
+  'Measles (MR)':     'Measles',
+  'Rubella (MR)':     'Rubella',
+  'TCV':              'Typhoid',
+  'T (TD)':           'Tetanus',
+  'D (TD)':           'Diphtheria',
+  'HPV':              'Human papillomavirus',
+}
+
 function groupVaccines(vaccines) {
   const known = new Set(VACCINE_GROUPS.flatMap(([, ns]) => ns))
   const groups = VACCINE_GROUPS.map(([g, ns]) => [g, vaccines.filter(v => ns.includes(v.name))])
@@ -97,10 +116,7 @@ export default function AssignVials() {
     setGlobalError('')
   }
 
-  const totalVials   = Object.values(vialInputs).reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
-  const summaryChips = vaccines
-    .filter(v => (parseInt(vialInputs[v.id], 10) || 0) > 0)
-    .map(v => ({ name: displayVaccineName(v.name), count: parseInt(vialInputs[v.id], 10) }))
+  const totalVials = Object.values(vialInputs).reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -158,19 +174,31 @@ export default function AssignVials() {
   const groups = groupVaccines(vaccines)
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6">
-      <PageHeader
-        breadcrumb="Facility Supervisor"
-        title="Assign Vials"
-        subtitle="Assign morning vials to a facility worker"
-      />
+    <div className="h-full flex flex-col">
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
+      {/* Header row: title left, date right */}
+      <div className="flex items-end justify-between gap-4 mb-6 flex-none flex-wrap">
+        <PageHeader
+          breadcrumb="Facility Supervisor"
+          title="Assign Vials"
+          subtitle="Assign morning vials to a facility worker"
+        />
+        <DatePicker
+          id="occurredOn"
+          value={occurredOn}
+          onChange={e => setOccurredOn(e.target.value)}
+          min={minDateStr()}
+          max={todayStr()}
+          className="w-44"
+        />
+      </div>
 
-          {/* Left: worker picker */}
-          <div className="bg-surface border border-surface-border rounded-[18px] p-4 flex flex-col gap-3 sticky top-[88px]">
-            <h3 className="text-sm font-semibold text-text">1. Select worker</h3>
+      <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+        <div className="grid grid-cols-[300px_1fr] gap-6 flex-1 min-h-0 items-stretch">
+
+          {/* Worker picker */}
+          <div className="bg-surface border border-surface-border rounded-[18px] p-5 flex flex-col gap-3 self-start">
+            <p className="text-xs font-bold tracking-widest uppercase text-text-muted">1 · Select worker</p>
             <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
@@ -192,15 +220,15 @@ export default function AssignVials() {
                     key={w.id}
                     type="button"
                     onClick={() => { setWorkerId(w.id); setGlobalError('') }}
-                    className={`flex items-center gap-3 p-3 rounded-[14px] border text-left transition-all cursor-pointer ${
+                    className={`flex items-center gap-3 p-3 rounded-[14px] border-2 text-left transition-all cursor-pointer ${
                       active ? 'bg-primary/5 border-primary' : 'border-transparent hover:bg-surface-alt'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm flex-none">
+                    <div className="w-10 h-10 rounded-xl bg-epi-dark text-white flex items-center justify-center font-bold text-sm flex-none">
                       {label[0].toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-text capitalize truncate">{label}</p>
+                      <p className="text-sm font-bold text-text capitalize truncate">{label}</p>
                       <p className="text-xs text-text-muted">Facility worker</p>
                     </div>
                   </button>
@@ -209,110 +237,102 @@ export default function AssignVials() {
             </div>
           </div>
 
-          {/* Right: vaccine assignment */}
+          {/* Vaccine panel */}
           {!workerId ? (
-            <div className="bg-surface border border-surface-border rounded-[18px] flex flex-col items-center justify-center gap-3 py-24 text-center">
+            <div className="bg-surface border border-surface-border rounded-[18px] flex flex-col items-center justify-center gap-3 text-center">
               <PackagePlus size={32} className="text-text-muted/30" />
               <p className="text-sm font-semibold text-text">Choose a worker to begin</p>
               <p className="text-xs text-text-muted">Then set how many vials of each vaccine they take out today.</p>
             </div>
           ) : (
-            <div className="bg-surface border border-surface-border rounded-[18px] overflow-hidden">
-              {/* Card header */}
-              <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-surface-border bg-surface-alt flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm flex-none">
-                    {(selectedWorker?.name ?? selectedWorker?.email ?? '?')[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-base font-bold text-text capitalize">{selectedWorker?.name ?? selectedWorker?.email}</p>
-                    <p className="text-xs text-text-muted">2. Set vial quantities</p>
-                  </div>
+            <div className="bg-surface border border-surface-border rounded-[18px] flex flex-col min-h-0">
+              {/* Worker header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-surface-border flex-none">
+                <div className="w-10 h-10 rounded-xl bg-epi-dark text-white flex items-center justify-center font-bold text-sm flex-none">
+                  {(selectedWorker?.name ?? selectedWorker?.email ?? '?')[0].toUpperCase()}
                 </div>
-                <DatePicker
-                  id="occurredOn"
-                  value={occurredOn}
-                  onChange={e => setOccurredOn(e.target.value)}
-                  min={minDateStr()}
-                  max={todayStr()}
-                  className="w-44"
-                />
+                <div>
+                  <p className="text-base font-bold text-text capitalize">{selectedWorker?.name ?? selectedWorker?.email}</p>
+                  <p className="text-xs text-text-muted">2 · Set vial quantities</p>
+                </div>
               </div>
 
-              {/* Vaccine groups */}
-              {groups.map(([groupName, groupVaccines]) => (
-                <div key={groupName} className="px-6 py-5 border-b border-surface-border">
-                  <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">{groupName}</p>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-                    {groupVaccines.map(v => {
-                      const val       = parseInt(vialInputs[v.id] ?? '0', 10) || 0
-                      const available = storeMap.get(v.id)
-                      const err       = rowErrors[v.id]
-                      const active    = val > 0
-                      return (
-                        <div
-                          key={v.id}
-                          className={`border rounded-[14px] p-3 flex flex-col gap-2.5 transition-all ${
-                            active ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-surface-border'
-                          }`}
-                        >
-                          <p className="text-sm font-semibold text-text leading-tight" dir="rtl">
-                            {displayVaccineName(v.name)}
-                          </p>
-                          {available != null && (
-                            <p className="text-xs text-text-muted">Store: {available} vials</p>
-                          )}
-                          {err && <p className="text-xs text-danger">{err}</p>}
-                          <div className="grid grid-cols-[36px_1fr_36px] gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => step(v.id, -1)}
-                              className="border border-surface-border bg-surface rounded-[10px] text-lg font-medium text-text hover:bg-surface-chip transition-all cursor-pointer"
-                            >−</button>
-                            <input
-                              type="number"
-                              min="0"
-                              value={vialInputs[v.id] ?? '0'}
-                              onChange={e => setVials(v.id, e.target.value)}
-                              className="text-center border border-surface-border rounded-xl px-1 py-2 text-sm bg-surface text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => step(v.id, 1)}
-                              className="border border-surface-border bg-surface rounded-[10px] text-lg font-medium text-text hover:bg-surface-chip transition-all cursor-pointer"
-                            >+</button>
+              {/* Scrollable vaccine groups */}
+              <div className="flex-1 overflow-y-auto px-5 py-5">
+                {groups.map(([groupName, groupVaccines]) => (
+                  <div key={groupName} className="mb-6 last:mb-0">
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3">{groupName}</p>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-3">
+                      {groupVaccines.map(v => {
+                        const val       = parseInt(vialInputs[v.id] ?? '0', 10) || 0
+                        const available = storeMap.get(v.id)
+                        const err       = rowErrors[v.id]
+                        const active    = val > 0
+                        return (
+                          <div
+                            key={v.id}
+                            className={`flex justify-between items-center gap-3 border rounded-[14px] px-3.5 py-3 transition-all ${
+                              active ? 'border-primary bg-primary/5' : 'border-surface-border bg-surface-alt'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-text leading-tight">{displayVaccineName(v.name)}</p>
+                              {VACCINE_SUBTITLES[v.name] && (
+                                <p className="text-xs text-text-muted">{VACCINE_SUBTITLES[v.name]}</p>
+                              )}
+                              {available != null && (
+                                <p className="text-xs text-text-muted">Store: {available} vials</p>
+                              )}
+                              {err && <p className="text-xs text-danger">{err}</p>}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-none">
+                              <button
+                                type="button"
+                                onClick={() => step(v.id, -1)}
+                                className="w-11 h-11 rounded-xl border border-surface-border bg-surface text-xl text-text hover:bg-epi-mint transition-all cursor-pointer flex items-center justify-center"
+                              >−</button>
+                              <input
+                                type="number"
+                                min="0"
+                                value={vialInputs[v.id] ?? '0'}
+                                onChange={e => setVials(v.id, e.target.value)}
+                                className="w-14 h-11 text-center border border-surface-border rounded-xl font-bold text-base bg-surface text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => step(v.id, 1)}
+                                className="w-11 h-11 rounded-xl border border-surface-border bg-surface text-xl text-text hover:bg-epi-mint transition-all cursor-pointer flex items-center justify-center"
+                              >+</button>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-
-              {/* Footer */}
-              <div className="flex items-center justify-between gap-4 px-6 py-4 bg-surface-alt flex-wrap">
-                <div className="flex items-center gap-5">
-                  <div>
-                    <span className="text-xl font-bold text-text">{totalVials}</span>
-                    <span className="text-xs text-text-muted ml-1.5">Total vials</span>
-                  </div>
-                  <div className="flex gap-1.5 flex-wrap max-w-xs">
-                    {summaryChips.map(c => (
-                      <span key={c.name} className="bg-surface border border-surface-border rounded-full px-2.5 py-1 text-xs text-text" dir="rtl">
-                        {c.name}: {c.count}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {globalError && <p className="text-sm text-danger">{globalError}</p>}
-                  <Button type="submit" disabled={totalVials === 0 || mutation.isPending}>
-                    {mutation.isPending ? 'Assigning…' : 'Assign Vials'}
-                  </Button>
-                </div>
+                ))}
               </div>
             </div>
           )}
+        </div>
+
+        {/* Bottom submit bar */}
+        <div className="bg-epi-dark rounded-[18px] flex justify-between items-center px-6 py-[15px] mt-4 flex-none gap-4">
+          <span className="text-sm" style={{ color: '#b7c6bd' }}>
+            {selectedWorker
+              ? <>Assigning to <strong className="text-white">{selectedWorker.name ?? selectedWorker.email}</strong> · <strong className="text-white">{totalVials}</strong> vials total</>
+              : <span className="text-white/40">Select a worker to begin</span>
+            }
+          </span>
+          <div className="flex items-center gap-3">
+            {globalError && <p className="text-sm text-amber-300">{globalError}</p>}
+            <button
+              type="submit"
+              disabled={totalVials === 0 || mutation.isPending}
+              className="bg-[#6fcf97] text-[#0e2218] font-bold text-sm px-7 py-3 rounded-xl min-h-[44px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {mutation.isPending ? 'Assigning…' : 'Assign vials'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
