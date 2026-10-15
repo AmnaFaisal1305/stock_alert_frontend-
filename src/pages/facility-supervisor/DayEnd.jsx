@@ -261,7 +261,7 @@ export default function DayEnd() {
                       return (
                         <div key={v.id} className={`flex flex-col gap-1 px-6 py-3 ${err ? 'bg-danger-bg/20' : ''}`}>
                           <div className="grid grid-cols-[1fr_6rem_5rem_6rem_5rem] gap-3 items-center">
-                            <p className="text-sm font-semibold text-text leading-tight" dir="rtl">
+                            <p className="text-sm font-semibold text-text leading-tight">
                               {displayVaccineName(v.name)}
                             </p>
                             <div className="bg-success-bg text-success-dark rounded-lg px-2 py-1.5 text-center text-sm font-bold">
