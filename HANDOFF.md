@@ -1,9 +1,67 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-15 (session 10 — reference design layout rollout)  
+**Last updated:** 2026-10-15 (session 11 — EPI Form B sheet + audit-log fixes)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
+
+---
+
+## Session Log — 2026-10-15 Session 11 (latest) — EPI Form B sheet + Audit-log fixes
+
+### Goal
+
+Build the latest backend feature (Round 33 — EPI Form B monthly sheet, `GET`/`PUT /api/sheets/:facilityId`) and fix two audit-log bugs.
+
+### What changed
+
+**EPI Form B monthly sheet (Round 33) — new feature**
+
+| File | Change |
+|---|---|
+| `src/lib/api.js` | Added `getSheet(facilityId, month)` and `saveSheet(facilityId, { month, rows, signatures })` |
+| `src/pages/shared/FormBSheet.jsx` | **New** shared, role-keyed page. Renders the official EPI Form B consumption/requisition sheet |
+| `src/App.jsx` | Lazy import + 4 routes: `/facility/sheet`, `/head/sheet`, `/uc/sheet`, `/super-admin/sheet` (observer reuses super-admin) |
+| `src/components/layout/Sidebar.jsx` | "Sheet" nav link (`FileText` icon) for the 5 allowed roles only |
+| `src/components/layout/TopBar.jsx` | Mobile `PAGE_TITLES` entries ("EPI Form B") for the 4 sheet routes |
+
+**Key implementation notes:**
+- **Rows come from the live vaccine catalog**, keyed by `row.key` (vaccine id or fixed slugs like `dil-bcg`, `safety-boxes`, `blank-1`). Never hardcode names/positions — render `sheet.rows` as returned.
+- **Column letters** (confirmed against `reference/EPI_Form-B__final.html`): A=Dose per Vial (read-only, from catalog), B=Opening Balance (doses, server-calculated, read-only), C=Received, D=Children Vaccinated, E=Vials Used, F=Unusable, G=Closing, H=Max Stock, I=Request, J=Replenishment.
+- **Writable columns by role:** facility_supervisor/head → C–G; uc_supervisor → C–J. `EDITABLE_BY_ROLE` in the page omits `i` from UC's set — **column I is always auto-computed `= H − G`** (empty when H<G) so it can never fail the server's `422` I=H−G check.
+- **Black cells:** column A black for every non-vaccine row (`kind !== 'vaccine'`); column D black for `consumable` rows. (Verified: 16 black cells = 11 non-vaccine A-cells + 5 consumable D-cells.)
+- **Facility resolution:** supervisor/head use own `user.facilityId` (no picker); uc/super/observer get a `Select` of `getFacilities()`.
+- **Writable-month guard** uses browser timezone (`shortcut:` comment in file) — backend decides in Pakistan time and returns 422 on mismatch, surfaced via Toast.
+- **Print / Save as PDF** is client-side `window.print()` with scoped A4-landscape print CSS (`#form-b-print` visible, rest hidden). No new dependency.
+- **Access:** super_admin/observer read-only (no Save button); district_supervisor/facility_worker have no route and no nav link (backend 403).
+
+**Audit-log fixes**
+
+| File | Fix |
+|---|---|
+| `src/pages/uc-supervisor/AuditLog.jsx` | Added `STOCK_ASSIGN`/`STOCK_DAY_END` cases + action labels; was rendering `items: [object Object]` via the default case. Hardened default to `JSON.stringify` object values |
+| `src/pages/super-admin/AuditLog.jsx` | `facility_head` reuses this component; now hides the **Super Admin** and **District Supervisor** tabs for that role, defaults to Facility Supervisors tab, breadcrumb "Facility Head › Audit Log" |
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `f30d87b` | fix(audit-log): render assign/day-end details; scope facility-head tabs |
+| `b2c8a92` | feat(sheet): EPI Form B monthly sheet (GET/PUT /api/sheets) |
+
+### Browser-tested (facility supervisor `akuh.info123@gmail.com`, live backend)
+
+| Check | Result |
+|---|---|
+| `GET /api/sheets/:id?month=2026-10` | ✅ 200 |
+| Header fields (facility/UC/tehsil/district/province=Sindh) | ✅ populated, read-only |
+| Rows from catalog (BCG…TCV, then dilutents/consumables/blanks) | ✅ rendered by key |
+| Editable inputs = 26 rows × C–G = 130; B column has 0 inputs | ✅ |
+| Black cells = 16 (11 A-cells + 5 D-cells) | ✅ |
+| Save button (current month) + Print/PDF button | ✅ present |
+| Console errors | ✅ none |
+
+**Not browser-tested (read-path only — avoided writing to live backend):** the Save mutation (PUT) and real print output. `npm run build` passes clean (`FormBSheet` = own 9 KB lazy chunk). Both commits pushed to `main`.
 
 ---
 
