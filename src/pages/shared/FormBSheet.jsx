@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSheet, saveSheet, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import PageHeader from '../../components/shared/PageHeader'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Toast from '../../components/ui/Toast'
@@ -176,48 +175,46 @@ export default function FormBSheet() {
     <div className="flex flex-col gap-5 animate-in fade-in duration-200">
       <style>{PRINT_CSS}</style>
 
-      <PageHeader
-        breadcrumb="Sheet"
-        title="EPI Form B"
-        subtitle="Monthly consumption & requisition — Routine Immunization"
-      />
-
-      {/* Controls */}
-      <div className="no-print bg-surface rounded-2xl border border-surface-border p-4 shadow-sm flex flex-wrap items-end gap-4">
-        {needsPicker && (
-          <div className="w-60">
+      {/* Header card — title + controls in one row, matching reference design */}
+      <div className="no-print bg-surface rounded-2xl border border-surface-border px-5 py-4 shadow-sm flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold text-text leading-tight">EPI Form B</h1>
+          <p className="text-sm text-text-muted mt-0.5">Monthly consumption &amp; requisition — Routine Immunization</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3 shrink-0">
+          {needsPicker && (
+            <div className="w-56">
+              <Select
+                id="facility"
+                label="Facility"
+                placeholder="Choose a facility…"
+                options={facilities.map((f) => ({ value: f.id, label: f.name }))}
+                value={facilityId ?? ''}
+                onChange={(e) => { setFacilityId(e.target.value); resetDraft() }}
+              />
+            </div>
+          )}
+          <div className="w-44">
             <Select
-              id="facility"
-              label="Facility"
-              placeholder="Choose a facility…"
-              options={facilities.map((f) => ({ value: f.id, label: f.name }))}
-              value={facilityId ?? ''}
-              onChange={(e) => { setFacilityId(e.target.value); resetDraft() }}
+              id="month"
+              label="Month"
+              options={monthOptions()}
+              value={month}
+              onChange={(e) => { setMonth(e.target.value); resetDraft() }}
             />
           </div>
-        )}
-        <div className="w-48">
-          <Select
-            id="month"
-            label="Month"
-            options={monthOptions()}
-            value={month}
-            onChange={(e) => { setMonth(e.target.value); resetDraft() }}
-          />
-        </div>
-        <div className="ml-auto flex items-center gap-2">
           {isWriter && !canSave && facilityId && (
-            <span className="text-xs text-text-muted font-medium">Read-only: only this and last month can be edited.</span>
+            <span className="text-xs text-text-muted font-medium self-center">Read-only: only this and last month can be edited.</span>
           )}
+          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={!sheet}>
+            <Printer size={14} className="mr-1.5 inline" /> Print / PDF
+          </Button>
           {canSave && (
             <Button size="sm" onClick={() => saveMut.mutate()} disabled={!hasDraft || saveMut.isPending}>
               <Save size={14} className="mr-1.5 inline" />
               {saveMut.isPending ? 'Saving…' : 'Save'}
             </Button>
           )}
-          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={!sheet}>
-            <Printer size={14} className="mr-1.5 inline" /> Print / PDF
-          </Button>
         </div>
       </div>
 
