@@ -242,7 +242,6 @@ export default function AuditLog({ title = 'Audit Log', subtitle = '' }) {
     : isDistrictSup
     ? [
         { id: 'all',                 label: 'All',                  icon: Building2 },
-        { id: 'district_supervisor', label: 'District Supervisor',  icon: Shield },
         { id: 'uc_supervisor',       label: 'UC Supervisors',       icon: Shield },
         { id: 'facility_head',       label: 'Facility Heads',       icon: Building2 },
         { id: 'facility_supervisor', label: 'Facility Supervisors', icon: Award },

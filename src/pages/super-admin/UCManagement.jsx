@@ -8,6 +8,7 @@ import {
   getDistricts, assignUcSupervisor, getUsers, getFacilities, getDashboard,
 } from '../../lib/api'
 import { facilityStatus, statusConfig } from '../../lib/status'
+import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/shared/SearchInput'
 import StatusBadge from '../../components/shared/StatusBadge'
 import Modal from '../../components/ui/Modal'
@@ -118,7 +119,7 @@ function UCExpandedPanel({ ucId }) {
 }
 
 // ─── Towns Tab ────────────────────────────────────────────────────────────────
-function TownsTab() {
+function TownsTab({ readOnly }) {
   const queryClient = useQueryClient()
   const [search, setSearch]       = useState('')
   const [addOpen, setAddOpen]     = useState(false)
@@ -184,7 +185,7 @@ function TownsTab() {
     { key: 'status', label: 'Status', render: (t) => (
       <Badge type={t.isActive ? 'active' : 'inactive'} />
     )},
-    { key: 'actions', label: '', render: (t) => (
+    ...(!readOnly ? [{ key: 'actions', label: '', render: (t) => (
       <div className="flex items-center gap-1 justify-end">
         <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
           title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
@@ -202,16 +203,18 @@ function TownsTab() {
           </button>
         )}
       </div>
-    )},
+    )}] : []),
   ]
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns…" />
-        <Button onClick={() => { setAddOpen(true); setAddError('') }}>
-          <Plus size={15} /> Add Town
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => { setAddOpen(true); setAddError('') }}>
+            <Plus size={15} /> Add Town
+          </Button>
+        )}
       </div>
 
       {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
@@ -228,21 +231,23 @@ function TownsTab() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Badge type={t.isActive ? 'active' : 'inactive'} />
-                  <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
-                    title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                    <Pencil size={13} />
-                  </button>
-                  {t.isActive ? (
-                    <button onClick={() => { setDelTarget(t); setDelError('') }}
-                      title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                      <Trash2 size={13} />
+                  {!readOnly && (<>
+                    <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
+                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
+                      <Pencil size={13} />
                     </button>
-                  ) : (
-                    <button onClick={() => activateMutation.mutate(t.id)}
-                      title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                      <RefreshCcw size={13} />
-                    </button>
-                  )}
+                    {t.isActive ? (
+                      <button onClick={() => { setDelTarget(t); setDelError('') }}
+                        title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    ) : (
+                      <button onClick={() => activateMutation.mutate(t.id)}
+                        title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
+                        <RefreshCcw size={13} />
+                      </button>
+                    )}
+                  </>)}
                 </div>
               </div>
               <p className="text-xs text-text-muted pl-5">{districtMap[t.districtId] ?? '—'}</p>
@@ -294,7 +299,7 @@ function TownsTab() {
 }
 
 // ─── UCs Tab ──────────────────────────────────────────────────────────────────
-function UCsTab() {
+function UCsTab({ readOnly }) {
   const queryClient = useQueryClient()
   const [search, setSearch]           = useState('')
   const [expandedId, setExpandedId]   = useState(null)
@@ -388,9 +393,11 @@ function UCsTab() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UCs…" />
-        <Button onClick={() => { setAddOpen(true); setAddError('') }}>
-          <Plus size={15} /> Add UC
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => { setAddOpen(true); setAddError('') }}>
+            <Plus size={15} /> Add UC
+          </Button>
+        )}
       </div>
 
       {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
@@ -439,14 +446,14 @@ function UCsTab() {
                         <User size={10} className="text-primary" />
                         <span className="font-semibold text-text">{uc.ucSupervisorName}</span>
                       </span>
-                    ) : (
+                    ) : !readOnly ? (
                       <button
                         onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
                         className="font-semibold text-primary hover:underline flex items-center gap-1"
                       >
                         <UserPlus size={10} /> Assign Supervisor
                       </button>
-                    )}
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-1 flex-wrap pl-5 pt-0.5">
                     <button
@@ -456,27 +463,29 @@ function UCsTab() {
                       <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                       {isExpanded ? 'Collapse' : 'View Details'}
                     </button>
-                    {uc.ucSupervisorName && (
-                      <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                        <UserPlus size={13} />
+                    {!readOnly && (<>
+                      {uc.ucSupervisorName && (
+                        <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
+                          title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
+                          <UserPlus size={13} />
+                        </button>
+                      )}
+                      <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
+                        title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
+                        <Pencil size={13} />
                       </button>
-                    )}
-                    <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                      <Pencil size={13} />
-                    </button>
-                    {uc.isActive ? (
-                      <button onClick={() => { setDelTarget(uc); setDelError('') }}
-                        title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    ) : (
-                      <button onClick={() => activateMutation.mutate(uc.id)}
-                        title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                        <RefreshCcw size={13} />
-                      </button>
-                    )}
+                      {uc.isActive ? (
+                        <button onClick={() => { setDelTarget(uc); setDelError('') }}
+                          title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      ) : (
+                        <button onClick={() => activateMutation.mutate(uc.id)}
+                          title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
+                          <RefreshCcw size={13} />
+                        </button>
+                      )}
+                    </>)}
                   </div>
                 </div>
 
@@ -502,14 +511,14 @@ function UCsTab() {
                         <User size={12} className="text-primary flex-shrink-0" />
                         <span className="text-xs font-semibold text-text truncate">{uc.ucSupervisorName}</span>
                       </div>
-                    ) : (
+                    ) : !readOnly ? (
                       <button
                         onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
                         className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                       >
                         <UserPlus size={11} /> Assign Supervisor
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-1 justify-end">
@@ -523,27 +532,29 @@ function UCsTab() {
                       <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                       {isExpanded ? 'Collapse' : 'View Details'}
                     </button>
-                    {uc.ucSupervisorName && (
-                      <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                        <UserPlus size={13} />
+                    {!readOnly && (<>
+                      {uc.ucSupervisorName && (
+                        <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
+                          title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
+                          <UserPlus size={13} />
+                        </button>
+                      )}
+                      <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
+                        title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
+                        <Pencil size={13} />
                       </button>
-                    )}
-                    <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                      <Pencil size={13} />
-                    </button>
-                    {uc.isActive ? (
-                      <button onClick={() => { setDelTarget(uc); setDelError('') }}
-                        title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    ) : (
-                      <button onClick={() => activateMutation.mutate(uc.id)}
-                        title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                        <RefreshCcw size={13} />
-                      </button>
-                    )}
+                      {uc.isActive ? (
+                        <button onClick={() => { setDelTarget(uc); setDelError('') }}
+                          title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      ) : (
+                        <button onClick={() => activateMutation.mutate(uc.id)}
+                          title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
+                          <RefreshCcw size={13} />
+                        </button>
+                      )}
+                    </>)}
                   </div>
                 </div>
 
@@ -643,6 +654,8 @@ function UCsTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function UCManagement() {
+  const { user } = useAuth()
+  const readOnly = user?.role === 'observer'
   const [tab, setTab] = useState('Towns')
 
   return (
@@ -669,7 +682,7 @@ export default function UCManagement() {
         ))}
       </div>
 
-      {tab === 'Towns' ? <TownsTab /> : <UCsTab />}
+      {tab === 'Towns' ? <TownsTab readOnly={readOnly} /> : <UCsTab readOnly={readOnly} />}
     </div>
   )
 }
