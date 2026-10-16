@@ -13,10 +13,11 @@ import { displayVaccineName } from '../../lib/vaccineNames'
 function VaccineCard({ v }) {
   const cfg        = statusConfig(v.status)
   const qty        = v.quantity ?? 0
-  const minQty     = v.criticalDoses ?? v.minQuantity ?? 0
-  const minVials   = v.criticalVials ?? null
-  const fillPct    = v.quantity == null ? 0 : (minQty > 0 ? Math.min((qty / minQty) * 100, 100) : 100)
-  const hasMin     = minQty > 0
+  const critQty    = v.criticalDoses ?? v.minQuantity ?? 0
+  const refQty     = v.lowDoses ?? critQty
+  const refVials   = v.lowVials ?? v.criticalVials ?? null
+  const fillPct    = v.quantity == null ? 0 : (refQty > 0 ? Math.min((qty / refQty) * 100, 100) : 100)
+  const hasMin     = refQty > 0
 
   const accentBar =
     v.status === 'critical' ? 'bg-danger' :
@@ -63,11 +64,11 @@ function VaccineCard({ v }) {
               )}
             </div>
             <p className={`text-2xl font-extrabold tabular-nums leading-none ${hasMin ? 'text-text' : 'text-text-muted/40'}`}>
-              {hasMin ? minQty : '—'}
+              {hasMin ? refQty : '—'}
             </p>
             <p className="text-[10px] text-text-muted font-medium mt-0.5">{hasMin ? 'doses' : 'not set'}</p>
-            {hasMin && minVials != null && (
-              <p className="text-[10px] text-text-muted font-medium">{minVials} vials</p>
+            {hasMin && refVials != null && (
+              <p className="text-[10px] text-text-muted font-medium">{refVials} vials</p>
             )}
           </div>
         </div>
@@ -305,10 +306,11 @@ export default function FacilityDetail() {
                 {filteredVaccines.map((v) => {
                   const cfg      = statusConfig(v.status)
                   const qty      = v.quantity ?? 0
-                  const minQty   = v.criticalDoses ?? v.minQuantity ?? 0
-                  const minVials = v.criticalVials ?? null
-                  const hasMin   = minQty > 0
-                  const pct      = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / minQty) * 100), 100) : 100)
+                  const critQty  = v.criticalDoses ?? v.minQuantity ?? 0
+                  const refQty   = v.lowDoses ?? critQty
+                  const refVials = v.lowVials ?? v.criticalVials ?? null
+                  const hasMin   = refQty > 0
+                  const pct      = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / refQty) * 100), 100) : 100)
                   return (
                     <div
                       key={v.vaccineId}
@@ -329,9 +331,9 @@ export default function FacilityDetail() {
                       </p>
                       {hasMin ? (
                         <div>
-                          <p className="text-sm text-text tabular-nums">{minQty} <span className="text-[10px] text-text-muted">doses</span></p>
-                          {minVials != null && (
-                            <p className="text-[10px] text-text-muted">{minVials} vials</p>
+                          <p className="text-sm text-text tabular-nums">{refQty} <span className="text-[10px] text-text-muted">doses</span></p>
+                          {refVials != null && (
+                            <p className="text-[10px] text-text-muted">{refVials} vials</p>
                           )}
                         </div>
                       ) : (
