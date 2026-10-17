@@ -47,7 +47,8 @@ function VaccineCounts({ sc = {} }) {
 }
 
 // Town headings, then one hairline list per UC. Shared with the DistrictManagement expanded row.
-export function FacilityHierarchy({ towns }) {
+// base defaults to '/super-admin'; pass '/district' for the district supervisor's Network page.
+export function FacilityHierarchy({ towns, base = '/super-admin' }) {
   return (
     <div className="flex flex-col gap-6">
       {towns.map((town) => (
@@ -58,15 +59,15 @@ export function FacilityHierarchy({ towns }) {
           {town.ucs.map((uc) => (
             <Card key={uc.id} padding={false}>
               <div className="px-4 sm:px-5 py-2.5 border-b border-surface-border flex items-center justify-between gap-3 text-sm">
-                {uc.id !== '__none__'
+                {uc.id !== '__none__' && base === '/super-admin'
                   ? <Link to={`/super-admin/ucs/${uc.id}`} className="font-medium text-text hover:text-primary hover:underline">{uc.name}</Link>
-                  : <span className="font-medium text-text-muted">{uc.name}</span>}
+                  : <span className="font-medium text-text">{uc.name}</span>}
                 <span className="text-xs text-text-muted">{plural(uc.facilities.length, 'facility', 'facilities')}</span>
               </div>
               <ul className="divide-y divide-surface-border">
                 {uc.facilities.map((f) => (
                   <li key={f.id}>
-                    <Link to={`/super-admin/facilities/${f.id}`} className="px-4 sm:px-5 py-3 flex items-start justify-between gap-3 hover:bg-surface-alt">
+                    <Link to={`${base}/facilities/${f.id}`} className="px-4 sm:px-5 py-3 flex items-start justify-between gap-3 hover:bg-surface-alt">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-text truncate">{f.name}</p>
                         <p className="text-xs text-text-muted truncate tabular-nums">

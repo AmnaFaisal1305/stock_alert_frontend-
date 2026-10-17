@@ -85,6 +85,45 @@ aggregations (movement, remaining, requests, pendingApprovals) to matching facil
 
 ---
 
+## 4. `GET /api/users` — include `facility_head` and `facility_worker` in district supervisor scope; `facility_head` in UC supervisor scope
+
+**Status:** Frontend ready; backend scope filters exclude these roles.
+
+**UC supervisor** currently sees `role in (facility_supervisor, facility_worker)`.
+Change to:
+```
+role in (facility_supervisor, facility_worker, facility_head)
+```
+
+**District supervisor** currently sees `role in (facility_supervisor, uc_supervisor)`.
+Change to:
+```
+role in (uc_supervisor, facility_supervisor, facility_worker, facility_head)
+```
+
+No frontend changes needed — `UserDirectory` already renders all these roles correctly.
+
+---
+
+## 5. Stock requests — month filter
+
+**Status:** Frontend ready; backend scope filter excludes this role.
+
+**Problem:** The UC supervisor's User Management page calls `GET /api/users` and the backend
+returns users with `role in (facility_supervisor, facility_worker)`. `facility_head` is not
+included, so facility heads never appear in the UC supervisor's team view.
+
+**Fix:** In the `GET /api/users` role-scope filter for `uc_supervisor`, extend the allowed set:
+
+```
+role in (facility_supervisor, facility_worker, facility_head)
+```
+
+No frontend change is needed — `UserDirectory` already renders `facility_head` correctly
+(label in `ROLE_LABELS`, facilityName column already populated).
+
+---
+
 ## 3. Stock requests — month filter
 
 **Status:** Frontend filters client-side; backend could make it more efficient.

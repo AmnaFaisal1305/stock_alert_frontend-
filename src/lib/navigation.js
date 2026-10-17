@@ -44,6 +44,7 @@ export const NAV = {
     groups: [
       { label: 'Overview', items: [
         { to: '/district/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
+        { to: '/district/network',    label: 'Network',    icon: Map },
         { to: '/district/facilities', label: 'Facilities', icon: Building2 },
       ] },
       { label: 'Team', items: [{ to: '/district/users', label: 'Users', icon: Users }] },
