@@ -28,6 +28,8 @@ import RowActions from '../../components/ui/RowActions'
 import ViewToggle from '../../components/ui/ViewToggle'
 import { SummaryDialog } from '../../components/ui/ReviewDialog'
 import { useViewMode } from '../../hooks/useViewMode'
+import { useUrlFilters, useUrlState } from '../../hooks/useUrlState'
+import ExportButton from '../../components/ui/ExportButton'
 
 const TABS = [{ value: 'Towns', label: 'Towns' }, { value: 'Union Councils', label: 'Union councils' }]
 
@@ -86,7 +88,7 @@ function UCExpandedPanel({ ucId }) {
 // ─── Towns Tab ────────────────────────────────────────────────────────────────
 function TownsTab({ readOnly }) {
   const queryClient = useQueryClient()
-  const [search, setSearch]       = useState('')
+  const [search, setSearch]       = useUrlState('q')
   const [addOpen, setAddOpen]     = useState(false)
   const [addForm, setAddForm]     = useState({ name: '', districtId: '' })
   const [addError, setAddError]   = useState('')
@@ -182,6 +184,15 @@ function TownsTab({ readOnly }) {
             <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns or districts…" />
           </div>
           <ViewToggle value={view} onChange={setView} />
+          <ExportButton
+            name="towns"
+            rows={filtered}
+            columns={[
+              { label: 'Town', value: (t) => t.name },
+              { label: 'District', value: (t) => districtMap[t.districtId] },
+              { label: 'Status', value: (t) => (t.isActive ? 'Active' : 'Inactive') },
+            ]}
+          />
         </div>
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
@@ -263,7 +274,7 @@ function TownsTab({ readOnly }) {
 // ─── UCs Tab ──────────────────────────────────────────────────────────────────
 function UCsTab({ readOnly }) {
   const queryClient = useQueryClient()
-  const [search, setSearch]           = useState('')
+  const [search, setSearch]           = useUrlState('q')
   const [expandedId, setExpandedId]   = useState(null)
   const [addOpen, setAddOpen]         = useState(false)
   const [addForm, setAddForm]         = useState({ name: '', townId: '' })
@@ -396,6 +407,17 @@ function UCsTab({ readOnly }) {
             <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UC, town, district or supervisor…" />
           </div>
           <ViewToggle value={view} onChange={setView} />
+          <ExportButton
+            name="union-councils"
+            rows={filtered}
+            columns={[
+              { label: 'Union council', value: (uc) => uc.name },
+              { label: 'Town', value: (uc) => uc.townName },
+              { label: 'District', value: (uc) => uc.districtName },
+              { label: 'UC supervisor', value: (uc) => uc.ucSupervisorName ?? 'Not assigned' },
+              { label: 'Status', value: (uc) => (uc.isActive ? 'Active' : 'Inactive') },
+            ]}
+          />
         </div>
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
@@ -551,7 +573,9 @@ function UCsTab({ readOnly }) {
 export default function UCManagement() {
   const { user } = useAuth()
   const readOnly = user?.role === 'observer'
-  const [tab, setTab] = useState('Towns')
+  const [{ tab: tabParam }, setFilters] = useUrlFilters({ tab: 'towns' })
+  const tab = tabParam === 'ucs' ? 'Union Councils' : 'Towns'
+  const setTab = (t) => setFilters({ tab: t === 'Union Councils' ? 'ucs' : 'towns', q: '' })
 
   return (
     <div>

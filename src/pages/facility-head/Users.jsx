@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getUsers } from '../../lib/api'
 import Badge from '../../components/ui/Badge'
 import ViewToggle from '../../components/ui/ViewToggle'
+import ExportButton from '../../components/ui/ExportButton'
 import PageHeader from '../../components/shared/PageHeader'
 import Table from '../../components/shared/Table'
 import ErrorState from '../../components/shared/ErrorState'
@@ -52,7 +53,22 @@ export default function FacilityHeadUsers() {
         breadcrumb="Facility Head › Team"
         title="Users"
         subtitle={users.length ? `${plural(users.length, 'person', 'people')} at your facility · ${active} active` : 'Staff at your facility'}
-        actions={<ViewToggle value={view} onChange={setView} />}
+        actions={
+          <>
+            <ViewToggle value={view} onChange={setView} />
+            <ExportButton
+              name="facility-users"
+              rows={users}
+              columns={[
+                { label: 'Name', value: (u) => u.name },
+                { label: 'Email', value: (u) => u.email },
+                { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
+                { label: 'ZMID', value: (u) => u.zmid },
+                { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
+              ]}
+            />
+          </>
+        }
       />
       {isError ? (
         <ErrorState title="Couldn’t load users" error={error} onRetry={refetch} />

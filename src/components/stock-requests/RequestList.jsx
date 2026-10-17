@@ -10,6 +10,9 @@ import { SkeletonRows } from '../shared/SkeletonCard'
 import { REQUEST_FILTERS, PIPELINE, pipelineStep, vaccineSummary, totalVials } from '../../lib/stockRequests'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
+import { workflowStatusConfig } from '../../lib/status'
+import { useUrlState } from '../../hooks/useUrlState'
+import ExportButton from '../ui/ExportButton'
 
 function Pipeline({ stage }) {
   if (stage === 'cancelled' || stage === 'declined') return null
@@ -108,15 +111,31 @@ function RequestRow({ req, showFacility, renderActions }) {
 
 // Filter chips + collapsible list. Each page passes its own role-specific actions.
 export default function RequestList({ requests, isLoading, isError, error, onRetry, renderActions, showFacility = false, emptyHint }) {
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useUrlState('stage', 'all')
   const options = REQUEST_FILTERS.map((f) => ({ value: f.value, label: f.label, count: requests.filter(f.test).length }))
-  const shown = requests.filter(REQUEST_FILTERS.find((f) => f.value === filter).test)
+  const shown = requests.filter((REQUEST_FILTERS.find((f) => f.value === filter) ?? REQUEST_FILTERS[0]).test)
 
   if (isError) return <ErrorState title="Couldn’t load stock requests" error={error} onRetry={onRetry} />
 
   return (
     <div className="flex flex-col gap-4">
-      <FilterChips options={options} value={filter} onChange={setFilter} label="Filter requests" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterChips options={options} value={filter} onChange={setFilter} label="Filter requests" />
+        <ExportButton
+          name="stock-requests"
+          rows={shown}
+          columns={[
+            { label: 'Date', value: (r) => formatDate(r.createdAt) },
+            ...(showFacility ? [{ label: 'Facility', value: (r) => r.facilityName }] : []),
+            { label: 'Vaccines', value: (r) => vaccineSummary(r.items) },
+            { label: 'Requested vials', value: (r) => totalVials(r.items) },
+            { label: 'Sent vials', value: (r) => totalVials(r.items, 'sentVials') },
+            { label: 'Received vials', value: (r) => totalVials(r.items, 'receivedVials') },
+            { label: 'Stage', value: (r) => workflowStatusConfig(r.stage).label },
+            { label: 'Note', value: (r) => r.note },
+          ]}
+        />
+      </div>
       <Card padding={false}>
         {isLoading ? (
           <SkeletonRows rows={4} />

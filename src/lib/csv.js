@@ -20,5 +20,6 @@ export function downloadCsv(filename, columns, rows) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  // Revoking in the same tick can cancel the download in Chromium.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

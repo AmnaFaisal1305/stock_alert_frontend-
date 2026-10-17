@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { Plus, Pencil, UserPlus, Building2, Eye, Power, PowerOff } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, createUser } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import { facilityStatus } from '../../lib/status'
+import { facilityStatus, statusConfig } from '../../lib/status'
+import { useUrlFilters } from '../../hooks/useUrlState'
+import ExportButton from '../../components/ui/ExportButton'
 import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
 import SearchInput from '../../components/shared/SearchInput'
@@ -50,12 +52,10 @@ export default function SuperAdminFacilityManagement() {
   const [toast, setToast]        = useState(null)
   const [created, setCreated]    = useState(null)
   const [view, setView]          = useViewMode('admin-facilities')
-  const [searchQuery, setSearch] = useState('')
+  const [{ q: searchQuery, status: statusFilter }, setFilters] = useUrlFilters({ q: '', status: 'all' })
   const [currentPage, setPage]   = useState(1)
   const debouncedSearch = useDebounce(searchQuery)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const statusFilter = searchParams.get('filter') ?? 'all'
-  function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setPage(1) }
+  function setStatusFilter(val) { setFilters({ status: val }); setPage(1) }
 
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
   const { data: districtData }       = useQuery({ queryKey: ['districts'],  queryFn: getDistricts  })
@@ -276,9 +276,24 @@ export default function SuperAdminFacilityManagement() {
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="flex items-center gap-3 lg:flex-1 min-w-0">
               <div className="flex-1 min-w-0">
-                <SearchInput value={searchQuery} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility or district…" />
+                <SearchInput value={searchQuery} onChange={(e) => { setFilters({ q: e.target.value }); setPage(1) }} placeholder="Search facility or district…" />
               </div>
               <ViewToggle value={view} onChange={setView} className="lg:order-last" />
+              <div className="lg:order-last">
+                <ExportButton
+                  name="facilities"
+                  rows={filtered}
+                  columns={[
+                    { label: 'Facility', value: (f) => f.name },
+                    { label: 'District', value: (f) => districtMap[f.districtId] ?? f.districtName },
+                    { label: 'Union council', value: (f) => f.ucName },
+                    { label: 'Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
+                    { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
+                    { label: 'Account', value: (f) => (f.isActive ? 'Active' : 'Inactive') },
+                    { label: 'Last activity', value: (f) => (f.lastActivityAt ? formatDate(f.lastActivityAt) : '') },
+                  ]}
+                />
+              </div>
             </div>
             <FilterChips
               label="Stock status"

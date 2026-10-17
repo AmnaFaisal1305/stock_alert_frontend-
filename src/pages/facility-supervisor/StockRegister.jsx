@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen } from 'lucide-react'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import Select from '../../components/ui/Select'
+import ExportButton from '../../components/ui/ExportButton'
+import { useUrlFilters } from '../../hooks/useUrlState'
 import PageHeader from '../../components/shared/PageHeader'
 import Card from '../../components/shared/Card'
 import FilterChips from '../../components/shared/FilterChips'
@@ -27,8 +29,8 @@ const TYPE_LABEL = Object.fromEntries(ENTRY_TYPES.map((t) => [t.key, t.label]))
 const dash = <span className="text-text-muted">—</span>
 
 export default function StockRegister() {
-  const [selectedVaccineId, setSelectedVaccineId] = useState('')
-  const [entryTypeFilter, setEntryTypeFilter] = useState('all')
+  const [{ vaccine: selectedVaccineId, type: entryTypeFilter }, setFilters] = useUrlFilters({ vaccine: '', type: 'all' })
+  const setEntryTypeFilter = (type) => setFilters({ type })
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({
     queryKey: ['vaccines'],
@@ -151,7 +153,7 @@ export default function StockRegister() {
             placeholder="Choose a vaccine…"
             options={vaccineOptions}
             value={selectedVaccineId}
-            onChange={(e) => { setSelectedVaccineId(e.target.value); setEntryTypeFilter('all') }}
+            onChange={(e) => setFilters({ vaccine: e.target.value, type: 'all' })}
             disabled={loadingVaccines}
           />
         </div>
@@ -159,6 +161,26 @@ export default function StockRegister() {
           <p className="text-sm text-text-muted pb-2">
             Closing balance <span className="text-2xl font-light text-text tabular-nums ml-1.5">{closing}</span> doses
           </p>
+        )}
+        {selectedVaccine && (
+          <div className="sm:ml-auto">
+            <ExportButton
+              name={`stock-register-${selectedVaccine.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              rows={filteredEntries}
+              columns={[
+                { label: 'Date', value: (r) => `${formatDate(r.date)} ${formatTime(r.date)}` },
+                { label: 'Entry', value: (r) => TYPE_LABEL[r.entryType] ?? 'Corrected' },
+                { label: 'Manufacturer', value: (r) => r.manufacturer },
+                { label: 'Batch', value: (r) => r.batchNo },
+                { label: 'Doses/vial', value: (r) => r.dosesPerVial },
+                { label: 'Expiry', value: (r) => r.expiryDate },
+                { label: 'Received', value: (r) => r.received },
+                { label: 'Issued', value: (r) => r.issued },
+                { label: 'Balance', value: (r) => r.balance },
+                { label: 'Remarks', value: (r) => r.remarks },
+              ]}
+            />
+          </div>
         )}
       </div>
 

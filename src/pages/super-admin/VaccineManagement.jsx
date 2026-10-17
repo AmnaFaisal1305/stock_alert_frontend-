@@ -13,6 +13,7 @@ import ErrorState from '../../components/shared/ErrorState'
 import EntityCard from '../../components/shared/EntityCard'
 import RowActions from '../../components/ui/RowActions'
 import ViewToggle from '../../components/ui/ViewToggle'
+import ExportButton from '../../components/ui/ExportButton'
 import { SummaryDialog } from '../../components/ui/ReviewDialog'
 import { useViewMode } from '../../hooks/useViewMode'
 import { displayVaccineName } from '../../lib/vaccineNames'
@@ -211,8 +212,20 @@ export default function VaccineManagement() {
         />
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="hidden sm:flex justify-end">
+          <div className="flex justify-end items-center gap-3">
             <ViewToggle value={view} onChange={setView} />
+            <ExportButton
+              name="vaccines"
+              rows={vaccines}
+              columns={[
+                { label: 'Vaccine', value: (v) => displayVaccineName(v.name) },
+                { label: 'Doses per vial', value: (v) => v.dosesPerVial },
+                { label: 'Critical doses', value: (v) => v.criticalDoses },
+                { label: 'Low doses', value: (v) => v.lowDoses },
+                { label: 'Critical vials', value: (v) => v.criticalVials },
+                { label: 'Low vials', value: (v) => v.lowVials },
+              ]}
+            />
           </div>
           <Table
             columns={columns}

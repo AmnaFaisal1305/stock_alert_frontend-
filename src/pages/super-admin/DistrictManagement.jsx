@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, ChevronDown, Building2, Map as MapIcon, Eye, Power, PowerOff } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -29,7 +28,9 @@ import RowActions from '../../components/ui/RowActions'
 import ViewToggle from '../../components/ui/ViewToggle'
 import { SummaryDialog } from '../../components/ui/ReviewDialog'
 import { useViewMode } from '../../hooks/useViewMode'
-import { facilityStatus, districtStatus, FILTERS } from '../../lib/status'
+import { useUrlFilters } from '../../hooks/useUrlState'
+import ExportButton from '../../components/ui/ExportButton'
+import { facilityStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
 import { formatDate } from '../../lib/format'
 import { groupByTownUc, FacilityHierarchy } from './DistrictDetail'
 
@@ -77,14 +78,13 @@ export default function DistrictManagement() {
   const [toast, setToast]           = useState(null)
   const [created, setCreated]       = useState(null)
   const [view, setView]             = useViewMode('admin-districts')
-  const [searchQuery, setSearch]    = useState('')
+  const [{ q: searchQuery, status: statusParam }, setFilters] = useUrlFilters({ q: '', status: '' })
   const [currentPage, setPage]      = useState(1)
   const [expandedId, setExpandedId] = useState(null)
   const debouncedSearch = useDebounce(searchQuery)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const activeFilterLabel = searchParams.get('filter') ?? 'All'
-  const statusFilterIndex = Math.max(0, FILTERS.findIndex((f) => f.label === activeFilterLabel))
-  function setStatusFilter(label) { setSearchParams(label === 'All' ? {} : { filter: label }); setPage(1) }
+  const statusFilterIndex = Math.max(0, FILTERS.findIndex((f) => (FILTER_STATUS[f.label] ?? '') === statusParam))
+  const activeFilterLabel = FILTERS[statusFilterIndex].label
+  function setStatusFilter(label) { setFilters({ status: FILTER_STATUS[label] ?? '' }); setPage(1) }
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['districts'],
@@ -246,11 +246,26 @@ export default function DistrictManagement() {
                 <div className="flex-1 min-w-0">
                   <SearchInput
                     value={searchQuery}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                    onChange={(e) => { setFilters({ q: e.target.value }); setPage(1) }}
                     placeholder="Search district by name…"
                   />
                 </div>
                 <ViewToggle value={view} onChange={setView} className="lg:order-last" />
+                <div className="lg:order-last">
+                  <ExportButton
+                    name="districts"
+                    rows={filtered}
+                    columns={[
+                      { label: 'District', value: (d) => d.name },
+                      { label: 'Province', value: (d) => d.province ?? 'Sindh' },
+                      { label: 'Stock status', value: (d) => statusConfig(districtStatusMap.get(d.id) ?? 'no_data').label },
+                      { label: 'Supervisor', value: (d) => d.supervisorName },
+                      { label: 'Supervisor email', value: (d) => d.supervisorEmail },
+                      { label: 'Active', value: (d) => (d.isActive ? 'Active' : 'Inactive') },
+                      { label: 'Added', value: (d) => formatDate(d.createdAt) },
+                    ]}
+                  />
+                </div>
               </div>
               <FilterChips
                 label="District status"

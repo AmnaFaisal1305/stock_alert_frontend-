@@ -15,8 +15,9 @@ import Badge from '../../components/ui/Badge'
 import { buttonClasses } from '../../components/ui/Button'
 import RowActions from '../../components/ui/RowActions'
 import ViewToggle from '../../components/ui/ViewToggle'
+import ExportButton from '../../components/ui/ExportButton'
 import { useViewMode } from '../../hooks/useViewMode'
-import { facilityStatus } from '../../lib/status'
+import { facilityStatus, statusConfig } from '../../lib/status'
 import { plural } from '../../lib/format'
 
 const KPIS = [
@@ -141,8 +142,23 @@ export default function UCDetail() {
             ))}
           </div>
 
-          <div className="hidden sm:flex justify-end mb-3">
+          <div className="flex justify-end items-center gap-3 mb-3">
             <ViewToggle value={view} onChange={setView} />
+            <ExportButton
+              name={`uc-${uc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-facilities`}
+              rows={[...facilities].sort((a, b) => a.name.localeCompare(b.name))}
+              columns={[
+                { label: 'Facility', value: (f) => f.name },
+                { label: 'Union council', value: () => uc.name },
+                { label: 'Town', value: () => uc.townName },
+                { label: 'District', value: () => uc.districtName },
+                { label: 'Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
+                { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
+                { label: 'Critical vaccines', value: (f) => f.statusCounts?.critical ?? 0 },
+                { label: 'Low vaccines', value: (f) => f.statusCounts?.low ?? 0 },
+                { label: 'Normal vaccines', value: (f) => f.statusCounts?.adequate ?? 0 },
+              ]}
+            />
           </div>
           <Table
             columns={columns}

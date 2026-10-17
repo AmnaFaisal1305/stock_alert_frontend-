@@ -10,6 +10,8 @@ import Select from '../ui/Select'
 import DatePicker from '../ui/DatePicker'
 import Button from '../ui/Button'
 import Tabs from '../ui/Tabs'
+import ExportButton from '../ui/ExportButton'
+import { useUrlFilters } from '../../hooks/useUrlState'
 import PageHeader from '../shared/PageHeader'
 import Table from '../shared/Table'
 import Pagination from '../shared/Pagination'
@@ -98,12 +100,18 @@ function Details({ entry, p, onRequest, compact = false }) {
 export default function AuditLogView() {
   const { user } = useAuth()
   const config = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.super_admin
-  const [tab, setTab] = useState(config.defaultTab ?? config.tabs[0].value)
-  const [filters, setFilters] = useState({ action: '', from: '', to: '', entityId: '', scope: '' })
+  // Tab and filters live in the URL (?tab=&action=&from=&to=&request=&scope=); paging stays local.
+  const [url, setUrl] = useUrlFilters({ tab: config.defaultTab ?? config.tabs[0].value, action: '', from: '', to: '', request: '', scope: '' })
+  const tab = url.tab
+  const filters = { action: url.action, from: url.from, to: url.to, entityId: url.request, scope: url.scope }
   const [page, setPage] = useState(1)
   // cursors[i] is the `before` value that loads page i + 1; only pages already reached are known.
   const [cursors, setCursors] = useState([null])
-  const set = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1); setCursors([null]) }
+  const set = ({ entityId, ...patch }) => {
+    setUrl(entityId === undefined ? patch : { ...patch, request: entityId })
+    setPage(1)
+    setCursors([null])
+  }
 
   const activeTab = config.tabs.find((t) => t.value === tab) ?? config.tabs[0]
   const scopeOn = config.scope && (config.scope === 'worker' ? tab === 'workers' : tab === 'all')
@@ -185,6 +193,30 @@ export default function AuditLogView() {
   // Parse only the visible page.
   const parsedRows = pageRows.map((l) => ({ ...l, $p: parseEntry(l, ctx) }))
 
+  // Export: the whole filtered set (no limit), parsed with a context built from those rows.
+  async function exportRows() {
+    const all = (await getAuditLog(params)).auditLog ?? []
+    const exportCtx = buildContext(all, vaccineData?.vaccines, userData?.users)
+    return all.map((l) => ({ ...l, $p: parseEntry(l, exportCtx) }))
+  }
+  const exportColumns = [
+    { label: 'When', value: (l) => `${formatDate(l.createdAt)} ${formatTime(l.createdAt)}` },
+    { label: 'Who', value: (l) => l.actorName },
+    { label: 'Role', value: (l) => ROLE_LABELS[l.actorRole] ?? l.actorRole },
+    { label: 'Action', value: (l) => actionLabel(l.action) },
+    { label: 'Facility', value: (l) => l.facilityName },
+    { label: 'District', value: (l) => l.districtName },
+    { label: 'Vaccine', value: (l) => l.$p.vaccine },
+    { label: 'Vials', value: (l) => l.$p.vials },
+    {
+      label: 'Details',
+      value: (l) => [
+        l.$p.items?.map((it) => `${it.name} ${it.vials}`).join(', '),
+        l.$p.detail, l.$p.warning, l.status ?? l.details?.status,
+      ].filter(Boolean).join(' · '),
+    },
+  ]
+
   return (
     <div>
       <PageHeader
@@ -200,7 +232,7 @@ export default function AuditLogView() {
           <Tabs
             label="Who did it"
             value={tab}
-            onChange={(v) => { setTab(v); set({ action: '', from: '', to: '', entityId: '', scope: '' }) }}
+            onChange={(v) => set({ tab: v, action: '', from: '', to: '', entityId: '', scope: '' })}
             tabs={config.tabs.map((t) => ({ value: t.value, label: t.label, count: tabCount(t) }))}
             className="self-start"
           />
@@ -236,6 +268,7 @@ export default function AuditLogView() {
             )}
             {hasFilters && <Button variant="ghost" onClick={() => set({ action: '', from: '', to: '', entityId: '', scope: '' })}>Clear</Button>}
             <p className="ml-auto text-sm text-text-muted tabular-nums pb-2">{logs ? plural(total, 'entry', 'entries') : ''}</p>
+            <ExportButton name="audit-log" columns={exportColumns} getRows={exportRows} disabled={!total} />
           </div>
 
           <Table

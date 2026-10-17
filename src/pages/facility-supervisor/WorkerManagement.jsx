@@ -10,6 +10,7 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import RowActions from '../../components/ui/RowActions'
 import ViewToggle from '../../components/ui/ViewToggle'
+import ExportButton from '../../components/ui/ExportButton'
 import PageHeader from '../../components/shared/PageHeader'
 import Table from '../../components/shared/Table'
 import ErrorState from '../../components/shared/ErrorState'
@@ -143,6 +144,18 @@ export default function WorkerManagement() {
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
+            <ExportButton
+              name="workers"
+              rows={workers}
+              columns={[
+                { label: 'Name', value: (w) => w.name },
+                { label: 'Email', value: (w) => w.email },
+                { label: 'ZMID', value: (w) => w.zmid },
+                { label: 'Phone', value: (w) => w.phone },
+                { label: 'CNIC', value: (w) => w.cnic },
+                { label: 'Status', value: (w) => (w.isActive ? 'Active' : 'Inactive') },
+              ]}
+            />
             <Button onClick={() => { setCreateOpen(true); setCreateError('') }}><Plus size={16} strokeWidth={1.75} /> Add worker</Button>
           </>
         }

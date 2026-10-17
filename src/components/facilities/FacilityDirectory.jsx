@@ -1,9 +1,11 @@
 // Searchable, status-filtered facility list for the UC and district Facilities pages.
 import { useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getFacilities, getDashboard } from '../../lib/api'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useUrlFilters } from '../../hooks/useUrlState'
+import ExportButton from '../ui/ExportButton'
+import { statusConfig } from '../../lib/status'
 import Table from '../shared/Table'
 import SearchInput from '../shared/SearchInput'
 import FilterChips from '../shared/FilterChips'
@@ -18,14 +20,13 @@ export function useFacilityList() {
 }
 
 export default function FacilityDirectory({ base, query }) {
-  const [search, setSearch] = useState('')
+  const [{ q: search, status: filter }, setFilters] = useUrlFilters({ q: '', status: 'all' })
+  const setSearch = (q) => setFilters({ q })
   const [page, setPage] = useState(1)
   const [view, setView] = useViewMode(`facilities${base.replace('/', '-')}`)
   const PER_PAGE = view === 'grid' ? 12 : 10
   const debounced = useDebounce(search)
-  const [params, setParams] = useSearchParams()
-  const filter = params.get('filter') ?? 'all'
-  const setFilter = (v) => { setParams(v === 'all' ? {} : { filter: v }); setPage(1) }
+  const setFilter = (v) => { setFilters({ status: v }); setPage(1) }
 
   const { data, isLoading, isError, error, refetch } = query
   const { data: dashboard } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard, staleTime: 15_000 })
@@ -58,6 +59,19 @@ export default function FacilityDirectory({ base, query }) {
             <SearchInput value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility, UC or town…" />
           </div>
           <ViewToggle value={view} onChange={(v) => { setView(v); setPage(1) }} />
+          <ExportButton
+            name="facilities"
+            rows={filtered}
+            columns={[
+              { label: 'Facility', value: (f) => f.name },
+              { label: 'Union council', value: (f) => f.ucName },
+              { label: 'Town', value: (f) => f.townName },
+              { label: 'Supervisor', value: (f) => f.facilitySupervisorName },
+              { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
+              { label: 'Last activity', value: (f) => f.lastActivityAt },
+              { label: 'Active', value: (f) => (f.isActive === false ? 'No' : 'Yes') },
+            ]}
+          />
         </div>
         <FilterChips
           label="Stock status"

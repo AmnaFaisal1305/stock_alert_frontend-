@@ -134,6 +134,7 @@ export default function SuperAdminDashboard() {
 
   const fCount = (s) => facilities.filter((f) => f.status === s).length
   const dCount = (s) => districts.filter((d) => d.status === s).length
+  const unstaffed = (districtData?.districts ?? []).filter((d) => d.isActive && !d.supervisorName).length
   const healthy = fCount('adequate')
   const healthPct = facilities.length ? Math.round((healthy / facilities.length) * 100) : 0
   const visible = filter === 'all' ? districts : districts.filter((d) => d.status === filter)
@@ -166,7 +167,7 @@ export default function SuperAdminDashboard() {
             items={[
               { icon: AlertTriangle, accent: 'critical', count: fCount('critical'), label: `${fCount('critical') === 1 ? 'facility is' : 'facilities are'} critically low`, to: '/super-admin/facilities?status=critical' },
               { icon: CircleDashed, accent: 'no_data', count: fCount('no_data'), label: `${fCount('no_data') === 1 ? 'facility has' : 'facilities have'} no stock recorded`, to: '/super-admin/facilities?status=no_data' },
-              { icon: UserX, accent: 5, count: (districtData?.districts ?? []).filter((d) => d.isActive && !d.supervisorName).length, label: 'active districts without a supervisor', to: '/super-admin/districts' },
+              { icon: UserX, accent: 5, count: unstaffed, label: `active ${unstaffed === 1 ? 'district' : 'districts'} without a supervisor`, to: '/super-admin/districts' },
             ]}
           />
 

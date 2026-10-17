@@ -1,5 +1,5 @@
 // Read-only, searchable staff table for the UC and district Users pages.
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getUsers } from '../../lib/api'
 import Badge from '../ui/Badge'
@@ -10,9 +10,11 @@ import ErrorState from './ErrorState'
 import EntityCard from './EntityCard'
 import RoleTag from './RoleTag'
 import ViewToggle from '../ui/ViewToggle'
+import ExportButton from '../ui/ExportButton'
 import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
 import { plural } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
+import { useUrlState } from '../../hooks/useUrlState'
 
 const dash = <span className="text-text-muted">—</span>
 // UC supervisors carry ucNames (several UCs); facility staff carry one ucName.
@@ -50,7 +52,7 @@ const gridCard = (u) => (
 )
 
 export default function UserDirectory({ breadcrumb, scope }) {
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useUrlState('q')
   const [view, setView] = useViewMode(`users-${scope}`)
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers, staleTime: 30_000 })
 
@@ -80,6 +82,18 @@ export default function UserDirectory({ breadcrumb, scope }) {
                 <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, facility or UC…" />
               </div>
               <ViewToggle value={view} onChange={setView} />
+              <ExportButton
+                name="users"
+                rows={filtered}
+                columns={[
+                  { label: 'Name', value: (u) => u.name },
+                  { label: 'Email', value: (u) => u.email },
+                  { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
+                  { label: 'Facility', value: (u) => u.facilityName },
+                  { label: 'Union council', value: ucOf },
+                  { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
+                ]}
+              />
             </div>
           )}
           <Table
