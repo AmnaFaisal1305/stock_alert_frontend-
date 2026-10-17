@@ -1,48 +1,62 @@
-# Backend Requests: UI/UX Revamp
+# Backend Requests: UI Enhancements (session 14)
 
-Merged to `main` 2026-10-18 (UI/UX consistency revamp, session 13)
+Started 2026-10-18. Previous round (`BACKEND_REQUESTS.md`, items 1–4) is closed: all answered in Round 35.
 
-These are API or data changes that would let the frontend deliver a clearer UX. The revamp does **not** depend on them: each screen ships with a frontend-only fallback. Each entry lists the screen, the problem, the proposed contract and the frontend fallback.
+These are API additions that would let the frontend ship the UI enhancements in `PLAN_UI_ENHANCEMENTS.md`. None block the release: each entry has a frontend fallback, and features without data are hidden rather than faked.
 
-Separate from `BACKEND_FIXES.md`, which tracks backend bugs. Entries here are improvements, not defects.
+Separate from `BACKEND_FIXES.md`, which tracks bugs.
 
 | # | Screen | Request | Priority | Status |
 |---|---|---|---|---|
-| 1 | App shell (sidebar scope line, top bar) | Add `facilityName` (and `ucName`) to the session user | Medium | Open |
-| 2 | Audit Log (all roles) | Server-side filters and pagination for `GET /api/audit-log` | High | Open |
-| 3 | Approvals (facility supervisor + head) | One name for the decision reason field, and `decidedAt` | Low | Open |
-| 4 | District / UC detail pages | Document what `statusCounts` counts (facilities or vaccine lines) | Low | Open |
+| B1 | Dashboards (all supervisory roles) | Previous-period counts for KPI trend deltas | Medium | Open |
+| B2 | Facility / UC / district dashboards | Stock expiring soon (batch expiry) | Medium | Open |
+| B3 | Users grid cards (super admin, district, UC, head, workers) | `lastLoginAt` / `lastActivityAt` on users | Low | Open |
+| B4 | Users list (super admin) | Bulk activate / deactivate | Low | Open (optional) |
+| B5 | Stock Register | Multiple values for audit-log `action` | Low | Open |
+| B6 | Audit Log (all roles) | Free-text `q` search on audit-log | Low | Open |
 
 ---
 
-## 1. Facility name in the session user
-- **Screen(s):** the app shell for every facility-scoped role (facility supervisor, head, worker): the sidebar scope line and the subtitle under the user's name in the top bar.
-- **Problem today:** `POST /api/auth/login` and `GET /api/auth/session` return `facilityId`, but no facility name. `GET /api/facilities/:id` returns **403** for facility_supervisor and facility_worker, so the shell can't look the name up. The shell shows "Hyderabad District" where "RHC Latifabad" belongs, which breaks the product principle "scope is always visible".
-- **Proposed contract:** add `facilityName: string | null` to the user object in both responses. If cheap, also add `ucName` for facility roles.
-- **Frontend fallback until then:** `scopeLabel()` in `src/lib/navigation.js` shows `districtName + " District"`. It already prefers `user.facilityName` once present, so no frontend change is needed.
+## B1. KPI trend deltas
+- **Screen(s):** KPI cards on every dashboard ("Critical 12, +3 since last week").
+- **Problem today:** `GET /api/dashboard` is a snapshot. The frontend can't tell whether things are getting better or worse.
+- **Proposed contract:** `GET /api/dashboard?compareTo=YYYY-MM-DD` adds `summary.previous.statusCounts` (same scope, as of the end of that Karachi day). Alternatively a daily snapshot endpoint `GET /api/dashboard/history?from&to` returning `[{ date, statusCounts }]` (also enables sparklines).
+- **Frontend fallback until then:** no delta line on KPI cards.
 
-## 2. Audit log: server-side filters and pagination
-- **Screen(s):** Audit Log for every role (one shared view, `src/components/audit/AuditLogView.jsx`).
-- **Problem today:** the page calls `GET /api/audit-log` once and filters, sorts, counts and paginates **in the browser**. The tab counts ("Facility supervisors 119") and the whole history are only as complete as that one response. Rows older than the response cap are invisible and the counts are silently wrong. (`limit` is capped at 500, and the Stock Register already hits that cap.) The page also downloads every row to show 15.
-- **Proposed contract:** `GET /api/audit-log` accepts `actorRole`, `actorId`, `action`, `facilityId`, `entityId`, `from`, `to` (ISO dates, inclusive, in `Asia/Karachi`), plus `limit` and a cursor (`before=<createdAt|id>`). Response adds `total` for the filtered set and, optionally, `countsByActorRole` for the tab badges.
-- **Frontend fallback until then:** current behaviour (fetch once, filter client-side). Moving to server filters later only changes the query function and key in `AuditLogView.jsx`; the table, filters and parsing in `src/lib/auditLog.js` stay as they are.
+## B2. Stock expiring soon
+- **Screen(s):** new "Expiring soon" card on the facility, UC and district dashboards.
+- **Problem today:** `expiryDate` is stored on received items as reference metadata only (no batch balances, no FEFO), so the frontend can't say how many vials of a batch are left before it expires.
+- **Proposed contract:** `GET /api/stock-entries/expiring?days=60` (role-scoped) → `[{ facilityId, facilityName, vaccineId, vaccineName, batchNo, expiryDate, vialsOnHand }]`. If per-batch balances are out of scope, return the latest received batch per facility × vaccine with its `expiryDate` and say so in the docs.
+- **Frontend fallback until then:** widget hidden.
 
-## 3. Approval decision reason: one field name
-- **Screen(s):** facility supervisor "My requests" history and facility head Approvals history.
-- **Problem today:** the supervisor page originally read `rejectionReason`, the head page read `decisionReason` (the reject request body also sends `decisionReason`). The UI now reads `decisionReason ?? rejectionReason` on both, so it works either way, but it's a guess about which one `GET /api/approvals` really returns.
-- **Proposed contract:** return `decisionReason` (string | null) and `decidedAt` (ISO) for every non-pending approval, and drop `rejectionReason` (or keep it as an alias). Document it in the API reference.
-- **Frontend fallback until then:** reads both names (`src/pages/facility-supervisor/Approvals.jsx`, `src/pages/facility-head/Approvals.jsx`).
+## B3. Last activity on users
+- **Screen(s):** user cards in Grid view and the user tables (super admin Users, district/UC Users, head Users, supervisor Workers).
+- **Problem today:** `GET /api/users` has no activity timestamp. Facilities already have `lastActivityAt`; users don't, so an inactive worker can't be spotted.
+- **Proposed contract:** add `lastLoginAt: ISO | null` and `lastActivityAt: ISO | null` (last audit-log row by that actor) to each user in `GET /api/users`.
+- **Frontend fallback until then:** cards show role, scope and active state only.
 
-## 4. `statusCounts` on district and UC detail
-- **Screen(s):** super admin District detail and UC detail (KPI cards), district/UC dashboards.
-- **Problem today:** it isn't clear whether `statusCounts` on these objects counts facilities or vaccine lines. The KPI cards say "vaccines" or "facilities" depending on the page, and the wording on the district detail page had to be made neutral ("Restock now / Plan a delivery") because the unit is ambiguous.
-- **Proposed contract:** state the unit in the API reference, and ideally return both `facilityStatusCounts` and `vaccineStatusCounts`.
-- **Frontend fallback until then:** neutral card subtitles; per-facility status is derived from `GET /api/dashboard` `summary.byFacility` via `facilityStatus()`.
+## B4. Bulk activate / deactivate users (optional)
+- **Screen(s):** super admin Users, multi-select in Grid and List view.
+- **Problem today:** one request per user. A frontend loop works but partial failures are awkward to report.
+- **Proposed contract:** `PUT /api/users/bulk-status` `{ ids: [uuid], active: boolean }` → `{ updated: [id], failed: [{ id, error }] }`; one audit row per user as today.
+- **Frontend fallback until then:** sequential calls with a per-row result summary.
+
+## B5. Several actions in one audit-log call
+- **Screen(s):** facility supervisor Stock Register.
+- **Problem today:** the register needs `STOCK_ENTRY`, `ADJUST_STOCK` and `STOCK_DAY_END` rows. `action` takes one exact value, so it is three calls merged client-side. (The old `limit: 500` call silently dropped older history; Round 35 lets us remove that.)
+- **Proposed contract:** accept a comma-separated list, `action=STOCK_ENTRY,ADJUST_STOCK,STOCK_DAY_END`.
+- **Frontend fallback until then:** three calls, merged and sorted client-side.
+
+## B6. Free-text search on the audit log
+- **Screen(s):** Audit Log search box (all roles).
+- **Problem today:** with server-side paging (Round 35), client-side search only covers the loaded page.
+- **Proposed contract:** `q` matches `actorName`, `facilityName`, `details.vaccineName`, `details.name`, `details.email` (case-insensitive), combined with the other filters, and counted in `total`.
+- **Frontend fallback until then:** search narrows the current page, with a hint "Searching this page only".
 
 ---
 
 <!-- Entry template
-## N. <short title>
+## BN. <short title>
 - **Screen(s):**
 - **Problem today:**
 - **Proposed contract:**
