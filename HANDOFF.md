@@ -1,6 +1,6 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-18 (session 13 — UI/UX consistency revamp, branch `redesign/ui-consistency`)  
+**Last updated:** 2026-10-18 (session 13 — UI/UX consistency revamp, merged to `main`)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
@@ -9,7 +9,7 @@
 
 ## Session Log — 2026-10-18 Session 13 (latest) — UI/UX consistency revamp
 
-Branch `redesign/ui-consistency` (12 commits ahead of `main`, **not pushed or merged**). UI only: no query keys, mutations, validation, offline queue or `api.js` contracts changed. Source of truth for the look is now **`DESIGN.md`** ("The Ward Ledger") plus its sidecar `.impeccable/design.json`; `docs/design_refrences/` is reference only.
+Developed on `redesign/ui-consistency` and fast-forward merged to `main` on 2026-10-18 (14 commits; `main` had not moved, so no conflicts). UI only: no query keys, mutations, validation, offline queue or `api.js` contracts changed. Source of truth for the look is now **`DESIGN.md`** ("The Ward Ledger") plus its sidecar `.impeccable/design.json`; `docs/design_refrences/` is reference only.
 
 ### What changed
 - **Design system:** one card radius (18px), one control radius (10px), flat surfaces with hairlines, shadows only on floating layers; `--pri-ink` token so links stay legible in dark mode; `useTheme` follows the OS. New primitives/composites: `Tabs`, `Textarea`, `Card`, `FilterChips`, `ErrorState`, `SkeletonRows`, `PageHeader` (display/default), `Button` `ghost-danger` variant and `buttonClasses()`; `Table` got loading, empty and a stacked mobile layout. Removed `FacilityCard`, `DistrictCard`, `StepIndicator`, `RingGauge`, `Drawer`.
@@ -20,7 +20,7 @@ Branch `redesign/ui-consistency` (12 commits ahead of `main`, **not pushed or me
 - **Deliberate behaviour changes:** Audit Log "Workers" (facility supervisor) is one table with a worker filter instead of a card per worker; district Audit Log "All" is a facility filter instead of a drill-down page; the district dashboard has one Town/UC scope instead of three filter rows; UC/district Facilities lose "Date added" and gain Last activity + Stock status; reset-password no longer shows the photo strip on phones.
 
 ### Not done / known
-- **Backend requests:** `docs/BACKEND_REQUESTS.md` (gitignored, local): #1 facility name in the session user (shell shows "Hyderabad District" where the facility belongs), #2 server-side Audit Log filters and pagination, #3 one name for the approval decision reason, #4 unit of `statusCounts`.
+- **Backend requests:** `BACKEND_REQUESTS.md` (repo root, for the backend developer): #1 facility name in the session user (shell shows "Hyderabad District" where the facility belongs), #2 server-side Audit Log filters and pagination, #3 one name for the approval decision reason, #4 unit of `statusCounts`.
 - Raw `<input type="number">` in table cells is a documented exception (see `DESIGN.md` Inputs).
 - Not tested: sticky submit bars on mobile Safari (Chromium only), Form B print preview, submitting forms against the live backend (the demo accounts email real strangers; only open/close and Escape were exercised).
 - `PRODUCT.md` predates the current impeccable schema (`product-schema-legacy`) and still has a deprecated `## Register` section; run `/impeccable init` to refresh it.
@@ -995,7 +995,9 @@ Items 1, 2, and 4 were resolved in Round 34. Remaining:
 
 ### ② QA in production
 
-The session-13 redesign lives on `redesign/ui-consistency` and still needs merging. After merge, test the live Vercel deployment in both light and dark mode across all 7 roles. Key things to verify:
+(Run this against the first deploy of the redesign. Nothing in the redesign was exercised against live write endpoints, so also create one stock request, one approval and one worker end to end with a test account you own.)
+
+The session-13 redesign is on `main`. Test the live Vercel deployment in both light and dark mode across all 7 roles. Key things to verify:
 - Dark mode auto-triggers on a device with OS dark mode set
 - No surface falls back to white in dark mode
 - Each page has exactly one `<h1>` from `PageHeader` (the top bar no longer shows a title)

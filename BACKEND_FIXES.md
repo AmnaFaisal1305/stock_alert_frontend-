@@ -1,5 +1,7 @@
 # Backend Fixes — Small Pending Items
 
+> UX-driven API requests from the 2026-10 redesign (not bugs) are tracked in [`BACKEND_REQUESTS.md`](BACKEND_REQUESTS.md).
+
 **Project:** Smart Stock Alert  
 **Written for:** Backend developer  
 **Frontend repo branch:** `redesign/ui-clinical-material`

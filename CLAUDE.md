@@ -232,6 +232,7 @@ Entry type mapping: `received` → Received (+), `used` → Issued (−), `retur
 ### Backend contract
 
 Backend: `https://smart-stock-alert-be.vercel.app`. Full API docs in `docs/api-reference.md`.
+Backend wishes that would improve the UI (server-side audit-log filters, facility name in the session, …) are listed in `BACKEND_REQUESTS.md`; bugs in `BACKEND_FIXES.md`.
 
 Key constraints:
 - `POST /api/stock-entries` with `entryType: "received"` requires `batchNo`, `expiryDate`, `dosesPerVial`, `manufacturer`, `remarks` (`"outreach"` | `"fixed"`)
