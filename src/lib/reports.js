@@ -4,7 +4,7 @@
 // Heavy libs (xlsx, jspdf) are dynamically imported so they stay out of the initial bundle.
 import { displayVaccineName } from './vaccineNames'
 
-// All movement figures are in vials except `usedDoses` (doses). See api-reference → /api/analytics.
+// All movement figures are in vials except `usedDoses` (doses). See the backend API reference → /api/analytics.
 function sumInto(target, row) {
   target.opening            += row.opening            ?? 0
   target.received           += row.received           ?? 0

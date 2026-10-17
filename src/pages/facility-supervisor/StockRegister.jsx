@@ -37,7 +37,7 @@ export default function StockRegister() {
     queryFn: getVaccines,
   })
   // Running balance needs the full history, so no `limit`; one call per action keeps it light
-  // (the API takes a single action; BACKEND_REQUESTS_SESSION14 B5).
+  // (the API takes a single action; BACKEND_REQUESTS.md #7).
   const { data: logData, isLoading: loadingLog, isError, error, refetch } = useQuery({
     queryKey: ['audit-log', 'register'],
     queryFn: async () => {

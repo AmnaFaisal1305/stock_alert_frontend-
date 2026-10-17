@@ -37,7 +37,7 @@ Ponytail is always active. It means: write the smallest complete change, name wh
 
 Use impeccable for: reviewing UI before shipping, critiquing a layout for clinical clarity, polishing spacing/contrast/hierarchy. The project's design system is stored in `.impeccable/design.json` — impeccable commands load it automatically. Read `PRODUCT.md` first so critiques align with the product's clinical, minimal brand.
 
-**Design source of truth:** `DESIGN.md` (project root) is the normative design system ("The Ward Ledger": tokens, component rules, do's and don'ts), with `.impeccable/design.json` as its sidecar. The HTML mockups in `docs/design_refrences/` (`admin-01`–`admin-08`, `fs-01`–`fs-05`) are visual references only; where they conflict with `DESIGN.md` (e.g. coloured left-stripe cards, corner icon tiles), `DESIGN.md` wins.
+**Design source of truth:** `DESIGN.md` (project root) is the normative design system ("The Ward Ledger": tokens, component rules, do's and don'ts), with `.impeccable/design.json` as its sidecar. The HTML mockups in `docs/design_refrences/` (`admin-01`–`admin-08`, `fs-01`–`fs-05`) are visual references only; where they conflict with `DESIGN.md` (e.g. coloured left-stripe cards), `DESIGN.md` wins.
 
 **Design principles for this project (from `PRODUCT.md`):**
 - Status at a glance — red/amber/green must be scannable in under a second
@@ -56,7 +56,7 @@ For every task:
 3. Make the change. Write no more code than the task requires.
 4. Run `npm run build`. Fix any errors before continuing.
 5. Test the affected screen(s) in the browser (`npm run dev`).
-6. If the change touches shared layout (Sidebar, TopBar, Layout), test all five roles.
+6. If the change touches shared layout (Sidebar, TopBar, Layout), test all seven roles.
 7. Summarize: what changed, which files, what was tested, any remaining risks.
 
 For large or risky changes, explain the approach and wait for approval before proceeding.
@@ -87,10 +87,11 @@ src/
     navigation.js      — NAV per role, ROLE_LABELS, scopeLabel(), role section routes
     stockRequests.js   — request stages, filters, pipeline helpers
     auditLog.js        — action labels, entry parser, filters for the shared Audit Log
-    vaccineNames.js    — maps "Vaccine 01–13" → Urdu display names
+    vaccineNames.js    — displayVaccineName(): legacy "Vaccine 01–13" → display names; real names pass through
+    csv.js             — CSV export (toCsv, downloadCsv)
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
-    useFocusTrap.js (Modal), useOfflineSync.js
+    useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters)
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
     shared/            — composites: Table, Card, StatCard, StatusBadge, FilterChips, PageHeader, EmptyState, ErrorState, ...
@@ -106,10 +107,11 @@ src/
     uc-supervisor/     — uc_supervisor role pages
     facility-supervisor/ — facility_supervisor role pages
     facility-worker/   — facility_worker role pages
-    shared/            — FacilityDetail (shared by super-admin, district, uc)
+    facility-head/     — facility_head role pages
+    shared/            — FacilityDetail, Analytics, DashboardGuide, FormBSheet (role-aware, several routes)
 public/
   images/              — static assets; kebab-case filenames only, no spaces
-docs/                  — internal dev docs (gitignored)
+docs/                  — local only (gitignored): design_refrences/ mockups, screenshots/, test-accounts.md
 scripts/               — standalone doc-generation scripts (not part of the build)
 ```
 
@@ -177,6 +179,10 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 | `uc_supervisor` | `/uc/dashboard` | `src/pages/uc-supervisor/` |
 | `facility_supervisor` | `/facility/dashboard` | `src/pages/facility-supervisor/` |
 | `facility_worker` | `/worker/stock-entry` | `src/pages/facility-worker/` |
+| `facility_head` | `/head/dashboard` | `src/pages/facility-head/` (dashboard reuses the facility-supervisor one) |
+| `observer` | `/super-admin/dashboard` | reuses `src/pages/super-admin/`, read-only (`role === 'observer'` hides actions) |
+
+`ROLE_DEFAULTS` exists in both `App.jsx` and `AuthContext.jsx`; a role missing from either loops forever between `/login` and its default route.
 
 Routes are defined in `App.jsx` under a single `<AuthLayout>` guard. The sidebar is driven by the `NAV` object in `src/lib/navigation.js` (grouped per role, with the role's primary button and scope line) — add new links there when adding new pages.
 
@@ -199,13 +205,13 @@ Backend statuses: `critical | low | adequate | no_data`. This file is the single
 
 ### Data fetching
 
-TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log']`, `['district', id]`. Invalidate after mutations. Dashboard pages poll with `refetchInterval`.
+TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log', …]` (prefix-invalidate `['audit-log']`), `['district', id]`, `['facility', id]`, `['stock-requests']`, `['approvals', 'pending' | 'history']`, `['holdings']`, `['notifications']`, `['unread-count']`, `['analytics', from, to]`. Invalidate after mutations. Dashboard pages poll with `refetchInterval`.
 
 ### Shared pages
 
-`src/pages/shared/FacilityDetail.jsx` is rendered under both `/super-admin/facilities/:id` and `/district/facilities/:id` — it checks `user.role` internally.
+`src/pages/shared/FacilityDetail.jsx` is rendered under `/super-admin/facilities/:id`, `/district/facilities/:id` and `/uc/facilities/:id`; it checks `user.role` internally.
 
-Every role's `AuditLog.jsx` re-exports `src/components/audit/AuditLogView.jsx`. Role differences (tabs, the facility/worker scope filter, columns) live in its `ROLE_CONFIG`; labels and entry parsing live in `src/lib/auditLog.js`. It fetches the whole log once and filters client-side (see `docs/BACKEND_REQUESTS.md` #2).
+Every role's `AuditLog.jsx` re-exports `src/components/audit/AuditLogView.jsx`. Role differences (tabs, the facility/worker scope filter, columns) live in its `ROLE_CONFIG`; labels and entry parsing live in `src/lib/auditLog.js`. Filtering and paging run on the server (see Stock Register below).
 
 `UserDirectory` (UC and district Users), `FacilityDirectory`/`FacilityBoard` (UC and district Dashboard/Facilities) and `RequestList` are shared the same way: the page file is a thin wrapper that passes role-specific props.
 
@@ -219,30 +225,31 @@ Sub-panels (e.g. `DistrictExpandedPanel`) are co-located in the same file as the
 
 The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/action/date/scope go to the API, pages use `nextCursor` → `before`, tab badges come from `counts=true` (`countsByActorRole`).
 
-Entry type mapping: `received` → Received (+), `used` → Issued (−), `returned` → Returned (+). `ADJUST_STOCK`: positive delta → Received, negative → Issued.
+Known gap: the balance does not yet count `STOCK_REQUEST_RECEIVED` or `STOCK_ASSIGN`, so facilities stocked through requests can show negative balances (see `HANDOFF.md`).
 
 ### UI component layers
 
 | Layer | Path | Contents |
 |---|---|---|
 | Primitives | `src/components/ui/` | Button (variants: primary, secondary, danger, ghost, ghost-danger; `buttonClasses()` for links), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker (calendar popover; native on touch), ConfirmDialog, ReviewDialog (+ `ReviewPanel`, `SummaryDialog`), ViewToggle, RowActions |
-| Composites | `src/components/shared/` | Card, PageHeader, Table (`view="grid"` + `gridCard`), EntityCard, StatCard (`icon` + `accent`), StatusBadge, RoleTag, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
-
-Entity lists use `useViewMode(pageKey)` + `ViewToggle` + `Table view/gridCard` with `EntityCard` (Grid by default). Row actions are `RowActions` icons, filtered by role. Submits on field-entry screens go through `ReviewDialog`/`ReviewPanel`; creates end in `SummaryDialog`. Non-status colour comes from the category palette (`--cat-1…5`, `ACCENT` in `StatCard.jsx`), never from status red/amber/green.
+| Composites | `src/components/shared/` | Card, PageHeader, Table (`view="grid"` + `gridCard`), EntityCard, StatCard (`icon` + `accent`), StatusBadge, RoleTag, AttentionStrip, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
 | Layout | `src/components/layout/` | Layout, Sidebar, TopBar, NotificationPanel |
+
+Entity lists use `useViewMode(pageKey)` + `ViewToggle` + `Table view/gridCard` with `EntityCard` (Grid by default), list filters live in the URL via `useUrlFilters` (`hooks/useUrlState.js`; facility lists use `?status=`), and an `ExportButton` (CSV via `lib/csv.js`). Row actions are `RowActions` icons, filtered by role. Submits on field-entry screens go through `ReviewDialog`/`ReviewPanel`; creates end in `SummaryDialog`. Non-status colour comes from the category palette (`--cat-1…5`, `ACCENT` in `StatCard.jsx`), never from status red/amber/green.
 
 `Select` uses a fixed-position portal dropdown — it does not clip inside `overflow-hidden` parents. This is intentional.
 
 ### Backend contract
 
-Backend: `https://smart-stock-alert-be.vercel.app`. Full API docs in `docs/api-reference.md`.
-Backend wishes that would improve the UI (server-side audit-log filters, facility name in the session, …) are listed in `BACKEND_REQUESTS.md`; bugs in `BACKEND_FIXES.md`.
+Backend: `https://smart-stock-alert-be.vercel.app`. The API contract lives in the backend repo (`docs/api/api-reference.md`, changelog `docs/FRONTEND_HANDOFF.md`); ask the backend developer for the current copy rather than keeping one here.
+Everything the frontend needs from the backend (new endpoints, filters, fixes) is in the one root file `BACKEND_REQUESTS.md`. Test logins: `docs/test-accounts.md` (gitignored).
 
 Key constraints:
-- `POST /api/stock-entries` with `entryType: "received"` requires `batchNo`, `expiryDate`, `dosesPerVial`, `manufacturer`, `remarks` (`"outreach"` | `"fixed"`)
+- Stock moves through stock requests (raise → sent → received → head approval), `POST /api/stock-entries/assign` and `/day-end`; the old `POST /api/stock-entries` is gone. Received items need `batchNo`, `expiryDate`, `manufacturer` when vials > 0.
 - `GET /api/audit-log` — `?limit=` capped at 500 (omit it for the whole log); filters `actorRole, actorId, action, facilityId, entityId, from, to`, cursor `before`, `counts=true`
 - `GET /api/dashboard` returns `{ facilities: [...], summary: { statusCounts, byFacility, ... } }`
-- Vaccines are facility-scoped; names must match `"Vaccine 01"–"Vaccine 13"`
+- `statusCounts` counts facility × vaccine lines, never facilities; derive facility status with `facilityStatus()`
+- Vaccines are one global catalog (real names like "BCG") with optional per-facility overrides (`thresholdOverridden` on `GET /api/facilities/:id`); the override write endpoint is `BACKEND_REQUESTS.md` #1
 
 Use the `agent-browser` skill for browser automation tasks in this project.
 
