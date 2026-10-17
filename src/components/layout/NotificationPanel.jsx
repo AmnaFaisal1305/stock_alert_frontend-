@@ -1,13 +1,40 @@
-import { Bell, X, Check, BellPlus } from 'lucide-react'
+import { Bell, X, Check, BellPlus, AlertTriangle, ClipboardCheck, ClipboardX, ClipboardList, Package, Truck } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNotifications, markNotificationRead, markAllRead } from '../../lib/api'
 import { isPushSupported, enablePush } from '../../lib/push'
+import { useAuth } from '../../context/AuthContext'
+import { navFor } from '../../lib/navigation'
+import { ACCENT } from '../shared/StatCard'
+import { timeAgo, localDateStr, toLocalDateStr } from '../../lib/format'
 
 const INVALIDATE_KEYS = [['notifications'], ['unread-count']]
 
+// Icon and tile colour by notification type: status colours only for status outcomes.
+function typeVisual(type = '') {
+  if (type === 'critical_stock')     return { icon: AlertTriangle, accent: 'critical' }
+  if (type === 'approval_approved')  return { icon: ClipboardCheck, accent: 'adequate' }
+  if (type === 'approval_rejected')  return { icon: ClipboardX, accent: 'critical' }
+  if (type.startsWith('approval_'))  return { icon: ClipboardList, accent: type === 'approval_cancelled' ? 5 : 2 }
+  if (type.startsWith('stock_request')) return { icon: Truck, accent: 4 }
+  if (type.startsWith('stock_'))     return { icon: Package, accent: 1 }
+  return { icon: Bell, accent: 5 }
+}
+
+// Where a notification leads: the role's page for its entity, else the role's first page.
+function linkFor(role, n) {
+  const items = navFor(role).groups.flatMap((g) => g.items)
+  const label = n.entityType === 'approval' ? 'Approvals' : n.entityType === 'stock_request' || n.type?.startsWith('stock_request') ? 'Stock Requests' : null
+  return (label && items.find((i) => i.label === label)?.to) ?? items[0]?.to
+}
+
+const isUnread = (n) => !n.readAt && !n.isRead
+
 export default function NotificationPanel({ onClose }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [pushState, setPushState] = useState(() => {
     if (!isPushSupported()) return 'unsupported'
     if (Notification.permission === 'granted') return 'subscribed'
@@ -35,7 +62,12 @@ export default function NotificationPanel({ onClose }) {
   })
 
   const notifications = data?.notifications ?? []
-  const hasUnread = notifications.some(n => !n.isRead)
+  const hasUnread = notifications.some(isUnread)
+  const today = localDateStr()
+  const groups = [
+    { label: 'Today',   items: notifications.filter((n) => n.createdAt && toLocalDateStr(new Date(n.createdAt)) === today) },
+    { label: 'Earlier', items: notifications.filter((n) => !n.createdAt || toLocalDateStr(new Date(n.createdAt)) !== today) },
+  ].filter((g) => g.items.length)
 
   const markOneMutation = useMutation({
     mutationFn: (id) => markNotificationRead(id),
@@ -48,8 +80,10 @@ export default function NotificationPanel({ onClose }) {
   })
 
   function handleItemClick(n) {
-    if (!n.isRead) markOneMutation.mutate(n.id)
+    if (isUnread(n)) markOneMutation.mutate(n.id)
     onClose()
+    const to = linkFor(user?.role, n)
+    if (to) navigate(to)
   }
 
   return (
@@ -72,7 +106,7 @@ export default function NotificationPanel({ onClose }) {
         </div>
       </div>
 
-      <div className="max-h-[360px] overflow-y-auto divide-y divide-surface-border">
+      <div className="max-h-[400px] overflow-y-auto">
         {isLoading && (
           <p className="text-sm text-text-muted px-4 py-6 text-center">Loading…</p>
         )}
@@ -82,23 +116,36 @@ export default function NotificationPanel({ onClose }) {
             <p className="text-sm font-medium text-text">No notifications</p>
           </div>
         )}
-        {notifications.map(n => (
-          <button
-            key={n.id}
-            onClick={() => handleItemClick(n)}
-            className={`w-full text-left px-4 py-3 hover:bg-surface-alt transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-primary-bg/60' : ''}`}
-          >
-            {!n.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-primary" />}
-            {n.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2" />}
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-text">{n.message}</p>
-              {n.createdAt && (
-                <p className="text-[11px] text-text-muted mt-0.5">
-                  {new Date(n.createdAt).toLocaleString()}
-                </p>
-              )}
+        {groups.map((g) => (
+          <section key={g.label} aria-label={g.label}>
+            <h3 className="px-4 pt-3 pb-1 text-xs font-medium text-text-muted">{g.label}</h3>
+            <div className="divide-y divide-surface-border">
+              {g.items.map((n) => {
+                const { icon: Icon, accent } = typeVisual(n.type)
+                const unread = isUnread(n)
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => handleItemClick(n)}
+                    className={`w-full text-left px-4 py-3 hover:bg-surface-alt transition-colors flex items-start gap-3 ${unread ? 'bg-primary-bg/60' : ''}`}
+                  >
+                    <span className={`w-8 h-8 rounded-control grid place-items-center flex-shrink-0 ${ACCENT[accent]}`} aria-hidden="true">
+                      <Icon size={16} strokeWidth={1.75} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm text-text ${unread ? 'font-medium' : ''}`}>{n.message}</p>
+                      {n.createdAt && (
+                        <p className="text-xs text-text-muted mt-0.5 tabular-nums" title={new Date(n.createdAt).toLocaleString()}>
+                          {timeAgo(n.createdAt)}
+                        </p>
+                      )}
+                    </div>
+                    {unread && <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-primary" aria-label="Unread" />}
+                  </button>
+                )
+              })}
             </div>
-          </button>
+          </section>
         ))}
       </div>
 

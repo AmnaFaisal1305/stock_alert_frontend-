@@ -24,6 +24,16 @@ colors:
   status-info: "#2F5B99"
   status-info-wash: "#DFE8F5"
   status-none-text: "#5B625D"
+  category-teal: "#1F7A7A"
+  category-teal-wash: "#DCEFEE"
+  category-indigo: "#4F57B0"
+  category-indigo-wash: "#E3E5F6"
+  category-plum: "#8B4C9C"
+  category-plum-wash: "#F0E3F3"
+  category-sky: "#2F7FB8"
+  category-sky-wash: "#DDEBF6"
+  category-slate: "#56636F"
+  category-slate-wash: "#E6E9EC"
 typography:
   display:
     fontFamily: "Figtree Variable, Figtree, ui-sans-serif, system-ui, sans-serif"
@@ -117,7 +127,7 @@ components:
 
 **Creative North Star: "The Ward Ledger"**
 
-The interface is a calm, exact record book kept on a busy ward. Warm paper surfaces, ink-dark numbers and a single forest green carry the identity. Colour is reserved for stock status, so when red or amber appears it is the most important thing on screen. The system is quiet until something needs attention. It never decorates to fill space.
+The interface is a calm, exact record book kept on a busy ward. Warm paper surfaces, ink-dark numbers and a single forest green carry the identity. Red, amber and green are reserved for stock status, so when red or amber appears it is the most important thing on screen. A small categorical palette (teal, indigo, plum, sky, slate) keeps charts, KPI icons and tags from feeling dry without competing with status. It never decorates to fill space.
 
 Density is moderate. Admin and supervisor screens are tables and lists that people scan under time pressure. The facility-worker screens are phone-first, one-handed, with large targets. Every number is set in tabular figures so columns align and change is visible. Hierarchy comes from type weight, spacing and position, not from boxes, icons or tints.
 
@@ -125,7 +135,7 @@ Light and dark themes share one token set: CSS variable channel triplets in `src
 
 **Key Characteristics:**
 - Warm paper canvas, white hairline cards, forest-green sidebar and primary actions.
-- Status colour (red / amber / green / grey) is the only saturated colour, and it is always paired with a text label.
+- Status colour (red / amber / green / grey) always means status and is always paired with a text label; categorical hues never mean status.
 - Flat surfaces; shadows only on things that float.
 - One card radius, one control radius, pills for status and filters.
 - Numbers are the product: large, light, tabular.
@@ -155,8 +165,15 @@ A restrained forest-and-paper palette, with four status hues that do all the sig
 - **Info** (#2F5B99 on #DFE8F5): neutral in-progress states (sent, in transit), informational notes.
 - **Not updated** (#5B625D on Chip Stone): no data recorded yet.
 
+### Category (decorative-but-meaningful; never status)
+Tokens `--cat-1…5` with a `-bg` wash each (`text-cat-1`, `bg-cat-1-bg`, …), defined for light and dark in `src/index.css`; chart hex values in `useChartTheme().series`.
+- **Teal** (#1F7A7A on #DCEFEE), **Indigo** (#4F57B0 on #E3E5F6), **Plum** (#8B4C9C on #F0E3F3), **Sky** (#2F7FB8 on #DDEBF6), **Slate** (#56636F on #E6E9EC).
+- Used for: chart series that are not status, KPI icon tiles that are not status, role and group tags, notification type icons.
+
 ### Named Rules
-**The Status-Only Colour Rule.** Saturated colour means stock or workflow status, and nothing else. Icons, KPI tiles, chart series and headings stay neutral or forest unless they encode a status.
+**The Status Colour Rule.** Red, amber and green mean stock or workflow status, and nothing else. Anything that needs colour but is not a status takes a category hue. A KPI or chart that does encode status uses the status colour.
+
+**The Category Colour Rule.** Category hues identify a kind of thing (a series, a role, a KPI's subject). Use at most one per element, as text or icon on its own wash; never as large fills, card backgrounds or edge stripes.
 
 **The Label-Always Rule.** No status is communicated by hue alone. Every coloured dot, pill or bar carries its word ("Critical", "Low", "Normal", "Not updated").
 
@@ -233,7 +250,8 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Internal Padding:** 20px (16px on mobile).
 
 ### KPI Figures
-- Caption label (Pencil Grey), then the value in the numeric style, then one line of context. No corner icon tile. Colour on the value only when it encodes status (for example, a critical count in critical text).
+- Caption label (Pencil Grey), then the value in the numeric style, then one line of context. Colour on the value only when it encodes status (for example, a critical count in critical text).
+- **Icon tile:** a 36px tile, 10px radius, top-right, with an 18px lucide icon that names the KPI's subject. Status KPIs use the status wash and text; others a category wash and text (`StatCard` `icon` + `accent`).
 
 ### Tables
 - Header row: Caption style (12px, 500, sentence case) in Pencil Grey on white, hairline bottom border.
@@ -257,11 +275,11 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
   - **Items:** 14px at 400 weight. A lucide icon at 18px with a 1.75 stroke and 70% opacity. Idle text is white at 75%; active is white at 100% on a white/10% fill with a 10px radius. Each item has a distinct icon.
   - **Grouping:** Label-style section headings group items by task. Sign Out sits at the bottom.
 - **Top bar:** a hairline bottom border on the canvas.
-  - **Left:** a menu toggle and, on mobile, the page title.
+  - **Left:** the ☰ menu toggle at every width: on lg+ it switches the sidebar between 250px and the 72px icon rail (remembered); below lg it opens the drawer.
   - **Right:**
     - the offline/sync status;
     - the theme toggle;
-    - a lucide bell with a critical-red count badge;
+    - the 🔔 emoji bell with a critical-red count pill offset top-right (`9+` cap);
     - the role pill (Status Adequate wash and text, uppercase label style);
     - the name with its scope beneath in Pencil Grey;
     - a 38px Forest Green avatar circle with the initial.
@@ -284,11 +302,11 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 
 ### Don't:
 - **Don't** use coloured left-border stripes (`border-l-4`) on cards or rows; show status with a pill or dot.
-- **Don't** put an icon tile in the corner of every KPI card.
+- **Don't** use red, amber or green for anything that is not a status.
 - **Don't** use ring gauges or donuts as decoration; use a chart only when it shows a comparison or trend.
 - **Don't** stack border, shadow and radius on resting cards.
 - **Don't** mix radii (`rounded-xl`, `rounded-2xl`, `rounded-[18px]`) for the same kind of container.
-- **Don't** use emoji or glyph characters as icons; use lucide-react at 16–18px with a 1.75 stroke.
+- **Don't** use emoji or glyph characters as icons; use lucide-react at 16–18px with a 1.75 stroke. The one exception is the top-bar 🔔 notification bell, which matches the reference mockups.
 - **Don't** use gradients, glassmorphism or `backdrop-blur` surfaces.
 - **Don't** use bold (700+) or oversized greetings on work screens.
 - **Don't** put uppercase eyebrow kickers above section headings ("VACCINE STOCK STATUS"); name the section with a Title heading.

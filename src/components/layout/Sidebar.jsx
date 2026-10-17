@@ -1,6 +1,6 @@
 import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { PackageCheck, ChevronLeft, LogOut, X, ArrowRight } from 'lucide-react'
+import { PackageCheck, LogOut, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { navFor, scopeLabel, GuideIcon } from '../../lib/navigation'
 
@@ -26,7 +26,8 @@ function NavItem({ to, label, icon: Icon, depth = 0, collapsed, onNavigate }) {
   )
 }
 
-const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollapse }) {
+// Collapse is driven by the top bar's menu button (Layout).
+const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed }) {
   const { user, logout } = useAuth()
   const nav = navFor(user?.role)
   const scope = scopeLabel(user)
@@ -112,15 +113,6 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
 
         {/* Footer */}
         <div className={`border-t border-white/[0.08] py-3 flex flex-col gap-0.5 ${isCollapsed ? 'px-2.5' : 'px-3'}`}>
-          <button
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={isCollapsed ? 'Expand sidebar' : undefined}
-            className={`hidden lg:flex items-center rounded-control text-sm text-white/75 hover:bg-white/[0.06] hover:text-white transition-colors ${isCollapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-3 h-10 px-3 w-full'}`}
-          >
-            <ChevronLeft size={18} strokeWidth={1.75} className={`flex-shrink-0 opacity-80 transition-transform ${collapsed ? 'rotate-180' : ''}`} aria-hidden="true" />
-            {!isCollapsed && 'Collapse'}
-          </button>
           {nav.guide && <NavItem to={nav.guide} label="Guide" icon={GuideIcon} collapsed={isCollapsed} onNavigate={onClose} />}
           <button
             onClick={logout}

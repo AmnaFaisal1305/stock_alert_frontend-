@@ -72,18 +72,30 @@ function PromptBanner() {
   )
 }
 
+const COLLAPSE_KEY = 'sst_sidebar_collapsed'
+
 export default function Layout({ children }) {
   useOfflineSync()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [collapsed, setCollapsed]         = useState(false)
+  const [collapsed, setCollapsed]         = useState(() => {
+    try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
+  })
   const closeNav = useCallback(() => setMobileNavOpen(false), [])
-  const toggleCollapse = useCallback(() => setCollapsed((c) => !c), [])
+
+  // One menu button: on lg+ it switches full ↔ icon rail, below lg it opens the drawer.
+  const onMenuClick = useCallback(() => {
+    if (!window.matchMedia('(min-width: 1024px)').matches) return setMobileNavOpen(true)
+    setCollapsed((c) => {
+      try { localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1') } catch { /* private mode */ }
+      return !c
+    })
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-alt">
-      <Sidebar mobileOpen={mobileNavOpen} onClose={closeNav} collapsed={collapsed} onToggleCollapse={toggleCollapse} />
+      <Sidebar mobileOpen={mobileNavOpen} onClose={closeNav} collapsed={collapsed} />
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <TopBar onMenuClick={() => setMobileNavOpen(true)} />
+        <TopBar onMenuClick={onMenuClick} navCollapsed={collapsed} navOpen={mobileNavOpen} />
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 pt-5 sm:pt-6 pb-10">
           <PromptBanner />
           {children}

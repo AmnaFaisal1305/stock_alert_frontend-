@@ -8,10 +8,11 @@ const NEUTRAL = {
   dark:  { axis: '#9AA39C', grid: '#303631', tickStrong: '#ECEFEB', surface: '#212622', primary: '#8FD0A2', muted: '#6B726C' },
 }
 
-// Non-status series: forest, then stepped neutrals, so only status data carries hue.
+// Non-status series: the categorical palette (--cat-1…5 in index.css), so charts have colour
+// without borrowing status red / amber / green.
 const SERIES = {
-  light: ['#2F4234', '#7E9583', '#B9C7BC', '#5B625D'],
-  dark:  ['#8FD0A2', '#5E8A68', '#3E5A46', '#A9B1AB'],
+  light: ['#1F7A7A', '#4F57B0', '#8B4C9C', '#2F7FB8', '#56636F'],
+  dark:  ['#7FD1CC', '#A9B0F0', '#D7A7E3', '#94C6EC', '#B4BEC8'],
 }
 
 export function useChartTheme() {

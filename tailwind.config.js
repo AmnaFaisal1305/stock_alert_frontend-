@@ -21,6 +21,8 @@ export default {
         info:         { DEFAULT: v('--info'), dark: v('--info-text'), bg: v('--info-bg') },
         surface:      { DEFAULT: v('--card'), alt: v('--bg'), border: v('--line'), chip: v('--chip') },
         text:         { DEFAULT: v('--ink'), muted: v('--mut'), inverse: '#FFFFFF' },
+        // Categorical, never status: text-cat-1, bg-cat-1-bg, …
+        cat: Object.fromEntries([1, 2, 3, 4, 5].flatMap((n) => [[n, v(`--cat-${n}`)], [`${n}-bg`, v(`--cat-${n}-bg`)]])),
         'epi-dark':   v('--side'),
         'epi-mint':   v('--ok-bg'),
       },
@@ -50,8 +52,22 @@ export default {
           '0%':   { transform: 'scale(1.0)' },
           '100%': { transform: 'scale(1.08)' },
         },
+        'bell-ring': {
+          '0%, 100%': { transform: 'rotate(0)' },
+          '15%': { transform: 'rotate(14deg)' },
+          '30%': { transform: 'rotate(-12deg)' },
+          '45%': { transform: 'rotate(8deg)' },
+          '60%': { transform: 'rotate(-6deg)' },
+          '75%': { transform: 'rotate(3deg)' },
+        },
+        'pop-in': {
+          '0%':   { opacity: '0', transform: 'translateY(-4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
+        'bell-ring': 'bell-ring 900ms ease-out',
+        'pop-in':    'pop-in 140ms cubic-bezier(0.16, 1, 0.3, 1)',
         'toast-in':  'toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)',
         'ken-burns': 'ken-burns 5s ease-in-out forwards',
       },

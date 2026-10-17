@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
-import { Bell, WifiOff, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
+import { WifiOff, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
@@ -51,7 +51,23 @@ function SyncStatus() {
   return null
 }
 
-export default function TopBar({ onMenuClick }) {
+// Rings the bell for a moment whenever the unread count goes up.
+function useRingOnIncrease(count) {
+  const prev = useRef(count)
+  const [ringing, setRinging] = useState(false)
+  useEffect(() => {
+    if (count > prev.current) {
+      setRinging(true)
+      const t = setTimeout(() => setRinging(false), 1000)
+      prev.current = count
+      return () => clearTimeout(t)
+    }
+    prev.current = count
+  }, [count])
+  return ringing
+}
+
+export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
   const { user } = useAuth()
   const { resolved, toggle } = useTheme()
   const [open, setOpen] = useState(false)
@@ -68,6 +84,7 @@ export default function TopBar({ onMenuClick }) {
     enabled: showBell,
   })
   const unreadCount = countData?.count ?? 0
+  const ringing = useRingOnIncrease(unreadCount)
 
   useEffect(() => {
     if (!open) return
@@ -86,8 +103,9 @@ export default function TopBar({ onMenuClick }) {
 
   return (
     <header className="h-16 bg-surface-alt border-b border-surface-border flex items-center gap-3 px-4 sm:px-6 lg:px-7 flex-shrink-0 z-30">
-      <button onClick={onMenuClick} className={`${iconBtn} -ml-1.5 lg:hidden`} aria-label="Open navigation">
+      <button onClick={onMenuClick} className={`${iconBtn} -ml-1.5 lg:-ml-2`} aria-label="Toggle navigation" title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}>
         <Menu size={20} strokeWidth={1.75} />
+        <span className="sr-only lg:hidden">{navOpen ? '(open)' : ''}</span>
       </button>
 
       <div className="flex-1" />
@@ -114,9 +132,10 @@ export default function TopBar({ onMenuClick }) {
                 aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
                 aria-expanded={open}
               >
-                <Bell size={18} strokeWidth={1.75} />
+                {/* Emoji bell as in docs/design_refrences (DESIGN.md exception). */}
+                <span aria-hidden="true" className={`text-[18px] leading-none origin-top ${ringing ? 'animate-bell-ring motion-reduce:animate-none' : ''}`}>🔔</span>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-semibold grid place-items-center leading-none ring-2 ring-surface-alt tabular-nums">
+                  <span className="absolute top-0 -right-1 min-w-[18px] h-[18px] px-[5px] rounded-full bg-danger text-white text-[10px] font-semibold grid place-items-center leading-none ring-2 ring-surface-alt tabular-nums" aria-hidden="true">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}

@@ -36,6 +36,14 @@
     --neutral-bg:  236 236 232;
     --neutral-text: 91  98  93;
 
+    /* Categorical palette (DESIGN.md "Category Colour"): chart series, KPI icon tiles,
+       role and group tags. Hues stay clear of status red / amber / green. */
+    --cat-1:        31 122 122;  --cat-1-bg:    220 239 238;  /* teal   */
+    --cat-2:        79  87 176;  --cat-2-bg:    227 229 246;  /* indigo */
+    --cat-3:       139  76 156;  --cat-3-bg:    240 227 243;  /* plum   */
+    --cat-4:        47 127 184;  --cat-4-bg:    221 235 246;  /* sky    */
+    --cat-5:        86  99 111;  --cat-5-bg:    230 233 236;  /* slate  */
+
     color-scheme: light;
   }
 
@@ -72,6 +80,12 @@
       --neutral-bg:  42  48  43;
       --neutral-text:169 177 171;
 
+      --cat-1:      127 209 204;  --cat-1-bg:    23  58  57;
+      --cat-2:      169 176 240;  --cat-2-bg:    38  42  77;
+      --cat-3:      215 167 227;  --cat-3-bg:    59  37  65;
+      --cat-4:      148 198 236;  --cat-4-bg:    30  51  70;
+      --cat-5:      180 190 200;  --cat-5-bg:    44  51  57;
+
       color-scheme: dark;
     }
   }
@@ -104,6 +118,12 @@
     --neutral:    154 163 156;
     --neutral-bg:  42  48  43;
     --neutral-text:169 177 171;
+
+    --cat-1:      127 209 204;  --cat-1-bg:    23  58  57;
+    --cat-2:      169 176 240;  --cat-2-bg:    38  42  77;
+    --cat-3:      215 167 227;  --cat-3-bg:    59  37  65;
+    --cat-4:      148 198 236;  --cat-4-bg:    30  51  70;
+    --cat-5:      180 190 200;  --cat-5-bg:    44  51  57;
 
     color-scheme: dark;
   }

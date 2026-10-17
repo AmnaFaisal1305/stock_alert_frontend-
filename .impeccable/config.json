@@ -14,6 +14,15 @@
         "value": "26px",
         "createdAt": "2026-10-17T19:54:41.907Z",
         "reason": "Claude: PageHeader mobile headline size, documented in DESIGN.md Typography prose (Headline 30px; 26px on mobile)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "18px",
+        "files": [
+          "src/components/layout/TopBar.jsx"
+        ],
+        "createdAt": "2026-10-17T21:25:19.275Z",
+        "reason": "emoji bell glyph sized like an 18px icon (DESIGN.md icon size; user chose the emoji bell)"
       }
     ]
   }
