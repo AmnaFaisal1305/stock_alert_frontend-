@@ -1,13 +1,60 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-18 (session 14 — per-facility vaccine thresholds + Analytics overhaul)  
+**Last updated:** 2026-10-18 (session 15 — Analytics Stock Requests drill-down + cascade filter)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-18 Session 14 (latest) — Per-facility vaccine thresholds + Analytics overhaul
+## Session Log — 2026-10-18 Session 15 (latest) — Analytics Stock Requests drill-down
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `44eee64` | feat(analytics): add cascade filter + status drill-down to Stock Requests tab |
+
+### What changed — Analytics Stock Requests tab (`src/pages/shared/Analytics.jsx`)
+
+**Cascade filter bar** (District → UC → Facility + Month) added above the chart on the Stock Requests tab.
+
+- District/UC/Facility are chained Selects — selecting each cascades the next using the existing `getDistricts`, `getUnionCouncils`, `getFacilities` queries (same pattern as VaccineManagement).
+- Month select is derived from `requestsByMonth` data already in scope (sorted ascending).
+- A "Clear" button appears when any filter is active; clearing any upstream filter resets downstream state.
+- **Important scope note:** the cascade filter only affects the detail panel (client-side, matches `req.facilityName`). The chart and "Totals by status" card still show all facilities — they come from `getAnalytics({ from, to })` which does not yet accept a `facilityId` param. This is documented in `BACKEND_CHANGES.md` item 2.
+- When a month is selected, the "Totals by status" card switches from period totals to that month's specific counts (computed from `requestsByMonth`), and the summary table is filtered to just that month's row.
+
+**Clickable status drill-down** — each row in the "Totals by status" card is now a button:
+- Clicking a status (Completed / Partial / Open / Declined / Cancelled) opens a detail panel below and highlights the selected row.
+- Clicking the same status again collapses the panel.
+- Changing the month or cascade filters resets the active status selection.
+
+**Detail panel** — fetches `getStockRequests(apiStatus)` with status mapped as:
+  - `completed` → `'completed'`
+  - `partial` → `'partially_fulfilled'`
+  - `open` → `null` (fetches all, filters client-side by `OPEN_STAGES`)
+  - `declined` → `'declined'`
+  - `cancelled` → `'cancelled'`
+
+Query key: `['stock-requests-detail', detailApiParam]`.
+
+Results are filtered client-side:
+1. By OPEN_STAGES (for 'open') or by stage match
+2. By `req.createdAt.startsWith(reqMonth)` when a month is selected
+3. By `req.facilityName === reqFacilityName` when a facility is selected
+
+Each request in the detail list shows: facility name, vaccine summary, date, stage badge (`StatusBadge kind="workflow"`), and a chevron. Clicking a row expands it to show `RequestItemsTable` (Vaccine / Requested / Fulfilled / Sent / Received) plus any `note` or `shortfallNote`.
+
+**New imports added:** `getDistricts, getUnionCouncils, getFacilities, getStockRequests` from api; `{ RequestItemsTable }` from RequestList; `{ vaccineSummary, OPEN_STAGES }` from stockRequests; `formatDate` from format; `Select` from ui; `ChevronDown, X` from lucide-react; `StatusBadge` from shared.
+
+**`BACKEND_CHANGES.md` additions:**
+- Item 2: `GET /api/analytics?districtId=&ucId=&facilityId=` — to scope charts/totals to a facility
+- Item 3: `GET /api/stock-requests?status=&month=YYYY-MM` — optional efficiency improvement
+
+---
+
+## Session Log — 2026-10-18 Session 14 — Per-facility vaccine thresholds + Analytics overhaul
 
 ### Commits
 
