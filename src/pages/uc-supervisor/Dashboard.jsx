@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getDashboard } from '../../lib/api'
+import { Truck, Clock } from 'lucide-react'
+import { getDashboard, getStockRequests } from '../../lib/api'
+import { OPEN_STAGES } from '../../lib/stockRequests'
 import { useAuth } from '../../context/AuthContext'
 import { buttonClasses } from '../../components/ui/Button'
 import PageHeader from '../../components/shared/PageHeader'
@@ -10,6 +12,9 @@ import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { FacilityBoard } from '../../components/facilities/FacilityOverview'
 import { useFacilityList } from '../../components/facilities/FacilityDirectory'
 import { plural } from '../../lib/format'
+
+// Same stages the Stock Requests page lets the UC supervisor send for.
+const SEND_STAGES = new Set(['awaiting_both', 'awaiting_sent'])
 
 export default function UCSupervisorDashboard() {
   const { user } = useAuth()
@@ -21,6 +26,12 @@ export default function UCSupervisorDashboard() {
   })
   const facilitiesQ = useFacilityList()
   const facilities = facilitiesQ.data?.facilities ?? []
+  const { data: reqData } = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000 })
+  const reqs = reqData?.stockRequests ?? []
+  const attention = [
+    { icon: Truck, accent: 4, count: reqs.filter((r) => SEND_STAGES.has(r.stage)).length, label: 'requests waiting for you to send stock', to: '/uc/stock-requests' },
+    { icon: Clock, accent: 'low', count: reqs.filter((r) => OPEN_STAGES.has(r.stage) && Date.now() - new Date(r.createdAt) > 3 * 86_400_000).length, label: 'requests open for over 3 days', to: '/uc/stock-requests' },
+  ]
 
   return (
     <div>
@@ -42,6 +53,7 @@ export default function UCSupervisorDashboard() {
           dashboard={data}
           base="/uc"
           alertAction={{ to: '/uc/stock-requests', label: 'Open stock requests' }}
+          attention={attention}
         />
       )}
     </div>

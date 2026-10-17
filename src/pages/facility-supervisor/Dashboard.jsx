@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, AlertTriangle, ArrowRight, Syringe, TrendingDown, CheckCircle2, CircleDashed } from 'lucide-react'
-import { getDashboard, getAuditLog, getVaccines } from '../../lib/api'
+import { AlertCircle, AlertTriangle, ArrowRight, Syringe, TrendingDown, CheckCircle2, CircleDashed, PackageCheck, Clock, ClipboardList, ClipboardCheck } from 'lucide-react'
+import { getDashboard, getAuditLog, getVaccines, getStockRequests, getApprovals } from '../../lib/api'
+import { OPEN_STAGES } from '../../lib/stockRequests'
+import AttentionStrip from '../../components/shared/AttentionStrip'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
 import Card, { CardHeader } from '../../components/shared/Card'
@@ -110,6 +112,27 @@ export default function FacilityDashboard() {
   })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: auditData } = useQuery({ queryKey: ['audit-log', 'usage', 10], queryFn: () => getAuditLog({ limit: 10, feed: 'usage' }) })
+  const requestsQ = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000 })
+  const approvalsQ = useQuery({ queryKey: ['approvals', 'pending'], queryFn: () => getApprovals('pending') })
+
+  const attention = useMemo(() => {
+    const reqs = requestsQ.data?.stockRequests ?? []
+    const stage = (s) => reqs.filter((r) => r.stage === s).length
+    const stale = reqs.filter((r) => OPEN_STAGES.has(r.stage) && Date.now() - new Date(r.createdAt) > 3 * 86_400_000).length
+    const pending = approvalsQ.data?.approvals?.length ?? 0
+    return isSupervisor
+      ? [
+          { icon: PackageCheck, accent: 4, count: stage('awaiting_received'), label: 'deliveries to record as received', to: '/facility/record-stock' },
+          { icon: AlertTriangle, accent: 'low', count: stage('figures_differ'), label: 'requests where sent and received differ', to: '/facility/record-stock' },
+          { icon: Clock, accent: 'low', count: stale, label: 'requests open for over 3 days', to: '/facility/record-stock' },
+          { icon: ClipboardList, accent: 2, count: pending, label: 'approval requests waiting for the head', to: '/facility/approvals' },
+        ]
+      : [
+          { icon: ClipboardCheck, accent: 'low', count: pending, label: 'approvals waiting for you', to: '/head/approvals' },
+          { icon: PackageCheck, accent: 4, count: stage('ready_for_approval'), label: 'deliveries ready to sign off', to: '/head/stock-requests' },
+          { icon: Clock, accent: 'low', count: stale, label: 'requests open for over 3 days', to: '/head/stock-requests' },
+        ]
+  }, [requestsQ.data, approvalsQ.data, isSupervisor])
 
   const { rows, counts, nameById, facilityName, districtName, critical, low } = useMemo(() => {
     const rows = (data?.facilities ?? [])
@@ -190,6 +213,8 @@ export default function FacilityDashboard() {
       ) : (
         <>
           <StockAlert critical={critical} low={low} canAct={isSupervisor} />
+
+          <AttentionStrip items={attention} loading={requestsQ.isLoading || approvalsQ.isLoading} />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
             {KPI_ORDER.map(({ status, label, context }) => (

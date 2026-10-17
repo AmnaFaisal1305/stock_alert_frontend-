@@ -15,6 +15,8 @@ import RoleTag from '../../components/shared/RoleTag'
 import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
 import { plural } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
+import { useUrlFilters } from '../../hooks/useUrlState'
+import ExportButton from '../../components/ui/ExportButton'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { SummaryDialog } from '../../components/ui/ReviewDialog'
@@ -42,9 +44,8 @@ export default function UserManagement() {
   const [created, setCreated] = useState(null)
   const [view, setView] = useViewMode('admin-users')
 
-  // Filters & Pagination State
-  const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState(0)
+  // Filters live in the URL (?q=&role=); the page number stays local.
+  const [{ q: searchQuery, role: roleParam }, setFilters] = useUrlFilters({ q: '', role: '' })
   const [currentPage, setCurrentPage] = useState(1)
 
   const ROLE_FILTERS = [
@@ -56,6 +57,7 @@ export default function UserManagement() {
     { label: 'Facility Head',        value: 'facility_head' },
     { label: 'Observer',            value: 'observer' },
   ]
+  const roleFilter = Math.max(0, ROLE_FILTERS.findIndex((f) => (f.value ?? '') === roleParam))
 
   const { data: userData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts, staleTime: 0 })
@@ -304,16 +306,29 @@ export default function UserManagement() {
             <div className="flex-1 min-w-0">
               <SearchInput
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setFilters({ q: e.target.value }); setCurrentPage(1) }}
                 placeholder="Search name or email…"
               />
             </div>
             <ViewToggle value={view} onChange={setView} />
+            <ExportButton
+              name="users"
+              rows={filteredUsers}
+              columns={[
+                { label: 'Name', value: (u) => u.name },
+                { label: 'Email', value: (u) => u.email },
+                { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
+                { label: 'Assignment', value: (u) => assignment(u).primary ?? assignment(u).empty },
+                { label: 'District', value: (u) => assignment(u).sub ?? (isFacilityRole(u.role) ? '' : u.districtName) },
+                { label: 'ZMID', value: (u) => u.zmid },
+                { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
+              ]}
+            />
           </div>
           <FilterChips
             label="Role"
             value={String(roleFilter)}
-            onChange={(v) => { setRoleFilter(Number(v)); setCurrentPage(1) }}
+            onChange={(v) => { setFilters({ role: ROLE_FILTERS[Number(v)].value ?? '' }); setCurrentPage(1) }}
             options={ROLE_FILTERS.map((f, i) => ({ value: String(i), label: f.label, count: roleCounts[i] }))}
           />
           <Table

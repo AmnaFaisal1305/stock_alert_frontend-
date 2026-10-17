@@ -1,10 +1,11 @@
 // Multi-facility dashboard pieces shared by the UC and district dashboards.
 import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, AlertTriangle, ArrowRight, TrendingDown, CheckCircle2, HelpCircle } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowRight, TrendingDown, CheckCircle2, HelpCircle, Clock } from 'lucide-react'
 import Button, { buttonClasses } from '../ui/Button'
 import ViewToggle from '../ui/ViewToggle'
 import Card, { CardHeader } from '../shared/Card'
+import AttentionStrip from '../shared/AttentionStrip'
 import StatCard from '../shared/StatCard'
 import Table from '../shared/Table'
 import { useViewMode } from '../../hooks/useViewMode'
@@ -112,9 +113,12 @@ const KPIS = [
   { status: 'no_data',  label: 'Not updated', icon: HelpCircle,   context: (n) => (n ? 'No stock recorded yet' : 'All reporting') },
 ]
 
-// Alert + KPI cards that filter one worst-first facility table + stock matrix.
+const WEEK = 7 * 86_400_000
+
+// Alert + attention strip + KPI cards that filter one worst-first facility table + stock matrix.
 // `facilities` from GET /api/facilities, `dashboard` from GET /api/dashboard (same scope).
-export function FacilityBoard({ facilities: list, dashboard, base, alertAction }) {
+// `attention`: extra role-specific AttentionStrip items (e.g. requests to send).
+export function FacilityBoard({ facilities: list, dashboard, base, alertAction, attention = [] }) {
   const [filter, setFilter] = useState(null)
   const [view, setView] = useViewMode(`board${base.replace('/', '-')}`)
 
@@ -126,6 +130,7 @@ export function FacilityBoard({ facilities: list, dashboard, base, alertAction }
   }, [dashboard, list, base])
 
   const visible = filter ? facilities.filter((f) => statusOf(f) === filter) : facilities
+  const quiet = facilities.filter((f) => f.isActive !== false && (!f.lastActivityAt || Date.now() - new Date(f.lastActivityAt) > WEEK)).length
 
   return (
     <>
@@ -133,6 +138,13 @@ export function FacilityBoard({ facilities: list, dashboard, base, alertAction }
         critical={facilities.filter((f) => statusOf(f) === 'critical')}
         low={facilities.filter((f) => statusOf(f) === 'low')}
         action={alertAction}
+      />
+
+      <AttentionStrip
+        items={[
+          ...attention,
+          { icon: Clock, accent: 5, count: quiet, label: `${quiet === 1 ? 'facility has' : 'facilities have'} no activity in 7 days`, to: `${base}/facilities` },
+        ]}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Map as MapIcon, Building2, AlertTriangle, HeartPulse } from 'lucide-react'
+import { Map as MapIcon, Building2, AlertTriangle, HeartPulse, CircleDashed, UserX } from 'lucide-react'
 import { getDashboard, getDistricts } from '../../lib/api'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import PageHeader from '../../components/shared/PageHeader'
@@ -14,6 +14,7 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { FacilityAlert, StockMatrix } from '../../components/facilities/FacilityOverview'
+import AttentionStrip from '../../components/shared/AttentionStrip'
 import { facilityStatus, districtStatus, STATUS_RANK } from '../../lib/status'
 import { plural } from '../../lib/format'
 
@@ -158,7 +159,15 @@ export default function SuperAdminDashboard() {
           <FacilityAlert
             critical={facilities.filter((f) => f.status === 'critical')}
             low={facilities.filter((f) => f.status === 'low')}
-            action={{ to: '/super-admin/facilities', label: 'Review facilities' }}
+            action={{ to: '/super-admin/facilities?status=critical', label: 'Review facilities' }}
+          />
+
+          <AttentionStrip
+            items={[
+              { icon: AlertTriangle, accent: 'critical', count: fCount('critical'), label: `${fCount('critical') === 1 ? 'facility is' : 'facilities are'} critically low`, to: '/super-admin/facilities?status=critical' },
+              { icon: CircleDashed, accent: 'no_data', count: fCount('no_data'), label: `${fCount('no_data') === 1 ? 'facility has' : 'facilities have'} no stock recorded`, to: '/super-admin/facilities?status=no_data' },
+              { icon: UserX, accent: 5, count: (districtData?.districts ?? []).filter((d) => d.isActive && !d.supervisorName).length, label: 'active districts without a supervisor', to: '/super-admin/districts' },
+            ]}
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
