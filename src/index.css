@@ -18,6 +18,7 @@
     --pri:          47  66  52;  /* primary action        */
     --pri-light:    59  90  64;
     --pri-bg:      232 240 234;  /* subtle primary wash   */
+    --pri-ink:      47  66  52;  /* primary as TEXT (links, ghost buttons) */
 
     --ok:           47 158 102;  /* status green (dot/gauge) */
     --ok-bg:       225 238 228;
@@ -53,6 +54,7 @@
       --pri:         74 110  82;
       --pri-light:   90 130  98;
       --pri-bg:      36  56  43;
+      --pri-ink:    143 208 162;
 
       --ok:         143 208 162;
       --ok-bg:       36  56  43;
@@ -85,6 +87,7 @@
     --pri:         74 110  82;
     --pri-light:   90 130  98;
     --pri-bg:      36  56  43;
+    --pri-ink:    143 208 162;
 
     --ok:         143 208 162;
     --ok-bg:       36  56  43;

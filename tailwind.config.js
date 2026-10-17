@@ -24,6 +24,11 @@ export default {
         'epi-dark':   v('--side'),
         'epi-mint':   v('--ok-bg'),
       },
+      // Text utilities read primary from --pri-ink so links stay legible on dark surfaces;
+      // backgrounds/borders keep --pri (white text on forest).
+      textColor: {
+        primary: { DEFAULT: v('--pri-ink'), light: v('--pri-light'), dark: v('--side'), bg: v('--pri-bg') },
+      },
       borderRadius: {
         card: '1.125rem',  // 18px — cards, panels, dialogs
         control: '0.625rem', // 10px — buttons, inputs, selects, tab tracks, inner tiles

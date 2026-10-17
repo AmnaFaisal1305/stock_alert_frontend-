@@ -20,7 +20,7 @@ export default function ConfirmDialog({
           message
         )}
         {error && (
-          <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{error}</p>
+          <p role="alert" className="text-sm text-danger-dark bg-danger-bg px-3.5 py-2.5 rounded-control">{error}</p>
         )}
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isPending}>Cancel</Button>

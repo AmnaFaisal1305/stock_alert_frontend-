@@ -11,6 +11,18 @@ const sizes = {
   lg: 'h-11 px-5 text-sm',
 }
 
+// For links styled as buttons (e.g. <Link className={buttonClasses()}>) — never nest <button> in <a>.
+export function buttonClasses({ variant = 'primary', size = 'md', className = '' } = {}) {
+  return [
+    'inline-flex items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap',
+    'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+    'disabled:opacity-50 disabled:cursor-not-allowed',
+    variants[variant] ?? variants.secondary,
+    sizes[size],
+    className,
+  ].join(' ')
+}
+
 export default function Button({
   children,
   variant = 'primary',
@@ -26,14 +38,7 @@ export default function Button({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={[
-        'inline-flex items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap',
-        'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
-        variants[variant],
-        sizes[size],
-        className,
-      ].join(' ')}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     >
       {children}

@@ -1,21 +1,30 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { BookOpen } from 'lucide-react'
 import { getAuditLog, getVaccines } from '../../lib/api'
 import Select from '../../components/ui/Select'
 import PageHeader from '../../components/shared/PageHeader'
-import { BookOpen, Syringe } from 'lucide-react'
+import Card from '../../components/shared/Card'
+import FilterChips from '../../components/shared/FilterChips'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { formatDate, formatTime } from '../../lib/format'
 
-const ENTRY_TYPE_PILLS = [
-  { key: 'all',          label: 'All',            activeClass: 'bg-primary text-white border-primary'       },
-  { key: 'opening',      label: 'Opening',        activeClass: 'bg-sky-500 text-white border-sky-500'       },
-  { key: 'received',     label: 'Received',       activeClass: 'bg-success text-white border-success'       },
-  { key: 'used',         label: 'Consumed',       activeClass: 'bg-danger text-white border-danger'         },
-  { key: 'returned',     label: 'Returned',       activeClass: 'bg-warning text-white border-warning'       },
-  { key: 'wasted',       label: 'Wasted',         activeClass: 'bg-orange-500 text-white border-orange-500' },
-  { key: 'ADJUST_STOCK', label: 'Corrected',      activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
-  { key: 'STOCK_DAY_END', label: 'Day End',       activeClass: 'bg-indigo-500 text-white border-indigo-500' },
+const ENTRY_TYPES = [
+  { key: 'all',           label: 'All' },
+  { key: 'opening',       label: 'Opening balance' },
+  { key: 'received',      label: 'Received' },
+  { key: 'used',          label: 'Consumed' },
+  { key: 'returned',      label: 'Returned' },
+  { key: 'wasted',        label: 'Wasted' },
+  { key: 'ADJUST_STOCK',  label: 'Corrected' },
+  { key: 'STOCK_DAY_END', label: 'Day end' },
 ]
+const TYPE_LABEL = Object.fromEntries(ENTRY_TYPES.map((t) => [t.key, t.label]))
+
+const dash = <span className="text-text-muted">—</span>
 
 export default function StockRegister() {
   const [selectedVaccineId, setSelectedVaccineId] = useState('')
@@ -25,9 +34,10 @@ export default function StockRegister() {
     queryKey: ['vaccines'],
     queryFn: getVaccines,
   })
-  const { data: logData, isLoading: loadingLog } = useQuery({
-    queryKey: ['audit-log'],
-    queryFn: getAuditLog,
+  // Running balance needs the full history; the backend caps limit at 500 (see CLAUDE.md).
+  const { data: logData, isLoading: loadingLog, isError, error, refetch } = useQuery({
+    queryKey: ['audit-log', 'register', 500],
+    queryFn: () => getAuditLog({ limit: 500 }),
   })
 
   const vaccines = vaccineData?.vaccines ?? []
@@ -36,7 +46,6 @@ export default function StockRegister() {
 
   const vaccineOptions  = vaccines.map((v) => ({ value: v.id, label: displayVaccineName(v.name) }))
   const selectedVaccine = vaccines.find((v) => v.id === selectedVaccineId)
-  const selectedName    = selectedVaccine?.name ?? ''
   const selectedDpv     = selectedVaccine?.dosesPerVial ?? 1
 
   const entries = useMemo(() => {
@@ -112,240 +121,101 @@ export default function StockRegister() {
     return entries.filter((e) => e.entryType === entryTypeFilter)
   }, [entries, entryTypeFilter])
 
-  const pillCounts = useMemo(() => {
-    const counts = { all: entries.length, opening: 0, received: 0, used: 0, returned: 0, wasted: 0, ADJUST_STOCK: 0, STOCK_DAY_END: 0 }
-    entries.forEach((e) => { if (e.entryType in counts) counts[e.entryType]++ })
-    return counts
+  const chipOptions = useMemo(() => {
+    const counts = {}
+    entries.forEach((e) => { counts[e.entryType] = (counts[e.entryType] ?? 0) + 1 })
+    return ENTRY_TYPES
+      .filter((t) => t.key === 'all' || counts[t.key])
+      .map((t) => ({ value: t.key, label: t.label, count: t.key === 'all' ? entries.length : counts[t.key] }))
   }, [entries])
 
-  return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+  const closing = entries.length ? entries[entries.length - 1].balance : null
 
-      {/* Header */}
+  return (
+    <div>
       <PageHeader
-        breadcrumb="Facility Supervisor"
+        breadcrumb="Facility Supervisor › Records"
         title="Stock Register"
-        subtitle="EPI inward & outward vaccine ledger"
+        subtitle="Inward and outward ledger for each vaccine, in doses"
       />
 
-      {/* Vaccine selector */}
-      <div className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
-        <Select
-          id="vaccine-select"
-          label="Select Vaccine"
-          placeholder="Choose a vaccine to view its register…"
-          options={vaccineOptions}
-          value={selectedVaccineId}
-          onChange={(e) => { setSelectedVaccineId(e.target.value); setEntryTypeFilter('all') }}
-          disabled={loadingVaccines}
-        />
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4 mb-4">
+        <div className="w-full sm:w-72">
+          <Select
+            id="vaccine-select"
+            label="Vaccine"
+            placeholder="Choose a vaccine…"
+            options={vaccineOptions}
+            value={selectedVaccineId}
+            onChange={(e) => { setSelectedVaccineId(e.target.value); setEntryTypeFilter('all') }}
+            disabled={loadingVaccines}
+          />
+        </div>
+        {closing != null && (
+          <p className="text-sm text-text-muted pb-2">
+            Closing balance <span className="text-2xl font-light text-text tabular-nums ml-1.5">{closing}</span> doses
+          </p>
+        )}
       </div>
 
-      {/* Loading */}
-      {isLoading && (
+      {isError ? (
+        <ErrorState title="Couldn’t load the register" error={error} onRetry={refetch} />
+      ) : isLoading ? (
+        <Card padding={false}><SkeletonRows rows={5} /></Card>
+      ) : !selectedVaccineId ? (
+        <EmptyState framed icon={BookOpen} title="Choose a vaccine" message="Its full inward and outward history appears here with a running balance." />
+      ) : (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {/* No vaccine selected */}
-      {!isLoading && !selectedVaccineId && (
-        <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
-          <Syringe size={36} className="mx-auto mb-3 opacity-20" />
-          <p className="font-bold text-text">No vaccine selected</p>
-          <p className="text-xs mt-1">Select a vaccine above to view its inward &amp; outward ledger.</p>
-        </div>
-      )}
-
-      {/* Register table */}
-      {!isLoading && selectedVaccineId && (
-        <div className="flex flex-col gap-3">
-          {/* Sub-header */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Syringe size={14} className="text-primary flex-shrink-0" />
-              <span className="text-sm font-bold text-text">{displayVaccineName(selectedName)}</span>
-            </div>
-            <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg">
-              {filteredEntries.length}{entryTypeFilter !== 'all' ? ` of ${entries.length}` : ''} {entries.length === 1 ? 'entry' : 'entries'}
-            </span>
-          </div>
-
-          {/* Entry Type filter pills */}
           {entries.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              {ENTRY_TYPE_PILLS.map(({ key, label, activeClass }) => (
-                <button
-                  key={key}
-                  onClick={() => setEntryTypeFilter(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                    entryTypeFilter === key
-                      ? activeClass
-                      : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
-                  }`}
-                >
-                  {label}
-                  <span className="opacity-75">({pillCounts[key] ?? 0})</span>
-                </button>
-              ))}
-            </div>
+            <FilterChips options={chipOptions} value={entryTypeFilter} onChange={setEntryTypeFilter} label="Entry type" />
           )}
-
-          <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
+          <Card padding={false}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-sm border-collapse">
-
-                {/* Column headers */}
+              <table className="w-full min-w-[920px] text-sm">
                 <thead>
-                  {/* Row 1: group labels */}
-                  <tr className="bg-surface-alt border-b border-surface-border">
-                    <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left border-r border-surface-border whitespace-nowrap align-middle">
-                      Date &amp; Time
-                    </th>
-                    <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left border-r border-surface-border whitespace-nowrap align-middle">
-                      Entry Type
-                    </th>
-                    <th colSpan={4} className="text-[10px] font-bold text-primary uppercase tracking-widest px-4 py-2 text-center border-r border-surface-border border-b border-surface-border">
-                      Article Particulars
-                    </th>
-                    <th colSpan={3} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-center border-r border-surface-border border-b border-surface-border">
-                      Quantity
-                    </th>
-                    <th rowSpan={2} className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-3 text-left align-middle">
-                      Remarks
-                    </th>
-                  </tr>
-                  {/* Row 2: sub-column labels */}
-                  <tr className="bg-surface-alt border-b border-surface-border">
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-left whitespace-nowrap">
-                      Manufacturer
-                    </th>
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-left whitespace-nowrap">
-                      Batch No
-                    </th>
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-center whitespace-nowrap">
-                      Doses / Vial
-                    </th>
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-left border-r border-surface-border whitespace-nowrap">
-                      Expiry Date
-                    </th>
-                    <th className="text-[10px] font-bold text-success-dark uppercase tracking-widest px-4 py-2 text-center bg-success-bg/20 whitespace-nowrap">
-                      Received
-                    </th>
-                    <th className="text-[10px] font-bold text-danger uppercase tracking-widest px-4 py-2 text-center bg-danger-bg/20 whitespace-nowrap">
-                      Consumed
-                    </th>
-                    <th className="text-[10px] font-bold text-text-muted uppercase tracking-widest px-4 py-2 text-center border-r border-surface-border whitespace-nowrap">
-                      Balance
-                    </th>
+                  <tr className="border-b border-surface-border text-xs font-medium text-text-muted">
+                    <th scope="col" className="px-4 py-3 text-left">Date</th>
+                    <th scope="col" className="px-4 py-3 text-left">Entry</th>
+                    <th scope="col" className="px-4 py-3 text-left">Manufacturer</th>
+                    <th scope="col" className="px-4 py-3 text-left">Batch</th>
+                    <th scope="col" className="px-4 py-3 text-right">Doses/vial</th>
+                    <th scope="col" className="px-4 py-3 text-left">Expiry</th>
+                    <th scope="col" className="px-4 py-3 text-right">Received</th>
+                    <th scope="col" className="px-4 py-3 text-right">Issued</th>
+                    <th scope="col" className="px-4 py-3 text-right">Balance</th>
+                    <th scope="col" className="px-4 py-3 text-left">Remarks</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-surface-border">
                   {filteredEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-4 py-14 text-center text-sm text-text-muted">
-                        {entries.length === 0
-                          ? 'No stock entries recorded for this vaccine yet.'
-                          : `No ${ENTRY_TYPE_PILLS.find((p) => p.key === entryTypeFilter)?.label.toLowerCase()} entries found.`}
+                      <td colSpan={10} className="px-4 py-12 text-center text-text-muted">
+                        {entries.length === 0 ? 'No stock movements recorded for this vaccine yet.' : 'No entries of this type.'}
                       </td>
                     </tr>
                   ) : (
-                    filteredEntries.map((row, i) => {
-                      const entryTypeMeta = (() => {
-                        switch (row.entryType) {
-                          case 'opening':      return { label: 'Opening Balance', cls: 'bg-sky-50 text-sky-700' }
-                          case 'received':     return { label: 'Received', cls: 'bg-success-bg text-success-dark' }
-                          case 'used':         return { label: 'Consumed', cls: 'bg-danger-bg text-danger' }
-                          case 'returned':     return { label: 'Returned', cls: 'bg-warning-bg text-warning-dark' }
-                          case 'wasted':       return { label: 'Wasted',   cls: 'bg-orange-50 text-orange-600' }
-                          case 'STOCK_DAY_END': return { label: 'Day End', cls: 'bg-indigo-50 text-indigo-600' }
-                          default:             return { label: 'Corrected', cls: 'bg-surface-chip text-text-muted' }
-                        }
-                      })()
-                      return (
-                      <tr key={i} className="hover:bg-surface-alt/40 transition-colors">
-
-                        {/* Date */}
+                    filteredEntries.map((row, i) => (
+                      <tr key={`${row.date}-${i}`} className="hover:bg-surface-alt transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <p className="text-xs font-semibold text-text">
-                            {new Date(row.date).toLocaleDateString('en-US', {
-                              day: 'numeric', month: 'short', year: 'numeric',
-                            })}
-                          </p>
-                          <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                            {new Date(row.date).toLocaleTimeString('en-US', {
-                              hour: 'numeric', minute: '2-digit', hour12: true,
-                            })}
-                          </p>
+                          <span className="text-text">{formatDate(row.date)}</span>
+                          <span className="block text-xs text-text-muted">{formatTime(row.date)}</span>
                         </td>
-
-                        {/* Entry Type */}
-                        <td className="px-4 py-3 border-r border-surface-border">
-                          <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded ${entryTypeMeta.cls}`}>
-                            {entryTypeMeta.label}
-                          </span>
-                        </td>
-
-                        {/* Manufacturer */}
-                        <td className="px-4 py-3 text-xs font-medium text-text">
-                          {row.manufacturer ?? <span className="text-text-muted">—</span>}
-                        </td>
-
-                        {/* Batch No */}
-                        <td className="px-4 py-3 text-xs font-medium text-text">
-                          {row.batchNo ?? <span className="text-text-muted">—</span>}
-                        </td>
-
-                        {/* Doses per vial */}
-                        <td className="px-4 py-3 text-xs font-medium text-text text-center">
-                          {row.dosesPerVial ?? <span className="text-text-muted">—</span>}
-                        </td>
-
-                        {/* Expiry date */}
-                        <td className="px-4 py-3 text-xs font-medium text-text whitespace-nowrap">
-                          {row.expiryDate ?? <span className="text-text-muted">—</span>}
-                        </td>
-
-                        {/* Received */}
-                        <td className="px-4 py-3 text-center border-l border-surface-border bg-success-bg/5">
-                          {row.received != null
-                            ? <span className="text-success-dark font-bold text-sm">+{row.received}</span>
-                            : <span className="text-text-muted text-xs">—</span>}
-                        </td>
-
-                        {/* Issued */}
-                        <td className="px-4 py-3 text-center bg-danger-bg/5">
-                          {row.issued != null
-                            ? <span className="text-danger font-bold text-sm">{row.issued}</span>
-                            : <span className="text-text-muted text-xs">—</span>}
-                        </td>
-
-                        {/* Balance */}
-                        <td className="px-4 py-3 text-center border-r border-surface-border">
-                          <span className={`font-bold text-sm tabular-nums ${
-                            row.balance > 0 ? 'text-text' : row.balance === 0 ? 'text-text-muted' : 'text-danger'
-                          }`}>
-                            {row.balance}
-                          </span>
-                        </td>
-
-                        {/* Remarks */}
-                        <td className="px-4 py-3 text-xs font-medium text-text capitalize">
-                          {row.remarks ?? <span className="text-text-muted">—</span>}
-                        </td>
-
+                        <td className="px-4 py-3 text-text whitespace-nowrap">{TYPE_LABEL[row.entryType] ?? 'Corrected'}</td>
+                        <td className="px-4 py-3 text-text">{row.manufacturer ?? dash}</td>
+                        <td className="px-4 py-3 text-text">{row.batchNo ?? dash}</td>
+                        <td className="px-4 py-3 text-right">{row.dosesPerVial ?? dash}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{row.expiryDate ? formatDate(row.expiryDate) : dash}</td>
+                        <td className="px-4 py-3 text-right text-success-dark">{row.received != null ? `+${row.received}` : dash}</td>
+                        <td className="px-4 py-3 text-right text-text">{row.issued != null ? `−${row.issued}` : dash}</td>
+                        <td className={`px-4 py-3 text-right font-medium ${row.balance < 0 ? 'text-danger-dark' : 'text-text'}`}>{row.balance}</td>
+                        <td className="px-4 py-3 text-text capitalize">{row.remarks ?? dash}</td>
                       </tr>
-                      )
-                    })
+                    ))
                   )}
                 </tbody>
-
               </table>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

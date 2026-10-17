@@ -1,14 +1,19 @@
 import { useRef, useState } from 'react'
-import { CheckCircle2, WifiOff, Search, PackagePlus } from 'lucide-react'
+import { Minus, Plus, PackagePlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
 import { enqueue } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
-import SkeletonCard from '../../components/shared/SkeletonCard'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import PageHeader from '../../components/shared/PageHeader'
+import Card, { CardHeader } from '../../components/shared/Card'
+import EmptyState from '../../components/shared/EmptyState'
+import WorkerPicker from '../../components/shared/WorkerPicker'
+import ResultPanel from '../../components/shared/ResultPanel'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { localDateStr, plural } from '../../lib/format'
 
 const VACCINE_GROUPS = [
   ['Birth & Oral',  ['BCG', 'OPV (Polio)', 'Rota']],
@@ -49,12 +54,10 @@ function groupVaccines(vaccines) {
   return groups.filter(([, vs]) => vs.length > 0)
 }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
-function minDateStr() {
-  const d = new Date()
-  d.setDate(d.getDate() - 3)
-  return d.toISOString().slice(0, 10)
-}
+const todayStr   = () => localDateStr()
+const minDateStr = () => localDateStr(-3)
+
+const stepBtn = 'w-11 h-11 rounded-control border border-surface-border bg-surface text-text hover:bg-surface-chip grid place-items-center'
 
 export default function AssignVials() {
   const { user }      = useAuth()
@@ -62,7 +65,6 @@ export default function AssignVials() {
   const clientRef     = useRef(crypto.randomUUID())
 
   const [workerId,     setWorkerId]     = useState('')
-  const [workerSearch, setWorkerSearch] = useState('')
   const [occurredOn,   setOccurredOn]   = useState(todayStr())
   const [vialInputs,   setVialInputs]   = useState({})
   const [rowErrors,    setRowErrors]    = useState({})
@@ -93,9 +95,6 @@ export default function AssignVials() {
 
   const vaccines = vaccineData?.vaccines ?? []
   const workers  = (usersData?.users ?? []).filter(u => u.role === 'facility_worker' && u.isActive)
-  const filteredWorkers = workers.filter(w =>
-    (w.name ?? w.email).toLowerCase().includes(workerSearch.toLowerCase())
-  )
   const storeMap = new Map(
     (holdingsData?.holdings ?? [])
       .filter(h => h.facilityId === user?.facilityId && !h.workerId)
@@ -139,199 +138,140 @@ export default function AssignVials() {
     setRowErrors({}); setGlobalError(''); setDone(false); setSavedOffline(false)
   }
 
-  if (loadingVaccines || loadingUsers) return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-4">
-      {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
-    </div>
-  )
-
-  if (savedOffline) return (
-    <div className="max-w-2xl mx-auto pt-12 px-4 flex flex-col items-center gap-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
-        <WifiOff size={32} className="text-amber-500" />
-      </div>
-      <div>
-        <h2 className="text-lg font-bold text-text">Saved Offline</h2>
-        <p className="text-sm text-text-muted mt-1">Your assignment has been queued and will sync automatically when you reconnect.</p>
-      </div>
-      <Button variant="outline" onClick={handleReset}>Assign Again</Button>
-    </div>
-  )
-
-  if (done) return (
-    <div className="max-w-2xl mx-auto pt-12 px-4 flex flex-col items-center gap-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-success-bg flex items-center justify-center">
-        <CheckCircle2 size={32} className="text-success" />
-      </div>
-      <div>
-        <h2 className="text-lg font-bold text-text">Vials Assigned</h2>
-        <p className="text-sm text-text-muted mt-1">The worker's holdings have been updated.</p>
-      </div>
-      <Button variant="outline" onClick={handleReset}>Assign Again</Button>
-    </div>
-  )
-
-  const groups = groupVaccines(vaccines)
-
-  return (
-    <div className="h-full flex flex-col">
-
-      {/* Header row: title left, date right */}
-      <div className="flex items-end justify-between gap-4 mb-6 flex-none flex-wrap">
-        <PageHeader
-          breadcrumb="Facility Supervisor"
-          title="Assign Vials"
-          subtitle="Assign morning vials to a facility worker"
-        />
+  const header = (
+    <PageHeader
+      breadcrumb="Facility Supervisor › Daily work"
+      title="Assign Vials"
+      subtitle="Give a worker the vials they take out for today’s session"
+      actions={
         <DatePicker
           id="occurredOn"
+          label="Date"
           value={occurredOn}
           onChange={e => setOccurredOn(e.target.value)}
           min={minDateStr()}
           max={todayStr()}
           className="w-44"
         />
-      </div>
+      }
+    />
+  )
 
-      <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
-        <div className="grid grid-cols-[300px_1fr] gap-6 flex-1 min-h-0 items-stretch">
+  if (loadingVaccines || loadingUsers) return (
+    <div>{header}<Card padding={false}><SkeletonRows rows={6} /></Card></div>
+  )
 
-          {/* Worker picker */}
-          <div className="bg-surface border border-surface-border rounded-[18px] p-5 flex flex-col gap-3 self-start">
-            <p className="text-xs font-bold tracking-widest uppercase text-text-muted">1 · Select worker</p>
-            <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-              <input
-                value={workerSearch}
-                onChange={e => setWorkerSearch(e.target.value)}
-                placeholder="Search workers…"
-                className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-surface-border bg-surface text-sm text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              {filteredWorkers.length === 0 && (
-                <p className="text-xs text-text-muted px-2 py-2">No workers found</p>
-              )}
-              {filteredWorkers.map(w => {
-                const label  = w.name ?? w.email
-                const active = w.id === workerId
-                return (
-                  <button
-                    key={w.id}
-                    type="button"
-                    onClick={() => { setWorkerId(w.id); setGlobalError('') }}
-                    className={`flex items-center gap-3 p-3 rounded-[14px] border-2 text-left transition-all cursor-pointer ${
-                      active ? 'bg-primary/5 border-primary' : 'border-transparent hover:bg-surface-alt'
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-epi-dark text-white flex items-center justify-center font-bold text-sm flex-none">
-                      {label[0].toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-text capitalize truncate">{label}</p>
-                      <p className="text-xs text-text-muted">Facility worker</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+  if (savedOffline) return (
+    <ResultPanel
+      tone="offline"
+      title="Saved offline"
+      message="This assignment is queued and will sync automatically when you’re back online."
+      actionLabel="Assign to another worker"
+      onAction={handleReset}
+    />
+  )
 
-          {/* Vaccine panel */}
+  if (done) return (
+    <ResultPanel
+      title="Vials assigned"
+      message={`${selectedWorker?.name ?? 'The worker'}’s holdings now include ${plural(totalVials, 'vial')}.`}
+      actionLabel="Assign to another worker"
+      onAction={handleReset}
+    />
+  )
+
+  const groups = groupVaccines(vaccines)
+
+  return (
+    <div>
+      {header}
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
+          <Card className="lg:sticky lg:top-0">
+            <CardHeader title="1. Worker" className="mb-3" />
+            {workers.length === 0
+              ? <p className="text-sm text-text-muted">No active workers. Add one under Workers first.</p>
+              : <WorkerPicker workers={workers} value={workerId} onChange={(id) => { setWorkerId(id); setGlobalError('') }} />}
+          </Card>
+
           {!workerId ? (
-            <div className="bg-surface border border-surface-border rounded-[18px] flex flex-col items-center justify-center gap-3 text-center">
-              <PackagePlus size={32} className="text-text-muted/30" />
-              <p className="text-sm font-semibold text-text">Choose a worker to begin</p>
-              <p className="text-xs text-text-muted">Then set how many vials of each vaccine they take out today.</p>
-            </div>
+            <Card padding={false}>
+              <EmptyState
+                icon={PackagePlus}
+                title="Choose a worker to begin"
+                message="Then set how many vials of each vaccine they take out today."
+              />
+            </Card>
           ) : (
-            <div className="bg-surface border border-surface-border rounded-[18px] flex flex-col min-h-0">
-              {/* Worker header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-surface-border flex-none">
-                <div className="w-10 h-10 rounded-xl bg-epi-dark text-white flex items-center justify-center font-bold text-sm flex-none">
-                  {(selectedWorker?.name ?? selectedWorker?.email ?? '?')[0].toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-base font-bold text-text capitalize">{selectedWorker?.name ?? selectedWorker?.email}</p>
-                  <p className="text-xs text-text-muted">2 · Set vial quantities</p>
-                </div>
+            <Card padding={false}>
+              <div className="px-4 sm:px-5 py-4 border-b border-surface-border">
+                <CardHeader
+                  title={`2. Vials for ${selectedWorker?.name ?? selectedWorker?.email}`}
+                  description="“Store” is what’s available at the facility right now."
+                />
               </div>
-
-              {/* Scrollable vaccine groups */}
-              <div className="flex-1 overflow-y-auto px-5 py-5">
+              <div className="px-4 sm:px-5 py-5 flex flex-col gap-6">
                 {groups.map(([groupName, groupVaccines]) => (
-                  <div key={groupName} className="mb-6 last:mb-0">
-                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3">{groupName}</p>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-3">
+                  <section key={groupName} aria-label={groupName}>
+                    <h3 className="text-sm font-semibold text-text mb-3">{groupName}</h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                       {groupVaccines.map(v => {
                         const val       = parseInt(vialInputs[v.id] ?? '0', 10) || 0
                         const available = storeMap.get(v.id)
                         const err       = rowErrors[v.id]
-                        const active    = val > 0
+                        const subtitle  = [VACCINE_SUBTITLES[v.name], available != null ? `Store ${available}` : null].filter(Boolean).join(' · ')
                         return (
                           <div
                             key={v.id}
-                            className={`flex justify-between items-center gap-3 border rounded-[14px] px-3.5 py-3 transition-all ${
-                              active ? 'border-primary bg-primary/5' : 'border-surface-border bg-surface-alt'
+                            className={`flex justify-between items-center gap-3 border rounded-control px-3.5 py-3 transition-colors ${
+                              err ? 'border-danger bg-danger-bg/40' : val > 0 ? 'border-primary bg-primary-bg' : 'border-surface-border bg-surface'
                             }`}
                           >
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-text leading-tight">{displayVaccineName(v.name)}</p>
-                              {VACCINE_SUBTITLES[v.name] && (
-                                <p className="text-xs text-text-muted">{VACCINE_SUBTITLES[v.name]}</p>
-                              )}
-                              {available != null && (
-                                <p className="text-xs text-text-muted">Store: {available} vials</p>
-                              )}
-                              {err && <p className="text-xs text-danger">{err}</p>}
+                              <p className="text-sm font-medium text-text leading-tight">{displayVaccineName(v.name)}</p>
+                              {subtitle && <p className="text-xs text-text-muted mt-0.5 tabular-nums">{subtitle}</p>}
+                              {err && <p className="text-xs text-danger-dark mt-0.5">{err}</p>}
                             </div>
-                            <div className="flex items-center gap-1.5 flex-none">
-                              <button
-                                type="button"
-                                onClick={() => step(v.id, -1)}
-                                className="w-11 h-11 rounded-xl border border-surface-border bg-surface text-xl text-text hover:bg-epi-mint transition-all cursor-pointer flex items-center justify-center"
-                              >−</button>
+                            {/* Stepper: intentional raw controls — 44px touch targets inside a tight tile */}
+                            <div className="flex items-center gap-1 flex-none">
+                              <button type="button" onClick={() => step(v.id, -1)} aria-label={`One fewer vial of ${v.name}`} className={stepBtn}>
+                                <Minus size={16} strokeWidth={1.75} />
+                              </button>
                               <input
                                 type="number"
                                 min="0"
+                                inputMode="numeric"
+                                aria-label={`${v.name} vials`}
                                 value={vialInputs[v.id] ?? '0'}
                                 onChange={e => setVials(v.id, e.target.value)}
-                                className="w-14 h-11 text-center border border-surface-border rounded-xl font-bold text-base bg-surface text-text focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-14 h-11 text-center border border-surface-border rounded-control text-base bg-surface text-text focus:outline-none focus:ring-[3px] focus:ring-primary/10 focus:border-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                               />
-                              <button
-                                type="button"
-                                onClick={() => step(v.id, 1)}
-                                className="w-11 h-11 rounded-xl border border-surface-border bg-surface text-xl text-text hover:bg-epi-mint transition-all cursor-pointer flex items-center justify-center"
-                              >+</button>
+                              <button type="button" onClick={() => step(v.id, 1)} aria-label={`One more vial of ${v.name}`} className={stepBtn}>
+                                <Plus size={16} strokeWidth={1.75} />
+                              </button>
                             </div>
                           </div>
                         )
                       })}
                     </div>
-                  </div>
+                  </section>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
 
-        {/* Bottom submit bar */}
-        <div className="bg-epi-dark rounded-[18px] flex justify-between items-center px-6 py-[15px] mt-4 flex-none gap-4">
-          <span className="text-sm" style={{ color: '#b7c6bd' }}>
+        <div className="sticky bottom-0 z-10 mt-5 px-4 sm:px-5 py-3 bg-surface border border-surface-border rounded-card shadow-float flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-text-muted">
             {selectedWorker
-              ? <>Assigning to <strong className="text-white">{selectedWorker.name ?? selectedWorker.email}</strong> · <strong className="text-white">{totalVials}</strong> vials total</>
-              : <span className="text-white/40">Select a worker to begin</span>
-            }
-          </span>
+              ? <>Assigning <span className="font-semibold text-text tabular-nums">{plural(totalVials, 'vial')}</span> to <span className="font-medium text-text">{selectedWorker.name ?? selectedWorker.email}</span></>
+              : 'Select a worker to begin'}
+          </p>
           <div className="flex items-center gap-3">
-            {globalError && <p className="text-sm text-amber-300">{globalError}</p>}
-            <button
-              type="submit"
-              disabled={totalVials === 0 || mutation.isPending}
-              className="bg-[#6fcf97] text-[#0e2218] font-bold text-sm px-7 py-3 rounded-xl min-h-[44px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-            >
+            {globalError && <p role="alert" className="text-sm text-danger-dark">{globalError}</p>}
+            <Button type="submit" size="lg" disabled={totalVials === 0 || mutation.isPending}>
               {mutation.isPending ? 'Assigning…' : 'Assign vials'}
-            </button>
+            </Button>
           </div>
         </div>
       </form>
