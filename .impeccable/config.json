@@ -8,6 +8,12 @@
         "value": "10px",
         "createdAt": "2026-10-17T18:30:47.537Z",
         "reason": "Claude: notification count badge numerals (18px badge) need a sub-caption size; not body text"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "26px",
+        "createdAt": "2026-10-17T19:54:41.907Z",
+        "reason": "Claude: PageHeader mobile headline size, documented in DESIGN.md Typography prose (Headline 30px; 26px on mobile)"
       }
     ]
   }
