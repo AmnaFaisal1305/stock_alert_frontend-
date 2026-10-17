@@ -1,6 +1,7 @@
-// Facility rows shared by the UC dashboard and the UC Facilities page.
+// Facility rows shared by the UC and district dashboards and Facilities pages.
+// `base` is the role's route prefix ('/uc', '/district') for facility detail links.
 import { Link } from 'react-router-dom'
-import StatusBadge from '../../components/shared/StatusBadge'
+import StatusBadge from '../shared/StatusBadge'
 import { facilityStatus, STATUS_RANK } from '../../lib/status'
 import { timeAgo } from '../../lib/format'
 
@@ -26,32 +27,32 @@ export function countByStatus(facilities, statusOf) {
 export const worstFirst = (statusOf) => (a, b) =>
   (STATUS_RANK[statusOf(a)] - STATUS_RANK[statusOf(b)]) || a.name.localeCompare(b.name)
 
-const muted = (v) => v ?? <span className="text-text-muted">—</span>
+const lastActivity = (f) => (f.lastActivityAt ? timeAgo(f.lastActivityAt) : 'Never')
 
-export function facilityColumns(statusOf) {
+export function facilityColumns(statusOf, base) {
   return [
     {
       key: 'name', label: 'Facility',
-      render: (f) => <Link to={`/uc/facilities/${f.id}`} className="font-medium text-text hover:text-primary hover:underline">{f.name}</Link>,
+      render: (f) => <Link to={`${base}/facilities/${f.id}`} className="font-medium text-text hover:text-primary hover:underline">{f.name}</Link>,
     },
     {
       key: 'uc', label: 'Union council',
       render: (f) => (
         <div>
-          <p>{muted(f.ucName)}</p>
+          <p>{f.ucName ?? <span className="text-text-muted">—</span>}</p>
           {f.townName && <p className="text-xs text-text-muted">{f.townName}</p>}
         </div>
       ),
     },
     { key: 'supervisor', label: 'Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
-    { key: 'activity', label: 'Last activity', render: (f) => <span className="text-text-muted whitespace-nowrap">{f.lastActivityAt ? timeAgo(f.lastActivityAt) : 'Never'}</span> },
+    { key: 'activity', label: 'Last activity', render: (f) => <span className="text-text-muted whitespace-nowrap">{lastActivity(f)}</span> },
     { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
   ]
 }
 
-export function FacilityMobileCard({ f, status }) {
+export function FacilityMobileCard({ f, status, base }) {
   return (
-    <Link to={`/uc/facilities/${f.id}`} className="block px-4 py-3.5 hover:bg-surface-alt">
+    <Link to={`${base}/facilities/${f.id}`} className="block px-4 py-3.5 hover:bg-surface-alt">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium text-text truncate">{f.name}</p>
