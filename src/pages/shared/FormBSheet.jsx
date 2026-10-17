@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Toast from '../../components/ui/Toast'
+import ReviewDialog from '../../components/ui/ReviewDialog'
 import PageHeader from '../../components/shared/PageHeader'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
@@ -82,6 +83,7 @@ export default function FormBSheet() {
   const [edits, setEdits] = useState({})      // { [rowKey]: { col: value } }
   const [sigEdits, setSigEdits] = useState(null)
   const [toast, setToast] = useState(null)
+  const [reviewing, setReviewing] = useState(false)
 
   const { data: facData } = useQuery({
     queryKey: ['facilities'],
@@ -146,11 +148,15 @@ export default function FormBSheet() {
     },
     onSuccess: () => {
       resetDraft()
+      setReviewing(false)
       qc.invalidateQueries({ queryKey: ['sheet', facilityId, month] })
       setToast({ message: 'Sheet saved.', type: 'success' })
     },
-    onError: (e) => setToast({ message: e.message || 'Could not save the sheet.', type: 'error' }),
+    onError: (e) => { setReviewing(false); setToast({ message: e.message || 'Could not save the sheet.', type: 'error' }) },
   })
+
+  const changedRows = Object.entries(edits).filter(([key, cols]) =>
+    Object.entries(cols).some(([c, v]) => v !== (rowByKey[key]?.[c] != null ? String(rowByKey[key][c]) : '')))
 
   const fields = sheet?.fields ?? {}
   const hasDraft = Object.keys(edits).length > 0 || sigEdits !== null
@@ -192,7 +198,7 @@ export default function FormBSheet() {
                 <Printer size={16} strokeWidth={1.75} /> Print / PDF
               </Button>
               {canSave && (
-                <Button onClick={() => saveMut.mutate()} disabled={!hasDraft || saveMut.isPending}>
+                <Button onClick={() => setReviewing(true)} disabled={!hasDraft || saveMut.isPending}>
                   <Save size={16} strokeWidth={1.75} />
                   {saveMut.isPending ? 'Saving…' : 'Save'}
                 </Button>
@@ -330,6 +336,24 @@ export default function FormBSheet() {
           </div>
         </div>
       )}
+
+      <ReviewDialog
+        open={reviewing}
+        onClose={() => setReviewing(false)}
+        onConfirm={() => saveMut.mutate()}
+        isPending={saveMut.isPending}
+        title="Save Form B?"
+        rows={[
+          { label: 'Facility', value: fields.facility || '—' },
+          { label: 'Month', value: monthOptions().find((o) => o.value === month)?.label ?? month },
+          { label: 'Rows changed', value: changedRows.length },
+          sigEdits && { label: 'Signatures', value: 'Updated' },
+        ]}
+        items={changedRows.map(([key, cols]) => ({ name: rowByKey[key]?.name ?? key, value: `${Object.keys(cols).map((c) => c.toUpperCase()).join(', ')}` }))}
+        itemsLabel="Changed rows (columns)"
+        warnings={[changedRows.length === 0 && !sigEdits && 'Your edits match what is already saved.']}
+        confirmLabel="Save sheet"
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
