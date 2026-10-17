@@ -1,13 +1,70 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-18 (session 13 — UI/UX consistency revamp, merged to `main`)  
+**Last updated:** 2026-10-18 (session 14 — per-facility vaccine thresholds + Analytics overhaul)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-18 Session 13 (latest) — UI/UX consistency revamp
+## Session Log — 2026-10-18 Session 14 (latest) — Per-facility vaccine thresholds + Analytics overhaul
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `97b3c53` | feat(vaccines): per-facility threshold viewer and editor with District→UC→Facility cascade filter |
+| `51a10aa` | feat(analytics): merge Movement+Remaining into Stock Summary tab; rename tabs and columns |
+
+### Change 1 — Per-facility vaccine thresholds (`VaccineManagement.jsx`)
+
+**What changed:** The Vaccine Catalog page (`/super-admin/vaccines`) now has two modes.
+
+**Global mode (default — no filter selected):** exactly as before. Shows global catalog with Add/Edit/Delete.
+
+**Facility mode (District → UC → Facility selected):** calls the existing `getFacility(id)` endpoint which already returns `facility.vaccines[]` with per-vaccine `criticalDoses`, `lowDoses`, `criticalVials`, `lowVials`, `thresholdOverridden`. Shows the same table but with facility-specific values. An amber **"Custom"** badge appears on any vaccine that has a facility-level override. Edit button opens a 5-field modal (Doses/Vial + 4 threshold fields) for that facility only. "Reset to Global" sends all fields as `null`.
+
+**Files changed:**
+- `src/lib/api.js` — added `updateFacilityVaccine(facilityId, vaccineId, payload)` → `PUT /api/facilities/:facilityId/vaccines/:vaccineId`
+- `src/pages/super-admin/VaccineManagement.jsx` — cascade filter bar (3 Select dropdowns chained), dual-mode rendering, new `FacilityVaccineForm` sub-component
+
+**Backend endpoint needed (not yet built):**
+See `BACKEND_CHANGES.md` (new file, repo root). Endpoint: `PUT /api/facilities/:facilityId/vaccines/:vaccineId`. Until implemented, Save in facility mode will return 404 (shown as inline error — expected). Viewing facility thresholds works immediately via the existing `GET /api/facilities/:id`.
+
+**Cascade data sources (all existing):** `getDistricts()`, `getUnionCouncils({ districtId })`, `getFacilities({ ucId })`
+
+---
+
+### Change 2 — Analytics tab overhaul (`Analytics.jsx`)
+
+**What changed:** 4 tabs → 3 tabs. "Movement" and "Remaining Stock" merged into a single **"Stock Summary"** tab. Requests renamed to **"Stock Requests"**, Pending Approvals renamed to **"Approvals"**.
+
+**Stock Summary tab contents:**
+- 4 stat cards: Received · Doses Given · Wasted · Waste %
+- **Chart 1 — Wastage Rate by Vaccine** (horizontal bar, %): color-coded per vaccine — green < 3%, amber 3–7%, red ≥ 7%. Uses Recharts `Cell` for per-bar coloring.
+- **Chart 2 — Stock Flow by Vaccine** (grouped vertical bar): Received / Doses Given / Wasted per vaccine
+- **Chart 3 — Current Stock by Vaccine** (horizontal bar): total doses remaining across all facilities
+- **Combined table** — one row per vaccine joining movement + remaining data:
+
+| Column | Old name | Source |
+|---|---|---|
+| Vaccine | Vaccine | movement |
+| Received (vials) | Opening + Received | movement |
+| Doses Given | Used (doses) | movement |
+| Wasted (vials) | Wasted (vials) | movement |
+| Waste % | — (new) | computed |
+| Adjustments | Adjustment (net) | movement |
+| In Store (vials) | Store (vials) | remaining |
+| With Workers (vials) | Held (vials) | remaining |
+| Stock Left (doses) | Total (doses) | remaining |
+
+**Key implementation note:** `remainingByVaccine` useMemo extended to also aggregate `storeVials` → `inStore` and `heldVials` → `withWorkers`. A `remainingMap` (keyed by vaccine name) then joins with `vaccineMovement` to produce `stockSummaryRows`.
+
+**Files changed:** `src/pages/shared/Analytics.jsx` only. Applies to all 6 analytics routes (super_admin, observer, district_supervisor, uc_supervisor, facility_supervisor, facility_head).
+
+---
+
+## Session Log — 2026-10-18 Session 13 — UI/UX consistency revamp
 
 Developed on `redesign/ui-consistency` and fast-forward merged to `main` on 2026-10-18 (14 commits; `main` had not moved, so no conflicts). UI only: no query keys, mutations, validation, offline queue or `api.js` contracts changed. Source of truth for the look is now **`DESIGN.md`** ("The Ward Ledger") plus its sidecar `.impeccable/design.json`; `docs/design_refrences/` is reference only.
 
