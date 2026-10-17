@@ -354,26 +354,26 @@ export default function Analytics() {
 
   // ── Column definitions ────────────────────────────────────────────────────
   const stockSummaryColumns = [
-    { key: 'vaccineName',  label: 'Vaccine',               render: (r) => <span className="font-medium">{r.vaccineName}</span> },
-    { key: 'received',     label: 'Received (vials)',       align: 'right', render: (r) => r.received || muted('—') },
-    { key: 'dosesGiven',   label: 'Doses Given',           align: 'right', render: (r) => r.dosesGiven || muted('—') },
-    { key: 'wasted',       label: 'Wasted (vials)',        align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
-    { key: 'wasteRate',    label: 'Waste %',               align: 'right',
+    { key: 'vaccineName',  label: 'Vaccine',                             render: (r) => <span className="font-medium">{r.vaccineName}</span> },
+    { key: 'received',     label: 'Received (opening + new)',            align: 'right', render: (r) => r.received || muted('—') },
+    { key: 'dosesGiven',   label: 'Doses Given (to patients)',           align: 'right', render: (r) => r.dosesGiven || muted('—') },
+    { key: 'wasted',       label: 'Wasted (discarded vials)',            align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
+    { key: 'wasteRate',    label: 'Waste % (wasted ÷ received)',        align: 'right',
       render: (r) => {
         if (r.wasteRate === 0) return muted('0%')
         const cls = r.wasteRate >= 7 ? 'text-danger font-medium' : r.wasteRate >= 3 ? 'text-warning-dark font-medium' : 'text-success-dark font-medium'
         return <span className={cls}>{r.wasteRate}%</span>
       }
     },
-    { key: 'adjustments',  label: 'Adjustments',           align: 'right',
+    { key: 'adjustments',  label: 'Adjustments (net corrections)', align: 'right',
       render: (r) => {
         if (r.adjustments === 0) return muted('—')
         return <span className={`font-medium ${r.adjustments > 0 ? 'text-success-dark' : 'text-danger-dark'}`}>{r.adjustments > 0 ? `+${r.adjustments}` : `−${Math.abs(r.adjustments)}`}</span>
       }
     },
-    { key: 'inStore',      label: 'In Store (vials)',      align: 'right', render: (r) => r.inStore      || muted('—') },
-    { key: 'withWorkers',  label: 'With Workers (vials)',  align: 'right', render: (r) => r.withWorkers  || muted('—') },
-    { key: 'stockLeft',    label: 'Stock Left (doses)',    align: 'right', render: (r) => <span className="font-medium">{r.stockLeft || 0}</span> },
+    { key: 'inStore',      label: 'In Store (cold chain store)',        align: 'right', render: (r) => r.inStore      || muted('—') },
+    { key: 'withWorkers',  label: 'With Workers (assigned, not used)', align: 'right', render: (r) => r.withWorkers  || muted('—') },
+    { key: 'stockLeft',    label: 'Stock Left (in store + workers)',   align: 'right', render: (r) => <span className="font-medium">{r.stockLeft || 0}</span> },
   ]
 
   const requestColumns = [
