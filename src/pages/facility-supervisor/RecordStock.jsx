@@ -6,6 +6,7 @@ import {
 } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import DatePicker from '../../components/ui/DatePicker'
 import Modal from '../../components/ui/Modal'
 import Textarea from '../../components/ui/Textarea'
 import Toast from '../../components/ui/Toast'
@@ -112,7 +113,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
               {received && (
                 <>
                   <Input id={`batch-${it.vaccineId}`} label="Batch number" value={it.batchNo} onChange={e => update(idx, 'batchNo', e.target.value)} />
-                  <Input id={`exp-${it.vaccineId}`} label="Expiry date" type="date" value={it.expiryDate} onChange={e => update(idx, 'expiryDate', e.target.value)} />
+                  <DatePicker id={`exp-${it.vaccineId}`} label="Expiry date" value={it.expiryDate} onChange={e => update(idx, 'expiryDate', e.target.value)} />
                   <Input id={`mfr-${it.vaccineId}`} label="Manufacturer" value={it.manufacturer} onChange={e => update(idx, 'manufacturer', e.target.value)} />
                 </>
               )}
