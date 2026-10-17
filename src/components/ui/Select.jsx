@@ -43,10 +43,13 @@ export default function Select({
       if (dropdownRef.current && dropdownRef.current.contains(e.target)) return
       setIsOpen(false)
     }
+    function handleKey(e) { if (e.key === 'Escape') { setIsOpen(false); buttonRef.current?.focus() } }
     document.addEventListener('mousedown', handleClose)
+    document.addEventListener('keydown', handleKey)
     document.addEventListener('scroll', handleScroll, true)
     return () => {
       document.removeEventListener('mousedown', handleClose)
+      document.removeEventListener('keydown', handleKey)
       document.removeEventListener('scroll', handleScroll, true)
     }
   }, [isOpen])
@@ -62,7 +65,7 @@ export default function Select({
   return (
     <div className="flex flex-col gap-1.5 w-full" ref={containerRef}>
       {label && (
-        <label htmlFor={id} className="text-sm font-semibold text-text">
+        <label htmlFor={id} className="text-sm font-medium text-text">
           {label}
         </label>
       )}
@@ -74,17 +77,19 @@ export default function Select({
           id={id}
           disabled={disabled}
           onClick={openDropdown}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
           className={[
-            'w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm text-text bg-surface shadow-sm transition-all text-left cursor-pointer select-none',
-            'focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10',
+            'w-full h-9 flex items-center justify-between gap-2 rounded-control border px-3.5 text-sm text-text bg-surface transition-colors text-left cursor-pointer select-none',
+            'focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/10',
             disabled ? 'bg-surface-alt text-text-muted cursor-not-allowed opacity-60' : '',
             error ? 'border-danger focus:border-danger focus:ring-danger/10' : 'border-surface-border',
-            isOpen ? 'border-primary ring-4 ring-primary/10' : '',
+            isOpen ? 'border-primary ring-[3px] ring-primary/10' : '',
             className,
           ].join(' ')}
           {...props}
         >
-          <span className={selectedOption ? 'text-text font-medium' : 'text-text-muted/60'}>
+          <span className={`truncate ${selectedOption ? 'text-text' : 'text-text-muted'}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown
@@ -97,7 +102,7 @@ export default function Select({
           <div
             ref={dropdownRef}
             style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
-            className="bg-surface border border-surface-border rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+            role="listbox" className="bg-surface rounded-control shadow-float ring-1 ring-surface-border max-h-60 overflow-y-auto py-1"
           >
             {options.length === 0 ? (
               <div className="px-4 py-2.5 text-xs text-text-muted italic">No options available</div>
@@ -108,11 +113,13 @@ export default function Select({
                   <button
                     key={opt.value}
                     type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => handleSelect(opt.value)}
                     className={[
-                      'w-full flex items-start justify-between gap-2 px-4 py-2.5 text-sm font-semibold text-left transition-colors cursor-pointer select-none',
+                      'w-full flex items-start justify-between gap-2 px-3.5 py-2 text-sm text-left transition-colors cursor-pointer select-none',
                       isSelected
-                        ? 'bg-primary/5 text-primary font-bold'
+                        ? 'bg-primary-bg text-primary font-semibold'
                         : 'text-text hover:bg-surface-alt hover:text-text',
                     ].join(' ')}
                   >

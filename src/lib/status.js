@@ -61,6 +61,37 @@ export function districtStatus(facilityStatuses) {
   return withData.length ? worstStatus(withData) : 'no_data'
 }
 
+// Workflow vocabulary: stock-request stages + approval statuses. Same tone classes as stock
+// status so every pill in the app reads from one palette.
+const TONE = {
+  warning: { dot: 'bg-warning', text: 'text-warning-dark', bg: 'bg-warning-bg' },
+  danger:  { dot: 'bg-danger',  text: 'text-danger-dark',  bg: 'bg-danger-bg'  },
+  info:    { dot: 'bg-info',    text: 'text-info-dark',    bg: 'bg-info-bg'    },
+  success: { dot: 'bg-success', text: 'text-success-dark', bg: 'bg-success-bg' },
+  neutral: { dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-chip' },
+}
+
+export const WORKFLOW_STATUS = {
+  awaiting_both:       { tone: 'warning', label: 'Awaiting sent & received' },
+  awaiting_sent:       { tone: 'warning', label: 'Awaiting sent' },
+  awaiting_received:   { tone: 'info',    label: 'Awaiting received' },
+  figures_differ:      { tone: 'danger',  label: 'Figures differ' },
+  ready_for_approval:  { tone: 'info',    label: 'Ready for approval' },
+  completed:           { tone: 'success', label: 'Completed' },
+  partially_fulfilled: { tone: 'warning', label: 'Partially fulfilled' },
+  cancelled:           { tone: 'neutral', label: 'Cancelled' },
+  declined:            { tone: 'neutral', label: 'Declined' },
+  pending:             { tone: 'warning', label: 'Pending' },
+  approved:            { tone: 'success', label: 'Approved' },
+  rejected:            { tone: 'danger',  label: 'Rejected' },
+}
+
+export function workflowStatusConfig(status) {
+  const s = WORKFLOW_STATUS[status]
+  if (!s) return { ...TONE.neutral, label: String(status ?? '').replace(/_/g, ' ') }
+  return { ...TONE[s.tone], tone: s.tone, label: s.label }
+}
+
 // Pill-filter definitions shared by list/grid screens that filter a row set by status.
 // 'Low' intentionally matches both 'low' and 'no_data' rows (an unrecorded vaccine needs
 // the same attention as a low one) even though their badge/border styling stays distinct.

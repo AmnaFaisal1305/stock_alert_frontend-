@@ -14,7 +14,7 @@ export default function Input({
   const inputType = isPassword && showPassword ? 'text' : type
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {label && (
         <label htmlFor={id} className="text-sm font-medium text-text">
           {label}
@@ -25,9 +25,9 @@ export default function Input({
           id={id}
           type={inputType}
           className={[
-            'w-full rounded-xl border px-3.5 py-2 text-sm text-text bg-surface shadow-sm transition-all',
+            'w-full h-9 rounded-control border px-3.5 text-sm text-text bg-surface transition-colors',
             'placeholder:text-text-muted/60',
-            'focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10',
+            'focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/10',
             isPassword ? 'pr-10' : '',
             error
               ? 'border-danger focus:border-danger focus:ring-danger/10'

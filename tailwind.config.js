@@ -25,7 +25,13 @@ export default {
         'epi-mint':   v('--ok-bg'),
       },
       borderRadius: {
-        card: '1.125rem', // 18px — reference card radius
+        card: '1.125rem',  // 18px — cards, panels, dialogs
+        control: '0.625rem', // 10px — buttons, inputs, selects, tab tracks, inner tiles
+      },
+      // DESIGN.md "Flat-By-Default": resting surfaces use a hairline, only floating layers get these.
+      boxShadow: {
+        float:   '0 8px 24px rgb(28 33 30 / 0.12)',
+        overlay: '0 24px 48px rgb(28 33 30 / 0.18)',
       },
       fontFamily: {
         sans: ['"Figtree Variable"', 'Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],

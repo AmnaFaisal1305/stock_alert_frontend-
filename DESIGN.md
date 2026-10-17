@@ -33,9 +33,9 @@ typography:
     letterSpacing: "-0.01em"
   headline:
     fontFamily: "Figtree Variable, Figtree, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 400
-    lineHeight: 1.2
+    fontSize: "1.875rem"
+    fontWeight: 300
+    lineHeight: 1.1
     letterSpacing: "-0.01em"
   title:
     fontFamily: "Figtree Variable, Figtree, ui-sans-serif, system-ui, sans-serif"
@@ -171,12 +171,13 @@ A restrained forest-and-paper palette, with four status hues that do all the sig
 **Character:** A single humanist sans used at very different weights. Light (300) for large numbers and page titles gives the ledger calm. Semibold (600) is kept for labels and row titles.
 
 ### Hierarchy
-- **Display** (300, 36px, 1.1): page titles on dashboards and overview screens only.
-- **Headline** (400, 24px, 1.2): page titles on work screens (forms, registers, logs) and section titles inside long pages.
+- **Display** (300, 36px; 30px on mobile, 1.1): page titles on dashboards and overview screens only.
+- **Headline** (300, 30px; 26px on mobile, 1.1): page titles on work screens (forms, lists, registers, logs).
 - **Title** (600, 16px, 1.35): card titles, dialog titles, row primary text.
 - **Body** (400, 14px, 1.5): default text, table cells, form values. Prose runs at 70ch or less.
 - **Numeric** (300, 32px, tabular): KPI values and stock quantities.
-- **Label** (600, 11px, 0.06em, uppercase): eyebrow labels, table headers, and filter group names. Use sparingly.
+- **Label** (600, 11px, 0.06em, uppercase): sidebar section headings and the role pill only. Never a kicker above a heading; sections are named with a Title-style heading.
+- **Caption** (500, 12px): KPI labels, table headers, field hints.
 
 ### Named Rules
 **The Tabular Rule.** Every quantity, count, date or currency uses `tabular-nums`.
@@ -231,10 +232,10 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Internal Padding:** 20px (16px on mobile).
 
 ### KPI Figures
-- Label (uppercase, Pencil Grey), then the value in the numeric style, then one line of context. No corner icon tile. Colour on the value only when it encodes status (for example, a critical count in critical text).
+- Caption label (Pencil Grey), then the value in the numeric style, then one line of context. No corner icon tile. Colour on the value only when it encodes status (for example, a critical count in critical text).
 
 ### Tables
-- Header row: label style in Pencil Grey on white, hairline bottom border.
+- Header row: Caption style (12px, 500, sentence case) in Pencil Grey on white, hairline bottom border.
 - Rows: 14px body, 12–16px vertical padding, hairline dividers, Warm Paper on hover.
 - Numbers are right-aligned and tabular.
 - Below md, each row becomes a stacked card with label/value pairs.
@@ -246,9 +247,22 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Error:** critical border and a message below in critical text that says what is true ("Only 12 doses left").
 
 ### Navigation
-- Sidebar on Sidebar Forest. Items are 14px, white at 60% when idle and 100% when active. The active item gets a white/10% fill and a 10px radius.
-- Items are grouped by task with Label-style section headings.
-- On mobile the sidebar is an overlay drawer, and the top bar shows the page title.
+- **Sidebar** (250px, Sidebar Forest):
+  - **Brand block:** a 38px Raised Forest tile with a 10px radius and a white line icon, beside a two-line "Stock Management & Alert System" wordmark (14px, 500, white). A hairline (white/8%) separates it from the nav.
+  - **Scope line:** under the brand, in label style, the role section and current scope (for example "FACILITY · RHC Latifabad").
+  - **Primary CTA:** one per role, linking to its most-used page (facility supervisor: Assign Vials; head: Approvals; UC supervisor: Stock Requests; worker: Record Usage). A light button: paper fill, Sidebar Forest text, 10px radius, full width. Admin, district and observer have none.
+  - **Items:** 14px at 400 weight. A lucide icon at 18px with a 1.75 stroke and 70% opacity. Idle text is white at 75%; active is white at 100% on a white/10% fill with a 10px radius. Each item has a distinct icon.
+  - **Grouping:** Label-style section headings group items by task. Sign Out sits at the bottom.
+- **Top bar:** a hairline bottom border on the canvas.
+  - **Left:** a menu toggle and, on mobile, the page title.
+  - **Right:**
+    - the offline/sync status;
+    - the theme toggle;
+    - a lucide bell with a critical-red count badge;
+    - the role pill (Status Adequate wash and text, uppercase label style);
+    - the name with its scope beneath in Pencil Grey;
+    - a 38px Forest Green avatar circle with the initial.
+- **Mobile:** the sidebar becomes an overlay drawer over the scrim.
 
 ### Feedback States
 - **Loading:** skeletons that match the final layout (rows for tables, blocks for cards), on Warm Paper.
@@ -274,3 +288,4 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Don't** use emoji or glyph characters as icons; use lucide-react at 16–18px with a 1.75 stroke.
 - **Don't** use gradients, glassmorphism or `backdrop-blur` surfaces.
 - **Don't** use bold (700+) or oversized greetings on work screens.
+- **Don't** put uppercase eyebrow kickers above section headings ("VACCINE STOCK STATUS"); name the section with a Title heading.

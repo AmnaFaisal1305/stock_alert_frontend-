@@ -1,15 +1,16 @@
 import { Search } from 'lucide-react'
 
-export default function SearchInput({ value, onChange, placeholder = 'Search…', className = '' }) {
+export default function SearchInput({ value, onChange, placeholder = 'Search…', className = '', label }) {
   return (
-    <div className={`relative w-full sm:w-80 ${className}`}>
-      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+    <div className={`relative w-full sm:w-72 ${className}`}>
+      <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" aria-hidden="true" />
       <input
-        type="text"
+        type="search"
+        aria-label={label ?? placeholder}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="w-full pl-10 pr-3.5 py-2.5 text-sm border border-surface-border rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
+        className="w-full h-9 pl-9 pr-3.5 text-sm text-text border border-surface-border rounded-control bg-surface focus:outline-none focus:ring-[3px] focus:ring-primary/10 focus:border-primary transition-colors placeholder:text-text-muted"
       />
     </div>
   )

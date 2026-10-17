@@ -1,69 +1,29 @@
-export default function Table({ columns, rows, emptyMessage = 'No records found.', rowClassName, rowKey, mobileCard }) {
-  const getKey = (row, i) => rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i)
+import { SkeletonRows } from './SkeletonCard'
+
+// columns: [{ key, label, render?, align?: 'right' | 'left', className? }]
+// Below sm, rows render as `mobileCard(row)` if given, otherwise as label/value stacks.
+export default function Table({
+  columns, rows, emptyMessage = 'No records found.', rowClassName, rowKey, mobileCard,
+  loading = false, onRowClick,
+}) {
+  const getKey = (row, i) => (rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i))
+  const alignCls = (col) => (col.align === 'right' ? 'text-right' : 'text-left')
+  const cell = (col, row) => (col.render ? col.render(row) : row[col.key])
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-surface shadow-sm overflow-hidden">
-
-      {/* ── Desktop table (sm+) ─────────────────────────────────────── */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead>
-            <tr className="border-b border-surface-border bg-surface-alt/75">
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap"
-                >
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border">
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-text-muted font-medium">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row, i) => (
-                <tr
-                  key={getKey(row, i)}
-                  className={`hover:bg-surface-alt/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}
-                >
-                  {columns.map((col) => (
-                    <td key={col.key} className="px-6 py-4 align-top text-text font-medium">
-                      {col.render ? col.render(row) : row[col.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Mobile view ─────────────────────────────────────────────── */}
-      <div className="sm:hidden">
-        {rows.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-text-muted font-medium">{emptyMessage}</p>
-        ) : mobileCard ? (
-          <div className="divide-y divide-surface-border">
-            {rows.map((row, i) => (
-              <div key={getKey(row, i)}>
-                {mobileCard(row)}
-              </div>
-            ))}
-          </div>
-        ) : (
-          /* Fallback: horizontal-scroll table on mobile when no mobileCard provided */
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+    <div className="rounded-card border border-surface-border bg-surface overflow-hidden">
+      {loading ? (
+        <SkeletonRows rows={5} />
+      ) : rows.length === 0 ? (
+        <p className="px-6 py-12 text-center text-sm text-text-muted">{emptyMessage}</p>
+      ) : (
+        <>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-surface-border bg-surface-alt/75">
+                <tr className="border-b border-surface-border">
                   {columns.map((col) => (
-                    <th key={col.key} className="px-4 py-3 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap">
+                    <th key={col.key} scope="col" className={`px-5 py-3 text-xs font-medium text-text-muted whitespace-nowrap ${alignCls(col)}`}>
                       {col.label}
                     </th>
                   ))}
@@ -71,10 +31,14 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
               </thead>
               <tbody className="divide-y divide-surface-border">
                 {rows.map((row, i) => (
-                  <tr key={getKey(row, i)} className={`hover:bg-slate-50/50 transition-colors ${rowClassName ? rowClassName(row) : ''}`}>
+                  <tr
+                    key={getKey(row, i)}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={`transition-colors hover:bg-surface-alt ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName ? rowClassName(row) : ''}`}
+                  >
                     {columns.map((col) => (
-                      <td key={col.key} className="px-4 py-3 align-top text-text font-medium">
-                        {col.render ? col.render(row) : row[col.key]}
+                      <td key={col.key} className={`px-5 py-3.5 align-middle text-text ${alignCls(col)} ${col.className ?? ''}`}>
+                        {cell(col, row)}
                       </td>
                     ))}
                   </tr>
@@ -82,9 +46,29 @@ export default function Table({ columns, rows, emptyMessage = 'No records found.
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
+          <ul className="sm:hidden divide-y divide-surface-border">
+            {rows.map((row, i) => (
+              <li
+                key={getKey(row, i)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={onRowClick ? 'cursor-pointer active:bg-surface-alt' : ''}
+              >
+                {mobileCard ? mobileCard(row) : (
+                  <dl className="px-4 py-3.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                    {columns.map((col) => (
+                      <div key={col.key} className="contents">
+                        <dt className="text-text-muted text-xs self-center">{col.label}</dt>
+                        <dd className="text-text text-right min-w-0 break-words">{cell(col, row)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   )
 }

@@ -1,29 +1,36 @@
 import { useSyncExternalStore, useCallback } from 'react'
 
-// Theme preference lives in localStorage ('dark' | 'light'); default is light.
-// The value is mirrored onto <html data-theme>, which the token sets in
-// index.css read. Dark is manual-only for now (no prefers-color-scheme auto
-// switch) because screens are still being converted to tokens. An inline script
-// in index.html applies the stored value before paint; this hook handles
-// runtime changes.
+// Theme preference lives in localStorage ('dark' | 'light'). With nothing stored the
+// app follows the OS (index.css applies dark tokens via prefers-color-scheme), so
+// `resolved` must follow the OS too, or charts and the toggle icon disagree with the page.
+// An inline script in index.html applies a stored value before paint.
 
 const KEY = 'sst_theme'
+const media = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 
-function getPreference() {
-  try { return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light' } catch { return 'light' }
+function getStored() {
+  try { return localStorage.getItem(KEY) } catch { return null }
+}
+
+function getResolved() {
+  const stored = getStored()
+  if (stored === 'dark' || stored === 'light') return stored
+  return media?.matches ? 'dark' : 'light'
 }
 
 function subscribe(cb) {
   window.addEventListener('storage', cb)
   window.addEventListener('sst:theme', cb)
+  media?.addEventListener('change', cb)
   return () => {
     window.removeEventListener('storage', cb)
     window.removeEventListener('sst:theme', cb)
+    media?.removeEventListener('change', cb)
   }
 }
 
 export function useTheme() {
-  const resolved = useSyncExternalStore(subscribe, getPreference, () => 'light')
+  const resolved = useSyncExternalStore(subscribe, getResolved, () => 'light')
 
   const setTheme = useCallback((pref) => {
     const next = pref === 'dark' ? 'dark' : 'light'
@@ -36,5 +43,5 @@ export function useTheme() {
     setTheme(resolved === 'dark' ? 'light' : 'dark')
   }, [resolved, setTheme])
 
-  return { preference: resolved, resolved, setTheme, toggle }
+  return { preference: getStored() ?? 'system', resolved, setTheme, toggle }
 }

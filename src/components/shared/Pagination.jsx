@@ -1,49 +1,58 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+// Windowed page list: first, last, current ±1, with ellipses between gaps.
+function pageList(current, total) {
+  const pages = new Set([1, total, current - 1, current, current + 1])
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b)
+  const out = []
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - sorted[i - 1] > 1) out.push('…' + p)
+    out.push(p)
+  })
+  return out
+}
+
+const btn = 'inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-control text-sm tabular-nums transition-colors'
+
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-between bg-white px-4 sm:px-5 py-3 sm:py-4 rounded-2xl border border-surface-border shadow-sm gap-2">
-      <p className="text-xs text-text-muted font-semibold hidden sm:block flex-shrink-0">
-        Page <span className="font-extrabold text-text">{currentPage}</span> of{' '}
-        <span className="font-extrabold text-text">{totalPages}</span>
+    <nav className="flex items-center justify-between gap-3 px-1 py-2" aria-label="Pagination">
+      <p className="text-xs text-text-muted tabular-nums">
+        Page <span className="text-text font-medium">{currentPage}</span> of {totalPages}
       </p>
-      <p className="text-xs text-text-muted font-semibold sm:hidden flex-shrink-0">
-        {currentPage}/{totalPages}
-      </p>
-      <nav className="isolate inline-flex overflow-x-auto max-w-full rounded-xl shadow-sm border border-slate-200 bg-slate-50 p-0.5 gap-0.5" aria-label="Pagination">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+          className={`${btn} text-text-muted hover:bg-surface-chip hover:text-text disabled:opacity-40 disabled:pointer-events-none`}
           aria-label="Previous page"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} strokeWidth={1.75} />
         </button>
-        {Array.from({ length: totalPages }).map((_, i) => {
-          const p = i + 1
-          return (
+        {pageList(currentPage, totalPages).map((p) =>
+          typeof p === 'string' ? (
+            <span key={p} className="px-1 text-text-muted" aria-hidden="true">…</span>
+          ) : (
             <button
               key={p}
               onClick={() => onPageChange(p)}
               aria-current={p === currentPage ? 'page' : undefined}
-              className={`relative inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                p === currentPage ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-white'
-              }`}
+              className={`${btn} ${p === currentPage ? 'bg-primary text-white' : 'text-text hover:bg-surface-chip'}`}
             >
               {p}
             </button>
-          )
-        })}
+          ),
+        )}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="relative inline-flex items-center rounded-lg p-1.5 text-text-muted hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+          className={`${btn} text-text-muted hover:bg-surface-chip hover:text-text disabled:opacity-40 disabled:pointer-events-none`}
           aria-label="Next page"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={16} strokeWidth={1.75} />
         </button>
-      </nav>
-    </div>
+      </div>
+    </nav>
   )
 }

@@ -108,6 +108,15 @@
   body {
     @apply bg-surface-alt text-text font-sans antialiased;
     letter-spacing: -0.011em;
+    caret-color: rgb(var(--pri));
+  }
+
+  ::selection {
+    background: rgb(var(--pri) / 0.18);
+  }
+
+  table, input[type="number"] {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Custom scrollbar for modern and clean look */
