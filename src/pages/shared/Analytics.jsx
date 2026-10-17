@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, LabelList,
 } from 'recharts'
-import { FileSpreadsheet, FileText, BarChart2 } from 'lucide-react'
+import { FileSpreadsheet, FileText, BarChart2, PackageCheck, Syringe, Trash2, Percent, Clock, ClipboardCheck, SlidersHorizontal } from 'lucide-react'
 import { getAnalytics } from '../../lib/api'
 import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { displayVaccineName } from '../../lib/vaccineNames'
@@ -137,11 +137,11 @@ export default function Analytics() {
   const requests         = data?.requests        ?? []
   const pendingApprovals = data?.pendingApprovals ?? []
 
-  // Non-status series take the forest/neutral ramp; request statuses take status hues.
+  // Non-status series take the categorical palette; request statuses take status hues.
   const C = {
     received:   t.series[0],
     used:       t.series[1],
-    wasted:     t.series[3],
+    wasted:     t.series[2],
     remaining:  t.series[0],
     correction: t.series[0],
     threshold:  t.series[1],
@@ -394,10 +394,10 @@ export default function Analytics() {
           {activeTab === 'movement' && (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <StatCard label="Stock in" value={totals.received} subtitle="Opening + received vials" />
-                <StatCard label="Used" value={totals.usedDoses} subtitle="Doses administered" />
-                <StatCard label="Wasted" value={totals.wasted} subtitle="Vials discarded" />
-                <StatCard label="Wastage rate" value={`${wastageRate}%`} tone={wastageTone} subtitle="Of vials received" />
+                <StatCard label="Stock in" icon={PackageCheck} accent={1} value={totals.received} subtitle="Opening + received vials" />
+                <StatCard label="Used" icon={Syringe} accent={2} value={totals.usedDoses} subtitle="Doses administered" />
+                <StatCard label="Wasted" icon={Trash2} accent={3} value={totals.wasted} subtitle="Vials discarded" />
+                <StatCard label="Wastage rate" icon={Percent} accent={wastageTone ?? 5} value={`${wastageRate}%`} tone={wastageTone} subtitle="Of vials received" />
               </div>
 
               <ChartCard
@@ -498,9 +498,9 @@ export default function Analytics() {
           {activeTab === 'approvals' && (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <StatCard label="Pending" value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for a facility head' : 'Nothing waiting'} />
-                <StatCard label="Stock corrections" value={approvalTotals.corrections} subtitle="Pending" />
-                <StatCard label="Threshold changes" value={approvalTotals.thresholds} subtitle="Pending" />
+                <StatCard label="Pending" icon={Clock} accent={totalPending > 0 ? 'low' : 5} value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for a facility head' : 'Nothing waiting'} />
+                <StatCard label="Stock corrections" icon={ClipboardCheck} accent={1} value={approvalTotals.corrections} subtitle="Pending" />
+                <StatCard label="Threshold changes" icon={SlidersHorizontal} accent={2} value={approvalTotals.thresholds} subtitle="Pending" />
               </div>
 
               {approvalsByFacility.length > 0 && (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, ChevronDown } from 'lucide-react'
+import { Plus, ChevronDown, Pencil, Power, PowerOff, UserPlus, Eye, Landmark, MapPin } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getTowns, createTown, updateTown, deleteTown, activateTown,
@@ -22,7 +22,12 @@ import PageHeader from '../../components/shared/PageHeader'
 import Card from '../../components/shared/Card'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import EntityCard from '../../components/shared/EntityCard'
 import Tabs from '../../components/ui/Tabs'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
+import { useViewMode } from '../../hooks/useViewMode'
 
 const TABS = [{ value: 'Towns', label: 'Towns' }, { value: 'Union Councils', label: 'Union councils' }]
 
@@ -90,6 +95,8 @@ function TownsTab({ readOnly }) {
   const [editError, setEditError] = useState('')
   const [delTarget, setDelTarget] = useState(null)
   const [delError, setDelError]   = useState('')
+  const [created, setCreated]     = useState(null)
+  const [view, setView]           = useViewMode('admin-towns')
 
   const { data: townsData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['towns'], queryFn: getTowns })
   const { data: districtsData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
@@ -106,7 +113,11 @@ function TownsTab({ readOnly }) {
 
   const createMutation = useMutation({
     mutationFn: () => createTown({ name: addForm.name.trim(), districtId: addForm.districtId }),
-    onSuccess: () => { inv(); setAddOpen(false); setAddForm({ name: '', districtId: '' }); setAddError('') },
+    onSuccess: () => {
+      inv()
+      setCreated({ name: addForm.name.trim(), district: districtMap[addForm.districtId] ?? '—' })
+      setAddOpen(false); setAddForm({ name: '', districtId: '' }); setAddError('')
+    },
     onError: (err) => setAddError(err.status === 409 ? 'A town with that name already exists in this district.' : err.message),
   })
 
@@ -133,14 +144,27 @@ function TownsTab({ readOnly }) {
   })
 
   const townActions = (t) => !readOnly && (
-    <div className="flex items-center justify-end gap-1">
-      <Button variant="ghost" size="sm" onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}>Rename</Button>
-      {t.isActive ? (
-        <Button variant="ghost-danger" size="sm" onClick={() => { setDelTarget(t); setDelError('') }}>Deactivate</Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(t.id)} disabled={activateMutation.isPending}>Reactivate</Button>
-      )}
-    </div>
+    <RowActions
+      className="justify-end"
+      actions={[
+        { icon: Pencil, label: 'Rename', onClick: () => { setEditing(t); setEditName(t.name); setEditError('') } },
+        t.isActive
+          ? { icon: PowerOff, label: 'Deactivate', danger: true, onClick: () => { setDelTarget(t); setDelError('') } }
+          : { icon: Power, label: 'Reactivate', onClick: () => activateMutation.mutate(t.id), disabled: activateMutation.isPending },
+      ]}
+    />
+  )
+
+  const townCard = (t) => (
+    <EntityCard
+      icon={Landmark}
+      accent={t.isActive ? 2 : 'no_data'}
+      title={t.name}
+      subtitle={districtMap[t.districtId] ? `${districtMap[t.districtId]} District` : undefined}
+      badge={<Badge type={t.isActive ? 'active' : 'inactive'} />}
+      meta={[{ label: 'District', value: districtMap[t.districtId] ?? '—' }]}
+      actions={townActions(t)}
+    />
   )
 
   const columns = [
@@ -153,7 +177,12 @@ function TownsTab({ readOnly }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns or districts…" />
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns or districts…" />
+          </div>
+          <ViewToggle value={view} onChange={setView} />
+        </div>
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
             <Plus size={16} strokeWidth={1.75} /> Add town
@@ -164,7 +193,7 @@ function TownsTab({ readOnly }) {
       {isError ? (
         <ErrorState title="Couldn’t load towns" error={error} onRetry={refetch} />
       ) : (
-        <Table columns={columns} rows={filtered} rowKey={(t) => t.id} loading={isLoading}
+        <Table columns={columns} rows={filtered} rowKey={(t) => t.id} loading={isLoading} view={view} gridCard={townCard}
           emptyMessage={search ? `No towns match “${search}”.` : 'No towns yet.'}
           mobileCard={(t) => (
             <div className="px-4 py-3.5 flex flex-col gap-2">
@@ -219,6 +248,14 @@ function TownsTab({ readOnly }) {
         isPending={deleteMutation.isPending}
         error={delError}
       />
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title="Town created"
+        message={<>Add union councils under <span className="font-medium">{created?.name}</span> from the Union councils tab.</>}
+        rows={created ? [{ label: 'Name', value: created.name }, { label: 'District', value: created.district }] : []}
+      />
     </div>
   )
 }
@@ -239,6 +276,8 @@ function UCsTab({ readOnly }) {
   const [assignTarget, setAssignTarget] = useState(null)
   const [assignUserId, setAssignUserId] = useState('')
   const [assignError, setAssignError]   = useState('')
+  const [created, setCreated]           = useState(null)
+  const [view, setView]                 = useViewMode('admin-ucs')
 
   const { data: ucsData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils() })
   const { data: townsData } = useQuery({ queryKey: ['towns'], queryFn: getTowns })
@@ -256,7 +295,11 @@ function UCsTab({ readOnly }) {
 
   const createMutation = useMutation({
     mutationFn: () => createUnionCouncil({ name: addForm.name.trim(), townId: addForm.townId }),
-    onSuccess: () => { inv(); setAddOpen(false); setAddForm({ name: '', townId: '' }); setAddError('') },
+    onSuccess: () => {
+      inv()
+      setCreated({ name: addForm.name.trim(), town: townOptions.find((o) => o.value === addForm.townId)?.label ?? '—' })
+      setAddOpen(false); setAddForm({ name: '', townId: '' }); setAddError('')
+    },
     onError: (err) => setAddError(err.status === 409 ? 'A UC with that name already exists in this town.' : err.message),
   })
 
@@ -316,10 +359,44 @@ function UCsTab({ readOnly }) {
 
   const openAssign = (uc) => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }
 
+  const ucActions = (uc, { withView = false } = {}) => (
+    <RowActions
+      actions={[
+        withView && { icon: Eye, label: 'View union council', to: `/super-admin/ucs/${uc.id}` },
+        !readOnly && { icon: UserPlus, label: uc.ucSupervisorName ? 'Reassign supervisor' : 'Assign supervisor', onClick: () => openAssign(uc) },
+        !readOnly && { icon: Pencil, label: 'Rename', onClick: () => { setEditing(uc); setEditName(uc.name); setEditError('') } },
+        !readOnly && (uc.isActive
+          ? { icon: PowerOff, label: 'Deactivate', danger: true, onClick: () => { setDelTarget(uc); setDelError('') } }
+          : { icon: Power, label: 'Reactivate', onClick: () => activateMutation.mutate(uc.id), disabled: activateMutation.isPending }),
+      ]}
+    />
+  )
+
+  const ucCard = (uc) => (
+    <EntityCard
+      icon={MapPin}
+      accent={uc.isActive ? 4 : 'no_data'}
+      title={uc.name}
+      subtitle={[uc.townName, uc.districtName].filter(Boolean).join(' · ') || undefined}
+      badge={<Badge type={uc.isActive ? 'active' : 'inactive'} />}
+      meta={[
+        { label: 'Town', value: uc.townName ?? '—' },
+        { label: 'District', value: uc.districtName ?? '—' },
+        { label: 'Supervisor', value: uc.ucSupervisorName ?? 'Not assigned' },
+      ]}
+      actions={ucActions(uc, { withView: true })}
+    />
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UC, town, district or supervisor…" />
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UC, town, district or supervisor…" />
+          </div>
+          <ViewToggle value={view} onChange={setView} />
+        </div>
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
             <Plus size={16} strokeWidth={1.75} /> Add union council
@@ -329,6 +406,9 @@ function UCsTab({ readOnly }) {
 
       {isError ? (
         <ErrorState title="Couldn’t load union councils" error={error} onRetry={refetch} />
+      ) : view === 'grid' ? (
+        <Table columns={[]} rows={filtered} rowKey={(uc) => uc.id} loading={isLoading} view="grid" gridCard={ucCard}
+          emptyMessage={search ? `No union councils match “${search}”.` : 'No union councils yet.'} />
       ) : (
         <Card padding={false}>
           {isLoading ? (
@@ -361,17 +441,7 @@ function UCsTab({ readOnly }) {
                       </button>
                       <div className="flex flex-wrap items-center gap-1 pl-7 lg:pl-0">
                         <Badge type={uc.isActive ? 'active' : 'inactive'} />
-                        {!readOnly && (
-                          <>
-                            <Button variant="ghost" size="sm" onClick={() => openAssign(uc)}>{uc.ucSupervisorName ? 'Reassign' : 'Assign supervisor'}</Button>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}>Rename</Button>
-                            {uc.isActive ? (
-                              <Button variant="ghost-danger" size="sm" onClick={() => { setDelTarget(uc); setDelError('') }}>Deactivate</Button>
-                            ) : (
-                              <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(uc.id)} disabled={activateMutation.isPending}>Reactivate</Button>
-                            )}
-                          </>
-                        )}
+                        {!readOnly && ucActions(uc)}
                       </div>
                     </div>
                     {isExpanded && <div id={`uc-${uc.id}`}><UCExpandedPanel ucId={uc.id} /></div>}
@@ -464,6 +534,14 @@ function UCsTab({ readOnly }) {
         confirmLabel="Deactivate"
         isPending={deleteMutation.isPending}
         error={delError}
+      />
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title="Union council created"
+        message={<>Assign a UC supervisor to <span className="font-medium">{created?.name}</span>, then add its facilities.</>}
+        rows={created ? [{ label: 'Name', value: created.name }, { label: 'Town', value: created.town }] : []}
       />
     </div>
   )

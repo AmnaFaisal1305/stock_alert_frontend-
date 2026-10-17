@@ -11,8 +11,9 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import EmptyState from '../../components/shared/EmptyState'
 import WorkerPicker from '../../components/shared/WorkerPicker'
 import ResultPanel from '../../components/shared/ResultPanel'
+import ReviewDialog from '../../components/ui/ReviewDialog'
 import { displayVaccineName } from '../../lib/vaccineNames'
-import { localDateStr } from '../../lib/format'
+import { localDateStr, formatDate, plural } from '../../lib/format'
 
 const todayStr   = () => localDateStr()
 const minDateStr = () => localDateStr(-3)
@@ -34,6 +35,7 @@ export default function DayEnd() {
   const [globalError,  setGlobalError]  = useState('')
   const [done,         setDone]         = useState(false)
   const [savedOffline, setSavedOffline] = useState(false)
+  const [review,       setReview]       = useState(null)
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: usersData,   isLoading: loadingUsers }   = useQuery({ queryKey: ['users'],    queryFn: getUsers })
@@ -106,11 +108,17 @@ export default function DayEnd() {
       }
     })
     setGlobalError('')
+    setReview({ clientRef: clientRef.current, occurredOn, workerId, items })
+  }
+
+  function confirmSubmit() {
+    const payload = review
+    setReview(null)
     if (!navigator.onLine) {
-      enqueue('dayend', { clientRef: clientRef.current, occurredOn, workerId, items })
+      enqueue('dayend', payload)
       setSavedOffline(true); return
     }
-    mutation.mutate({ clientRef: clientRef.current, occurredOn, workerId, items })
+    mutation.mutate(payload)
   }
 
   function handleReset() {
@@ -266,6 +274,29 @@ export default function DayEnd() {
           </div>
         )}
       </form>
+
+      {review && (
+        <ReviewDialog
+          open
+          onClose={() => setReview(null)}
+          onConfirm={confirmSubmit}
+          title="Check day end before recording"
+          rows={[
+            { label: 'Worker', value: selectedWorker?.name ?? selectedWorker?.email },
+            { label: 'Date', value: formatDate(occurredOn) },
+          ]}
+          items={review.items.map(it => ({
+            name: displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name),
+            value: `${it.usedVials} used · ${it.returnedVials} returned · ${it.wastedVials} wasted`,
+          }))}
+          total={totals.map(([label, n]) => `${n} ${label.toLowerCase()}`).join(' · ')}
+          warnings={[
+            totals[2][1] > 0 && `${plural(totals[2][1], 'vial')} will be recorded as wasted.`,
+            !navigator.onLine && 'You’re offline. This will be saved and sent when you reconnect.',
+          ]}
+          confirmLabel="Record day end"
+        />
+      )}
     </div>
   )
 }

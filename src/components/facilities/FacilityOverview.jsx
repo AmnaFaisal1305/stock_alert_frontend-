@@ -1,12 +1,14 @@
 // Multi-facility dashboard pieces shared by the UC and district dashboards.
 import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, AlertTriangle, ArrowRight } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowRight, TrendingDown, CheckCircle2, HelpCircle } from 'lucide-react'
 import Button, { buttonClasses } from '../ui/Button'
+import ViewToggle from '../ui/ViewToggle'
 import Card, { CardHeader } from '../shared/Card'
 import StatCard from '../shared/StatCard'
 import Table from '../shared/Table'
-import { facilityStatusMap, countByStatus, worstFirst, facilityColumns, FacilityMobileCard } from './facilityTable'
+import { useViewMode } from '../../hooks/useViewMode'
+import { facilityStatusMap, countByStatus, worstFirst, facilityColumns, FacilityMobileCard, FacilityGridCard } from './facilityTable'
 import { statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
@@ -104,16 +106,17 @@ export function StockMatrix({ rows, base, groupByDistrict = false }) {
 }
 
 const KPIS = [
-  { status: 'critical', label: 'Critical',    context: (n) => (n ? 'Restock now' : 'None critical') },
-  { status: 'low',      label: 'Low',         context: (n) => (n ? 'Plan a delivery' : 'None low') },
-  { status: 'adequate', label: 'Normal',      context: () => 'Stock is healthy' },
-  { status: 'no_data',  label: 'Not updated', context: (n) => (n ? 'No stock recorded yet' : 'All reporting') },
+  { status: 'critical', label: 'Critical',    icon: AlertCircle,  context: (n) => (n ? 'Restock now' : 'None critical') },
+  { status: 'low',      label: 'Low',         icon: TrendingDown, context: (n) => (n ? 'Plan a delivery' : 'None low') },
+  { status: 'adequate', label: 'Normal',      icon: CheckCircle2, context: () => 'Stock is healthy' },
+  { status: 'no_data',  label: 'Not updated', icon: HelpCircle,   context: (n) => (n ? 'No stock recorded yet' : 'All reporting') },
 ]
 
 // Alert + KPI cards that filter one worst-first facility table + stock matrix.
 // `facilities` from GET /api/facilities, `dashboard` from GET /api/dashboard (same scope).
 export function FacilityBoard({ facilities: list, dashboard, base, alertAction }) {
   const [filter, setFilter] = useState(null)
+  const [view, setView] = useViewMode(`board${base.replace('/', '-')}`)
 
   const { facilities, statusOf, counts, columns } = useMemo(() => {
     const map = facilityStatusMap(dashboard)
@@ -133,10 +136,12 @@ export function FacilityBoard({ facilities: list, dashboard, base, alertAction }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-        {KPIS.map(({ status, label, context }) => (
+        {KPIS.map(({ status, label, icon, context }) => (
           <StatCard
             key={status}
             label={label}
+            icon={icon}
+            accent={status}
             value={counts[status]}
             unit={counts[status] === 1 ? 'facility' : 'facilities'}
             tone={counts[status] > 0 && status !== 'no_data' ? status : undefined}
@@ -153,13 +158,18 @@ export function FacilityBoard({ facilities: list, dashboard, base, alertAction }
             {filter ? `${statusConfig(filter).label} facilities` : 'Facilities'}
             <span className="ml-2 text-sm font-normal text-text-muted">{visible.length}</span>
           </h2>
-          {filter
-            ? <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>Show all</Button>
-            : <Link to={`${base}/facilities`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>Search facilities <ArrowRight size={14} strokeWidth={1.75} /></Link>}
+          <div className="flex items-center gap-2">
+            {filter
+              ? <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>Show all</Button>
+              : <Link to={`${base}/facilities`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>Search facilities <ArrowRight size={14} strokeWidth={1.75} /></Link>}
+            <ViewToggle value={view} onChange={setView} />
+          </div>
         </div>
         <Table
           columns={columns}
           rows={visible}
+          view={view}
+          gridCard={(f) => <FacilityGridCard f={f} status={statusOf(f)} base={base} />}
           emptyMessage={filter ? 'No facilities in this status.' : 'No facilities in this area yet.'}
           mobileCard={(f) => <FacilityMobileCard f={f} status={statusOf(f)} base={base} />}
         />

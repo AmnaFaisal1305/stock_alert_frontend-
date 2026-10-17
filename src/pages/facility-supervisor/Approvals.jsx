@@ -7,6 +7,8 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Tabs from '../../components/ui/Tabs'
+import ReviewDialog from '../../components/ui/ReviewDialog'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import PageHeader from '../../components/shared/PageHeader'
 import Card, { CardHeader } from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -75,6 +77,8 @@ export default function Approvals() {
   const [thrNote,      setThrNote]      = useState('')
   const [thrError,     setThrError]     = useState(null)
   const [thrDone,      setThrDone]      = useState(false)
+  const [review,       setReview]       = useState(null) // 'corr' | 'thr'
+  const [withdrawing,  setWithdrawing]  = useState(null)
 
   const { data: dashData } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
   const vaccines = dashData
@@ -105,12 +109,14 @@ export default function Approvals() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setReview(null)
       setCorrDone(true)
       setCorrVaccineId(''); setCorrStoreVials(''); setCorrNote(''); setCorrError(null)
     },
-    onError: (err) => setCorrError(
-      err.status === 409 ? 'A correction is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed')
-    ),
+    onError: (err) => {
+      setReview(null)
+      setCorrError(err.status === 409 ? 'A correction is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed'))
+    },
   })
 
   const thrMutation = useMutation({
@@ -128,13 +134,15 @@ export default function Approvals() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setReview(null)
       setThrDone(true)
       setThrVaccineId(''); setThrValues({ criticalDoses: '', lowDoses: '', criticalVials: '', lowVials: '' })
       setThrNote(''); setThrReset(false); setThrError(null)
     },
-    onError: (err) => setThrError(
-      err.status === 409 ? 'A threshold change is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed')
-    ),
+    onError: (err) => {
+      setReview(null)
+      setThrError(err.status === 409 ? 'A threshold change is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed'))
+    },
   })
 
   const cancelMutation = useMutation({
@@ -142,6 +150,7 @@ export default function Approvals() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setWithdrawing(null)
     },
   })
 
@@ -215,7 +224,7 @@ export default function Approvals() {
               />
               <FormMessage error={corrError} done={corrDone} />
               <div>
-                <Button onClick={() => corrMutation.mutate()} disabled={!corrValid || corrMutation.isPending}>
+                <Button onClick={() => setReview('corr')} disabled={!corrValid || corrMutation.isPending}>
                   {corrMutation.isPending ? 'Sending…' : 'Send for approval'}
                 </Button>
               </div>
@@ -265,7 +274,7 @@ export default function Approvals() {
               />
               <FormMessage error={thrError} done={thrDone} />
               <div>
-                <Button onClick={() => thrMutation.mutate()} disabled={!thrValid || thrMutation.isPending}>
+                <Button onClick={() => setReview('thr')} disabled={!thrValid || thrMutation.isPending}>
                   {thrMutation.isPending ? 'Sending…' : 'Send for approval'}
                 </Button>
               </div>
@@ -297,7 +306,7 @@ export default function Approvals() {
                 <RequestItem
                   key={a.id}
                   a={a}
-                  onCancel={listView === 'pending' ? (id) => cancelMutation.mutate(id) : null}
+                  onCancel={listView === 'pending' ? () => setWithdrawing(a) : null}
                   cancelling={cancelMutation.isPending}
                 />
               ))}
@@ -305,6 +314,51 @@ export default function Approvals() {
           )}
         </Card>
       </div>
+
+      <ReviewDialog
+        open={review === 'corr'}
+        onClose={() => setReview(null)}
+        onConfirm={() => corrMutation.mutate()}
+        isPending={corrMutation.isPending}
+        title="Send stock correction?"
+        intro="The facility head reviews it. The store total changes only once they approve."
+        rows={[
+          { label: 'Vaccine', value: vaccineOptions.find(o => o.value === corrVaccineId)?.label },
+          { label: 'New store total', value: `${corrStoreVials} vials` },
+          { label: 'Reason', value: corrNote.trim() },
+        ]}
+        confirmLabel="Send for approval"
+      />
+
+      <ReviewDialog
+        open={review === 'thr'}
+        onClose={() => setReview(null)}
+        onConfirm={() => thrMutation.mutate()}
+        isPending={thrMutation.isPending}
+        title="Send threshold change?"
+        intro="The facility head reviews it. The new thresholds apply once they approve."
+        rows={(() => {
+          const row = vaccines.find(r => r.vaccineId === thrVaccineId)
+          return [
+            { label: 'Vaccine', value: vaccineOptions.find(o => o.value === thrVaccineId)?.label },
+            row && { label: 'Now', value: `critical ${row.criticalDoses}d / ${row.criticalVials}v · low ${row.lowDoses}d / ${row.lowVials}v` },
+            { label: 'New', value: thrReset ? 'Vaccine defaults' : `critical ${thrValues.criticalDoses}d / ${thrValues.criticalVials}v · low ${thrValues.lowDoses}d / ${thrValues.lowVials}v` },
+            thrNote.trim() && { label: 'Reason', value: thrNote.trim() },
+          ]
+        })()}
+        confirmLabel="Send for approval"
+      />
+
+      <ConfirmDialog
+        open={!!withdrawing}
+        onClose={() => setWithdrawing(null)}
+        onConfirm={() => cancelMutation.mutate(withdrawing.id)}
+        title="Withdraw this request?"
+        message={withdrawing ? `${TYPE_LABEL[withdrawing.type] ?? 'Request'} for ${displayVaccineName(withdrawing.vaccineName)} will be withdrawn. The facility head won’t see it any more.` : ''}
+        confirmLabel="Withdraw"
+        isPending={cancelMutation.isPending}
+        error={cancelMutation.isError ? cancelMutation.error.message : null}
+      />
     </div>
   )
 }

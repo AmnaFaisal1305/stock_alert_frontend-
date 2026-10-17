@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getStockRequests, approveStockRequest } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Textarea from '../../components/ui/Textarea'
+import ReviewDialog from '../../components/ui/ReviewDialog'
 import PageHeader from '../../components/shared/PageHeader'
 import RequestList from '../../components/stock-requests/RequestList'
 import { displayVaccineName } from '../../lib/vaccineNames'
@@ -13,6 +14,7 @@ function ApproveAction({ req }) {
   const [note, setNote] = useState('')
   const [mismatches, setMismatches] = useState(null)
   const [error, setError] = useState('')
+  const [confirming, setConfirming] = useState(false)
 
   const approveMutation = useMutation({
     mutationFn: () => approveStockRequest(req.id, note.trim() || undefined),
@@ -21,8 +23,10 @@ function ApproveAction({ req }) {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setMismatches(null)
+      setConfirming(false)
     },
     onError: (err) => {
+      setConfirming(false)
       if (err.status === 409 && err.body?.mismatches) setMismatches(err.body.mismatches)
       else setError(err.message || 'Failed to approve. Please try again.')
     },
@@ -56,10 +60,26 @@ function ApproveAction({ req }) {
         />
       )}
       <div>
-        <Button onClick={() => { setError(''); approveMutation.mutate() }} disabled={approveMutation.isPending || (short && !note.trim())}>
+        <Button onClick={() => { setError(''); setConfirming(true) }} disabled={approveMutation.isPending || (short && !note.trim())}>
           {approveMutation.isPending ? 'Approving…' : short ? 'Approve with shortfall' : 'Approve request'}
         </Button>
       </div>
+
+      <ReviewDialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() => approveMutation.mutate()}
+        isPending={approveMutation.isPending}
+        title="Approve this delivery?"
+        intro="Approving signs off this delivery. It can’t be undone."
+        items={(req.items ?? []).map((it) => ({
+          name: displayVaccineName(it.vaccineName),
+          value: `${it.receivedVials ?? 0} received of ${it.outstandingVials ?? it.requestedVials}`,
+        }))}
+        rows={short ? [{ label: 'Shortfall note', value: note.trim() }] : []}
+        warnings={[short && 'Fewer vials arrived than were requested.']}
+        confirmLabel={short ? 'Approve with shortfall' : 'Approve'}
+      />
     </div>
   )
 }

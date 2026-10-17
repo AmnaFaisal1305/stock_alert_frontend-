@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, TrendingDown, CheckCircle2, HelpCircle, Building2, Eye } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getUnionCouncils, getFacilities, getDashboard } from '../../lib/api'
 import PageHeader from '../../components/shared/PageHeader'
@@ -10,16 +10,20 @@ import Table from '../../components/shared/Table'
 import Card from '../../components/shared/Card'
 import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import EntityCard from '../../components/shared/EntityCard'
 import Badge from '../../components/ui/Badge'
 import { buttonClasses } from '../../components/ui/Button'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
+import { useViewMode } from '../../hooks/useViewMode'
 import { facilityStatus } from '../../lib/status'
 import { plural } from '../../lib/format'
 
 const KPIS = [
-  { status: 'critical', label: 'Critical',    context: 'Restock now' },
-  { status: 'low',      label: 'Low',         context: 'Plan a delivery' },
-  { status: 'adequate', label: 'Normal',      context: 'Stock is healthy' },
-  { status: 'no_data',  label: 'Not updated', context: 'No stock recorded yet' },
+  { status: 'critical', label: 'Critical',    context: 'Restock now',           icon: AlertTriangle },
+  { status: 'low',      label: 'Low',         context: 'Plan a delivery',       icon: TrendingDown },
+  { status: 'adequate', label: 'Normal',      context: 'Stock is healthy',      icon: CheckCircle2 },
+  { status: 'no_data',  label: 'Not updated', context: 'No stock recorded yet', icon: HelpCircle },
 ]
 
 // Per-facility vaccine-line counts, e.g. "2 critical · 1 low · 9 normal".
@@ -35,6 +39,7 @@ function VaccineCounts({ sc = {} }) {
 
 export default function UCDetail() {
   const { id } = useParams()
+  const [view, setView] = useViewMode('admin-uc-detail')
 
   const { data: ucsData, isLoading: ucLoading } = useQuery({
     queryKey: ['ucs'],
@@ -90,6 +95,18 @@ export default function UCDetail() {
     { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
   ]
 
+  const gridCard = (f) => (
+    <EntityCard
+      icon={Building2}
+      accent={statusOf(f)}
+      title={f.name}
+      subtitle={f.facilitySupervisorName ?? 'Unstaffed'}
+      badge={<StatusBadge status={statusOf(f)} />}
+      meta={[{ label: 'Vaccines', value: <VaccineCounts sc={f.statusCounts} /> }]}
+      actions={<RowActions actions={[{ icon: Eye, label: 'View facility', to: `/super-admin/facilities/${f.id}` }]} />}
+    />
+  )
+
   return (
     <div>
       <Link to="/super-admin/ucs" className={buttonClasses({ variant: 'ghost', size: 'sm', className: '-ml-3 mb-3' })}>
@@ -110,9 +127,11 @@ export default function UCDetail() {
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-            {KPIS.map(({ status, label, context }) => (
+            {KPIS.map(({ status, label, context, icon }) => (
               <StatCard
                 key={status}
+                icon={icon}
+                accent={status}
                 label={label}
                 value={statusCounts[status]}
                 unit={statusCounts[status] === 1 ? 'facility' : 'facilities'}
@@ -122,9 +141,14 @@ export default function UCDetail() {
             ))}
           </div>
 
+          <div className="hidden sm:flex justify-end mb-3">
+            <ViewToggle value={view} onChange={setView} />
+          </div>
           <Table
             columns={columns}
             rows={[...facilities].sort((a, b) => a.name.localeCompare(b.name))}
+            view={view}
+            gridCard={gridCard}
             emptyMessage="No facilities under this union council yet. Add one to start recording stock."
             mobileCard={(f) => (
               <Link to={`/super-admin/facilities/${f.id}`} className="block px-4 py-3.5 hover:bg-surface-alt">

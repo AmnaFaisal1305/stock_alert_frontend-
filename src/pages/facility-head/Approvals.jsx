@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import Tabs from '../../components/ui/Tabs'
 import Textarea from '../../components/ui/Textarea'
 import Toast from '../../components/ui/Toast'
+import ReviewDialog from '../../components/ui/ReviewDialog'
 import PageHeader from '../../components/shared/PageHeader'
 import Card from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -119,6 +120,7 @@ export default function FacilityHeadApprovals() {
   const qc = useQueryClient()
   const [view, setView] = useState('pending')
   const [toast, setToast] = useState(null)
+  const [confirming, setConfirming] = useState(null)
 
   const pendingQ = useQuery({ queryKey: ['approvals', 'pending'], queryFn: () => getApprovals('pending') })
   const historyQ = useQuery({ queryKey: ['approvals', 'history'], queryFn: () => getApprovals(), enabled: view === 'history' })
@@ -132,9 +134,10 @@ export default function FacilityHeadApprovals() {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setConfirming(null)
       setToast({ message: 'Approved. The change is applied.', type: 'success' })
     },
-    onError: (err) => setToast({ message: err.message || 'Failed to approve. Please try again.', type: 'error' }),
+    onError: (err) => { setConfirming(null); setToast({ message: err.message || 'Failed to approve. Please try again.', type: 'error' }) },
   })
 
   const rejectMutation = useMutation({
@@ -187,7 +190,7 @@ export default function FacilityHeadApprovals() {
                       key={a.id}
                       a={a}
                       busy={busy}
-                      onApprove={(id) => approveMutation.mutate(id)}
+                      onApprove={() => setConfirming(a)}
                       onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
                     />
                   ))
@@ -195,6 +198,24 @@ export default function FacilityHeadApprovals() {
             </ul>
           )}
         </Card>
+      )}
+
+      {confirming && (
+        <ReviewDialog
+          open
+          onClose={() => setConfirming(null)}
+          onConfirm={() => approveMutation.mutate(confirming.id)}
+          isPending={approveMutation.isPending}
+          title={`Approve ${(TYPE_LABEL[confirming.type] ?? 'change').toLowerCase()}?`}
+          intro="It is applied as soon as you approve."
+          rows={[
+            { label: 'Vaccine', value: displayVaccineName(confirming.vaccineName) },
+            { label: 'Requested by', value: confirming.requestedByName ?? 'Facility supervisor' },
+            { label: 'Change', value: <Change a={confirming} /> },
+            confirming.note && { label: 'Note', value: `“${confirming.note}”` },
+          ]}
+          confirmLabel="Approve"
+        />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

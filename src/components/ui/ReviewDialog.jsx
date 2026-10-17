@@ -62,36 +62,43 @@ function SummaryBody({ rows, items, itemsLabel, total }) {
 
 // "Check before you send": what will be recorded, any warnings, then Confirm / Go back.
 // rows: [{ label, value }] (value may be a node); items: [{ name, value }] for per-vaccine lines.
-export default function ReviewDialog({
-  open, onClose, onConfirm, title, intro, rows = [], items = [], itemsLabel = 'Vaccines', total,
+export default function ReviewDialog({ open, onClose, title, isPending = false, ...panel }) {
+  return (
+    <Modal open={open} onClose={isPending ? () => {} : onClose} title={title} maxWidth="max-w-md">
+      <ReviewPanel onClose={onClose} isPending={isPending} {...panel} />
+    </Modal>
+  )
+}
+
+// The same review as a step inside an existing modal or form.
+export function ReviewPanel({
+  onClose, onConfirm, intro, rows = [], items = [], itemsLabel = 'Vaccines', total,
   warnings = [], confirmLabel = 'Confirm', isPending = false, error = null,
 }) {
   const shown = warnings.filter(Boolean)
   return (
-    <Modal open={open} onClose={isPending ? () => {} : onClose} title={title} maxWidth="max-w-md">
-      <div className="flex flex-col gap-4">
-        {intro && <p className="text-sm text-text-muted">{intro}</p>}
+    <div className="flex flex-col gap-4">
+      {intro && <p className="text-sm text-text-muted">{intro}</p>}
 
-        <SummaryBody rows={rows} items={items} itemsLabel={itemsLabel} total={total} />
+      <SummaryBody rows={rows} items={items} itemsLabel={itemsLabel} total={total} />
 
-        {shown.length > 0 && (
-          <ul className="flex flex-col gap-1.5 rounded-control bg-warning-bg px-3.5 py-2.5">
-            {shown.map((w) => (
-              <li key={w} className="flex items-start gap-2 text-sm text-warning-dark">
-                <AlertTriangle size={14} strokeWidth={1.75} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                {w}
-              </li>
-            ))}
-          </ul>
-        )}
+      {shown.length > 0 && (
+        <ul className="flex flex-col gap-1.5 rounded-control bg-warning-bg px-3.5 py-2.5">
+          {shown.map((w) => (
+            <li key={w} className="flex items-start gap-2 text-sm text-warning-dark">
+              <AlertTriangle size={14} strokeWidth={1.75} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+              {w}
+            </li>
+          ))}
+        </ul>
+      )}
 
-        {error && <p role="alert" className="text-sm text-danger-dark bg-danger-bg px-3.5 py-2.5 rounded-control">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger-dark bg-danger-bg px-3.5 py-2.5 rounded-control">{error}</p>}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-          <Button variant="secondary" size="lg" className="sm:h-9" onClick={onClose} disabled={isPending}>Go back</Button>
-          <Button size="lg" className="sm:h-9" onClick={onConfirm} disabled={isPending}>{isPending ? 'Saving…' : confirmLabel}</Button>
-        </div>
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+        <Button variant="secondary" size="lg" className="sm:h-9" onClick={onClose} disabled={isPending}>Go back</Button>
+        <Button size="lg" className="sm:h-9" onClick={onConfirm} disabled={isPending}>{isPending ? 'Saving…' : confirmLabel}</Button>
       </div>
-    </Modal>
+    </div>
   )
 }

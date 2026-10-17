@@ -3,6 +3,7 @@ import { ChevronDown, Truck } from 'lucide-react'
 import Card from '../shared/Card'
 import FilterChips from '../shared/FilterChips'
 import StatusBadge from '../shared/StatusBadge'
+import { ACCENT } from '../shared/StatCard'
 import EmptyState from '../shared/EmptyState'
 import ErrorState from '../shared/ErrorState'
 import { SkeletonRows } from '../shared/SkeletonCard'
@@ -76,6 +77,9 @@ function RequestRow({ req, showFacility, renderActions }) {
         aria-controls={id}
         className="w-full text-left px-4 sm:px-5 py-3.5 flex items-center gap-3 hover:bg-surface-alt transition-colors"
       >
+        <span className={`hidden sm:grid w-9 h-9 rounded-control place-items-center flex-shrink-0 ${ACCENT[4]}`} aria-hidden="true">
+          <Truck size={18} strokeWidth={1.75} />
+        </span>
         <div className="flex-1 min-w-0 grid gap-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-text truncate">

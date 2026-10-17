@@ -10,6 +10,11 @@ import PageHeader from '../../components/shared/PageHeader'
 import Table from '../../components/shared/Table'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
+import EntityCard from '../../components/shared/EntityCard'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
+import { useViewMode } from '../../hooks/useViewMode'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { useAuth } from '../../context/AuthContext'
 import { plural } from '../../lib/format'
@@ -84,6 +89,8 @@ export default function VaccineManagement() {
   const [addError, setAddError]     = useState('')
   const [editError, setEditError]   = useState('')
   const [deleteError, setDeleteError] = useState('')
+  const [created, setCreated]       = useState(null)
+  const [view, setView]             = useViewMode('admin-vaccines')
 
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const vaccines = data?.vaccines ?? []
@@ -102,7 +109,16 @@ export default function VaccineManagement() {
       ...(form.criticalVials !== '' ? { criticalVials: parseInt(form.criticalVials, 10) } : {}),
       ...(form.lowVials      !== '' ? { lowVials:      parseInt(form.lowVials, 10) }      : {}),
     }),
-    onSuccess: () => { invalidate(); setAddOpen(false); setAddError('') },
+    onSuccess: (_data, form) => {
+      invalidate(); setAddOpen(false); setAddError('')
+      const val = (k) => (form[k] !== '' ? form[k] : `${DEFAULTS[k]} (default)`)
+      setCreated([
+        { label: 'Name', value: displayVaccineName(form.name.trim()) },
+        { label: 'Doses per vial', value: form.dosesPerVial },
+        { label: 'Critical', value: `${val('criticalDoses')} doses · ${val('criticalVials')} vials` },
+        { label: 'Low', value: `${val('lowDoses')} doses · ${val('lowVials')} vials` },
+      ])
+    },
     onError: (err) => setAddError(err.status === 409 ? 'A vaccine with that name already exists.' : err.message),
   })
 
@@ -139,6 +155,30 @@ export default function VaccineManagement() {
   const readOnly = user?.role === 'observer'
   const dash = (n) => <span className="tabular-nums">{n}</span>
 
+  const actions = (v) => (
+    <RowActions
+      className="justify-end"
+      actions={[
+        { icon: Pencil, label: 'Edit', onClick: () => { setEditing(v); setEditError('') } },
+        { icon: Trash2, label: 'Delete', danger: true, onClick: () => { setDeleteTarget(v); setDeleteError('') } },
+      ]}
+    />
+  )
+
+  const gridCard = (v) => (
+    <EntityCard
+      icon={Syringe}
+      accent={1}
+      title={<span dir="auto">{displayVaccineName(v.name)}</span>}
+      subtitle={`${plural(v.dosesPerVial, 'dose')} per vial`}
+      meta={[
+        { label: 'Critical', value: `${v.criticalDoses} doses · ${v.criticalVials} vials` },
+        { label: 'Low', value: `${v.lowDoses} doses · ${v.lowVials} vials` },
+      ]}
+      actions={!readOnly && actions(v)}
+    />
+  )
+
   const columns = [
     { key: 'name', label: 'Vaccine', render: (v) => <span className="font-medium whitespace-nowrap" dir="auto">{displayVaccineName(v.name)}</span> },
     { key: 'dpv', label: 'Doses / vial', align: 'right', render: (v) => dash(v.dosesPerVial) },
@@ -146,15 +186,7 @@ export default function VaccineManagement() {
     { key: 'ld', label: 'Low doses', align: 'right', render: (v) => dash(v.lowDoses) },
     { key: 'cv', label: 'Critical vials', align: 'right', render: (v) => dash(v.criticalVials) },
     { key: 'lv', label: 'Low vials', align: 'right', render: (v) => dash(v.lowVials) },
-    ...(readOnly ? [] : [{
-      key: 'actions', label: '', align: 'right',
-      render: (v) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={() => { setEditing(v); setEditError('') }}><Pencil size={14} strokeWidth={1.75} /> Edit</Button>
-          <Button variant="ghost-danger" size="sm" onClick={() => { setDeleteTarget(v); setDeleteError('') }}><Trash2 size={14} strokeWidth={1.75} /> Delete</Button>
-        </div>
-      ),
-    }]),
+    ...(readOnly ? [] : [{ key: 'actions', label: '', align: 'right', render: actions }]),
   ]
 
   return (
@@ -179,17 +211,22 @@ export default function VaccineManagement() {
         />
       ) : (
         <div className="flex flex-col gap-3">
+          <div className="hidden sm:flex justify-end">
+            <ViewToggle value={view} onChange={setView} />
+          </div>
           <Table
             columns={columns}
             rows={vaccines}
             loading={isLoading}
+            view={view}
+            gridCard={gridCard}
             mobileCard={(v) => (
               <div className="px-4 py-3.5 flex flex-col gap-2">
                 <p className="font-medium text-text" dir="auto">{displayVaccineName(v.name)}</p>
                 <p className="text-xs text-text-muted tabular-nums">
                   {v.dosesPerVial} doses/vial · critical {v.criticalDoses}d / {v.criticalVials}v · low {v.lowDoses}d / {v.lowVials}v
                 </p>
-                {!readOnly && columns[columns.length - 1].render(v)}
+                {!readOnly && actions(v)}
               </div>
             )}
           />
@@ -241,6 +278,14 @@ export default function VaccineManagement() {
         confirmLabel="Delete"
         isPending={deleteMutation.isPending}
         error={deleteError}
+      />
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title="Vaccine added"
+        message="It now appears in every facility’s stock list with these thresholds."
+        rows={created ?? []}
       />
     </div>
   )

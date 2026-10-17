@@ -11,9 +11,11 @@ import PageHeader from '../../components/shared/PageHeader'
 import Card, { CardHeader } from '../../components/shared/Card'
 import EmptyState from '../../components/shared/EmptyState'
 import WorkerPicker from '../../components/shared/WorkerPicker'
+import { ACCENT } from '../../components/shared/StatCard'
 import ResultPanel from '../../components/shared/ResultPanel'
+import ReviewDialog from '../../components/ui/ReviewDialog'
 import { displayVaccineName } from '../../lib/vaccineNames'
-import { localDateStr, plural } from '../../lib/format'
+import { localDateStr, plural, formatDate } from '../../lib/format'
 
 const VACCINE_GROUPS = [
   ['Birth & Oral',  ['BCG', 'OPV (Polio)', 'Rota']],
@@ -22,6 +24,8 @@ const VACCINE_GROUPS = [
   ['MR',            ['Measles (MR)', 'Rubella (MR)']],
   ['Other',         ['TCV', 'T (TD)', 'D (TD)', 'HPV']],
 ]
+
+const GROUP_ACCENT = { 'Birth & Oral': 1, 'Injectables': 2, 'Pentavalent': 3, 'MR': 4, 'Other': 5 }
 
 const VACCINE_SUBTITLES = {
   'BCG':              'Tuberculosis',
@@ -71,6 +75,7 @@ export default function AssignVials() {
   const [globalError,  setGlobalError]  = useState('')
   const [done,         setDone]         = useState(false)
   const [savedOffline, setSavedOffline] = useState(false)
+  const [review,       setReview]       = useState(null)
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: usersData,   isLoading: loadingUsers }   = useQuery({ queryKey: ['users'],    queryFn: getUsers })
@@ -125,11 +130,17 @@ export default function AssignVials() {
       .filter(i => i.vials > 0)
     if (!items.length) { setGlobalError('Enter at least one vaccine quantity.'); return }
     setGlobalError(''); setRowErrors({})
+    setReview({ clientRef: clientRef.current, occurredOn, workerId, items })
+  }
+
+  function confirmSubmit() {
+    const payload = review
+    setReview(null)
     if (!navigator.onLine) {
-      enqueue('assign', { clientRef: clientRef.current, occurredOn, workerId, items })
+      enqueue('assign', payload)
       setSavedOffline(true); return
     }
-    mutation.mutate({ clientRef: clientRef.current, occurredOn, workerId, items })
+    mutation.mutate(payload)
   }
 
   function handleReset() {
@@ -213,7 +224,9 @@ export default function AssignVials() {
               <div className="px-4 sm:px-5 py-5 flex flex-col gap-6">
                 {groups.map(([groupName, groupVaccines]) => (
                   <section key={groupName} aria-label={groupName}>
-                    <h3 className="text-sm font-semibold text-text mb-3">{groupName}</h3>
+                    <h3 className="mb-3">
+                      <span className={`inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold ${ACCENT[GROUP_ACCENT[groupName] ?? 5]}`}>{groupName}</span>
+                    </h3>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                       {groupVaccines.map(v => {
                         const val       = parseInt(vialInputs[v.id] ?? '0', 10) || 0
@@ -275,6 +288,28 @@ export default function AssignVials() {
           </div>
         </div>
       </form>
+
+      {review && (
+        <ReviewDialog
+          open
+          onClose={() => setReview(null)}
+          onConfirm={confirmSubmit}
+          title="Check before assigning"
+          rows={[
+            { label: 'Worker', value: selectedWorker?.name ?? selectedWorker?.email },
+            { label: 'Date', value: formatDate(occurredOn) },
+          ]}
+          items={review.items.map(it => ({ name: displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name), value: plural(it.vials, 'vial') }))}
+          total={plural(review.items.reduce((s, it) => s + it.vials, 0), 'vial')}
+          warnings={[
+            ...review.items
+              .filter(it => storeMap.has(it.vaccineId) && it.vials > storeMap.get(it.vaccineId))
+              .map(it => `${displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name)}: only ${storeMap.get(it.vaccineId)} vials in store.`),
+            !navigator.onLine && 'You’re offline. This will be saved and sent when you reconnect.',
+          ]}
+          confirmLabel="Assign vials"
+        />
+      )}
     </div>
   )
 }

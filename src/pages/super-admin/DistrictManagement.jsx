@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, ChevronDown, Building2 } from 'lucide-react'
+import { Plus, Pencil, ChevronDown, Building2, Map as MapIcon, Eye, Power, PowerOff } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getDistricts, getDistrict, getDashboard,
@@ -22,6 +22,13 @@ import FilterChips from '../../components/shared/FilterChips'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import Table from '../../components/shared/Table'
+import EntityCard from '../../components/shared/EntityCard'
+import StatusBadge from '../../components/shared/StatusBadge'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
+import { useViewMode } from '../../hooks/useViewMode'
 import { facilityStatus, districtStatus, FILTERS } from '../../lib/status'
 import { formatDate } from '../../lib/format'
 import { groupByTownUc, FacilityHierarchy } from './DistrictDetail'
@@ -68,6 +75,8 @@ export default function DistrictManagement() {
   const [deactivateError, setDeactivateError]   = useState('')
 
   const [toast, setToast]           = useState(null)
+  const [created, setCreated]       = useState(null)
+  const [view, setView]             = useViewMode('admin-districts')
   const [searchQuery, setSearch]    = useState('')
   const [currentPage, setPage]      = useState(1)
   const [expandedId, setExpandedId] = useState(null)
@@ -94,8 +103,8 @@ export default function DistrictManagement() {
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setCreated({ name, province: province.trim() || 'Sindh' })
       setOpen(false); setName(''); setProvince(''); setFormError('')
-      setToast({ message: 'District created successfully.', type: 'success' })
     },
     onError: (err) => setFormError(err.message),
   })
@@ -170,7 +179,7 @@ export default function DistrictManagement() {
     return activeFilter.match(status)
   })
 
-  const ITEMS_PER_PAGE = 10
+  const ITEMS_PER_PAGE = view === 'grid' ? 12 : 10
   const totalPages     = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated      = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
@@ -179,18 +188,40 @@ export default function DistrictManagement() {
   }
 
   const isObserver = user?.role === 'observer'
-  const rowActions = (row) => !isObserver && (
-    <>
-      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
-        <Pencil size={14} strokeWidth={1.75} /> Rename
-      </Button>
-      {row.isActive ? (
-        <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
-      )}
-    </>
+  const rowActions = (row, { withView = false } = {}) => (
+    <RowActions
+      actions={[
+        withView && { icon: Eye, label: 'View district', to: `/super-admin/districts/${row.id}` },
+        !isObserver && { icon: Pencil, label: 'Rename', onClick: () => { setRenaming(row); setRenameValue(row.name); setRenameError('') } },
+        !isObserver && (row.isActive
+          ? { icon: PowerOff, label: 'Deactivate', danger: true, onClick: () => { setDeactivateTarget(row); setDeactivateError('') } }
+          : { icon: Power, label: 'Activate', onClick: () => activateMutation.mutate(row.id), disabled: activateMutation.isPending }),
+      ]}
+    />
   )
+
+  const gridCard = (row) => {
+    const status = districtStatusMap.get(row.id) ?? 'no_data'
+    return (
+      <EntityCard
+        icon={MapIcon}
+        accent={row.isActive ? status : 'no_data'}
+        title={row.name}
+        subtitle={`${row.province ?? 'Sindh'} · added ${formatDate(row.createdAt)}`}
+        badge={<Badge type={row.isActive ? 'active' : 'inactive'} />}
+        meta={[
+          { label: 'Stock', value: <StatusBadge status={status} /> },
+          { label: 'Supervisor', value: row.supervisorName ?? '—' },
+          { label: 'Email', value: row.supervisorEmail ?? '—' },
+        ]}
+        actions={rowActions(row, { withView: true })}
+      />
+    )
+  }
+
+  const emptyMessage = searchQuery || statusFilterIndex !== 0
+    ? `No districts match${searchQuery ? ` “${searchQuery}”` : ''}${statusFilterIndex !== 0 ? ` with status “${activeFilterLabel}”` : ''}.`
+    : 'No districts registered yet.'
 
   return (
     <div>
@@ -211,11 +242,16 @@ export default function DistrictManagement() {
         <div className="flex flex-col gap-4">
           {districts.length > 0 && (
             <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-              <SearchInput
-                value={searchQuery}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                placeholder="Search district by name…"
-              />
+              <div className="flex items-center gap-3 lg:flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <SearchInput
+                    value={searchQuery}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                    placeholder="Search district by name…"
+                  />
+                </div>
+                <ViewToggle value={view} onChange={setView} className="lg:order-last" />
+              </div>
               <FilterChips
                 label="District status"
                 value={FILTERS[statusFilterIndex].label}
@@ -225,6 +261,9 @@ export default function DistrictManagement() {
             </div>
           )}
 
+          {view === 'grid' ? (
+            <Table columns={[]} rows={paginated} loading={isLoading} view="grid" gridCard={gridCard} emptyMessage={emptyMessage} />
+          ) : (
           <Card padding={false}>
             <div className={`hidden sm:grid ${ROW_GRID} gap-6 px-5 py-3 border-b border-surface-border text-xs font-medium text-text-muted`}>
               <span>District</span>
@@ -236,11 +275,7 @@ export default function DistrictManagement() {
             {isLoading ? (
               <SkeletonRows rows={4} />
             ) : paginated.length === 0 ? (
-              <p className="px-6 py-12 text-center text-sm text-text-muted">
-                {searchQuery || statusFilterIndex !== 0
-                  ? `No districts match${searchQuery ? ` “${searchQuery}”` : ''}${statusFilterIndex !== 0 ? ` with status “${activeFilterLabel}”` : ''}.`
-                  : 'No districts registered yet.'}
-              </p>
+              <p className="px-6 py-12 text-center text-sm text-text-muted">{emptyMessage}</p>
             ) : (
               <ul className="divide-y divide-surface-border">
                 {paginated.map((row) => {
@@ -270,7 +305,7 @@ export default function DistrictManagement() {
                           {row.supervisorName ?? <span className="text-text-muted">—</span>}
                         </p>
                         <p className="text-sm text-text truncate pl-6 sm:pl-0">{row.supervisorEmail ?? <span className="text-text-muted">—</span>}</p>
-                        <div className="flex items-center gap-1 sm:justify-end pl-4 sm:pl-0">{rowActions(row)}</div>
+                        <div className="flex items-center gap-1 sm:justify-end pl-4 sm:pl-0">{!isObserver && rowActions(row)}</div>
                       </div>
                       {isExpanded && <div id={panelId}><DistrictExpandedPanel districtId={row.id} /></div>}
                     </li>
@@ -279,6 +314,7 @@ export default function DistrictManagement() {
               </ul>
             )}
           </Card>
+          )}
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
         </div>
@@ -345,6 +381,14 @@ export default function DistrictManagement() {
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
         error={deactivateError}
+      />
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title="District created"
+        message={<>Add towns and union councils under <span className="font-medium">{created?.name}</span>, then assign a district supervisor.</>}
+        rows={created ? [{ label: 'Name', value: created.name }, { label: 'Province', value: created.province }] : []}
       />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

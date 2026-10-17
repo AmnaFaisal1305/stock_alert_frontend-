@@ -1,7 +1,10 @@
 // Facility rows shared by the UC and district dashboards and Facilities pages.
 // `base` is the role's route prefix ('/uc', '/district') for facility detail links.
 import { Link } from 'react-router-dom'
+import { Building2, Eye } from 'lucide-react'
 import StatusBadge from '../shared/StatusBadge'
+import EntityCard from '../shared/EntityCard'
+import RowActions from '../ui/RowActions'
 import { facilityStatus, STATUS_RANK } from '../../lib/status'
 import { timeAgo } from '../../lib/format'
 
@@ -48,6 +51,24 @@ export function facilityColumns(statusOf, base) {
     { key: 'activity', label: 'Last activity', render: (f) => <span className="text-text-muted whitespace-nowrap">{lastActivity(f)}</span> },
     { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
   ]
+}
+
+export function FacilityGridCard({ f, status, base }) {
+  const to = `${base}/facilities/${f.id}`
+  return (
+    <EntityCard
+      icon={Building2}
+      accent={status}
+      title={<Link to={to} className="hover:text-primary hover:underline">{f.name}</Link>}
+      subtitle={[f.ucName, f.townName].filter(Boolean).join(' · ')}
+      badge={<StatusBadge status={status} />}
+      meta={[
+        { label: 'Supervisor', value: f.facilitySupervisorName ?? 'Unstaffed' },
+        { label: 'Last activity', value: lastActivity(f) },
+      ]}
+      actions={<RowActions actions={[{ icon: Eye, label: `View ${f.name}`, to }]} />}
+    />
+  )
 }
 
 export function FacilityMobileCard({ f, status, base }) {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Map as MapIcon, Building2, AlertTriangle, HeartPulse } from 'lucide-react'
 import { getDashboard, getDistricts } from '../../lib/api'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import PageHeader from '../../components/shared/PageHeader'
@@ -161,10 +162,11 @@ export default function SuperAdminDashboard() {
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-            <StatCard label="Districts" value={districts.length} subtitle={`${dCount('critical')} critical · ${dCount('low')} low`} />
-            <StatCard label="Facilities" value={facilities.length} subtitle={`${fCount('no_data')} not updated yet`} />
-            <StatCard label="Critical facilities" value={fCount('critical')} tone={fCount('critical') ? 'critical' : undefined} subtitle={fCount('critical') ? 'Restock now' : 'None critical'} />
+            <StatCard label="Districts" icon={MapIcon} accent={2} value={districts.length} subtitle={`${dCount('critical')} critical · ${dCount('low')} low`} />
+            <StatCard label="Facilities" icon={Building2} accent={1} value={facilities.length} subtitle={`${fCount('no_data')} not updated yet`} />
+            <StatCard label="Critical facilities" icon={AlertTriangle} accent="critical" value={fCount('critical')} tone={fCount('critical') ? 'critical' : undefined} subtitle={fCount('critical') ? 'Restock now' : 'None critical'} />
             <StatCard
+              icon={HeartPulse}
               label="Facilities healthy"
               value={`${healthPct}%`}
               tone={healthPct >= 80 ? 'adequate' : healthPct >= 50 ? 'low' : 'critical'}

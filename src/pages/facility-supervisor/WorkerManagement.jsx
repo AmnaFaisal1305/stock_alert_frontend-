@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, KeyRound, UserX, UserCheck, Syringe } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, deactivateUser, activateUser, resetPassword, createUser } from '../../lib/api'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
 import PageHeader from '../../components/shared/PageHeader'
 import Table from '../../components/shared/Table'
 import ErrorState from '../../components/shared/ErrorState'
+import EntityCard from '../../components/shared/EntityCard'
 import { plural } from '../../lib/format'
+import { useViewMode } from '../../hooks/useViewMode'
 
 const EMPTY_FORM = { firstName: '', lastName: '', zmid: '', email: '', password: '', phone: '', cnic: '' }
 
@@ -25,6 +30,8 @@ export default function WorkerManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [resetError, setResetError]   = useState('')
   const [deactivateTarget, setDeactivateTarget] = useState(null)
+  const [created, setCreated] = useState(null)
+  const [view, setView] = useViewMode('facility-workers')
 
   const { data: userData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const workers     = userData?.users ?? []
@@ -66,6 +73,7 @@ export default function WorkerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setCreated(createForm)
       setCreateOpen(false)
       setCreateForm(EMPTY_FORM)
       setCreateError('')
@@ -82,14 +90,31 @@ export default function WorkerManagement() {
   const field = (key) => ({ value: createForm[key], onChange: (e) => setCreateForm((f) => ({ ...f, [key]: e.target.value })) })
 
   const actions = (w) => (
-    <div className="flex items-center justify-end gap-1">
-      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(w); setResetError('') }}>Reset password</Button>
-      {w.isActive ? (
-        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(w)}>Deactivate</Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(w.id)} disabled={activateMutation.isPending}>Activate</Button>
-      )}
-    </div>
+    <RowActions
+      className="justify-end"
+      actions={[
+        { icon: KeyRound, label: 'Reset password', onClick: () => { setResetTarget(w); setResetError('') } },
+        w.isActive
+          ? { icon: UserX, label: 'Deactivate', danger: true, onClick: () => setDeactivateTarget(w) }
+          : { icon: UserCheck, label: 'Activate', onClick: () => activateMutation.mutate(w.id), disabled: activateMutation.isPending },
+      ]}
+    />
+  )
+
+  const gridCard = (w) => (
+    <EntityCard
+      icon={Syringe}
+      accent={w.isActive ? 'primary' : 'no_data'}
+      title={w.name ?? w.email}
+      subtitle={w.email}
+      badge={<Badge type={w.isActive ? 'active' : 'inactive'} />}
+      meta={[
+        { label: 'ZMID', value: w.zmid },
+        { label: 'Phone', value: w.phone },
+        { label: 'CNIC', value: w.cnic },
+      ]}
+      actions={actions(w)}
+    />
   )
 
   const columns = [
@@ -115,7 +140,12 @@ export default function WorkerManagement() {
         breadcrumb="Facility Supervisor › Team"
         title="Workers"
         subtitle={workers.length ? `${plural(workers.length, 'worker')} · ${activeCount} active` : 'Vaccinators at your facility'}
-        actions={<Button onClick={() => { setCreateOpen(true); setCreateError('') }}><Plus size={16} strokeWidth={1.75} /> Add worker</Button>}
+        actions={
+          <>
+            <ViewToggle value={view} onChange={setView} />
+            <Button onClick={() => { setCreateOpen(true); setCreateError('') }}><Plus size={16} strokeWidth={1.75} /> Add worker</Button>
+          </>
+        }
       />
 
       {isError ? (
@@ -125,6 +155,8 @@ export default function WorkerManagement() {
           columns={columns}
           rows={workers}
           loading={isLoading}
+          view={view}
+          gridCard={gridCard}
           emptyMessage="No workers yet. Add your first vaccinator to start assigning vials."
           mobileCard={(w) => (
             <div className="px-4 py-3.5 flex flex-col gap-2">
@@ -188,6 +220,19 @@ export default function WorkerManagement() {
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
         error={deactivateMutation.error?.message}
+      />
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title="Worker added"
+        message={<>The account is active. Share the password with <span className="font-medium">{created ? `${created.firstName} ${created.lastName}` : ''}</span> in person; you can now assign them vials.</>}
+        rows={created ? [
+          { label: 'Name', value: `${created.firstName} ${created.lastName}` },
+          { label: 'Email', value: created.email },
+          { label: 'ZMID', value: created.zmid },
+          created.phone && { label: 'Phone', value: created.phone },
+        ] : []}
       />
     </div>
   )

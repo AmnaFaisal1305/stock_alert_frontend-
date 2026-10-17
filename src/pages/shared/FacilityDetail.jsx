@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Syringe } from 'lucide-react'
+import { ArrowLeft, Syringe, AlertCircle, TrendingDown, CheckCircle2, HelpCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import ViewToggle from '../../components/ui/ViewToggle'
 import PageHeader from '../../components/shared/PageHeader'
+import EntityCard from '../../components/shared/EntityCard'
 import StatCard from '../../components/shared/StatCard'
 import StatusBadge from '../../components/shared/StatusBadge'
 import Table from '../../components/shared/Table'
@@ -19,12 +21,13 @@ import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
+import { useViewMode } from '../../hooks/useViewMode'
 
 const KPIS = [
-  { key: 'critical', label: 'Critical' },
-  { key: 'low',      label: 'Low' },
-  { key: 'adequate', label: 'Normal' },
-  { key: 'no_data',  label: 'Not updated' },
+  { key: 'critical', label: 'Critical',    icon: AlertCircle },
+  { key: 'low',      label: 'Low',         icon: TrendingDown },
+  { key: 'adequate', label: 'Normal',      icon: CheckCircle2 },
+  { key: 'no_data',  label: 'Not updated', icon: HelpCircle },
 ]
 
 const muted = (text) => <span className="text-text-muted">{text}</span>
@@ -62,12 +65,31 @@ const columns = [
   },
 ]
 
+const gridCard = (v) => {
+  const t = threshold(v)
+  return (
+    <EntityCard
+      icon={Syringe}
+      accent={v.status ?? 'no_data'}
+      title={<span dir="auto">{displayVaccineName(v.vaccineName)}</span>}
+      badge={<StatusBadge status={v.status} />}
+      meta={[
+        { label: 'In stock', value: v.quantity == null ? '—' : `${v.quantity} doses` },
+        { label: 'Low threshold', value: t.doses > 0 ? `${t.doses} doses${t.vials != null ? ` · ${t.vials} vials` : ''}` : 'Not set' },
+        v.thresholdOverridden && { label: 'Threshold', value: 'Facility override' },
+      ]}
+      footnote={v.recordedAt ? `Recorded ${formatDate(v.recordedAt)}` : 'Never recorded'}
+    />
+  )
+}
+
 export default function FacilityDetail() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [view, setView] = useViewMode('facility-detail-stock')
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['facility', id],
@@ -109,12 +131,14 @@ export default function FacilityDetail() {
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-            {KPIS.map(({ key, label }) => {
+            {KPIS.map(({ key, label, icon }) => {
               const value = counts[key] ?? 0
               return (
                 <StatCard
                   key={key}
                   label={label}
+                  icon={icon}
+                  accent={key}
                   value={value}
                   unit={value === 1 ? 'vaccine' : 'vaccines'}
                   tone={value > 0 && key !== 'no_data' ? key : undefined}
@@ -136,13 +160,20 @@ export default function FacilityDetail() {
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                  <SearchInput value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vaccine…" />
+                  <div className="flex items-center gap-3 lg:flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <SearchInput value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vaccine…" />
+                    </div>
+                    <ViewToggle value={view} onChange={setView} />
+                  </div>
                   <FilterChips label="Stock status" value={statusFilter} onChange={setStatusFilter} options={chipOptions} />
                 </div>
                 <Table
                   columns={columns}
                   rows={filteredVaccines}
                   rowKey={(v) => v.vaccineId}
+                  view={view}
+                  gridCard={gridCard}
                   emptyMessage="No vaccines match the search or status filter."
                   mobileCard={(v) => (
                     <div className="px-4 py-3.5 flex items-start justify-between gap-3">

@@ -7,8 +7,12 @@ import PageHeader from './PageHeader'
 import Table from './Table'
 import SearchInput from './SearchInput'
 import ErrorState from './ErrorState'
-import { ROLE_LABELS } from '../../lib/navigation'
+import EntityCard from './EntityCard'
+import RoleTag from './RoleTag'
+import ViewToggle from '../ui/ViewToggle'
+import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
 import { plural } from '../../lib/format'
+import { useViewMode } from '../../hooks/useViewMode'
 
 const dash = <span className="text-text-muted">—</span>
 // UC supervisors carry ucNames (several UCs); facility staff carry one ucName.
@@ -24,14 +28,30 @@ const columns = [
       </div>
     ),
   },
-  { key: 'role', label: 'Role', render: (u) => ROLE_LABELS[u.role] ?? u.role },
+  { key: 'role', label: 'Role', render: (u) => <RoleTag role={u.role} /> },
   { key: 'facility', label: 'Facility', render: (u) => u.facilityName ?? dash },
   { key: 'uc', label: 'Union council', render: (u) => ucOf(u) ?? dash },
   { key: 'status', label: 'Status', render: (u) => <Badge type={u.isActive ? 'active' : 'inactive'} /> },
 ]
 
+const gridCard = (u) => (
+  <EntityCard
+    icon={ROLE_ICON[u.role]}
+    accent={u.isActive ? ROLE_ACCENT[u.role] : 'no_data'}
+    title={u.name ?? u.email}
+    subtitle={u.email}
+    badge={<Badge type={u.isActive ? 'active' : 'inactive'} />}
+    meta={[
+      { label: 'Role', value: <RoleTag role={u.role} /> },
+      { label: 'Facility', value: u.facilityName },
+      { label: 'Union council', value: ucOf(u) },
+    ]}
+  />
+)
+
 export default function UserDirectory({ breadcrumb, scope }) {
   const [search, setSearch] = useState('')
+  const [view, setView] = useViewMode(`users-${scope}`)
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers, staleTime: 30_000 })
 
   const users = data?.users ?? []
@@ -55,12 +75,19 @@ export default function UserDirectory({ breadcrumb, scope }) {
       ) : (
         <div className="flex flex-col gap-4">
           {users.length > 0 && (
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, facility or UC…" />
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, facility or UC…" />
+              </div>
+              <ViewToggle value={view} onChange={setView} />
+            </div>
           )}
           <Table
             columns={columns}
             rows={filtered}
             loading={isLoading}
+            view={view}
+            gridCard={gridCard}
             emptyMessage={search ? `No users match “${search}”.` : `No users in your ${scope} yet.`}
             mobileCard={(u) => (
               <div className="px-4 py-3.5 flex items-start justify-between gap-3">

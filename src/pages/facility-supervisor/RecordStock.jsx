@@ -7,6 +7,8 @@ import {
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import DatePicker from '../../components/ui/DatePicker'
+import { ReviewPanel, SummaryDialog } from '../../components/ui/ReviewDialog'
+import { plural, formatDate } from '../../lib/format'
 import Modal from '../../components/ui/Modal'
 import Textarea from '../../components/ui/Textarea'
 import Toast from '../../components/ui/Toast'
@@ -17,12 +19,14 @@ import { OPEN_STAGES } from '../../lib/stockRequests'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const CAN_RECEIVE = new Set(['awaiting_both', 'awaiting_received'])
+const vaccineLabel = (vaccines, id) => displayVaccineName(vaccines.find(v => v.id === id)?.name ?? '—')
 
 // ── Raise request ──────────────────────────────────────────────────────────────
 function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
   const [quantities, setQuantities] = useState({})
   const [note,  setNote]  = useState('')
   const [error, setError] = useState(null)
+  const [reviewing, setReviewing] = useState(false)
 
   const items = vaccines
     .map(v => ({ vaccineId: v.id, requestedVials: parseInt(quantities[v.id], 10) || 0 }))
@@ -31,8 +35,21 @@ function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
   function handleSubmit(e) {
     e.preventDefault()
     if (!items.length) { setError('Enter at least 1 vial for one vaccine.'); return }
-    onSubmit({ items, ...(note.trim() ? { note: note.trim() } : {}) })
+    setReviewing(true)
   }
+
+  if (reviewing) return (
+    <ReviewPanel
+      intro="This goes to your UC supervisor, who records what they send."
+      items={items.map(it => ({ name: vaccineLabel(vaccines, it.vaccineId), value: plural(it.requestedVials, 'vial') }))}
+      total={plural(items.reduce((s, it) => s + it.requestedVials, 0), 'vial')}
+      rows={note.trim() ? [{ label: 'Note', value: note.trim() }] : []}
+      onClose={() => setReviewing(false)}
+      onConfirm={() => onSubmit({ items, ...(note.trim() ? { note: note.trim() } : {}) })}
+      confirmLabel="Send request"
+      isPending={isPending}
+    />
+  )
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -73,6 +90,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
   )
   const [note,  setNote]  = useState('')
   const [error, setError] = useState(null)
+  const [review, setReview] = useState(null)
 
   function update(idx, field, value) {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
@@ -94,7 +112,33 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
       return base
     })
     if (payload.includes(null)) return
-    onSubmit({ items: payload, ...(note.trim() ? { note: note.trim() } : {}) })
+    setReview({ items: payload, ...(note.trim() ? { note: note.trim() } : {}) })
+  }
+
+  if (review) {
+    const name = (id) => displayVaccineName(items.find(it => it.vaccineId === id)?.vaccineName)
+    const short = review.items.filter(it => {
+      const sent = items.find(x => x.vaccineId === it.vaccineId)?.sentVials
+      return sent != null && it.receivedVials !== sent
+    })
+    return (
+      <div className="rounded-control border border-surface-border p-4">
+        <h3 className="text-sm font-semibold text-text mb-3">Check what arrived</h3>
+        <ReviewPanel
+          items={review.items.map(it => ({
+            name: name(it.vaccineId),
+            value: it.receivedVials ? `${plural(it.receivedVials, 'vial')} · batch ${it.batchNo} · exp ${formatDate(it.expiryDate)}` : 'none received',
+          }))}
+          total={plural(review.items.reduce((s, it) => s + it.receivedVials, 0), 'vial')}
+          rows={review.note ? [{ label: 'Note', value: review.note }] : []}
+          warnings={[short.length > 0 && `${short.map(it => name(it.vaccineId)).join(', ')}: received differs from what was sent, so the request will show figures differ.`]}
+          onClose={() => setReview(null)}
+          onConfirm={() => onSubmit(review)}
+          confirmLabel="Save received"
+          isPending={isPending}
+        />
+      </div>
+    )
   }
 
   return (
@@ -132,7 +176,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
 }
 
 // ── Per-request actions (facility supervisor) ──────────────────────────────────
-function RequestActions({ req }) {
+function RequestActions({ req, onReceived }) {
   const qc = useQueryClient()
   const [showReceive,   setShowReceive]   = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
@@ -146,10 +190,11 @@ function RequestActions({ req }) {
 
   const receiveMutation = useMutation({
     mutationFn: (payload) => recordReceived(req.id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       qc.invalidateQueries({ queryKey: ['stock-requests'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowReceive(false)
+      onReceived(req, payload)
     },
     onError: (err) => setMutError(err.message || 'Failed to record received. Please try again.'),
   })
@@ -218,6 +263,8 @@ export default function RecordStock() {
   const qc = useQueryClient()
   const [showRaise, setShowRaise] = useState(false)
   const [toast,     setToast]     = useState(null)
+  const [sent,      setSent]      = useState(null)
+  const [received,  setReceived]  = useState(null)
 
   const { data: reqData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['stock-requests'],
@@ -233,11 +280,11 @@ export default function RecordStock() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => createStockRequest(payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       qc.invalidateQueries({ queryKey: ['stock-requests'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowRaise(false)
-      setToast({ message: 'Request sent to your UC supervisor.', type: 'success' })
+      setSent(payload)
     },
     onError: (err) => setToast({ message: err.message || 'Failed to raise request. Please try again.', type: 'error' }),
   })
@@ -258,7 +305,7 @@ export default function RecordStock() {
         error={error}
         onRetry={refetch}
         emptyHint="Raise a request when stock runs low. It goes to your UC supervisor."
-        renderActions={(req) => <RequestActions req={req} />}
+        renderActions={(req) => <RequestActions req={req} onReceived={(r, payload) => setReceived({ req: r, payload })} />}
       />
 
       <Modal open={showRaise} onClose={() => setShowRaise(false)} title="Raise stock request">
@@ -266,6 +313,28 @@ export default function RecordStock() {
           ? <SkeletonRows rows={4} />
           : <RaiseForm vaccines={vaccineData?.vaccines ?? []} onCancel={() => setShowRaise(false)} onSubmit={(p) => createMutation.mutate(p)} isPending={createMutation.isPending} />}
       </Modal>
+
+      {sent && (
+        <SummaryDialog
+          open
+          onClose={() => setSent(null)}
+          title="Request sent"
+          message="Your UC supervisor has it. You’ll record what arrives here."
+          items={sent.items.map(it => ({ name: vaccineLabel(vaccineData?.vaccines ?? [], it.vaccineId), value: plural(it.requestedVials, 'vial') }))}
+          total={plural(sent.items.reduce((s, it) => s + it.requestedVials, 0), 'vial')}
+        />
+      )}
+
+      {received && (
+        <SummaryDialog
+          open
+          onClose={() => setReceived(null)}
+          title="Stock received"
+          message="Saved. The vials are added to your store."
+          items={received.payload.items.map(it => ({ name: displayVaccineName(received.req.items?.find(x => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.receivedVials, 'vial') }))}
+          total={plural(received.payload.items.reduce((s, it) => s + it.receivedVials, 0), 'vial')}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, UserPlus } from 'lucide-react'
+import { Plus, Pencil, UserPlus, Building2, Eye, Power, PowerOff } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, createUser } from '../../lib/api'
@@ -22,6 +22,11 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
+import EntityCard from '../../components/shared/EntityCard'
+import { useViewMode } from '../../hooks/useViewMode'
 
 export default function SuperAdminFacilityManagement() {
   const { user } = useAuth()
@@ -43,6 +48,8 @@ export default function SuperAdminFacilityManagement() {
   const [createSupError, setCreateSupError]   = useState('')
 
   const [toast, setToast]        = useState(null)
+  const [created, setCreated]    = useState(null)
+  const [view, setView]          = useViewMode('admin-facilities')
   const [searchQuery, setSearch] = useState('')
   const [currentPage, setPage]   = useState(1)
   const debouncedSearch = useDebounce(searchQuery)
@@ -76,10 +83,18 @@ export default function SuperAdminFacilityManagement() {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['districts'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setCreated({
+        title: 'Facility created',
+        message: <>Next, add a facility supervisor for <span className="font-medium">{form.name}</span> so stock can be recorded.</>,
+        rows: [
+          { label: 'Name', value: form.name },
+          { label: 'District', value: districtMap[form.districtId] ?? '—' },
+          { label: 'Union council', value: filteredUCOptions.find((o) => o.value === form.ucId)?.label ?? '—' },
+        ],
+      })
       setOpen(false)
       setForm({ name: '', districtId: '', ucId: '' })
       setFormError('')
-      setToast({ message: 'Facility created successfully.', type: 'success' })
     },
     onError: (err) => setFormError(err.message),
   })
@@ -131,10 +146,20 @@ export default function SuperAdminFacilityManagement() {
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      const name = `${createSupForm.firstName} ${createSupForm.lastName}`.trim()
+      setCreated({
+        title: 'Facility supervisor created',
+        message: <>The account is active. Share the password with <span className="font-medium">{name}</span> over a secure channel.</>,
+        rows: [
+          { label: 'Name', value: name },
+          { label: 'Email', value: createSupForm.email },
+          { label: 'ZMID', value: createSupForm.zmid },
+          { label: 'Facility', value: createSupTarget.name },
+        ],
+      })
       setCreateSupTarget(null)
       setCreateSupForm(EMPTY_FAC_SUP_FORM)
       setCreateSupError('')
-      setToast({ message: 'Facility supervisor created successfully.', type: 'success' })
     },
     onError: (err) => setCreateSupError(
       err.status === 409 && err.body?.error?.includes('ZMID')
@@ -164,7 +189,7 @@ export default function SuperAdminFacilityManagement() {
     return matchesSearch && matchesStatus
   })
 
-  const ITEMS_PER_PAGE = 10
+  const ITEMS_PER_PAGE = view === 'grid' ? 12 : 10
   const totalPages  = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated   = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
@@ -175,18 +200,34 @@ export default function SuperAdminFacilityManagement() {
   const openCreateSup = (row) => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }
   const statusOf = (f) => statusByFacilityId.get(f.id) ?? 'no_data'
 
-  const actions = (row) => !readOnly && (
-    <div className="flex flex-wrap items-center justify-end gap-1">
-      {!row.facilitySupervisorName && row.isActive && (
-        <Button variant="ghost" size="sm" onClick={() => openCreateSup(row)}><UserPlus size={14} strokeWidth={1.75} /> Add supervisor</Button>
-      )}
-      <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={14} strokeWidth={1.75} /> Rename</Button>
-      {row.isActive ? (
-        <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}>Deactivate</Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
-      )}
-    </div>
+  const actions = (row, { withView = false } = {}) => (
+    <RowActions
+      className="justify-end"
+      actions={[
+        withView && { icon: Eye, label: 'View facility', to: `/super-admin/facilities/${row.id}` },
+        !readOnly && !row.facilitySupervisorName && row.isActive && { icon: UserPlus, label: 'Add supervisor', onClick: () => openCreateSup(row) },
+        !readOnly && { icon: Pencil, label: 'Rename', onClick: () => openRename(row) },
+        !readOnly && (row.isActive
+          ? { icon: PowerOff, label: 'Deactivate', danger: true, onClick: () => openDeactivate(row) }
+          : { icon: Power, label: 'Activate', onClick: () => activateMutation.mutate(row.id), disabled: activateMutation.isPending }),
+      ]}
+    />
+  )
+
+  const gridCard = (row) => (
+    <EntityCard
+      icon={Building2}
+      accent={row.isActive ? statusOf(row) : 'no_data'}
+      title={row.name}
+      subtitle={[districtMap[row.districtId], row.ucName].filter(Boolean).join(' · ') || undefined}
+      badge={<Badge type={row.isActive ? 'active' : 'inactive'} />}
+      meta={[
+        { label: 'Stock', value: <StatusBadge status={statusOf(row)} /> },
+        { label: 'Supervisor', value: row.facilitySupervisorName ?? 'Unstaffed' },
+      ]}
+      footnote={activeNote(row)}
+      actions={actions(row, { withView: true })}
+    />
   )
 
   const activeNote = (row) => row.isActive
@@ -233,7 +274,12 @@ export default function SuperAdminFacilityManagement() {
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-            <SearchInput value={searchQuery} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility or district…" />
+            <div className="flex items-center gap-3 lg:flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <SearchInput value={searchQuery} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility or district…" />
+              </div>
+              <ViewToggle value={view} onChange={setView} className="lg:order-last" />
+            </div>
             <FilterChips
               label="Stock status"
               value={statusFilter}
@@ -245,6 +291,8 @@ export default function SuperAdminFacilityManagement() {
             columns={columns}
             rows={paginated}
             loading={isLoading}
+            view={view}
+            gridCard={gridCard}
             emptyMessage={searchQuery ? `No facilities match “${searchQuery}”.` : 'No facilities in this view.'}
             mobileCard={(row) => (
               <div className="px-4 py-3.5 flex flex-col gap-2">
@@ -258,7 +306,7 @@ export default function SuperAdminFacilityManagement() {
                   <StatusBadge status={statusOf(row)} />
                 </div>
                 {!row.isActive && <div><Badge type="inactive" /></div>}
-                {actions(row)}
+                {!readOnly && actions(row)}
               </div>
             )}
           />
@@ -353,6 +401,14 @@ export default function SuperAdminFacilityManagement() {
           </div>
         </form>
       </Modal>
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title={created?.title}
+        message={created?.message}
+        rows={created?.rows ?? []}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

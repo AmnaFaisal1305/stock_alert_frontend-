@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Building2 } from 'lucide-react'
+import { ArrowLeft, Building2, AlertTriangle, TrendingDown, CheckCircle2, CircleDashed } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getDistrict } from '../../lib/api'
 import { buttonClasses } from '../../components/ui/Button'
@@ -120,10 +120,10 @@ export default function DistrictDetail() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {/* statusCounts counts facility × vaccine lines, not facilities (Round 35). */}
-            <StatCard label="Critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Vaccine lines to restock now" />
-            <StatCard label="Low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Vaccine lines to plan for" />
-            <StatCard label="Normal" value={sc.adequate ?? 0} subtitle="Vaccine lines in good stock" />
-            <StatCard label="Not updated" value={sc.no_data ?? 0} subtitle="Vaccine lines never recorded" />
+            <StatCard label="Critical" icon={AlertTriangle} accent="critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Vaccine lines to restock now" />
+            <StatCard label="Low" icon={TrendingDown} accent="low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Vaccine lines to plan for" />
+            <StatCard label="Normal" icon={CheckCircle2} accent="adequate" value={sc.adequate ?? 0} subtitle="Vaccine lines in good stock" />
+            <StatCard label="Not updated" icon={CircleDashed} accent="no_data" value={sc.no_data ?? 0} subtitle="Vaccine lines never recorded" />
           </div>
 
           {towns.length === 0

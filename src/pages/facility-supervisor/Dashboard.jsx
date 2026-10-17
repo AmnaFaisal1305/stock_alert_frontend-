@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, AlertTriangle, ArrowRight, Syringe } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowRight, Syringe, TrendingDown, CheckCircle2, CircleDashed } from 'lucide-react'
 import { getDashboard, getAuditLog, getVaccines } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
@@ -16,6 +16,8 @@ import Button, { buttonClasses } from '../../components/ui/Button'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { timeAgo, plural } from '../../lib/format'
+
+const STATUS_ICON = { critical: AlertTriangle, low: TrendingDown, adequate: CheckCircle2, no_data: CircleDashed }
 
 const KPI_ORDER = [
   { status: 'critical', label: 'Critical',     context: (n) => (n ? 'Needs immediate action' : 'None right now') },
@@ -194,6 +196,8 @@ export default function FacilityDashboard() {
               <StatCard
                 key={status}
                 label={label}
+                icon={STATUS_ICON[status]}
+                accent={status}
                 value={counts[status]}
                 tone={counts[status] > 0 && status !== 'no_data' ? status : undefined}
                 subtitle={context(counts[status])}

@@ -9,9 +9,9 @@ import SearchInput from '../shared/SearchInput'
 import FilterChips from '../shared/FilterChips'
 import Pagination from '../shared/Pagination'
 import ErrorState from '../shared/ErrorState'
-import { STATUS_FILTERS, facilityStatusMap, countByStatus, facilityColumns, FacilityMobileCard } from './facilityTable'
-
-const PER_PAGE = 10
+import ViewToggle from '../ui/ViewToggle'
+import { useViewMode } from '../../hooks/useViewMode'
+import { STATUS_FILTERS, facilityStatusMap, countByStatus, facilityColumns, FacilityMobileCard, FacilityGridCard } from './facilityTable'
 
 export function useFacilityList() {
   return useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
@@ -20,6 +20,8 @@ export function useFacilityList() {
 export default function FacilityDirectory({ base, query }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [view, setView] = useViewMode(`facilities${base.replace('/', '-')}`)
+  const PER_PAGE = view === 'grid' ? 12 : 10
   const debounced = useDebounce(search)
   const [params, setParams] = useSearchParams()
   const filter = params.get('filter') ?? 'all'
@@ -51,7 +53,12 @@ export default function FacilityDirectory({ base, query }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <SearchInput value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility, UC or town…" />
+        <div className="flex items-center gap-3 lg:flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <SearchInput value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility, UC or town…" />
+          </div>
+          <ViewToggle value={view} onChange={(v) => { setView(v); setPage(1) }} />
+        </div>
         <FilterChips
           label="Stock status"
           value={filter}
@@ -63,6 +70,8 @@ export default function FacilityDirectory({ base, query }) {
         columns={columns}
         rows={rows}
         loading={isLoading}
+        view={view}
+        gridCard={(f) => <FacilityGridCard f={f} status={statusOf(f)} base={base} />}
         emptyMessage={search ? `No facilities match “${search}”.` : 'No facilities in this view.'}
         mobileCard={(f) => <FacilityMobileCard f={f} status={statusOf(f)} base={base} />}
       />
