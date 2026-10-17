@@ -249,6 +249,10 @@ export async function deleteVaccine(id) {
   return request('DELETE', `/api/vaccines/${id}`, {})
 }
 
+export async function updateFacilityVaccine(facilityId, vaccineId, payload) {
+  return request('PUT', `/api/facilities/${facilityId}/vaccines/${vaccineId}`, payload)
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export async function getDashboard(params) {
