@@ -111,6 +111,16 @@ export const NAV = {
   },
 }
 
+export const ROLE_LABELS = {
+  super_admin:         'Super Admin',
+  district_supervisor: 'District Supervisor',
+  uc_supervisor:       'UC Supervisor',
+  facility_supervisor: 'Facility Supervisor',
+  facility_worker:     'Facility Worker',
+  facility_head:       'Facility Head',
+  observer:            'Observer',
+}
+
 export function navFor(role) {
   return NAV[role] ?? { section: 'Navigation', groups: [] }
 }

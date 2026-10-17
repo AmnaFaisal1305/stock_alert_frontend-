@@ -5,6 +5,7 @@ import { getDashboard, getApprovals, createApproval, cancelApproval } from '../.
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import Textarea from '../../components/ui/Textarea'
 import Tabs from '../../components/ui/Tabs'
 import PageHeader from '../../components/shared/PageHeader'
 import Card, { CardHeader } from '../../components/shared/Card'
@@ -15,8 +16,6 @@ import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 
 const TYPE_LABEL = { stock_correction: 'Stock correction', threshold_change: 'Threshold change' }
-
-const textareaCls = 'w-full rounded-control border border-surface-border bg-surface px-3.5 py-2.5 text-sm text-text focus:outline-none focus:ring-[3px] focus:ring-primary/10 focus:border-primary resize-none placeholder:text-text-muted'
 
 function FormMessage({ error, done }) {
   if (error) return <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{error}</p>
@@ -47,7 +46,7 @@ function RequestItem({ a, onCancel, cancelling }) {
             : <span>reset to default</span>)}
         </p>
         {a.note && <p className="text-xs text-text-muted mt-1">“{a.note}”</p>}
-        {a.status === 'rejected' && a.rejectionReason && <p className="text-xs text-danger-dark mt-1">Rejected: {a.rejectionReason}</p>}
+        {a.status === 'rejected' && (a.decisionReason ?? a.rejectionReason) && <p className="text-xs text-danger-dark mt-1">Rejected: {a.decisionReason ?? a.rejectionReason}</p>}
       </div>
       {onCancel && (
         <Button variant="ghost" size="sm" onClick={() => onCancel(a.id)} disabled={cancelling} aria-label={`Withdraw ${TYPE_LABEL[a.type]} for ${a.vaccineName}`}>
@@ -203,19 +202,16 @@ export default function Approvals() {
                 onChange={e => { setCorrStoreVials(e.target.value); setCorrDone(false); setCorrError(null) }}
                 placeholder="0"
               />
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="corr-note" className="text-sm font-medium text-text">Reason <span className="text-text-muted font-normal">(required)</span></label>
-                <textarea
-                  id="corr-note"
-                  value={corrNote}
-                  onChange={e => { setCorrNote(e.target.value); setCorrDone(false); setCorrError(null) }}
-                  maxLength={500}
-                  rows={3}
-                  placeholder="e.g. Physical count on 10 Oct confirmed 12 vials in store"
-                  className={textareaCls}
-                />
-                <p className="text-xs text-text-muted text-right tabular-nums">{corrNote.length}/500</p>
-              </div>
+              <Textarea
+                id="corr-note"
+                label="Reason"
+                required
+                showCount
+                rows={3}
+                value={corrNote}
+                onChange={e => { setCorrNote(e.target.value); setCorrDone(false); setCorrError(null) }}
+                placeholder="e.g. Physical count on 10 Oct confirmed 12 vials in store"
+              />
               <FormMessage error={corrError} done={corrDone} />
               <div>
                 <Button onClick={() => corrMutation.mutate()} disabled={!corrValid || corrMutation.isPending}>
@@ -259,18 +255,13 @@ export default function Approvals() {
                   ))}
                 </div>
               )}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="thr-note" className="text-sm font-medium text-text">Reason <span className="text-text-muted font-normal">(optional)</span></label>
-                <textarea
-                  id="thr-note"
-                  value={thrNote}
-                  onChange={e => setThrNote(e.target.value)}
-                  maxLength={500}
-                  rows={2}
-                  placeholder="Why does this facility need different thresholds?"
-                  className={textareaCls}
-                />
-              </div>
+              <Textarea
+                id="thr-note"
+                label="Reason"
+                value={thrNote}
+                onChange={e => setThrNote(e.target.value)}
+                placeholder="Why does this facility need different thresholds?"
+              />
               <FormMessage error={thrError} done={thrDone} />
               <div>
                 <Button onClick={() => thrMutation.mutate()} disabled={!thrValid || thrMutation.isPending}>

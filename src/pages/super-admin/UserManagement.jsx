@@ -265,7 +265,7 @@ export default function UserManagement() {
               <RotateCcw size={12} /> Reset Password
             </Button>
             {row.isActive ? (
-              <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}>
+              <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}>
                 <UserX size={12} /> Deactivate
               </Button>
             ) : (
@@ -372,7 +372,7 @@ export default function UserManagement() {
                       )}
                       <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><RotateCcw size={12} /> Reset Pwd</Button>
                       {row.isActive ? (
-                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
+                        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
                       ) : (
                         <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
                       )}

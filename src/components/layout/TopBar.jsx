@@ -6,7 +6,7 @@ import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
-import { scopeLabel } from '../../lib/navigation'
+import { scopeLabel, ROLE_LABELS } from '../../lib/navigation'
 
 function useOnline() {
   return useSyncExternalStore(
@@ -20,16 +20,6 @@ function useQueueState() {
   const pending    = useSyncExternalStore(subscribe, () => getQueue().filter(i => i.status === 'pending').length, () => 0)
   const lastSynced = useSyncExternalStore(subscribe, getLastSynced, () => null)
   return { pending, lastSynced }
-}
-
-const ROLE_LABELS = {
-  super_admin:         'Super Admin',
-  district_supervisor: 'District Supervisor',
-  uc_supervisor:       'UC Supervisor',
-  facility_supervisor: 'Facility Supervisor',
-  facility_worker:     'Facility Worker',
-  facility_head:       'Facility Head',
-  observer:            'Observer',
 }
 
 const iconBtn = 'w-9 h-9 rounded-control grid place-items-center text-text-muted hover:bg-surface-chip hover:text-text transition-colors'

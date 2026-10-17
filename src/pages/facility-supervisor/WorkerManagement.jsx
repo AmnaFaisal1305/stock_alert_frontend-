@@ -85,7 +85,7 @@ export default function WorkerManagement() {
     <div className="flex items-center justify-end gap-1">
       <Button variant="ghost" size="sm" onClick={() => { setResetTarget(w); setResetError('') }}>Reset password</Button>
       {w.isActive ? (
-        <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger-dark hover:bg-danger-bg" onClick={() => setDeactivateTarget(w)}>Deactivate</Button>
+        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(w)}>Deactivate</Button>
       ) : (
         <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(w.id)} disabled={activateMutation.isPending}>Activate</Button>
       )}

@@ -1,142 +1,130 @@
 import { useState } from 'react'
-import { ClipboardCheck, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Check, X, ClipboardCheck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApprovals, approveApproval, rejectApproval } from '../../lib/api'
 import Button from '../../components/ui/Button'
+import Tabs from '../../components/ui/Tabs'
+import Textarea from '../../components/ui/Textarea'
 import Toast from '../../components/ui/Toast'
+import PageHeader from '../../components/shared/PageHeader'
+import Card from '../../components/shared/Card'
+import StatusBadge from '../../components/shared/StatusBadge'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { formatDate } from '../../lib/format'
 
-const TABS = ['Pending', 'History']
+const TYPE_LABEL = { stock_correction: 'Stock correction', threshold_change: 'Threshold change' }
 
-const STATUS_COLORS = {
-  pending:   'bg-amber-100 text-amber-700',
-  approved:  'bg-green-100 text-green-700',
-  rejected:  'bg-red-100 text-red-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+const thresholdText = (t) => `critical ${t.criticalDoses}d / ${t.criticalVials}v · low ${t.lowDoses}d / ${t.lowVials}v`
+
+// "Now → proposed" on one line so the head can decide without opening anything.
+function Change({ a }) {
+  if (a.type === 'stock_correction') {
+    return (
+      <p className="text-sm tabular-nums">
+        <span className="text-text-muted">Store</span>{' '}
+        {a.current && <><span className="text-text-muted">{a.current.storeVials} →</span>{' '}</>}
+        <span className="font-medium text-text">{a.payload?.storeVials} vials</span>
+      </p>
+    )
+  }
+  const next = a.payload?.thresholds
+  return (
+    <div className="text-sm tabular-nums flex flex-col gap-0.5">
+      {a.current && (
+        <p className="text-text-muted">
+          Now {thresholdText(a.current)}{a.current.thresholdOverridden && ' (facility override)'}
+        </p>
+      )}
+      <p className="font-medium text-text">{next ? `New ${thresholdText(next)}` : 'Reset to vaccine default'}</p>
+    </div>
+  )
 }
 
-function ApprovalRow({ a, onApprove, onReject, approvePending, rejectPending }) {
-  const [rejectMode, setRejectMode] = useState(false)
+function PendingItem({ a, onApprove, onReject, busy }) {
+  const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
 
   return (
-    <div className="bg-surface rounded-xl border border-surface-border p-4 space-y-3">
-      <div className="flex items-start justify-between gap-2 flex-wrap">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-500'}`}>
-              {a.type === 'stock_correction' ? 'Stock Correction' : 'Threshold Change'}
-            </span>
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Clock size={11} /> Pending
-            </span>
-          </div>
-          <p className="text-sm font-semibold text-text">{displayVaccineName(a.vaccineName)}</p>
-          <p className="text-xs text-text-muted">Requested by <strong>{a.requestedByName}</strong></p>
+    <li className="px-4 sm:px-5 py-4 flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          <p className="text-sm font-medium text-text">
+            {displayVaccineName(a.vaccineName)} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
+          </p>
+          <Change a={a} />
+          <p className="text-xs text-text-muted">
+            From {a.requestedByName ?? 'facility supervisor'}{a.createdAt && <> · {formatDate(a.createdAt, { withYear: false })}</>}
+            {a.note && <> · “{a.note}”</>}
+          </p>
         </div>
+        {!rejecting && (
+          <div className="flex gap-2 flex-shrink-0">
+            <Button size="sm" onClick={() => onApprove(a.id)} disabled={busy}>
+              <Check size={14} strokeWidth={1.75} /> Approve
+            </Button>
+            <Button size="sm" variant="ghost-danger" onClick={() => setRejecting(true)} disabled={busy}>
+              <X size={14} strokeWidth={1.75} /> Reject
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Current vs. proposed */}
-      {a.type === 'stock_correction' && a.current && (
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-surface-alt rounded-lg p-3">
-            <p className="text-xs text-text-muted mb-1">Current store</p>
-            <p className="font-semibold text-text">{a.current.storeVials} vials</p>
-          </div>
-          <div className="bg-primary/5 rounded-lg p-3">
-            <p className="text-xs text-text-muted mb-1">Proposed store</p>
-            <p className="font-semibold text-primary">{a.payload?.storeVials} vials</p>
-          </div>
-        </div>
-      )}
-
-      {a.type === 'threshold_change' && a.current && (
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-surface-alt rounded-lg p-3 space-y-1">
-            <p className="text-xs text-text-muted mb-1">Current thresholds</p>
-            <p className="text-xs text-text">Critical: {a.current.criticalDoses}d / {a.current.criticalVials}v</p>
-            <p className="text-xs text-text">Low: {a.current.lowDoses}d / {a.current.lowVials}v</p>
-            {a.current.thresholdOverridden && <p className="text-xs text-amber-600">(facility override)</p>}
-          </div>
-          <div className="bg-primary/5 rounded-lg p-3 space-y-1">
-            <p className="text-xs text-text-muted mb-1">Proposed thresholds</p>
-            {a.payload?.thresholds ? (
-              <>
-                <p className="text-xs text-primary">Critical: {a.payload.thresholds.criticalDoses}d / {a.payload.thresholds.criticalVials}v</p>
-                <p className="text-xs text-primary">Low: {a.payload.thresholds.lowDoses}d / {a.payload.thresholds.lowVials}v</p>
-              </>
-            ) : (
-              <p className="text-xs text-primary">Reset to vaccine default</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {a.note && <p className="text-xs text-text-muted italic">Note: "{a.note}"</p>}
-
-      {!rejectMode ? (
-        <div className="flex gap-2">
-          <Button
-            onClick={() => onApprove(a.id)}
-            disabled={approvePending}
-            className="flex items-center gap-1.5"
-          >
-            <CheckCircle2 size={14} /> Approve
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setRejectMode(true)}
-            className="flex items-center gap-1.5 text-danger border-danger/30 hover:bg-danger/5"
-          >
-            <XCircle size={14} /> Reject
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <textarea
+      {rejecting && (
+        <div className="rounded-control bg-danger-bg p-4 flex flex-col gap-3">
+          <Textarea
+            id={`reject-${a.id}`}
+            label="Reason for rejecting"
+            required
             value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="Reason for rejection (required)"
-            rows={2}
-            maxLength={500}
-            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-danger/30 resize-none"
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="The supervisor sees this with the rejected request"
+            autoFocus
           />
           <div className="flex gap-2">
-            <Button
-              onClick={() => { onReject(a.id, reason); setRejectMode(false); setReason('') }}
-              disabled={!reason.trim() || rejectPending}
-              className="bg-danger hover:bg-danger/90 flex items-center gap-1.5"
-            >
-              <XCircle size={14} /> Confirm Reject
+            <Button variant="danger" size="sm" onClick={() => onReject(a.id, reason.trim())} disabled={!reason.trim() || busy}>
+              Reject request
             </Button>
-            <Button variant="outline" onClick={() => { setRejectMode(false); setReason('') }}>
-              Cancel
-            </Button>
+            <Button variant="secondary" size="sm" onClick={() => { setRejecting(false); setReason('') }}>Keep it</Button>
           </div>
         </div>
       )}
-    </div>
+    </li>
+  )
+}
+
+function HistoryItem({ a }) {
+  const reason = a.decisionReason ?? a.rejectionReason
+  return (
+    <li className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <p className="text-sm font-medium text-text">
+          {displayVaccineName(a.vaccineName)} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
+        </p>
+        <Change a={a} />
+        <p className="text-xs text-text-muted">
+          From {a.requestedByName ?? 'facility supervisor'}
+          {a.decidedAt && <> · decided {formatDate(a.decidedAt, { withYear: false })}</>}
+        </p>
+        {reason && <p className="text-xs text-text-muted">Reason: “{reason}”</p>}
+      </div>
+      <StatusBadge kind="workflow" status={a.status} />
+    </li>
   )
 }
 
 export default function FacilityHeadApprovals() {
   const qc = useQueryClient()
-  const [tab, setTab] = useState(0)
+  const [view, setView] = useState('pending')
   const [toast, setToast] = useState(null)
 
-  const { data: pendingData, isLoading: pendingLoading } = useQuery({
-    queryKey: ['approvals', 'pending'],
-    queryFn: () => getApprovals('pending'),
-  })
+  const pendingQ = useQuery({ queryKey: ['approvals', 'pending'], queryFn: () => getApprovals('pending') })
+  const historyQ = useQuery({ queryKey: ['approvals', 'history'], queryFn: () => getApprovals(), enabled: view === 'history' })
 
-  const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['approvals', 'history'],
-    queryFn: () => getApprovals(),
-    enabled: tab === 1,
-  })
-
-  const pending = pendingData?.approvals ?? []
-  const history = (historyData?.approvals ?? []).filter(a => a.status !== 'pending')
+  const pending = pendingQ.data?.approvals ?? []
+  const history = (historyQ.data?.approvals ?? []).filter((a) => a.status !== 'pending')
 
   const approveMutation = useMutation({
     mutationFn: (id) => approveApproval(id),
@@ -144,6 +132,7 @@ export default function FacilityHeadApprovals() {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setToast({ message: 'Approved. The change is applied.', type: 'success' })
     },
     onError: (err) => setToast({ message: err.message || 'Failed to approve. Please try again.', type: 'error' }),
   })
@@ -153,81 +142,59 @@ export default function FacilityHeadApprovals() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
+      setToast({ message: 'Rejected. The supervisor can see your reason.', type: 'success' })
     },
     onError: (err) => setToast({ message: err.message || 'Failed to reject. Please try again.', type: 'error' }),
   })
 
+  const q = view === 'pending' ? pendingQ : historyQ
+  const items = view === 'pending' ? pending : history
+  const busy = approveMutation.isPending || rejectMutation.isPending
+
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <ClipboardCheck size={22} className="text-primary" />
-        <div>
-          <h1 className="text-xl font-bold text-text">Approvals</h1>
-          <p className="text-sm text-text-muted">Review stock corrections and threshold changes</p>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        breadcrumb="Facility Head › Daily work"
+        title="Approvals"
+        subtitle="Stock corrections and threshold changes from your facility supervisor"
+      />
 
-      <div className="flex gap-2 border-b border-surface-border">
-        {TABS.map((t, i) => (
-          <button
-            key={t}
-            onClick={() => setTab(i)}
-            className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${tab === i ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text'}`}
-          >
-            {t}
-            {i === 0 && pending.length > 0 && (
-              <span className="ml-1.5 bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">{pending.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="Approvals"
+        value={view}
+        onChange={setView}
+        tabs={[{ value: 'pending', label: 'Waiting for you', count: pending.length }, { value: 'history', label: 'History' }]}
+        className="mb-4"
+      />
 
-      {/* Pending tab */}
-      {tab === 0 && (
-        <div className="space-y-3">
-          {pendingLoading && <p className="text-sm text-text-muted">Loading…</p>}
-          {!pendingLoading && pending.length === 0 && (
-            <p className="text-sm text-text-muted">No pending approvals.</p>
-          )}
-          {pending.map(a => (
-            <ApprovalRow
-              key={a.id}
-              a={a}
-              onApprove={(id) => approveMutation.mutate(id)}
-              onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
-              approvePending={approveMutation.isPending}
-              rejectPending={rejectMutation.isPending}
+      {q.isError ? (
+        <ErrorState title="Couldn’t load approvals" error={q.error} onRetry={q.refetch} />
+      ) : (
+        <Card padding={false} className="max-w-4xl">
+          {q.isLoading ? (
+            <SkeletonRows rows={3} />
+          ) : items.length === 0 ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title={view === 'pending' ? 'Nothing waiting for you' : 'No decisions yet'}
+              message={view === 'pending' ? 'Requests from your supervisor appear here.' : 'Approved and rejected requests appear here.'}
             />
-          ))}
-        </div>
-      )}
-
-      {/* History tab */}
-      {tab === 1 && (
-        <div className="space-y-3">
-          {historyLoading && <p className="text-sm text-text-muted">Loading…</p>}
-          {!historyLoading && history.length === 0 && (
-            <p className="text-sm text-text-muted">No approval history.</p>
+          ) : (
+            <ul className="divide-y divide-surface-border">
+              {view === 'pending'
+                ? items.map((a) => (
+                    <PendingItem
+                      key={a.id}
+                      a={a}
+                      busy={busy}
+                      onApprove={(id) => approveMutation.mutate(id)}
+                      onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
+                    />
+                  ))
+                : items.map((a) => <HistoryItem key={a.id} a={a} />)}
+            </ul>
           )}
-          {history.map(a => (
-            <div key={a.id} className="bg-surface rounded-xl border border-surface-border p-4 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                  {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                </span>
-                <span className="text-xs text-text-muted">
-                  {a.type === 'stock_correction' ? 'Stock Correction' : 'Threshold Change'}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-text">{displayVaccineName(a.vaccineName)}</p>
-              <p className="text-xs text-text-muted">Requested by {a.requestedByName}</p>
-              {a.decisionReason && <p className="text-xs text-text-muted italic">Reason: "{a.decisionReason}"</p>}
-              {a.decidedAt && (
-                <p className="text-xs text-text-muted">{new Date(a.decidedAt).toLocaleDateString()}</p>
-              )}
-            </div>
-          ))}
-        </div>
+        </Card>
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

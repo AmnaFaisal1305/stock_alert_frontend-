@@ -7,6 +7,7 @@ import {
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import Textarea from '../../components/ui/Textarea'
 import Toast from '../../components/ui/Toast'
 import PageHeader from '../../components/shared/PageHeader'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -15,19 +16,6 @@ import { OPEN_STAGES } from '../../lib/stockRequests'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
 const CAN_RECEIVE = new Set(['awaiting_both', 'awaiting_received'])
-
-const textareaCls = 'w-full rounded-control border border-surface-border bg-surface px-3.5 py-2.5 text-sm text-text focus:outline-none focus:ring-[3px] focus:ring-primary/10 focus:border-primary resize-none placeholder:text-text-muted'
-
-function NoteField({ id, label, value, onChange, placeholder, required = false }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-text">
-        {label} <span className="text-text-muted font-normal">{required ? '(required)' : '(optional)'}</span>
-      </label>
-      <textarea id={id} value={value} onChange={onChange} rows={2} maxLength={500} placeholder={placeholder} className={textareaCls} />
-    </div>
-  )
-}
 
 // ── Raise request ──────────────────────────────────────────────────────────────
 function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
@@ -65,7 +53,7 @@ function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
           </li>
         ))}
       </ul>
-      <NoteField id="raise-note" label="Note" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Outreach session on Friday" />
+      <Textarea id="raise-note" label="Note" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Outreach session on Friday" />
       {error && <p role="alert" className="text-sm text-danger-dark">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
@@ -132,7 +120,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
           </fieldset>
         )
       })}
-      <NoteField id={`rcv-note-${req.id}`} label="Note" value={note} onChange={e => setNote(e.target.value)} />
+      <Textarea id={`rcv-note-${req.id}`} label="Note" value={note} onChange={e => setNote(e.target.value)} />
       {error && <p role="alert" className="text-sm text-danger-dark">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>{isPending ? 'Saving…' : 'Save received'}</Button>
@@ -186,7 +174,7 @@ function RequestActions({ req }) {
         <div className="flex gap-2 flex-wrap">
           {canReceive && <Button onClick={() => setShowReceive(true)}>Record received</Button>}
           {canCancel && (
-            <Button variant="ghost" className="text-danger-dark hover:bg-danger-bg" onClick={() => setCancelConfirm(true)}>
+            <Button variant="ghost-danger" onClick={() => setCancelConfirm(true)}>
               {isCloseShort ? 'Close short' : 'Cancel request'}
             </Button>
           )}
@@ -203,7 +191,7 @@ function RequestActions({ req }) {
             {isCloseShort ? 'Close this request short? The remaining vials won’t be sent.' : 'Cancel this request?'}
           </p>
           {reasonRequired && (
-            <NoteField
+            <Textarea
               id={`cancel-${req.id}`}
               label="Reason"
               required

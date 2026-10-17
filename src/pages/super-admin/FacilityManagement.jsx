@@ -243,7 +243,7 @@ export default function SuperAdminFacilityManagement() {
               <Pencil size={12} /> Rename
             </Button>
             {row.isActive ? (
-              <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}>
+              <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}>
                 <UserX size={12} /> Deactivate
               </Button>
             ) : (
@@ -351,7 +351,7 @@ export default function SuperAdminFacilityManagement() {
                     )}
                     <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
                     {row.isActive ? (
-                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-danger hover:bg-danger/5" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
+                      <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
                     ) : (
                       <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
                     )}

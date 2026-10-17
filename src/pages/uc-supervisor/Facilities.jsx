@@ -1,197 +1,77 @@
 import { useState, useMemo } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import PageHeader from '../../components/shared/PageHeader'
 import { getFacilities, getDashboard } from '../../lib/api'
-import { facilityStatus } from '../../lib/status'
 import { useDebounce } from '../../hooks/useDebounce'
+import PageHeader from '../../components/shared/PageHeader'
 import Table from '../../components/shared/Table'
 import SearchInput from '../../components/shared/SearchInput'
+import FilterChips from '../../components/shared/FilterChips'
 import Pagination from '../../components/shared/Pagination'
+import ErrorState from '../../components/shared/ErrorState'
+import { plural } from '../../lib/format'
+import { STATUS_FILTERS, facilityStatusMap, countByStatus, facilityColumns, FacilityMobileCard } from './facilityTable'
+
+const PER_PAGE = 10
 
 export default function UCSupervisorFacilities() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const debouncedSearch = useDebounce(searchQuery)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const statusFilter = searchParams.get('filter') ?? 'all'
-  function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setCurrentPage(1) }
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const debounced = useDebounce(search)
+  const [params, setParams] = useSearchParams()
+  const filter = params.get('filter') ?? 'all'
+  const setFilter = (v) => { setParams(v === 'all' ? {} : { filter: v }); setPage(1) }
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['facilities'],
-    queryFn: getFacilities,
-  })
-
-  const { data: dashboardData } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: getDashboard,
-    staleTime: 15_000,
-  })
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
+  const { data: dashboard } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard, staleTime: 15_000 })
 
   const facilities = data?.facilities ?? []
+  const { statusOf, counts, columns } = useMemo(() => {
+    const map = facilityStatusMap(dashboard)
+    const statusOf = (f) => map.get(f.id) ?? 'no_data'
+    return { statusOf, counts: countByStatus(facilities, statusOf), columns: facilityColumns(statusOf) }
+  }, [dashboard, facilities])
 
-  const statusByFacilityId = new Map(
-    (dashboardData?.summary?.byFacility ?? []).map((f) => [f.facilityId, facilityStatus(f.statusCounts)])
-  )
+  const filtered = useMemo(() => {
+    const q = debounced.trim().toLowerCase()
+    return facilities
+      .filter((f) => (filter === 'all' || statusOf(f) === filter) &&
+        (!q || [f.name, f.ucName, f.townName].some((v) => v?.toLowerCase().includes(q))))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [facilities, debounced, filter, statusOf])
 
-  const statusCounts = { critical: 0, low: 0, adequate: 0, no_data: 0 }
-  for (const f of facilities) {
-    const s = statusByFacilityId.get(f.id) ?? 'no_data'
-    if (s in statusCounts) statusCounts[s]++
-  }
-
-  const filteredFacilities = useMemo(() => facilities.filter((f) => {
-    const matchesSearch = f.name?.toLowerCase().includes(debouncedSearch.toLowerCase())
-    const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
-    const matchesStatus = statusFilter === 'all' ? true : fStatus === statusFilter
-    return matchesSearch && matchesStatus
-  }).sort((a, b) => a.name.localeCompare(b.name)), [facilities, debouncedSearch, statusFilter, statusByFacilityId])
-
-  const itemsPerPage = 10
-  const totalPages = Math.ceil(filteredFacilities.length / itemsPerPage)
-  const paginatedFacilities = filteredFacilities.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const columns = [
-    {
-      key: 'name',
-      label: 'Facility Name',
-      render: (row) => (
-        <RouterLink to={`/uc/facilities/${row.id}`} className="font-bold text-text hover:text-primary transition-colors flex items-center gap-2">
-          <Building2 size={14} className="text-text-muted/70 flex-shrink-0" />
-          <span>{row.name}</span>
-        </RouterLink>
-      ),
-    },
-    {
-      key: 'ucName',
-      label: 'Union Council / Town',
-      render: (row) => (
-        <div>
-          <p className="text-xs font-semibold text-text">{row.ucName ?? '—'}</p>
-          {row.townName && <p className="text-[10px] text-text-muted font-medium">{row.townName}</p>}
-        </div>
-      ),
-    },
-    {
-      key: 'supervisor',
-      label: 'Supervisor Assigned',
-      render: (row) => (
-        row.facilitySupervisorName ? (
-          <span className="text-xs font-bold text-text">{row.facilitySupervisorName}</span>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted/70 bg-surface-alt border border-surface-border px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
-        )
-      ),
-    },
-    {
-      key: 'actions',
-      label: '',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <RouterLink
-            to={`/uc/facilities/${row.id}`}
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2.5 py-1.5"
-          >
-            View Stock <ArrowRight size={13} strokeWidth={2.2} />
-          </RouterLink>
-        </div>
-      ),
-    },
-  ]
+  const totalPages = Math.ceil(filtered.length / PER_PAGE)
+  const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-
-      {/* Header */}
+    <div>
       <PageHeader
-        breadcrumb="UC Supervisor › Facilities"
-        title="Vaccine Performance"
-        subtitle={isLoading ? undefined : `${facilities.length} ${facilities.length !== 1 ? 'Facilities' : 'Facility'} in your union councils`}
+        breadcrumb="UC Supervisor › Overview"
+        title="Facilities"
+        subtitle={facilities.length ? `${plural(facilities.length, 'facility', 'facilities')} in your union councils` : undefined}
       />
 
-      {/* Search + Filter row */}
-      {!isLoading && !isError && facilities.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            placeholder="Search facility by name..."
-          />
-
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'all',      label: 'All',      count: facilities.length,      activeClass: 'bg-primary text-white border-primary'     },
-              { key: 'critical', label: 'Critical',  count: statusCounts.critical,  activeClass: 'bg-danger text-white border-danger'       },
-              { key: 'low',      label: 'Low',       count: statusCounts.low,       activeClass: 'bg-warning text-white border-warning'     },
-              { key: 'adequate', label: 'Normal',    count: statusCounts.adequate,  activeClass: 'bg-success text-white border-success'     },
-              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,   activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
-            ].map(({ key, label, count, activeClass }) => (
-              <button
-                key={key}
-                onClick={() => setStatusFilter(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                  statusFilter === key
-                    ? activeClass
-                    : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
-                }`}
-              >
-                {key === 'critical' && <AlertCircle size={11} />}
-                {key === 'low'      && <AlertTriangle size={11} />}
-                {key === 'adequate' && <CheckCircle2 size={11} />}
-                {key === 'all'      && <Building2 size={11} />}
-                {label}
-                <span className="opacity-75">({count})</span>
-              </button>
-            ))}
+      {isError ? (
+        <ErrorState title="Couldn’t load facilities" error={error} onRetry={refetch} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <SearchInput value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility, UC or town…" />
+            <FilterChips
+              label="Stock status"
+              value={filter}
+              onChange={setFilter}
+              options={STATUS_FILTERS.map((o) => ({ ...o, count: counts[o.value] }))}
+            />
           </div>
-        </div>
-      )}
-
-      {/* Skeletons */}
-      {isLoading && (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load facilities. Please try refreshing.
-        </div>
-      )}
-
-      {/* Table */}
-      {!isLoading && !isError && (
-        <div className="flex flex-col gap-3">
           <Table
             columns={columns}
-            rows={paginatedFacilities}
-            emptyMessage={searchQuery ? `No facilities match "${searchQuery}"` : 'No facilities found.'}
-            mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-surface-alt">
-                <div className="flex items-center gap-2 min-w-0 mb-1">
-                  <Building2 size={12} className="text-text-muted/70 flex-shrink-0" />
-                  <RouterLink to={`/uc/facilities/${row.id}`} className="font-bold text-sm text-text truncate hover:text-primary transition-colors">
-                    {row.name}
-                  </RouterLink>
-                </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-text-muted pl-5 mb-2">
-                  <span>UC: <span className="font-medium text-text">{row.ucName ?? '—'}</span></span>
-                  <span>Town: <span className="font-medium text-text">{row.townName ?? '—'}</span></span>
-                  <span className="col-span-2">
-                    {row.facilitySupervisorName ?? <span className="italic">Unstaffed</span>}
-                  </span>
-                </div>
-                <RouterLink to={`/uc/facilities/${row.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pl-5">
-                  View Stock <ArrowRight size={12} strokeWidth={2.2} />
-                </RouterLink>
-              </div>
-            )}
+            rows={rows}
+            loading={isLoading}
+            emptyMessage={search ? `No facilities match “${search}”.` : 'No facilities in this view.'}
+            mobileCard={(f) => <FacilityMobileCard f={f} status={statusOf(f)} />}
           />
-
-          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
     </div>

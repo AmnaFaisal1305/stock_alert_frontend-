@@ -3,6 +3,8 @@ const variants = {
   secondary: 'bg-surface border border-surface-border text-text hover:bg-surface-alt',
   danger:    'bg-danger text-white hover:bg-danger-dark',
   ghost:     'text-primary hover:bg-primary-bg',
+  // Destructive action that shouldn't shout (Reject, Decline, Deactivate). Use instead of overriding ghost's colour.
+  'ghost-danger': 'text-danger-dark hover:bg-danger-bg',
 }
 
 const sizes = {

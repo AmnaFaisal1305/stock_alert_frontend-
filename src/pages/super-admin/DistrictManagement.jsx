@@ -429,7 +429,7 @@ export default function DistrictManagement() {
                           <Pencil size={12} /> Rename
                         </Button>
                         {row.isActive ? (
-                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
+                          <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
                         ) : (
                           <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
                         )}
@@ -491,7 +491,7 @@ export default function DistrictManagement() {
                           <Pencil size={12} /> Rename
                         </Button>
                         {row.isActive ? (
-                          <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-bg" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
+                          <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
                             Deactivate
                           </Button>
                         ) : (
