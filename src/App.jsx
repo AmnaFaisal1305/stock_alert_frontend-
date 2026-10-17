@@ -19,6 +19,7 @@ const UCManagement          = lazy(() => import('./pages/super-admin/UCManagemen
 const UCDetail              = lazy(() => import('./pages/super-admin/UCDetail'))
 
 const DistrictDashboard     = lazy(() => import('./pages/district-supervisor/Dashboard'))
+const DistrictNetwork       = lazy(() => import('./pages/district-supervisor/Network'))
 const FacilityManagement    = lazy(() => import('./pages/district-supervisor/FacilityManagement'))
 const DistrictUsers         = lazy(() => import('./pages/district-supervisor/UserManagement'))
 const DistrictAuditLog      = lazy(() => import('./pages/district-supervisor/AuditLog'))
@@ -123,6 +124,7 @@ export default function App() {
                 <Route path="/super-admin/guide"           element={<DashboardGuide />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
+                <Route path="/district/network"        element={<DistrictNetwork />} />
                 <Route path="/district/facilities"     element={<FacilityManagement />} />
                 <Route path="/district/facilities/:id" element={<FacilityDetail />} />
                 <Route path="/district/users"          element={<DistrictUsers />} />

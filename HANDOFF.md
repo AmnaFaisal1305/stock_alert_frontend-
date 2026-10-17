@@ -1,15 +1,19 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-18 (session 13 — UI/UX consistency revamp, merged to `main`)  
+**Last updated:** 2026-10-18 (session 15 — Analytics Stock Requests drill-down + cascade filter)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-18 Session 14 (latest) — Round 35 adoption + UI enhancements
+## Session Log — 2026-10-18 Session 16 (latest) — Round 35 adoption + UI enhancements
 
-Branch `feature/ui-enhancements` (not merged). Plan: `docs/PLAN_UI_ENHANCEMENTS.md`; new backend wishes: `docs/BACKEND_REQUESTS_SESSION14.md` (B1–B6).
+Branch `feature/ui-enhancements`, developed in parallel with sessions 14–15 below and then merged with `main` (Amna's work). Plan: `docs/PLAN_UI_ENHANCEMENTS.md`; new backend wishes: root `BACKEND_REQUESTS.md` (B1–B6).
+
+### Merge with main (sessions 14–15)
+- Conflicts resolved by keeping both sides: facility dashboard (Recent Usage removed + attention strip), `FacilityDirectory` (UC filter, now in the URL as `?uc=`, + grid/export), Analytics (new Stock Summary/drill-down + KPI icons).
+- **Vaccines:** session 14's per-facility threshold viewer/editor kept as the base; this session's UI re-applied on top (PageHeader, Card filter, Grid/List, `RowActions`, CSV, created summary, design-system error/empty states). Fixed: the District/UC/Facility `Select`s passed the change event instead of its value, so the cascade could not narrow.
 
 ### What changed
 - **Round 35:** Audit Log filters/pages on the server (cursor paging; `Pagination` gained `maxPage`); Stock Register loads its full history per action; approvals read `decisionReason` only and show `decidedAt`; District detail KPIs say "vaccine lines"; scope line uses `user.facilityName`.
@@ -29,7 +33,111 @@ Branch `feature/ui-enhancements` (not merged). Plan: `docs/PLAN_UI_ENHANCEMENTS.
 - Dev server must be restarted after `tailwind.config.js` changes or new colour classes don't appear.
 - Audit Log: a "Stock request cancelled" row shows its vaccines only if the matching `STOCK_REQUEST_CREATE` row is on the same 15-row page (`buildContext` now sees one page). Clicking "Request #" still shows the full chain.
 - `.impeccable/design.json` is stale until `/impeccable document` is run; impeccable critiques will flag category colours and KPI tiles until then. `design-system-font-size 18px` is suppressed for `TopBar.jsx` only (emoji bell).
-- Browser-checked in session 14 (open → Go back, no writes): Assign Vials, Day End, raise request, record received (with calendar), UC record sent, head approve, Form B save; grids for admin (as observer), UC users, workers; shell for all roles incl. worker at 390px.
+- Browser-checked in this session (open → Go back, no writes): Assign Vials, Day End, raise request, record received (with calendar), UC record sent, head approve, Form B save; grids for admin (as observer), UC users, workers; shell for all roles incl. worker at 390px.
+
+---
+
+## Session Log — 2026-10-18 Session 15 — Analytics Stock Requests drill-down
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `44eee64` | feat(analytics): add cascade filter + status drill-down to Stock Requests tab |
+
+### What changed — Analytics Stock Requests tab (`src/pages/shared/Analytics.jsx`)
+
+**Cascade filter bar** (District → UC → Facility + Month) added above the chart on the Stock Requests tab.
+
+- District/UC/Facility are chained Selects — selecting each cascades the next using the existing `getDistricts`, `getUnionCouncils`, `getFacilities` queries (same pattern as VaccineManagement).
+- Month select is derived from `requestsByMonth` data already in scope (sorted ascending).
+- A "Clear" button appears when any filter is active; clearing any upstream filter resets downstream state.
+- **Important scope note:** the cascade filter only affects the detail panel (client-side, matches `req.facilityName`). The chart and "Totals by status" card still show all facilities — they come from `getAnalytics({ from, to })` which does not yet accept a `facilityId` param. This is documented in `BACKEND_CHANGES.md` item 2.
+- When a month is selected, the "Totals by status" card switches from period totals to that month's specific counts (computed from `requestsByMonth`), and the summary table is filtered to just that month's row.
+
+**Clickable status drill-down** — each row in the "Totals by status" card is now a button:
+- Clicking a status (Completed / Partial / Open / Declined / Cancelled) opens a detail panel below and highlights the selected row.
+- Clicking the same status again collapses the panel.
+- Changing the month or cascade filters resets the active status selection.
+
+**Detail panel** — fetches `getStockRequests(apiStatus)` with status mapped as:
+  - `completed` → `'completed'`
+  - `partial` → `'partially_fulfilled'`
+  - `open` → `null` (fetches all, filters client-side by `OPEN_STAGES`)
+  - `declined` → `'declined'`
+  - `cancelled` → `'cancelled'`
+
+Query key: `['stock-requests-detail', detailApiParam]`.
+
+Results are filtered client-side:
+1. By OPEN_STAGES (for 'open') or by stage match
+2. By `req.createdAt.startsWith(reqMonth)` when a month is selected
+3. By `req.facilityName === reqFacilityName` when a facility is selected
+
+Each request in the detail list shows: facility name, vaccine summary, date, stage badge (`StatusBadge kind="workflow"`), and a chevron. Clicking a row expands it to show `RequestItemsTable` (Vaccine / Requested / Fulfilled / Sent / Received) plus any `note` or `shortfallNote`.
+
+**New imports added:** `getDistricts, getUnionCouncils, getFacilities, getStockRequests` from api; `{ RequestItemsTable }` from RequestList; `{ vaccineSummary, OPEN_STAGES }` from stockRequests; `formatDate` from format; `Select` from ui; `ChevronDown, X` from lucide-react; `StatusBadge` from shared.
+
+**`BACKEND_CHANGES.md` additions:**
+- Item 2: `GET /api/analytics?districtId=&ucId=&facilityId=` — to scope charts/totals to a facility
+- Item 3: `GET /api/stock-requests?status=&month=YYYY-MM` — optional efficiency improvement
+
+---
+
+## Session Log — 2026-10-18 Session 14 — Per-facility vaccine thresholds + Analytics overhaul
+
+### Commits
+
+| Hash | What |
+|---|---|
+| `97b3c53` | feat(vaccines): per-facility threshold viewer and editor with District→UC→Facility cascade filter |
+| `51a10aa` | feat(analytics): merge Movement+Remaining into Stock Summary tab; rename tabs and columns |
+
+### Change 1 — Per-facility vaccine thresholds (`VaccineManagement.jsx`)
+
+**What changed:** The Vaccine Catalog page (`/super-admin/vaccines`) now has two modes.
+
+**Global mode (default — no filter selected):** exactly as before. Shows global catalog with Add/Edit/Delete.
+
+**Facility mode (District → UC → Facility selected):** calls the existing `getFacility(id)` endpoint which already returns `facility.vaccines[]` with per-vaccine `criticalDoses`, `lowDoses`, `criticalVials`, `lowVials`, `thresholdOverridden`. Shows the same table but with facility-specific values. An amber **"Custom"** badge appears on any vaccine that has a facility-level override. Edit button opens a 5-field modal (Doses/Vial + 4 threshold fields) for that facility only. "Reset to Global" sends all fields as `null`.
+
+**Files changed:**
+- `src/lib/api.js` — added `updateFacilityVaccine(facilityId, vaccineId, payload)` → `PUT /api/facilities/:facilityId/vaccines/:vaccineId`
+- `src/pages/super-admin/VaccineManagement.jsx` — cascade filter bar (3 Select dropdowns chained), dual-mode rendering, new `FacilityVaccineForm` sub-component
+
+**Backend endpoint needed (not yet built):**
+See `BACKEND_CHANGES.md` (new file, repo root). Endpoint: `PUT /api/facilities/:facilityId/vaccines/:vaccineId`. Until implemented, Save in facility mode will return 404 (shown as inline error — expected). Viewing facility thresholds works immediately via the existing `GET /api/facilities/:id`.
+
+**Cascade data sources (all existing):** `getDistricts()`, `getUnionCouncils({ districtId })`, `getFacilities({ ucId })`
+
+---
+
+### Change 2 — Analytics tab overhaul (`Analytics.jsx`)
+
+**What changed:** 4 tabs → 3 tabs. "Movement" and "Remaining Stock" merged into a single **"Stock Summary"** tab. Requests renamed to **"Stock Requests"**, Pending Approvals renamed to **"Approvals"**.
+
+**Stock Summary tab contents:**
+- 4 stat cards: Received · Doses Given · Wasted · Waste %
+- **Chart 1 — Wastage Rate by Vaccine** (horizontal bar, %): color-coded per vaccine — green < 3%, amber 3–7%, red ≥ 7%. Uses Recharts `Cell` for per-bar coloring.
+- **Chart 2 — Stock Flow by Vaccine** (grouped vertical bar): Received / Doses Given / Wasted per vaccine
+- **Chart 3 — Current Stock by Vaccine** (horizontal bar): total doses remaining across all facilities
+- **Combined table** — one row per vaccine joining movement + remaining data:
+
+| Column | Old name | Source |
+|---|---|---|
+| Vaccine | Vaccine | movement |
+| Received (vials) | Opening + Received | movement |
+| Doses Given | Used (doses) | movement |
+| Wasted (vials) | Wasted (vials) | movement |
+| Waste % | — (new) | computed |
+| Adjustments | Adjustment (net) | movement |
+| In Store (vials) | Store (vials) | remaining |
+| With Workers (vials) | Held (vials) | remaining |
+| Stock Left (doses) | Total (doses) | remaining |
+
+**Key implementation note:** `remainingByVaccine` useMemo extended to also aggregate `storeVials` → `inStore` and `heldVials` → `withWorkers`. A `remainingMap` (keyed by vaccine name) then joins with `vaccineMovement` to produce `stockSummaryRows`.
+
+**Files changed:** `src/pages/shared/Analytics.jsx` only. Applies to all 6 analytics routes (super_admin, observer, district_supervisor, uc_supervisor, facility_supervisor, facility_head).
 
 ---
 
