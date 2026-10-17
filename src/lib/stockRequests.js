@@ -7,10 +7,12 @@ export const SENT_STAGES     = new Set(['awaiting_received', 'figures_differ', '
 export const RECEIVED_STAGES = new Set(['completed', 'partially_fulfilled'])
 
 export const REQUEST_FILTERS = [
-  { value: 'all',       label: 'All',       test: () => true },
-  { value: 'awaiting',  label: 'In progress', test: (r) => !TERMINAL.has(r.stage) },
-  { value: 'completed', label: 'Completed', test: (r) => r.stage === 'completed' || r.stage === 'partially_fulfilled' },
-  { value: 'closed',    label: 'Cancelled / declined', test: (r) => r.stage === 'cancelled' || r.stage === 'declined' },
+  { value: 'all',                 label: 'All',                test: () => true },
+  { value: 'awaiting',            label: 'In progress',        test: (r) => !TERMINAL.has(r.stage) },
+  { value: 'partially_fulfilled', label: 'Partially fulfilled', test: (r) => r.stage === 'partially_fulfilled' },
+  { value: 'completed',           label: 'Completed',          test: (r) => r.stage === 'completed' },
+  { value: 'cancelled',           label: 'Cancelled',          test: (r) => r.stage === 'cancelled' },
+  { value: 'declined',            label: 'Declined',           test: (r) => r.stage === 'declined' },
 ]
 
 export const PIPELINE = ['Requested', 'Sent', 'Received']
