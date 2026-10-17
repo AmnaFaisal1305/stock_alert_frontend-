@@ -7,7 +7,26 @@
 
 ---
 
-## Session Log — 2026-10-18 Session 13 (latest) — UI/UX consistency revamp
+## Session Log — 2026-10-18 Session 14 (latest) — Round 35 adoption + UI enhancements
+
+Branch `feature/ui-enhancements` (not merged). Plan: `docs/PLAN_UI_ENHANCEMENTS.md`; new backend wishes: `docs/BACKEND_REQUESTS_SESSION14.md` (B1–B6).
+
+### What changed
+- **Round 35:** Audit Log filters/pages on the server (cursor paging; `Pagination` gained `maxPage`); Stock Register loads its full history per action; approvals read `decisionReason` only and show `decidedAt`; District detail KPIs say "vaccine lines"; scope line uses `user.facilityName`.
+- **Design system:** `DESIGN.md` now allows a categorical palette (`--cat-1…5`: teal, indigo, plum, sky, slate) for non-status colour, KPI icon tiles, and the 🔔 emoji bell. Red/amber/green still mean status only. `.impeccable/design.json` was NOT regenerated (run `/impeccable document`).
+- **Shell:** Collapse button gone; ☰ in the top bar toggles the 72px rail on lg+ (remembered in `sst_sidebar_collapsed`) and opens the drawer below lg. Emoji bell rings when the count rises. Notification panel: type icons, Today/Earlier, click-through to the related page.
+- **Primitives:** custom `DatePicker` calendar (native on touch), `ViewToggle` + `useViewMode`, `Table` grid mode, `EntityCard`, `RowActions`, `RoleTag`, `ReviewDialog`/`ReviewPanel`/`SummaryDialog`.
+- **Pages:** Grid view (default) on every entity list; KPI icons everywhere; categorical chart series; review-before-submit on Assign Vials, Day End, raise/receive/send stock, head approvals, supervisor approval requests, Form B save; summary dialogs after creates and stock moves.
+
+### Not done / known
+- Phase 7 extras in the plan are not started (awaiting choice).
+- **Stock Register shows negative balances** for facilities whose stock arrives via stock requests: it only counts `STOCK_ENTRY`/`ADJUST_STOCK`/`STOCK_DAY_END`, not `STOCK_REQUEST_RECEIVED`/`STOCK_ASSIGN`. Pre-existing; unchanged by this session.
+- Not tested: any confirm/submit against the live backend (dialogs opened and dismissed only); super-admin write actions (admin password in the old notes is wrong; checked as observer); mobile Safari.
+- Dev server must be restarted after `tailwind.config.js` changes or new colour classes don't appear.
+
+---
+
+## Session Log — 2026-10-18 Session 13 — UI/UX consistency revamp
 
 Developed on `redesign/ui-consistency` and fast-forward merged to `main` on 2026-10-18 (14 commits; `main` had not moved, so no conflicts). UI only: no query keys, mutations, validation, offline queue or `api.js` contracts changed. Source of truth for the look is now **`DESIGN.md`** ("The Ward Ledger") plus its sidecar `.impeccable/design.json`; `docs/design_refrences/` is reference only.
 

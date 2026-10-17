@@ -215,7 +215,9 @@ Sub-panels (e.g. `DistrictExpandedPanel`) are co-located in the same file as the
 
 ### Stock Register
 
-`StockRegister.jsx` has no dedicated endpoint — it calls `getAuditLog({ limit: 500 })` and filters for `STOCK_ENTRY` / `ADJUST_STOCK` actions. Running balance is computed client-side. Backend caps `limit` at 500.
+`StockRegister.jsx` has no dedicated endpoint — it calls `getAuditLog({ action })` once each for `STOCK_ENTRY`, `ADJUST_STOCK` and `STOCK_DAY_END` (no `limit`, so the full history) and merges them. Running balance is computed client-side.
+
+The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/action/date/scope go to the API, pages use `nextCursor` → `before`, tab badges come from `counts=true` (`countsByActorRole`).
 
 Entry type mapping: `received` → Received (+), `used` → Issued (−), `returned` → Returned (+). `ADJUST_STOCK`: positive delta → Received, negative → Issued.
 
@@ -223,8 +225,10 @@ Entry type mapping: `received` → Received (+), `used` → Issued (−), `retur
 
 | Layer | Path | Contents |
 |---|---|---|
-| Primitives | `src/components/ui/` | Button (variants: primary, secondary, danger, ghost, ghost-danger; `buttonClasses()` for links), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker, ConfirmDialog |
-| Composites | `src/components/shared/` | Card, PageHeader, Table, StatCard, StatusBadge, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
+| Primitives | `src/components/ui/` | Button (variants: primary, secondary, danger, ghost, ghost-danger; `buttonClasses()` for links), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker (calendar popover; native on touch), ConfirmDialog, ReviewDialog (+ `ReviewPanel`, `SummaryDialog`), ViewToggle, RowActions |
+| Composites | `src/components/shared/` | Card, PageHeader, Table (`view="grid"` + `gridCard`), EntityCard, StatCard (`icon` + `accent`), StatusBadge, RoleTag, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
+
+Entity lists use `useViewMode(pageKey)` + `ViewToggle` + `Table view/gridCard` with `EntityCard` (Grid by default). Row actions are `RowActions` icons, filtered by role. Submits on field-entry screens go through `ReviewDialog`/`ReviewPanel`; creates end in `SummaryDialog`. Non-status colour comes from the category palette (`--cat-1…5`, `ACCENT` in `StatCard.jsx`), never from status red/amber/green.
 | Layout | `src/components/layout/` | Layout, Sidebar, TopBar, NotificationPanel |
 
 `Select` uses a fixed-position portal dropdown — it does not clip inside `overflow-hidden` parents. This is intentional.
@@ -236,7 +240,7 @@ Backend wishes that would improve the UI (server-side audit-log filters, facilit
 
 Key constraints:
 - `POST /api/stock-entries` with `entryType: "received"` requires `batchNo`, `expiryDate`, `dosesPerVial`, `manufacturer`, `remarks` (`"outreach"` | `"fixed"`)
-- `GET /api/audit-log` — `?limit=` capped at 500
+- `GET /api/audit-log` — `?limit=` capped at 500 (omit it for the whole log); filters `actorRole, actorId, action, facilityId, entityId, from, to`, cursor `before`, `counts=true`
 - `GET /api/dashboard` returns `{ facilities: [...], summary: { statusCounts, byFacility, ... } }`
 - Vaccines are facility-scoped; names must match `"Vaccine 01"–"Vaccine 13"`
 
