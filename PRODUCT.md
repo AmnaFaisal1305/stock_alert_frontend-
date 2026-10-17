@@ -25,7 +25,7 @@ Clinical, trustworthy, efficient. This is hospital-grade software, not a consume
 
 ## Visual Language
 
-The interface uses the **Clinical Material** design language: warm paper surfaces, a forest-green sidebar, the Figtree Variable webfont, thin large greeting headers (via the `PageHeader` component), and full dark mode (manual toggle + OS auto). Source of truth for the visual language is the `reference design/` folder (HTML mockups `admin-01` through `admin-08`, `fs-01` through `fs-05`).
+The interface uses the **Clinical Material** design language: warm paper surfaces, a forest-green sidebar, the Figtree Variable webfont, thin large greeting headers (via the `PageHeader` component), and full dark mode (manual toggle + OS auto). Source of truth for the visual language is `DESIGN.md` at the project root; the HTML mockups in `docs/design_refrences/` are references only.
 
 The design token system lives in `src/index.css` (CSS variable channel triplets) and `tailwind.config.js` (token map). Every color in the UI routes through these tokens — never hardcoded hex or Tailwind slate/zinc/white classes.
 

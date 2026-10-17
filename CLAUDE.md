@@ -31,17 +31,13 @@ The dev server calls the live backend. `.env` sets `VITE_API_URL=https://smart-s
 
 Ponytail is always active. It means: write the smallest complete change, name what was skipped and why, flag any risk. Use it for every coding task — logic fixes, refactors, new features. When a task is large or risky, use `/ponytail ultra` to push back before writing code.
 
-### ui-ux-pro-max — for all UI/UX design work
-**Activate:** invoke the `ui-ux-pro-max` skill before any UI design task.
-
-Use this for: designing new screens, improving layouts, choosing color/typography, building components, responsive design, accessibility, dark mode, hover states. It knows this project's stack (React + Tailwind) and the clinical/minimal design language in `PRODUCT.md`. Always check `tailwind.config.js` for existing tokens before proposing new ones.
 
 ### Impeccable — for UI quality and design critique
 **Activate:** `craft`, `critique`, `polish`, or `live` commands.
 
 Use impeccable for: reviewing UI before shipping, critiquing a layout for clinical clarity, polishing spacing/contrast/hierarchy. The project's design system is stored in `.impeccable/design.json` — impeccable commands load it automatically. Read `PRODUCT.md` first so critiques align with the product's clinical, minimal brand.
 
-**Design source of truth:** `reference design/` (HTML mockups `admin-01`–`admin-08`, `fs-01`–`fs-05`) is the canonical visual reference. `.impeccable/design.json` has been updated to reflect the Clinical Material token system (forest green, warm paper, Figtree, dark mode) as of 2026-10-15.
+**Design source of truth:** `DESIGN.md` (project root) is the normative design system ("The Ward Ledger": tokens, component rules, do's and don'ts), with `.impeccable/design.json` as its sidecar. The HTML mockups in `docs/design_refrences/` (`admin-01`–`admin-08`, `fs-01`–`fs-05`) are visual references only; where they conflict with `DESIGN.md` (e.g. coloured left-stripe cards, corner icon tiles), `DESIGN.md` wins.
 
 **Design principles for this project (from `PRODUCT.md`):**
 - Status at a glance — red/amber/green must be scannable in under a second
