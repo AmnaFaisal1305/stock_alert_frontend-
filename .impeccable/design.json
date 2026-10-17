@@ -1,34 +1,35 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T00:00:00.000Z",
-  "title": "Design System: Vaccine Stock Alert System — Clinical Material",
+  "generatedAt": "2026-10-17T00:00:00.000Z",
+  "title": "Design System: Smart Stock Alert",
   "extensions": {
     "colorMeta": {
-      "forest-green": { "role": "primary", "displayName": "Forest Green", "canonical": "#2F4234", "tonalRamp": ["#1B2720", "#2F4234", "#3B5A40", "#4A6E52", "#6B9470", "#9AB89E", "#C4D8C6", "#EBF3EC"] },
-      "warm-paper": { "role": "surface", "displayName": "Warm Paper", "canonical": "#F3F3F1", "tonalRamp": ["#171B18", "#212622", "#303631", "#E6E6E1", "#ECECEC", "#F3F3F1", "#FFFFFF", "#FFFFFF"] },
-      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1C211E", "tonalRamp": ["#0A0C0B", "#1C211E", "#2F3530", "#6B726C", "#9AA39C", "#C8CEC9", "#E6E6E1", "#F3F3F1"] },
-      "status-green": { "role": "status", "displayName": "Status Green", "canonical": "#2F9E66", "tonalRamp": ["#1B5E38", "#2F9E66", "#47C27E", "#8FD0A2", "#C1E7CC", "#E1F3E4", "#F0FAF2", "#F7FDF8"] },
-      "status-amber": { "role": "status", "displayName": "Status Amber", "canonical": "#E0A53A", "tonalRamp": ["#8A5A12", "#B46B1F", "#E0A53A", "#F4C87A", "#FAE0B0", "#FDF0D6", "#FEF7EC", "#FFFDF6"] },
-      "status-red": { "role": "status", "displayName": "Status Red", "canonical": "#C5483F", "tonalRamp": ["#7F1D1D", "#A8352D", "#C5483F", "#E08078", "#F0B8B4", "#F7D9D7", "#FBECEB", "#FEF5F5"] },
-      "info-blue": { "role": "status", "displayName": "Info Blue", "canonical": "#2F5B99", "tonalRamp": ["#1A3460", "#2F5B99", "#4A80C0", "#7FAEE0", "#B6CFEE", "#D7E6F8", "#ECF3FC", "#F5F9FE"] }
+      "forest-green": { "role": "primary", "displayName": "Forest Green", "canonical": "#2F4234", "tonalRamp": ["#1B2720", "#2F4234", "#3B5A40", "#4A6E52", "#6B9470", "#9AB89E", "#C4D8C6", "#E8F0EA"] },
+      "sidebar-forest": { "role": "primary", "displayName": "Sidebar Forest", "canonical": "#1D2721", "tonalRamp": ["#121915", "#1D2721", "#28352D", "#34443A", "#4D6153", "#6F8575", "#A3B3A7", "#D7DFD9"] },
+      "warm-paper": { "role": "neutral", "displayName": "Warm Paper", "canonical": "#F3F3F1", "tonalRamp": ["#171B18", "#212622", "#303631", "#6B726C", "#E6E6E1", "#ECECE8", "#F3F3F1", "#FFFFFF"] },
+      "ledger-ink": { "role": "neutral", "displayName": "Ledger Ink", "canonical": "#1C211E", "tonalRamp": ["#1C211E", "#2B312D", "#3E4540", "#5B625D", "#6B726C", "#9AA39C", "#C9CEC9", "#ECEFEB"] },
+      "status-critical": { "role": "tertiary", "displayName": "Critical Red", "canonical": "#C5483F", "tonalRamp": ["#43231F", "#7A2E27", "#A8352D", "#C5483F", "#DB7A72", "#F0A49D", "#F7DEDB", "#FCF1F0"] },
+      "status-low": { "role": "tertiary", "displayName": "Low Amber", "canonical": "#E0A53A", "tonalRamp": ["#40340F", "#6B4A10", "#8A5A12", "#E0A53A", "#E9C06F", "#F0D49B", "#F6E6C6", "#FBF4E5"] },
+      "status-adequate": { "role": "tertiary", "displayName": "Adequate Green", "canonical": "#2F9E66", "tonalRamp": ["#24382B", "#2F6B46", "#2F8550", "#2F9E66", "#5DB884", "#8FD0A2", "#E1EEE4", "#F2F8F3"] }
     },
     "typographyMeta": {
-      "headline": { "displayName": "Headline", "purpose": "PageHeader greeting title — thin weight (300–400), 34–38px, one per screen. Rendered via the PageHeader component." },
-      "title": { "displayName": "Title", "purpose": "Card titles, section headings, modal titles, vaccine names within a status card." },
-      "body": { "displayName": "Body", "purpose": "Form labels, table cells, button text, paragraph copy. Figtree Variable, 14px." },
-      "label": { "displayName": "Label", "purpose": "Uppercase section captions, status pill text, table column headers. 11–12px, tracking-wide." }
+      "display": { "displayName": "Display", "purpose": "Page titles on dashboards and overview screens." },
+      "headline": { "displayName": "Headline", "purpose": "Page titles on work screens; section titles." },
+      "title": { "displayName": "Title", "purpose": "Card, dialog and row titles." },
+      "body": { "displayName": "Body", "purpose": "Default text and table cells." },
+      "numeric": { "displayName": "Numeric", "purpose": "KPI values and stock quantities; always tabular." },
+      "label": { "displayName": "Label", "purpose": "Eyebrows, table headers, nav section headings." }
     },
     "shadows": [
-      { "name": "hover-lift", "value": "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", "purpose": "Reserved for a card that is itself a click target. No card in the current app uses it — every card today is a static display surface." },
-      { "name": "modal-overlay", "value": "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)", "purpose": "Separates the Modal from the dimmed backdrop behind it." },
-      { "name": "toast-shadow", "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)", "purpose": "Separates the fixed-position Toast from page content beneath it." }
+      { "name": "float", "value": "0 8px 24px rgb(28 33 30 / 0.12)", "purpose": "Dropdowns, popovers, notification panel, toasts." },
+      { "name": "overlay", "value": "0 24px 48px rgb(28 33 30 / 0.18)", "purpose": "Modals and drawers over a rgb(28 33 30 / 0.35) scrim." }
     ],
     "motion": [
-      { "name": "transition-colors", "value": "background-color 150ms ease, color 150ms ease, border-color 150ms ease", "purpose": "Default state-change transition for buttons, nav links, table rows." },
-      { "name": "toast-in", "value": "toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Toast entrance: fade + 8px rise. Disabled under prefers-reduced-motion." }
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Toast, drawer and modal entry (150–200ms)." }
     ],
     "breakpoints": [
       { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
       { "name": "lg", "value": "1024px" }
     ]
   },
@@ -37,90 +38,86 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one primary action on a screen — Sign In, Save, Record Stock. Uses --pri token (forest green).",
-      "html": "<button class=\"bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-medium\">Record Stock</button>",
-      "css": "bg-primary text-white hover:bg-primary/90 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
+      "description": "One per view region; the main action.",
+      "html": "<button class=\"ds-btn-primary\">Record delivery</button>",
+      "css": ".ds-btn-primary{background:rgb(var(--pri));color:#fff;border:0;border-radius:10px;padding:8px 16px;font:500 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;cursor:pointer;transition:background .15s}.ds-btn-primary:hover{background:rgb(var(--pri-light))}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 2px rgb(var(--card)),0 0 0 4px rgb(var(--pri))}"
     },
     {
-      "name": "Outline Button",
+      "name": "Secondary Button",
       "kind": "button",
-      "refersTo": "button-outline",
-      "description": "Secondary actions. Border on --line token, text on --ink, hover fills with surface-alt.",
-      "html": "<button class=\"border border-surface-border text-text px-4 py-2 rounded-xl text-sm font-medium\">Cancel</button>",
-      "css": "border border-surface-border text-text hover:bg-surface-alt rounded-xl px-4 py-2 text-sm font-medium transition-colors"
+      "refersTo": "button-secondary",
+      "description": "Supporting actions next to a primary.",
+      "html": "<button class=\"ds-btn-secondary\">Export</button>",
+      "css": ".ds-btn-secondary{background:rgb(var(--card));color:rgb(var(--ink));border:1px solid rgb(var(--line));border-radius:10px;padding:8px 16px;font:500 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;cursor:pointer;transition:background .15s}.ds-btn-secondary:hover{background:rgb(var(--bg))}.ds-btn-secondary:focus-visible{outline:none;box-shadow:0 0 0 2px rgb(var(--card)),0 0 0 4px rgb(var(--pri))}"
     },
     {
-      "name": "Status Badge",
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Hairline field; forest focus ring.",
+      "html": "<label class=\"ds-field\"><span>Batch number</span><input placeholder=\"e.g. B-2041\"></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:6px;font:500 14px 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-field input{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:10px;padding:8px 14px;font:400 14px 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-field input:focus{outline:none;border-color:rgb(var(--pri));box-shadow:0 0 0 3px rgb(var(--pri) / .1)}"
+    },
+    {
+      "name": "Status Pill",
       "kind": "chip",
-      "refersTo": "status-badge",
-      "description": "Dot + label pill for stock status: OK / Low / Critical / No Data. Always sourced from statusConfig() in src/lib/status.js — never hardcoded.",
-      "html": "<span class=\"inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-ok-bg text-ok-text\"><span class=\"w-1.5 h-1.5 rounded-full bg-ok\"></span>OK</span>",
-      "css": "Use statusConfig(status) from src/lib/status.js for all status color classes."
+      "refersTo": "status-pill-critical",
+      "description": "Status wash + text + dot; label always present.",
+      "html": "<span class=\"ds-pill\"><i></i>Critical</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;background:rgb(var(--crit-bg));color:rgb(var(--crit-text));border-radius:999px;padding:3px 10px;font:600 12px 'Figtree Variable',Figtree,system-ui,sans-serif}.ds-pill i{width:6px;height:6px;border-radius:50%;background:rgb(var(--crit))}"
     },
     {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "Flat container, bg-surface, border-surface-border, rounded-xl (18px). No resting shadow.",
-      "html": "<div class=\"bg-surface border border-surface-border rounded-xl p-4\"><h3 class=\"text-sm font-semibold text-text\">BCG</h3><p class=\"text-xs text-text-muted\">81 doses · min 77</p></div>",
-      "css": "bg-surface border border-surface-border rounded-xl p-4"
+      "description": "Flat white card with hairline border; no shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-eyebrow\">Critical</div><div class=\"ds-num\">3</div><div class=\"ds-sub\">Vaccines below threshold</div></div>",
+      "css": ".ds-card{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:18px;padding:20px;font-family:'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-eyebrow{font:600 11px/1.3 inherit;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--mut))}.ds-num{font-weight:300;font-size:32px;line-height:1;margin:10px 0 6px;font-variant-numeric:tabular-nums;color:rgb(var(--crit-text))}.ds-sub{font-size:12.5px;color:rgb(var(--mut))}"
     },
     {
-      "name": "Input Field",
-      "kind": "input",
-      "refersTo": "input",
-      "description": "bg-surface, border-surface-border, rounded-xl. Focus: ring-primary/30. Defined in src/components/ui/Input.jsx.",
-      "html": "<input class=\"w-full bg-surface border border-surface-border rounded-xl px-3 py-2 text-sm text-text focus:ring-2 focus:ring-primary/30 focus:outline-none\" />",
-      "css": "bg-surface border border-surface-border rounded-xl px-3 py-2 text-sm text-text focus:ring-2 focus:ring-primary/30"
-    },
-    {
-      "name": "PageHeader",
-      "kind": "layout",
-      "refersTo": "page-header",
-      "description": "Thin greeting header used at the top of every page. Breadcrumb line (text-text-muted, text-xs) + large thin title (text-3xl font-light text-text) + optional subtitle + optional actions slot. Defined in src/components/shared/PageHeader.jsx.",
-      "html": "<div class=\"space-y-1\"><p class=\"text-xs text-text-muted\">Super Admin › Districts</p><h1 class=\"text-3xl font-light text-text\">Districts</h1></div>",
-      "css": "No fixed CSS — use the PageHeader component directly."
-    },
-    {
-      "name": "Sidebar Nav Link",
+      "name": "Segmented Tabs",
       "kind": "nav",
-      "refersTo": "nav-link",
-      "description": "Active route: bg-white/10 text-white font-medium. Inactive: text-white/70, hover bg-white/5. Sidebar background is bg-side (forest dark). Below lg breakpoint, slides in as an off-canvas drawer.",
-      "html": "<a class=\"flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-white/10 text-white\">Dashboard</a>",
-      "css": "Active: bg-white/10 text-white font-medium. Inactive: text-white/70 hover:bg-white/5."
+      "refersTo": "chip-filter-active",
+      "description": "The only tab style.",
+      "html": "<div class=\"ds-tabs\"><button class=\"on\">Pending <small>4</small></button><button>History</button></div>",
+      "css": ".ds-tabs{display:inline-flex;gap:4px;background:rgb(var(--chip));border-radius:10px;padding:4px}.ds-tabs button{border:0;background:none;border-radius:7px;padding:6px 14px;font:500 13px 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--mut));cursor:pointer}.ds-tabs button.on{background:rgb(var(--card));color:rgb(var(--ink));font-weight:600}.ds-tabs small{color:rgb(var(--mut));margin-left:4px}"
     }
   ],
   "narrative": {
-    "northStar": "The Ward Status Board",
-    "overview": "Picture the board at the nurses' station: color-coded, glanceable, no wasted words, built to be read correctly in the two seconds someone has between other tasks. That's the system. Every screen exists to answer one question fast — is this facility's vaccine stock fine, low, or critical — and everything else is the supporting record for that one glance.\n\nThe system uses the Clinical Material design language: warm paper surfaces, a forest-green sidebar, the Figtree Variable webfont, thin large greeting headers, and full dark mode support. It explicitly rejects the consumer/marketing-app register: no gradients, no playful illustration, no decorative motion.",
+    "northStar": "The Ward Ledger",
+    "overview": "The interface is a calm, exact record book kept on a busy ward. Warm paper surfaces, ink-dark numbers and a single forest green carry the identity. Colour is reserved for stock status, so when red or amber appears it is the most important thing on screen. The system is quiet until something needs attention. It never decorates to fill space.",
     "keyCharacteristics": [
-      "Warm paper background (#F3F3F1 light / #171B18 dark), forest-green sidebar (#1D2721)",
-      "Figtree Variable webfont — loaded via @fontsource-variable/figtree",
-      "CSS variable design tokens (RGB channel triplets) — all colors route through tailwind.config.js token map",
-      "Full dark mode: manual toggle (TopBar Sun/Moon) + OS prefers-color-scheme auto (now enabled)",
-      "PageHeader component: thin 34–38px greeting title + breadcrumb, replaces old primary-color banner headers",
-      "Flat surfaces, 18px rounded cards (rounded-xl), 1px hairline borders (border-surface-border)",
-      "Status always paired with text label, never color alone; statusConfig() is the single source of truth"
+      "Warm paper canvas, white hairline cards, forest-green sidebar and primary actions.",
+      "Status colour (red / amber / green / grey) is the only saturated colour, and it is always paired with a text label.",
+      "Flat surfaces; shadows only on things that float.",
+      "One card radius, one control radius, pills for status and filters.",
+      "Numbers are the product: large, light, tabular."
     ],
     "rules": [
-      { "name": "The Status-Only Saturation Rule", "body": "Saturated color means one of two things: an action (forest green) or a stock status (red/amber/green). Never use bright color for decoration.", "section": "colors" },
-      { "name": "The Token Rule", "body": "Never hardcode color values in component or page files. All colors come from Tailwind token classes (bg-surface, text-primary, border-surface-border, etc.) which map to CSS variables in index.css.", "section": "colors" },
-      { "name": "The Border-at-Rest Rule", "body": "Every surface that's part of the page layout is flat with a hairline border at rest. Shadow only on the two floating elements (Modal, Toast).", "section": "elevation" },
-      { "name": "The statusConfig Rule", "body": "Never hardcode status colors or labels. Always call statusConfig(status) from src/lib/status.js.", "section": "status" }
+      { "name": "The Status-Only Colour Rule", "body": "Saturated colour means stock or workflow status, and nothing else.", "section": "colors" },
+      { "name": "The Label-Always Rule", "body": "No status is communicated by hue alone.", "section": "colors" },
+      { "name": "The One Vocabulary Rule", "body": "Status colours come from src/lib/status.js; pages never pick them.", "section": "colors" },
+      { "name": "The Tabular Rule", "body": "Every quantity, count or date uses tabular-nums.", "section": "typography" },
+      { "name": "The Two-Weight Rule", "body": "At most 400 and 600 at body size; no bold.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "A surface gets a hairline border or a shadow, never both.", "section": "elevation" }
     ],
     "dos": [
-      "Do treat the red/amber/green/no-data quartet as sacred — always paired with a text label, sourced from statusConfig().",
-      "Do keep every laid-out surface flat with a hairline border; reserve shadow for the two floating elements (Modal, Toast).",
-      "Do size touch targets generously on Facility Worker screens — used on a phone, often one-handed.",
-      "Do write error messages that state the current true value (\"Only 12 left\"), not just that something failed.",
-      "Do use PageHeader at the top of every page instead of a colored banner div."
+      "Do route every colour through the tokens; never use hex values or Tailwind palette colours in pages.",
+      "Do use statusConfig() and StatusBadge for stock status, and the shared request-status config for workflow status.",
+      "Do use the shared components instead of hand-rolling them.",
+      "Do keep one primary action per region and put page actions in the PageHeader actions slot.",
+      "Do pair every status colour with its text label.",
+      "Do use tabular-nums for every number."
     ],
     "donts": [
-      "Don't introduce a second accent color.",
-      "Don't add gradients, glassmorphism, playful illustration, or decorative motion.",
-      "Don't let a static (non-clickable) card carry a shadow.",
-      "Don't hardcode bg-white, bg-slate-50, border-slate-200 — use bg-surface, bg-surface-alt, border-surface-border.",
-      "Don't use Recharts SVG attributes with CSS variables — use useTheme() to get concrete hex values."
+      "Don't use coloured left-border stripes on cards or rows.",
+      "Don't put an icon tile in the corner of every KPI card.",
+      "Don't use ring gauges or donuts as decoration.",
+      "Don't stack border, shadow and radius on resting cards.",
+      "Don't mix radii for the same kind of container.",
+      "Don't use emoji or glyph characters as icons.",
+      "Don't use gradients, glassmorphism or backdrop-blur surfaces.",
+      "Don't use bold (700+) or oversized greetings on work screens."
     ]
   }
 }
