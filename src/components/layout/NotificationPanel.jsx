@@ -53,9 +53,9 @@ export default function NotificationPanel({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[340px] bg-surface rounded-2xl border border-surface-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+    <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[360px] bg-surface rounded-card shadow-float ring-1 ring-surface-border z-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-        <p className="text-xs font-bold text-text uppercase tracking-wider">Notifications</p>
+        <h2 className="text-sm font-semibold text-text">Notifications</h2>
         <div className="flex items-center gap-2">
           {hasUnread && (
             <button
@@ -78,15 +78,15 @@ export default function NotificationPanel({ onClose }) {
         )}
         {!isLoading && notifications.length === 0 && (
           <div className="px-5 py-8 flex flex-col items-center gap-2 text-center">
-            <Bell size={28} className="text-text-muted/30" />
-            <p className="text-sm font-semibold text-text">No notifications</p>
+            <Bell size={20} strokeWidth={1.75} className="text-text-muted" />
+            <p className="text-sm font-medium text-text">No notifications</p>
           </div>
         )}
         {notifications.map(n => (
           <button
             key={n.id}
             onClick={() => handleItemClick(n)}
-            className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-primary/5' : ''}`}
+            className={`w-full text-left px-4 py-3 hover:bg-surface-alt transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-primary-bg/60' : ''}`}
           >
             {!n.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-primary" />}
             {n.isRead && <span className="mt-1.5 flex-shrink-0 w-2 h-2" />}
@@ -112,7 +112,7 @@ export default function NotificationPanel({ onClose }) {
           <button
             onClick={handleEnablePush}
             disabled={pushBusy}
-            className="text-xs font-semibold text-primary hover:underline flex-shrink-0 disabled:opacity-50"
+            className="text-xs font-medium text-primary hover:underline flex-shrink-0 disabled:opacity-50"
           >
             {pushBusy ? 'Enabling…' : 'Enable'}
           </button>

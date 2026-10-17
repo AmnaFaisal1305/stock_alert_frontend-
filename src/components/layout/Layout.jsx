@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
-import { Bell, Download, X } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { BellRing, Download, X } from 'lucide-react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import Button from '../ui/Button'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { isPushSupported, enablePush } from '../../lib/push'
 
-// ── Session keys ──────────────────────────────────────────────────────────────
 const NOTIF_KEY   = 'sst_notif_card'
 const INSTALL_KEY = 'sst_install_card'
 
@@ -13,159 +13,82 @@ function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone
 }
 
-// ── PWA prompt cards (bottom-right, appear 1.5 s after mount) ────────────────
-function PWAPrompts() {
-  const [showNotif,   setShowNotif]   = useState(false)
-  const [showInstall, setShowInstall] = useState(false)
-  const [notifBusy,   setNotifBusy]   = useState(false)
+// One inline prompt at the top of the content, never covering it: notifications first,
+// then app install. Each is dismissed for the browser session.
+function PromptBanner() {
+  const [prompt, setPrompt] = useState(null) // 'notif' | 'install' | null
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (
-        isPushSupported() &&
-        Notification.permission === 'default' &&
-        !sessionStorage.getItem(NOTIF_KEY)
-      ) setShowNotif(true)
-
-      if (
-        window.__pwaInstallPrompt &&
-        !isStandalone() &&
-        !sessionStorage.getItem(INSTALL_KEY)
-      ) setShowInstall(true)
-    }, 1500)
-    return () => clearTimeout(t)
+  const pickNext = useCallback(() => {
+    if (isPushSupported() && Notification.permission === 'default' && !sessionStorage.getItem(NOTIF_KEY)) return 'notif'
+    if (window.__pwaInstallPrompt && !isStandalone() && !sessionStorage.getItem(INSTALL_KEY)) return 'install'
+    return null
   }, [])
 
-  async function handleEnable() {
-    setNotifBusy(true)
-    await enablePush()
-    setNotifBusy(false)
-    dismissNotif()
+  useEffect(() => {
+    const t = setTimeout(() => setPrompt(pickNext()), 1500)
+    return () => clearTimeout(t)
+  }, [pickNext])
+
+  function dismiss() {
+    sessionStorage.setItem(prompt === 'notif' ? NOTIF_KEY : INSTALL_KEY, '1')
+    setPrompt(pickNext())
   }
 
-  function dismissNotif() {
-    sessionStorage.setItem(NOTIF_KEY, '1')
-    setShowNotif(false)
+  async function accept() {
+    setBusy(true)
+    if (prompt === 'notif') {
+      await enablePush()
+    } else {
+      await window.__pwaInstallPrompt?.prompt()
+      window.__pwaInstallPrompt = null
+    }
+    setBusy(false)
+    dismiss()
   }
 
-  async function handleInstall() {
-    const prompt = window.__pwaInstallPrompt
-    if (!prompt) return
-    await prompt.prompt()
-    window.__pwaInstallPrompt = null
-    setShowInstall(false)
-  }
-
-  function dismissInstall() {
-    sessionStorage.setItem(INSTALL_KEY, '1')
-    setShowInstall(false)
-  }
-
-  if (!showNotif && !showInstall) return null
+  if (!prompt) return null
+  const isNotif = prompt === 'notif'
+  const Icon = isNotif ? BellRing : Download
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3 w-[288px] pointer-events-none">
-
-      {showNotif && (
-        <div className="bg-surface rounded-2xl border border-surface-border shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                <Bell size={14} className="text-primary" />
-              </div>
-              <p className="text-sm font-bold text-text">Enable notifications</p>
-            </div>
-            <button
-              onClick={dismissNotif}
-              className="text-text-muted hover:text-text transition-colors mt-0.5 flex-shrink-0"
-              aria-label="Dismiss"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <p className="text-xs text-text-muted leading-relaxed mb-3.5">
-            Get notified about critical stock levels and pending approvals in real time.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleEnable}
-              disabled={notifBusy}
-              className="flex-1 bg-primary text-white text-xs font-bold py-1.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
-            >
-              {notifBusy ? 'Enabling…' : 'Enable'}
-            </button>
-            <button
-              onClick={dismissNotif}
-              className="flex-1 bg-surface-alt text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-surface-border transition-colors"
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showInstall && (
-        <div className="bg-surface rounded-2xl border border-surface-border shadow-2xl p-4 pointer-events-auto animate-in fade-in duration-300">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                <Download size={14} className="text-primary" />
-              </div>
-              <p className="text-sm font-bold text-text">Install this app</p>
-            </div>
-            <button
-              onClick={dismissInstall}
-              className="text-text-muted hover:text-text transition-colors mt-0.5 flex-shrink-0"
-              aria-label="Dismiss"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <p className="text-xs text-text-muted leading-relaxed mb-3.5">
-            Add an icon to your home screen for faster access and a better offline experience.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleInstall}
-              className="flex-1 bg-primary text-white text-xs font-bold py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Install
-            </button>
-            <button
-              onClick={dismissInstall}
-              className="flex-1 bg-surface-alt text-text-muted text-xs font-semibold py-1.5 rounded-lg hover:bg-surface-border transition-colors"
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
-
+    <div role="region" aria-label={isNotif ? 'Enable notifications' : 'Install app'} className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-surface-border bg-surface px-4 py-3">
+      <Icon size={18} strokeWidth={1.75} className="text-primary flex-shrink-0" aria-hidden="true" />
+      <p className="text-sm text-text flex-1 min-w-[12rem]">
+        {isNotif
+          ? <>Get an alert when a vaccine runs critically low or an approval is waiting.</>
+          : <>Install the app for faster access and better offline use.</>}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={accept} disabled={busy}>
+          {busy ? 'Working…' : isNotif ? 'Turn on alerts' : 'Install'}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={dismiss}>Not now</Button>
+      </div>
+      <button onClick={dismiss} className="hidden sm:grid w-8 h-8 place-items-center rounded-control text-text-muted hover:bg-surface-alt hover:text-text" aria-label="Dismiss">
+        <X size={16} strokeWidth={1.75} />
+      </button>
     </div>
   )
 }
 
-// ── Main layout ───────────────────────────────────────────────────────────────
 export default function Layout({ children }) {
   useOfflineSync()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [collapsed, setCollapsed]         = useState(false)
+  const closeNav = useCallback(() => setMobileNavOpen(false), [])
+  const toggleCollapse = useCallback(() => setCollapsed((c) => !c), [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-alt">
-      <Sidebar
-        mobileOpen={mobileNavOpen}
-        onClose={() => setMobileNavOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed((c) => !c)}
-      />
+      <Sidebar mobileOpen={mobileNavOpen} onClose={closeNav} collapsed={collapsed} onToggleCollapse={toggleCollapse} />
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <TopBar onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 pt-5 sm:pt-6 pb-10">
+          <PromptBanner />
           {children}
         </main>
       </div>
-      <PWAPrompts />
     </div>
   )
 }

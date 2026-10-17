@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "createdAt": "2026-10-17T18:30:47.537Z",
+        "reason": "Claude: notification count badge numerals (18px badge) need a sub-caption size; not body text"
+      }
+    ]
+  }
+}

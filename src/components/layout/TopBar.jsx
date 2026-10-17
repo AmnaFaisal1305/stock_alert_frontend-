@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, WifiOff, Sun, Moon } from 'lucide-react'
+import { Bell, WifiOff, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
+import { pageTitle, scopeLabel } from '../../lib/navigation'
 
 function useOnline() {
   return useSyncExternalStore(
@@ -32,54 +33,33 @@ const ROLE_LABELS = {
   observer:            'Observer',
 }
 
-const PAGE_TITLES = {
-  '/facility/dashboard':    'Dashboard',
-  '/facility/record-stock': 'Stock Requests',
-  '/facility/approvals':    'Approvals',
-  '/facility/thresholds':   'Vaccines & Thresholds',
-  '/facility/workers':      'Users Info',
-  '/facility/audit-log':    'Audit Log',
-  '/facility/assign-vials': 'Assign Vials',
-  '/facility/day-end':      'Day End',
-  '/facility/stock-register': 'Stock Register',
-  '/district/dashboard':    'Dashboard',
-  '/district/facilities':   'Facilities',
-  '/district/users':        'Users',
-  '/district/audit-log':    'Audit Log',
-  '/super-admin/dashboard': 'Dashboard',
-  '/super-admin/districts': 'Districts',
-  '/super-admin/facilities': 'Facilities',
-  '/super-admin/ucs':       'UC Management',
-  '/super-admin/vaccines':  'Vaccines',
-  '/super-admin/users':     'User Management',
-  '/super-admin/audit-log': 'Audit Log',
-  '/uc/dashboard':          'Dashboard',
-  '/uc/facilities':         'Facilities',
-  '/uc/users':              'Users',
-  '/uc/audit-log':          'Audit Log',
-  '/uc/stock-requests':     'Stock Requests',
-  '/head/dashboard':        'Dashboard',
-  '/head/approvals':        'Approvals',
-  '/head/stock-requests':   'Stock Requests',
-  '/head/users':            'Users',
-  '/head/audit-log':        'Audit Log',
-  '/head/analytics':        'Analytics',
-  '/head/guide':            'Guide',
-  '/super-admin/analytics': 'Analytics',
-  '/super-admin/guide':     'Guide',
-  '/district/analytics':    'Analytics',
-  '/district/guide':        'Guide',
-  '/facility/analytics':    'Analytics',
-  '/facility/guide':        'Guide',
-  '/uc/analytics':          'Analytics',
-  '/uc/guide':              'Guide',
-  '/worker/stock-entry':    'Stock Entry',
-  '/worker/status':         'Stock Status',
-  '/worker/guide':          'Guide',
-  '/super-admin/sheet':     'EPI Form B',
-  '/facility/sheet':        'EPI Form B',
-  '/head/sheet':            'EPI Form B',
-  '/uc/sheet':              'EPI Form B',
+const iconBtn = 'w-9 h-9 rounded-control grid place-items-center text-text-muted hover:bg-surface-chip hover:text-text transition-colors'
+
+function SyncStatus() {
+  const isOnline = useOnline()
+  const { pending, lastSynced } = useQueueState()
+  const time = (d) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  if (!isOnline) {
+    return (
+      <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-warning-bg text-warning-dark text-xs font-medium" role="status">
+        <WifiOff size={13} strokeWidth={2} aria-hidden="true" />
+        Offline{pending > 0 && ` · ${pending} pending`}
+      </span>
+    )
+  }
+  if (pending > 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-info-bg text-info-dark text-xs font-medium" role="status">
+        <RefreshCw size={13} strokeWidth={2} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        Syncing {pending}
+      </span>
+    )
+  }
+  if (lastSynced) {
+    return <span className="hidden sm:inline text-xs text-text-muted" title={new Date(lastSynced).toLocaleString()}>Synced {time(lastSynced)}</span>
+  }
+  return null
 }
 
 export default function TopBar({ onMenuClick }) {
@@ -89,12 +69,9 @@ export default function TopBar({ onMenuClick }) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const bellRef  = useRef(null)
-  const isOnline = useOnline()
-  const { pending, lastSynced } = useQueueState()
 
-  const initial   = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
-  const pageTitle = PAGE_TITLES[pathname] ?? ''
-
+  const initial = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
+  const title   = pageTitle(pathname)
   const showBell = user?.role !== 'facility_worker'
 
   const { data: countData } = useQuery({
@@ -103,114 +80,85 @@ export default function TopBar({ onMenuClick }) {
     refetchInterval: 30_000,
     enabled: showBell,
   })
-
   const unreadCount = countData?.count ?? 0
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return
     function handleClick(e) {
       if (panelRef.current?.contains(e.target) || bellRef.current?.contains(e.target)) return
       setOpen(false)
     }
+    function handleKey(e) { if (e.key === 'Escape') { setOpen(false); bellRef.current?.focus() } }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [open])
 
   return (
-    <header className="h-16 bg-surface border-b border-surface-border flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-30">
-      {/* Left: Mobile Menu Button + page title */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onMenuClick}
-          className="p-2 -ml-1 text-text-muted hover:text-text hover:bg-surface-alt rounded-xl lg:hidden transition-colors"
-          aria-label="Open sidebar"
-        >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        {pageTitle && (
-          <h1 className="text-sm sm:text-base font-bold text-text tracking-tight truncate max-w-[140px] sm:max-w-none">{pageTitle}</h1>
-        )}
-      </div>
+    <header className="h-16 bg-surface-alt border-b border-surface-border flex items-center gap-3 px-4 sm:px-6 lg:px-7 flex-shrink-0 z-30">
+      <button onClick={onMenuClick} className={`${iconBtn} -ml-1.5 lg:hidden`} aria-label="Open navigation">
+        <Menu size={20} strokeWidth={1.75} />
+      </button>
+      {title && <p className="lg:hidden text-base font-medium text-text truncate min-w-0">{title}</p>}
 
-      {/* Right: notifications + role + user profile */}
+      <div className="flex-1" />
+
       {user && (
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <SyncStatus />
 
-          {/* Connectivity indicator */}
-          {!isOnline ? (
-            <div className="flex items-center gap-1.5 text-amber-600" title="You are offline">
-              <WifiOff size={14} strokeWidth={2.2} />
-              {pending > 0 && (
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                  {pending} pending
-                </span>
-              )}
-            </div>
-          ) : (
-            pending > 0 && (
-              <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full" title={lastSynced ? `Last synced ${new Date(lastSynced).toLocaleTimeString()}` : undefined}>
-                {pending} syncing…
-              </span>
-            )
-          )}
-          {isOnline && !pending && lastSynced && (
-            <span className="text-[10px] text-text-muted hidden sm:inline" title={`Last synced ${new Date(lastSynced).toLocaleString()}`}>
-              Synced {new Date(lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-
-          {/* Theme toggle */}
           <button
             onClick={toggle}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-surface-alt hover:text-text transition-colors"
+            className={iconBtn}
             aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={resolved === 'dark' ? 'Light mode' : 'Dark mode'}
           >
-            {resolved === 'dark' ? <Sun size={18} strokeWidth={2.2} /> : <Moon size={18} strokeWidth={2.2} />}
+            {resolved === 'dark' ? <Sun size={18} strokeWidth={1.75} /> : <Moon size={18} strokeWidth={1.75} />}
           </button>
 
-          {/* Bell — hidden for facility_worker */}
           {showBell && (
-            <>
-              <div className="relative">
-                <button
-                  ref={bellRef}
-                  onClick={() => setOpen((v) => !v)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:bg-surface-alt hover:text-text transition-colors relative"
-                  aria-label="Notifications"
-                >
-                  <Bell size={18} strokeWidth={2.2} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-extrabold flex items-center justify-center leading-none border border-surface">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {open && (
-                  <div ref={panelRef}>
-                    <NotificationPanel onClose={() => setOpen(false)} />
-                  </div>
+            <div className="relative">
+              <button
+                ref={bellRef}
+                onClick={() => setOpen((v) => !v)}
+                className={`${iconBtn} relative`}
+                aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                aria-expanded={open}
+              >
+                <Bell size={18} strokeWidth={1.75} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-semibold grid place-items-center leading-none ring-2 ring-surface-alt tabular-nums">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
-              </div>
-
-              <div className="h-6 w-px bg-surface-border hidden sm:block" />
-            </>
+              </button>
+              {open && (
+                <div ref={panelRef}>
+                  <NotificationPanel onClose={() => setOpen(false)} />
+                </div>
+              )}
+            </div>
           )}
-          <span className="text-[11px] font-bold uppercase tracking-wider bg-primary/5 text-primary border border-primary/10 px-3 py-1 rounded-full hidden sm:inline-block">
+
+          <span className="hidden sm:inline-flex items-center h-6 px-2.5 ml-1 rounded-full bg-success-bg text-success-dark text-[11px] font-semibold uppercase tracking-[0.06em]">
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
-          <span className="text-sm font-semibold text-text-muted hidden md:block">{user.name ?? user.email}</span>
-          <button
-            type="button"
-            aria-label={`Signed in as ${user.name ?? user.email}`}
-            className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm border border-primary/20 hover:bg-primary-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+
+          <div className="hidden md:block text-right leading-tight ml-1 max-w-[200px]">
+            <p className="text-sm font-medium text-text truncate">{user.name ?? user.email}</p>
+            <p className="text-xs text-text-muted truncate">{scopeLabel(user)}</p>
+          </div>
+
+          <span
+            className="w-[38px] h-[38px] ml-1 rounded-full bg-primary text-white grid place-items-center text-sm font-medium flex-shrink-0"
+            title={`Signed in as ${user.name ?? user.email}`}
+            aria-hidden="true"
           >
             {initial}
-          </button>
+          </span>
         </div>
       )}
     </header>

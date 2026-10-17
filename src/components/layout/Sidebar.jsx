@@ -1,104 +1,35 @@
 import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard, Map, Building2, Users, ClipboardList,
-  Syringe, PackagePlus, PackageOpen, ClipboardCheck, UserCog, LogOut, BookOpen, MapPin,
-  ChevronLeft, BarChart2, Compass, FileText,
-} from 'lucide-react'
+import { PackageCheck, ChevronLeft, LogOut, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { navFor, scopeLabel, GuideIcon } from '../../lib/navigation'
 
-const NAV = {
-  super_admin: [
-    { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
-    {
-      type: 'tree',
-      items: [
-        { to: '/super-admin/districts',  label: 'Districts',     icon: Map,      depth: 0 },
-        { to: '/super-admin/ucs',        label: 'UC Management', icon: MapPin,   depth: 1 },
-        { to: '/super-admin/facilities', label: 'Facilities',    icon: Building2, depth: 2 },
-      ],
-    },
-    { to: '/super-admin/vaccines',   label: 'Vaccines',        icon: Syringe         },
-    { to: '/super-admin/users',      label: 'User Management', icon: Users           },
-    { to: '/super-admin/audit-log',  label: 'Audit Log',       icon: ClipboardList   },
-    { to: '/super-admin/analytics',  label: 'Analytics',       icon: BarChart2        },
-    { to: '/super-admin/sheet',      label: 'Sheet',           icon: FileText         },
-    { to: '/super-admin/guide',      label: 'Guide',           icon: Compass          },
-  ],
-  district_supervisor: [
-    { to: '/district/dashboard',  label: 'Dashboard Analytics', icon: LayoutDashboard },
-    { to: '/district/facilities', label: 'Vaccine Performance', icon: Building2       },
-    { to: '/district/users',      label: 'Users',               icon: Users           },
-    { to: '/district/audit-log',  label: 'Audit Log',           icon: ClipboardList   },
-    { to: '/district/analytics',  label: 'Analytics',           icon: BarChart2        },
-    { to: '/district/guide',      label: 'Guide',               icon: Compass          },
-  ],
-  facility_supervisor: [
-    { to: '/facility/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
-    { to: '/facility/approvals',      label: 'Approvals',      icon: ClipboardCheck  },
-    { to: '/facility/record-stock',   label: 'Stock Requests', icon: PackageOpen     },
-    { to: '/facility/stock-register', label: 'Stock Register', icon: BookOpen        },
-    { to: '/facility/workers',        label: 'Users Info',     icon: UserCog         },
-    { to: '/facility/assign-vials',   label: 'Assign Vials',   icon: PackagePlus     },
-    { to: '/facility/day-end',        label: 'Day End',        icon: ClipboardList   },
-    { to: '/facility/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
-    { to: '/facility/analytics',      label: 'Analytics',      icon: BarChart2        },
-    { to: '/facility/sheet',          label: 'Sheet',          icon: FileText         },
-    { to: '/facility/guide',          label: 'Guide',          icon: Compass          },
-  ],
-  uc_supervisor: [
-    { to: '/uc/dashboard',       label: 'Dashboard',          icon: LayoutDashboard },
-    { to: '/uc/facilities',      label: 'Vaccine Performance',icon: Building2       },
-    { to: '/uc/users',           label: 'Users',              icon: Users           },
-    { to: '/uc/stock-requests',  label: 'Stock Requests',     icon: PackageOpen     },
-    { to: '/uc/audit-log',       label: 'Audit Log',          icon: ClipboardList   },
-    { to: '/uc/analytics',       label: 'Analytics',          icon: BarChart2        },
-    { to: '/uc/sheet',           label: 'Sheet',              icon: FileText         },
-    { to: '/uc/guide',           label: 'Guide',              icon: Compass          },
-  ],
-  facility_worker: [
-    { to: '/worker/stock-entry', label: 'My Holdings',  icon: Syringe         },
-    { to: '/worker/status',      label: 'Stock Status', icon: LayoutDashboard },
-    { to: '/worker/guide',       label: 'Guide',        icon: Compass          },
-  ],
-  facility_head: [
-    { to: '/head/dashboard',      label: 'Dashboard',     icon: LayoutDashboard },
-    { to: '/head/users',          label: 'Users',          icon: Users           },
-    { to: '/head/approvals',      label: 'Approvals',      icon: ClipboardCheck  },
-    { to: '/head/stock-requests', label: 'Stock Requests', icon: PackageOpen     },
-    { to: '/head/audit-log',      label: 'Audit Log',      icon: ClipboardList   },
-    { to: '/head/analytics',      label: 'Analytics',      icon: BarChart2        },
-    { to: '/head/sheet',          label: 'Sheet',          icon: FileText         },
-    { to: '/head/guide',          label: 'Guide',          icon: Compass          },
-  ],
-  observer: [
-    { to: '/super-admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
-    { to: '/super-admin/districts',  label: 'Districts',        icon: Map             },
-    { to: '/super-admin/ucs',        label: 'UC Management',   icon: MapPin          },
-    { to: '/super-admin/facilities', label: 'Facilities',       icon: Building2       },
-    { to: '/super-admin/vaccines',   label: 'Vaccines',         icon: Syringe         },
-    { to: '/super-admin/users',      label: 'Users',            icon: Users           },
-    { to: '/super-admin/audit-log',  label: 'Audit Log',        icon: ClipboardList   },
-    { to: '/super-admin/analytics',  label: 'Analytics',        icon: BarChart2        },
-    { to: '/super-admin/sheet',      label: 'Sheet',            icon: FileText         },
-    { to: '/super-admin/guide',      label: 'Guide',            icon: Compass          },
-  ],
-}
+const TREE_INDENT = ['', 'ml-4', 'ml-8']
 
-const ROLE_SECTION_LABELS = {
-  super_admin:         'Administration',
-  district_supervisor: 'District',
-  uc_supervisor:       'UC Supervisor',
-  facility_supervisor: 'Facility',
-  facility_worker:     'My Workspace',
-  facility_head:       'Facility Head',
-  observer:            'Observer',
+function NavItem({ to, label, icon: Icon, depth = 0, collapsed, onNavigate }) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      className={({ isActive }) =>
+        [
+          'flex items-center rounded-control text-sm transition-colors',
+          collapsed ? 'justify-center h-10 w-10 mx-auto' : `gap-3 h-10 px-3 ${TREE_INDENT[depth]}`,
+          isActive ? 'bg-white/10 text-white font-medium' : 'text-white/75 hover:bg-white/[0.06] hover:text-white',
+        ].join(' ')
+      }
+    >
+      <Icon size={depth ? 16 : 18} strokeWidth={1.75} className="flex-shrink-0 opacity-80" aria-hidden="true" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </NavLink>
+  )
 }
 
 const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollapse }) {
   const { user, logout } = useAuth()
-  const links        = NAV[user?.role] ?? []
-  const sectionLabel = ROLE_SECTION_LABELS[user?.role] ?? 'Navigation'
+  const nav = navFor(user?.role)
+  const scope = scopeLabel(user)
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -107,210 +38,98 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed, onToggle
     return () => document.removeEventListener('keydown', onKey)
   }, [mobileOpen, onClose])
 
+  // On mobile the drawer is always full width, so "collapsed" only applies on lg+.
+  const isCollapsed = collapsed && !mobileOpen
+
   return (
     <>
-      {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden transition-opacity"
-          onClick={onClose}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close navigation"
-        />
+        <div className="fixed inset-0 bg-[rgb(28_33_30/0.35)] z-40 lg:hidden" onClick={onClose} aria-hidden="true" />
       )}
 
       <aside
         className={[
-          'h-screen bg-epi-dark flex flex-col flex-shrink-0',
-          'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0',
-          'transition-all duration-300 ease-in-out',
-          collapsed ? 'w-[72px]' : 'w-64',
-          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+          'h-screen bg-epi-dark text-white flex flex-col flex-shrink-0',
+          'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-[width,transform] duration-200 ease-out',
+          isCollapsed ? 'w-[72px]' : 'w-[250px]',
+          mobileOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full lg:translate-x-0',
         ].join(' ')}
+        aria-label="Sidebar"
       >
-        {/* ── Logo ─────────────────────────────────── */}
-        <div className={[
-          'border-b border-white/10 flex items-center flex-shrink-0 relative',
-          collapsed ? 'justify-center px-0 py-5 h-[72px]' : 'gap-3 px-5 py-5 h-[72px]',
-        ].join(' ')}>
-          <div className="w-9 h-9 flex-shrink-0">
-            <img
-              src="/images/icon-image.jpeg"
-              alt="Logo"
-              className="w-full h-full object-contain"
-              style={{ mixBlendMode: 'screen', filter: 'invert(1) hue-rotate(180deg)' }}
-            />
-          </div>
-
-          {!collapsed && (
-            <p className="font-extrabold text-white text-xs leading-snug tracking-tight flex-1 min-w-0">
-              Stock Management &amp; Alert System
-            </p>
+        {/* Brand */}
+        <div className={`flex items-center gap-2.5 px-3.5 pt-4 pb-4 border-b border-white/[0.08] ${isCollapsed ? 'justify-center' : ''}`}>
+          <span className="w-[38px] h-[38px] rounded-control bg-primary-light grid place-items-center flex-shrink-0">
+            <PackageCheck size={19} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          {!isCollapsed && (
+            <p className="text-sm font-medium leading-tight flex-1 min-w-0 text-balance">Stock Management &amp; Alert System</p>
           )}
-
-          {/* Collapse toggle — desktop only, top-right of header */}
-          {!mobileOpen && (
-            <button
-              onClick={onToggleCollapse}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className={[
-                'hidden lg:flex items-center justify-center w-6 h-6 rounded-full',
-                'bg-white/10 hover:bg-white/20 text-white/50 hover:text-white',
-                'transition-all duration-150 flex-shrink-0',
-                collapsed ? '' : 'ml-auto',
-              ].join(' ')}
-            >
-              <ChevronLeft
-                size={13}
-                strokeWidth={2.5}
-                className={[
-                  'transition-transform duration-300',
-                  collapsed ? 'rotate-180' : '',
-                ].join(' ')}
-              />
-            </button>
-          )}
-
-          {/* Mobile close button */}
           {mobileOpen && (
-            <button
-              onClick={onClose}
-              aria-label="Close navigation"
-              className="ml-auto lg:hidden text-white/60 hover:text-white p-1 rounded-lg"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={onClose} aria-label="Close navigation" className="lg:hidden w-8 h-8 grid place-items-center rounded-control text-white/70 hover:bg-white/10 hover:text-white">
+              <X size={18} strokeWidth={1.75} />
             </button>
           )}
         </div>
 
-        {/* ── Nav ──────────────────────────────────── */}
-        <nav
-          className={[
-            'flex-1 py-5 overflow-y-auto overflow-x-hidden flex flex-col gap-1',
-            collapsed ? 'px-2.5' : 'px-3',
-          ].join(' ')}
-          aria-label="Main navigation"
-        >
-          {/* Section label */}
-          {!collapsed && (
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-2">
-              {sectionLabel}
+        {/* Scope + CTA */}
+        {!isCollapsed && (
+          <div className="px-3.5 pt-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-white/45 truncate" title={scope}>
+              {nav.section}<span className="text-white/25"> · </span><span className="normal-case tracking-normal font-medium text-white/70">{scope}</span>
             </p>
-          )}
+          </div>
+        )}
+        {nav.cta && (
+          <div className={isCollapsed ? 'px-2.5 pt-3' : 'px-3 pt-3'}>
+            <NavLink
+              to={nav.cta.to}
+              onClick={onClose}
+              title={isCollapsed ? nav.cta.label : undefined}
+              className={`flex items-center justify-center gap-2 h-10 rounded-control bg-white/90 text-epi-dark text-sm font-medium hover:bg-white transition-colors ${isCollapsed ? 'w-10 mx-auto' : 'w-full'}`}
+            >
+              {isCollapsed ? <ArrowRight size={16} strokeWidth={1.75} /> : nav.cta.label}
+            </NavLink>
+          </div>
+        )}
 
-          {links.map((item, idx) => {
-            if (item.type === 'tree') {
-              const treeLink = ({ to, label, icon: Icon }, size = 18) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={onClose}
-                  title={collapsed ? label : undefined}
-                  className={({ isActive }) =>
-                    [
-                      'flex items-center rounded-xl font-semibold transition-all duration-150 group',
-                      collapsed ? 'justify-center w-full p-3 text-sm' : 'gap-2.5 px-3 py-2 text-sm',
-                      isActive
-                        ? 'bg-white/15 text-white shadow-sm'
-                        : 'text-white/50 hover:bg-white/10 hover:text-white/90',
-                    ].join(' ')
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon size={size} strokeWidth={isActive ? 2.2 : 1.8}
-                        className={['flex-shrink-0 transition-colors duration-150', isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'].join(' ')} />
-                      {!collapsed && <span className="truncate">{label}</span>}
-                    </>
-                  )}
-                </NavLink>
-              )
-
-              const root     = item.items.find((i) => i.depth === 0)
-              const ucItem   = item.items.find((i) => i.depth === 1)
-              const facItem  = item.items.find((i) => i.depth === 2)
-
-              if (collapsed) {
-                return (
-                  <div key={idx} className="flex flex-col gap-1">
-                    {treeLink(root)}
-                    {treeLink(ucItem)}
-                    {treeLink(facItem)}
-                  </div>
-                )
-              }
-
-              return (
-                <div key={idx} className="flex flex-col gap-0.5">
-                  {/* Districts — root */}
-                  {treeLink(root, 18)}
-
-                  {/* UC Management — nested under Districts */}
-                  <div className="ml-5 border-l border-white/[0.08] pl-2 flex flex-col gap-0.5">
-                    {treeLink(ucItem, 15)}
-
-                    {/* Facilities — nested under UC */}
-                    <div className="ml-4 border-l border-white/[0.08] pl-2">
-                      {treeLink(facItem, 14)}
-                    </div>
-                  </div>
-                </div>
-              )
-            }
-
-            const { to, label, icon: Icon } = item
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={onClose}
-                title={collapsed ? label : undefined}
-                className={({ isActive }) =>
-                  [
-                    'flex items-center rounded-xl text-sm font-semibold transition-all duration-150 group',
-                    collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5',
-                    isActive
-                      ? 'bg-white/15 text-white shadow-sm'
-                      : 'text-white/50 hover:bg-white/10 hover:text-white/90',
-                  ].join(' ')
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8}
-                      className={['flex-shrink-0 transition-colors duration-150', isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'].join(' ')} />
-                    {!collapsed && <span className="truncate">{label}</span>}
-                  </>
-                )}
-              </NavLink>
-            )
-          })}
+        {/* Groups */}
+        <nav className={`flex-1 overflow-y-auto overflow-x-hidden scrollbar-none pb-3 ${isCollapsed ? 'px-2.5' : 'px-3'}`} aria-label="Main navigation">
+          {nav.groups.map((g) => (
+            <div key={g.label} className="mt-4">
+              {isCollapsed ? (
+                <div className="h-px bg-white/[0.08] mx-2 mb-2" aria-hidden="true" />
+              ) : (
+                <p className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-white/40">{g.label}</p>
+              )}
+              <div className="flex flex-col gap-0.5">
+                {g.items.map((item) => (
+                  <NavItem key={item.to} {...item} depth={isCollapsed ? 0 : item.depth} collapsed={isCollapsed} onNavigate={onClose} />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* ── Bottom: sign-out + collapse toggle ───── */}
-        <div className={[
-          'border-t border-white/10 py-4 flex flex-col gap-1',
-          collapsed ? 'px-2.5 items-center' : 'px-3',
-        ].join(' ')}>
-
-          {/* Sign out */}
+        {/* Footer */}
+        <div className={`border-t border-white/[0.08] py-3 flex flex-col gap-0.5 ${isCollapsed ? 'px-2.5' : 'px-3'}`}>
+          <button
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={isCollapsed ? 'Expand sidebar' : undefined}
+            className={`hidden lg:flex items-center rounded-control text-sm text-white/75 hover:bg-white/[0.06] hover:text-white transition-colors ${isCollapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-3 h-10 px-3 w-full'}`}
+          >
+            <ChevronLeft size={18} strokeWidth={1.75} className={`flex-shrink-0 opacity-80 transition-transform ${collapsed ? 'rotate-180' : ''}`} aria-hidden="true" />
+            {!isCollapsed && 'Collapse'}
+          </button>
+          {nav.guide && <NavItem to={nav.guide} label="Guide" icon={GuideIcon} collapsed={isCollapsed} onNavigate={onClose} />}
           <button
             onClick={logout}
-            title={collapsed ? 'Sign Out' : undefined}
-            className={[
-              'flex items-center rounded-xl text-sm font-semibold text-white/40',
-              'hover:bg-danger/20 hover:text-red-300 transition-all duration-150 group',
-              collapsed ? 'justify-center w-full p-3' : 'gap-3 px-3.5 py-2.5 w-full',
-            ].join(' ')}
+            title={isCollapsed ? 'Sign out' : undefined}
+            className={`flex items-center rounded-control text-sm text-white/75 hover:bg-white/[0.06] hover:text-white transition-colors ${isCollapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-3 h-10 px-3 w-full'}`}
           >
-            <LogOut size={18} strokeWidth={1.8} className="flex-shrink-0 group-hover:text-red-300 transition-colors" />
-            {!collapsed && <span>Sign Out</span>}
+            <LogOut size={18} strokeWidth={1.75} className="flex-shrink-0 opacity-80" aria-hidden="true" />
+            {!isCollapsed && 'Sign out'}
           </button>
-
         </div>
       </aside>
     </>
