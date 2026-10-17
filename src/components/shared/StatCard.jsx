@@ -1,23 +1,13 @@
 // KPI figure: label, large light tabular value, one line of context.
 // tone colours the value only when it encodes status: 'critical' | 'low' | 'adequate'.
-// `icon` / `colorClass` are accepted for older callers and intentionally not rendered
-// (DESIGN.md bans corner icon tiles).
 const TONE_TEXT = {
   critical: 'text-danger-dark',
   low:      'text-warning-dark',
   adequate: 'text-success-dark',
 }
 
-// shortcut: infers tone from legacy colorClass until every caller passes `tone` (Phase 3 rollout).
-function legacyTone(colorClass = '') {
-  if (colorClass.includes('danger')) return 'critical'
-  if (colorClass.includes('warning')) return 'low'
-  return undefined
-}
-
-export default function StatCard({ label, value, tone, colorClass, subtitle, unit, onClick, active = false }) {
+export default function StatCard({ label, value, tone, subtitle, unit, onClick, active = false }) {
   const Tag = onClick ? 'button' : 'div'
-  tone = tone ?? legacyTone(colorClass)
   return (
     <Tag
       type={onClick ? 'button' : undefined}

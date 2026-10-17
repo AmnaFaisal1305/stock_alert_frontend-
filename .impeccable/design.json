@@ -1,36 +1,173 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-17T00:00:00.000Z",
+  "generatedAt": "2026-10-17T20:03:25.000Z",
   "title": "Design System: Smart Stock Alert",
   "extensions": {
     "colorMeta": {
-      "forest-green": { "role": "primary", "displayName": "Forest Green", "canonical": "#2F4234", "tonalRamp": ["#1B2720", "#2F4234", "#3B5A40", "#4A6E52", "#6B9470", "#9AB89E", "#C4D8C6", "#E8F0EA"] },
-      "sidebar-forest": { "role": "primary", "displayName": "Sidebar Forest", "canonical": "#1D2721", "tonalRamp": ["#121915", "#1D2721", "#28352D", "#34443A", "#4D6153", "#6F8575", "#A3B3A7", "#D7DFD9"] },
-      "warm-paper": { "role": "neutral", "displayName": "Warm Paper", "canonical": "#F3F3F1", "tonalRamp": ["#171B18", "#212622", "#303631", "#6B726C", "#E6E6E1", "#ECECE8", "#F3F3F1", "#FFFFFF"] },
-      "ledger-ink": { "role": "neutral", "displayName": "Ledger Ink", "canonical": "#1C211E", "tonalRamp": ["#1C211E", "#2B312D", "#3E4540", "#5B625D", "#6B726C", "#9AA39C", "#C9CEC9", "#ECEFEB"] },
-      "status-critical": { "role": "tertiary", "displayName": "Critical Red", "canonical": "#C5483F", "tonalRamp": ["#43231F", "#7A2E27", "#A8352D", "#C5483F", "#DB7A72", "#F0A49D", "#F7DEDB", "#FCF1F0"] },
-      "status-low": { "role": "tertiary", "displayName": "Low Amber", "canonical": "#E0A53A", "tonalRamp": ["#40340F", "#6B4A10", "#8A5A12", "#E0A53A", "#E9C06F", "#F0D49B", "#F6E6C6", "#FBF4E5"] },
-      "status-adequate": { "role": "tertiary", "displayName": "Adequate Green", "canonical": "#2F9E66", "tonalRamp": ["#24382B", "#2F6B46", "#2F8550", "#2F9E66", "#5DB884", "#8FD0A2", "#E1EEE4", "#F2F8F3"] }
+      "forest-green": {
+        "role": "primary",
+        "displayName": "Forest Green",
+        "canonical": "#2F4234",
+        "tonalRamp": [
+          "#1B2720",
+          "#2F4234",
+          "#3B5A40",
+          "#4A6E52",
+          "#6B9470",
+          "#9AB89E",
+          "#C4D8C6",
+          "#E8F0EA"
+        ]
+      },
+      "sidebar-forest": {
+        "role": "primary",
+        "displayName": "Sidebar Forest",
+        "canonical": "#1D2721",
+        "tonalRamp": [
+          "#121915",
+          "#1D2721",
+          "#28352D",
+          "#34443A",
+          "#4D6153",
+          "#6F8575",
+          "#A3B3A7",
+          "#D7DFD9"
+        ]
+      },
+      "warm-paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#F3F3F1",
+        "tonalRamp": [
+          "#171B18",
+          "#212622",
+          "#303631",
+          "#6B726C",
+          "#E6E6E1",
+          "#ECECE8",
+          "#F3F3F1",
+          "#FFFFFF"
+        ]
+      },
+      "ledger-ink": {
+        "role": "neutral",
+        "displayName": "Ledger Ink",
+        "canonical": "#1C211E",
+        "tonalRamp": [
+          "#1C211E",
+          "#2B312D",
+          "#3E4540",
+          "#5B625D",
+          "#6B726C",
+          "#9AA39C",
+          "#C9CEC9",
+          "#ECEFEB"
+        ]
+      },
+      "status-critical": {
+        "role": "tertiary",
+        "displayName": "Critical Red",
+        "canonical": "#C5483F",
+        "tonalRamp": [
+          "#43231F",
+          "#7A2E27",
+          "#A8352D",
+          "#C5483F",
+          "#DB7A72",
+          "#F0A49D",
+          "#F7DEDB",
+          "#FCF1F0"
+        ]
+      },
+      "status-low": {
+        "role": "tertiary",
+        "displayName": "Low Amber",
+        "canonical": "#E0A53A",
+        "tonalRamp": [
+          "#40340F",
+          "#6B4A10",
+          "#8A5A12",
+          "#E0A53A",
+          "#E9C06F",
+          "#F0D49B",
+          "#F6E6C6",
+          "#FBF4E5"
+        ]
+      },
+      "status-adequate": {
+        "role": "tertiary",
+        "displayName": "Adequate Green",
+        "canonical": "#2F9E66",
+        "tonalRamp": [
+          "#24382B",
+          "#2F6B46",
+          "#2F8550",
+          "#2F9E66",
+          "#5DB884",
+          "#8FD0A2",
+          "#E1EEE4",
+          "#F2F8F3"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Page titles on dashboards and overview screens." },
-      "headline": { "displayName": "Headline", "purpose": "Page titles on work screens; section titles." },
-      "title": { "displayName": "Title", "purpose": "Card, dialog and row titles." },
-      "body": { "displayName": "Body", "purpose": "Default text and table cells." },
-      "numeric": { "displayName": "Numeric", "purpose": "KPI values and stock quantities; always tabular." },
-      "label": { "displayName": "Label", "purpose": "Eyebrows, table headers, nav section headings." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles on dashboards and overview screens."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles on work screens; section titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card, dialog and row titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text and table cells."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "KPI values and stock quantities; always tabular."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Eyebrows, table headers, nav section headings."
+      }
     },
     "shadows": [
-      { "name": "float", "value": "0 8px 24px rgb(28 33 30 / 0.12)", "purpose": "Dropdowns, popovers, notification panel, toasts." },
-      { "name": "overlay", "value": "0 24px 48px rgb(28 33 30 / 0.18)", "purpose": "Modals and drawers over a rgb(28 33 30 / 0.35) scrim." }
+      {
+        "name": "float",
+        "value": "0 8px 24px rgb(28 33 30 / 0.12)",
+        "purpose": "Dropdowns, popovers, notification panel, toasts."
+      },
+      {
+        "name": "overlay",
+        "value": "0 24px 48px rgb(28 33 30 / 0.18)",
+        "purpose": "Modals and drawers over a rgb(28 33 30 / 0.35) scrim."
+      }
     ],
     "motion": [
-      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Toast, drawer and modal entry (150–200ms)." }
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Toast, drawer and modal entry (150–200ms)."
+      }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
     ]
   },
   "components": [
@@ -51,12 +188,28 @@
       "css": ".ds-btn-secondary{background:rgb(var(--card));color:rgb(var(--ink));border:1px solid rgb(var(--line));border-radius:10px;padding:8px 16px;font:500 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;cursor:pointer;transition:background .15s}.ds-btn-secondary:hover{background:rgb(var(--bg))}.ds-btn-secondary:focus-visible{outline:none;box-shadow:0 0 0 2px rgb(var(--card)),0 0 0 4px rgb(var(--pri))}"
     },
     {
+      "name": "Ghost-danger Button",
+      "kind": "button",
+      "refersTo": "button-ghost-danger",
+      "description": "Entry point to a destructive action in a row or form (Reject, Decline, Deactivate). Confirmation happens in a dialog with the filled danger button.",
+      "html": "<button class=\"ds-btn-ghost-danger\">Reject</button>",
+      "css": ".ds-btn-ghost-danger{background:transparent;color:rgb(var(--crit-text));border:0;border-radius:10px;padding:8px 12px;font:500 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;cursor:pointer;transition:background .15s}.ds-btn-ghost-danger:hover{background:rgb(var(--crit-bg))}.ds-btn-ghost-danger:focus-visible{outline:none;box-shadow:0 0 0 2px rgb(var(--card)),0 0 0 4px rgb(var(--pri))}"
+    },
+    {
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input-field",
       "description": "Hairline field; forest focus ring.",
       "html": "<label class=\"ds-field\"><span>Batch number</span><input placeholder=\"e.g. B-2041\"></label>",
       "css": ".ds-field{display:flex;flex-direction:column;gap:6px;font:500 14px 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-field input{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:10px;padding:8px 14px;font:400 14px 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-field input:focus{outline:none;border-color:rgb(var(--pri));box-shadow:0 0 0 3px rgb(var(--pri) / .1)}"
+    },
+    {
+      "name": "Text Area",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Notes and reasons. Same style as the text field, two rows; the label says (required) or (optional).",
+      "html": "<label class=\"ds-ta-label\">Reason <span>(required)</span></label><textarea class=\"ds-ta\" rows=\"2\" placeholder=\"Why?\"></textarea>",
+      "css": ".ds-ta-label{display:block;font:500 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink));margin-bottom:6px}.ds-ta-label span{color:rgb(var(--mut));font-weight:400}.ds-ta{width:100%;box-sizing:border-box;background:rgb(var(--card));color:rgb(var(--ink));border:1px solid rgb(var(--line));border-radius:10px;padding:10px 14px;font:400 14px/1.4 'Figtree Variable',Figtree,system-ui,sans-serif;resize:none}.ds-ta:focus{outline:none;border-color:rgb(var(--pri));box-shadow:0 0 0 3px rgb(var(--pri)/.1)}"
     },
     {
       "name": "Status Pill",
@@ -94,12 +247,36 @@
       "Numbers are the product: large, light, tabular."
     ],
     "rules": [
-      { "name": "The Status-Only Colour Rule", "body": "Saturated colour means stock or workflow status, and nothing else.", "section": "colors" },
-      { "name": "The Label-Always Rule", "body": "No status is communicated by hue alone.", "section": "colors" },
-      { "name": "The One Vocabulary Rule", "body": "Status colours come from src/lib/status.js; pages never pick them.", "section": "colors" },
-      { "name": "The Tabular Rule", "body": "Every quantity, count or date uses tabular-nums.", "section": "typography" },
-      { "name": "The Two-Weight Rule", "body": "At most 400 and 600 at body size; no bold.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "A surface gets a hairline border or a shadow, never both.", "section": "elevation" }
+      {
+        "name": "The Status-Only Colour Rule",
+        "body": "Saturated colour means stock or workflow status, and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label-Always Rule",
+        "body": "No status is communicated by hue alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Vocabulary Rule",
+        "body": "Status colours come from src/lib/status.js; pages never pick them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every quantity, count or date uses tabular-nums.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two-Weight Rule",
+        "body": "At most 400 and 600 at body size; no bold.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "A surface gets a hairline border or a shadow, never both.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do route every colour through the tokens; never use hex values or Tailwind palette colours in pages.",

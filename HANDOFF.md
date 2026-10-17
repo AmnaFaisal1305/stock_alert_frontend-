@@ -1,13 +1,34 @@
 # Frontend Handoff — Smart Stock Alert System
 
-**Last updated:** 2026-10-16 (session 12 — Round 34 CSRF retry)  
+**Last updated:** 2026-10-18 (session 13 — UI/UX consistency revamp, branch `redesign/ui-consistency`)  
 **Written for:** Future Claude sessions (or any developer picking this up cold)  
 **Project root:** `C:\Users\amnaf\OneDrive\Desktop\stock_alert_frontend`  
 **Live backend:** `https://smart-stock-alert-be.vercel.app`
 
 ---
 
-## Session Log — 2026-10-16 Session 12 (latest) — Round 34 CSRF retry
+## Session Log — 2026-10-18 Session 13 (latest) — UI/UX consistency revamp
+
+Branch `redesign/ui-consistency` (12 commits ahead of `main`, **not pushed or merged**). UI only: no query keys, mutations, validation, offline queue or `api.js` contracts changed. Source of truth for the look is now **`DESIGN.md`** ("The Ward Ledger") plus its sidecar `.impeccable/design.json`; `docs/design_refrences/` is reference only.
+
+### What changed
+- **Design system:** one card radius (18px), one control radius (10px), flat surfaces with hairlines, shadows only on floating layers; `--pri-ink` token so links stay legible in dark mode; `useTheme` follows the OS. New primitives/composites: `Tabs`, `Textarea`, `Card`, `FilterChips`, `ErrorState`, `SkeletonRows`, `PageHeader` (display/default), `Button` `ghost-danger` variant and `buttonClasses()`; `Table` got loading, empty and a stacked mobile layout. Removed `FacilityCard`, `DistrictCard`, `StepIndicator`, `RingGauge`, `Drawer`.
+- **Shell:** grouped sidebar per role (`src/lib/navigation.js`: `NAV`, `ROLE_LABELS`, `scopeLabel()`), primary button per role (none for the worker), brand tile, top bar with bell/role pill/name + scope, one dismissible prompt banner instead of floating cards. Renames: Sheet → EPI Form B; Users / User Mgmt / Users Info → Users (facility supervisor: Workers); UC Management → Union Councils; Vaccine Performance → Facilities.
+- **Pages:** every role's pages rebuilt on the shared components. Shared wrappers: `components/facilities/*` (UC + district dashboards/facilities), `components/shared/UserDirectory` (UC + district users), `components/stock-requests/RequestList` (facility, UC, head), `components/audit/AuditLogView` (every Audit Log, driven by `ROLE_CONFIG`; parsing/labels in `src/lib/auditLog.js`).
+- **Charts:** `useChartTheme()` gives Recharts per-theme hex values (Analytics was light-only before). Status colours only for status data.
+- **Bugs fixed on the way:** links to the deleted `/facility/thresholds`; non-existent Button `outline` variant (buttons rendered unstyled); UTC "today" (a day behind in Pakistan until 05:00) in Assign Vials, Day End and Analytics → `localDateStr()`/`toLocalDateStr()`; Stock Register fetched the audit log without `limit: 500`; ghost-button colour overrides losing to the variant (Reject/Decline/Deactivate showed grey); `no-data` vs `no_data` filter key mismatch; Audit Log date filters compared UTC dates.
+- **Deliberate behaviour changes:** Audit Log "Workers" (facility supervisor) is one table with a worker filter instead of a card per worker; district Audit Log "All" is a facility filter instead of a drill-down page; the district dashboard has one Town/UC scope instead of three filter rows; UC/district Facilities lose "Date added" and gain Last activity + Stock status; reset-password no longer shows the photo strip on phones.
+
+### Not done / known
+- **Backend requests:** `docs/BACKEND_REQUESTS.md` (gitignored, local): #1 facility name in the session user (shell shows "Hyderabad District" where the facility belongs), #2 server-side Audit Log filters and pagination, #3 one name for the approval decision reason, #4 unit of `statusCounts`.
+- Raw `<input type="number">` in table cells is a documented exception (see `DESIGN.md` Inputs).
+- Not tested: sticky submit bars on mobile Safari (Chromium only), Form B print preview, submitting forms against the live backend (the demo accounts email real strangers; only open/close and Escape were exercised).
+- `PRODUCT.md` predates the current impeccable schema (`product-schema-legacy`) and still has a deprecated `## Register` section; run `/impeccable init` to refresh it.
+- Screenshots (`docs/screenshots/{before,after,final}`) are gitignored and local.
+
+---
+
+## Session Log — 2026-10-16 Session 12 — Round 34 CSRF retry
 
 ### Goal
 
@@ -903,13 +924,14 @@ Districts → Union Councils (UCs) → Facilities
 
 | Layer | Path | What to use it for |
 |---|---|---|
-| Primitives | `src/components/ui/` | Button, Input, Select, Modal, Toast, Badge, DatePicker, ConfirmDialog |
-| Composites | `src/components/shared/` | Table, StatCard, FacilityCard, DistrictCard, StatusBadge, RingGauge, StepIndicator, SkeletonCard, SearchInput, Pagination, EmptyState |
+| Primitives | `src/components/ui/` | Button (+ `buttonClasses`, `ghost-danger`), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker, ConfirmDialog |
+| Composites | `src/components/shared/` | Card, PageHeader, Table, StatCard, StatusBadge, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
+| Feature-shared | `components/facilities/`, `components/stock-requests/`, `components/audit/` | FacilityBoard/FacilityDirectory, RequestList, AuditLogView (role pages are thin wrappers) |
 | Layout | `src/components/layout/` | Layout, Sidebar, TopBar, NotificationPanel |
 
 **`Select`** uses a fixed-position portal dropdown — it does not clip inside `overflow-hidden` parents. This is intentional.
 
-Never use raw `<input>`, `<button>`, `<select>` in pages — use `src/components/ui/` equivalents.
+Never use raw `<input>`, `<button>`, `<select>`, `<textarea>` in pages — use `src/components/ui/` equivalents (the only exception is compact numeric cells, see `DESIGN.md`). Design rules live in `DESIGN.md`.
 
 ---
 
@@ -922,14 +944,7 @@ Never use raw `<input>`, `<button>`, `<select>` in pages — use `src/components
 
 It checks `user.role` internally to show/hide role-specific actions.
 
-The district-supervisor AuditLog imports from the super-admin version:
-```js
-// src/pages/district-supervisor/AuditLog.jsx
-import SuperAdminAuditLog from '../super-admin/AuditLog'
-export default function DistrictAuditLog() {
-  return <SuperAdminAuditLog title="..." subtitle="..." />
-}
-```
+Every role's `AuditLog.jsx` re-exports `src/components/audit/AuditLogView.jsx`; per-role tabs, scope filter and columns are in its `ROLE_CONFIG`.
 
 ---
 
@@ -980,10 +995,10 @@ Items 1, 2, and 4 were resolved in Round 34. Remaining:
 
 ### ② QA in production
 
-The redesign branch is now merged to `main`. Test the live Vercel deployment in both light and dark mode across all 7 roles. Key things to verify:
+The session-13 redesign lives on `redesign/ui-consistency` and still needs merging. After merge, test the live Vercel deployment in both light and dark mode across all 7 roles. Key things to verify:
 - Dark mode auto-triggers on a device with OS dark mode set
 - No surface falls back to white in dark mode
-- TopBar shows page titles on all routes (Analytics, Guide, head/* pages)
+- Each page has exactly one `<h1>` from `PageHeader` (the top bar no longer shows a title)
 - Mutation errors show toast/inline messages (RecordStock, Approvals, StockRequests)
 
 ### ③ Remaining functional work

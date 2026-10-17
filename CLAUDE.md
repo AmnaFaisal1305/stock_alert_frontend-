@@ -82,14 +82,22 @@ src/
     AuthContext.jsx    — single auth state, login/logout, sessionStorage
   lib/
     api.js             — ALL fetch calls; never call fetch directly in pages
-    status.js          — status vocabulary, Tailwind classes, rollup helpers
+    status.js          — stock + workflow status vocabulary, Tailwind classes, rollup helpers
+    format.js          — formatDate/formatTime/timeAgo/plural, local-date helpers (never toISOString for dates)
+    navigation.js      — NAV per role, ROLE_LABELS, scopeLabel(), role section routes
+    stockRequests.js   — request stages, filters, pipeline helpers
+    auditLog.js        — action labels, entry parser, filters for the shared Audit Log
     vaccineNames.js    — maps "Vaccine 01–13" → Urdu display names
   hooks/
-    useDebounce.js
+    useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
+    useFocusTrap.js (Modal), useOfflineSync.js
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
-    shared/            — composite reusable: Table, StatCard, FacilityCard, etc.
-    ui/                — primitives: Button, Input, Select, Modal, Toast, Badge
+    shared/            — composites: Table, Card, StatCard, StatusBadge, FilterChips, PageHeader, EmptyState, ErrorState, ...
+    facilities/        — facility table/board/directory shared by the UC and district pages
+    stock-requests/    — RequestList shared by the facility, UC and head Stock Requests pages
+    audit/             — AuditLogView: the one Audit Log for every role
+    ui/                — primitives: Button, Input, Textarea, Select, Tabs, Modal, Toast, Badge
     ErrorBoundary.jsx
   pages/
     login/             — LoginPage, ForgotPassword, ResetPassword, HeroCarousel
@@ -125,6 +133,11 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 
 ### Avoid these patterns
 - Raw `<input>`, `<button>`, `<select>` in pages — use `src/components/ui/`
+  - Documented exceptions (compact numeric cells inside tables/steppers, where `Input`'s label and 36px height don't fit): the Assign Vials steppers, Day End row cells, the Raise-request and Record-sent quantity fields. Everything else uses the primitives.
+- `<textarea>` in pages — use `ui/Textarea`
+- Hand-built tab bars, filter pills, empty/error/loading boxes — use `Tabs`, `FilterChips`, `EmptyState`, `ErrorState`, `SkeletonRows`
+- Overriding a Button's colour with `className` (it loses to the variant) — use `variant="ghost-danger"` for Reject/Decline/Deactivate
+- `new Date().toISOString().split('T')[0]` for "today" — it is the UTC date, a day behind in Pakistan until 05:00; use `localDateStr()` / `toLocalDateStr()` from `lib/format`
 - Hardcoded API base URLs — route through `src/lib/api.js`
 - Duplicate `ROLE_DEFAULTS` — defined in `App.jsx` and `AuthContext.jsx` intentionally
 - Image files with spaces or parentheses in `public/images/`
@@ -165,7 +178,7 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 | `facility_supervisor` | `/facility/dashboard` | `src/pages/facility-supervisor/` |
 | `facility_worker` | `/worker/stock-entry` | `src/pages/facility-worker/` |
 
-Routes are defined in `App.jsx` under a single `<AuthLayout>` guard. `Sidebar.jsx` drives navigation from a `NAV` object — add new links there when adding new pages.
+Routes are defined in `App.jsx` under a single `<AuthLayout>` guard. The sidebar is driven by the `NAV` object in `src/lib/navigation.js` (grouped per role, with the role's primary button and scope line) — add new links there when adding new pages.
 
 ### Entity hierarchy
 
@@ -181,7 +194,8 @@ Backend statuses: `critical | low | adequate | no_data`. This file is the single
 - `facilityStatus(statusCounts)` — derives facility status from its vaccine counts
 - `districtStatus(facilityStatuses[])` — worst-case rollup; ignores `no_data` if real data exists
 - `worstStatus(input)` — generic worst-case from array or counts object
-- `FILTERS` — shared filter pills array for list pages (`All / Critical / Low / Normal`)
+- `FILTERS` — legacy pill definitions (`All / Critical / Low / Normal`); new lists use `FilterChips` with `STATUS_FILTERS` from `components/facilities/facilityTable.jsx`
+- `workflowStatusConfig(status)` / `<StatusBadge kind="workflow">` — request stages and approval statuses (awaiting_*, figures_differ, completed, pending, approved, rejected, …)
 
 ### Data fetching
 
@@ -191,7 +205,9 @@ TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['
 
 `src/pages/shared/FacilityDetail.jsx` is rendered under both `/super-admin/facilities/:id` and `/district/facilities/:id` — it checks `user.role` internally.
 
-The district-supervisor `AuditLog.jsx` imports from `src/pages/super-admin/AuditLog.jsx`, which accepts `title`/`subtitle` props.
+Every role's `AuditLog.jsx` re-exports `src/components/audit/AuditLogView.jsx`. Role differences (tabs, the facility/worker scope filter, columns) live in its `ROLE_CONFIG`; labels and entry parsing live in `src/lib/auditLog.js`. It fetches the whole log once and filters client-side (see `docs/BACKEND_REQUESTS.md` #2).
+
+`UserDirectory` (UC and district Users), `FacilityDirectory`/`FacilityBoard` (UC and district Dashboard/Facilities) and `RequestList` are shared the same way: the page file is a thin wrapper that passes role-specific props.
 
 ### Expandable sub-panel pattern
 
@@ -207,8 +223,8 @@ Entry type mapping: `received` → Received (+), `used` → Issued (−), `retur
 
 | Layer | Path | Contents |
 |---|---|---|
-| Primitives | `src/components/ui/` | Button, Input, Select, Modal, Toast, Badge, DatePicker, ConfirmDialog |
-| Composites | `src/components/shared/` | Table, StatCard, FacilityCard, DistrictCard, StatusBadge, RingGauge, StepIndicator, SkeletonCard, SearchInput, Pagination, EmptyState |
+| Primitives | `src/components/ui/` | Button (variants: primary, secondary, danger, ghost, ghost-danger; `buttonClasses()` for links), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker, ConfirmDialog |
+| Composites | `src/components/shared/` | Card, PageHeader, Table, StatCard, StatusBadge, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
 | Layout | `src/components/layout/` | Layout, Sidebar, TopBar, NotificationPanel |
 
 `Select` uses a fixed-position portal dropdown — it does not clip inside `overflow-hidden` parents. This is intentional.

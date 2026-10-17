@@ -198,7 +198,7 @@ Flat by default. Depth comes from tonal layering: a white card on warm paper, se
 
 ### Shadow Vocabulary
 - **Float** (`box-shadow: 0 8px 24px rgb(28 33 30 / 0.12)`): dropdown menus, popovers, the notification panel, toasts.
-- **Overlay** (`box-shadow: 0 24px 48px rgb(28 33 30 / 0.18)`): modals and drawers, over a `rgb(28 33 30 / 0.35)` scrim.
+- **Overlay** (`box-shadow: 0 24px 48px rgb(28 33 30 / 0.18)`): modals (and the mobile sidebar drawer), over a `rgb(28 33 30 / 0.35)` scrim.
 
 ### Named Rules
 **The Flat-By-Default Rule.** A surface gets either a hairline border or a shadow, never both. Resting cards use the border; floating layers use the shadow.
@@ -215,6 +215,7 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Secondary:** white with a hairline border and ink text.
 - **Ghost:** forest text, no fill; for tertiary actions and table-row actions.
 - **Danger:** critical fill; used only to confirm a destructive action, inside a dialog.
+- **Ghost-danger:** critical text on a critical wash on hover; for the entry point to a destructive action in a row or form (Reject, Decline, Deactivate, Cancel request). It is a variant, never a colour override on Ghost.
 - **Hover / Focus:** a colour shift only, with no scale or lift. Focus is a 2px forest ring with a 2px offset.
 
 ### Chips & Filters
@@ -245,6 +246,8 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Style:** white, hairline border, 10px radius, 36px height (44px on touch-first screens). The label sits above in 14px at 500 weight.
 - **Focus:** the border shifts to forest with a 3px forest/10% ring.
 - **Error:** critical border and a message below in critical text that says what is true ("Only 12 doses left").
+- **Notes and reasons:** `Textarea`, same style as inputs, two rows, label with `(required)` or `(optional)`.
+- **Raw numeric cells:** compact quantity fields inside tables and steppers (Assign Vials, Day End, Raise request, Record sent) are plain `<input type="number">` styled like an Input at 36px, because a label and field wrapper does not fit a table cell. This is the only sanctioned exception.
 
 ### Navigation
 - **Sidebar** (250px, Sidebar Forest):
@@ -274,7 +277,7 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 ### Do:
 - **Do** route every colour through the tokens (`bg-surface`, `text-text-muted`, `bg-danger-bg`…); never use hex values or Tailwind palette colours in pages.
 - **Do** use `statusConfig()` and `StatusBadge` for stock status, and the shared request-status config for workflow status.
-- **Do** use the shared components (`Card`, `Tabs`, `FilterChips`, `Table`, `EmptyState`, `ErrorState`, `Modal`, `Drawer`) instead of hand-rolling them.
+- **Do** use the shared components (`Card`, `Tabs`, `FilterChips`, `Table`, `EmptyState`, `ErrorState`, `Modal`) instead of hand-rolling them.
 - **Do** keep one primary action per region and put page actions in the `PageHeader` actions slot.
 - **Do** pair every status colour with its text label.
 - **Do** use `tabular-nums` for every number.
