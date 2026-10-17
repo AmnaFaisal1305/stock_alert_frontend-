@@ -1,6 +1,2 @@
-import AuditLog from '../super-admin/AuditLog'
-
-// Reuses the same AuditLog component — data is already scoped to the district by the backend
-export default function DistrictAuditLog() {
-  return <AuditLog />
-}
+// Every role's Audit Log is the shared view; tabs/filters come from its role config.
+export { default } from '../../components/audit/AuditLogView'
