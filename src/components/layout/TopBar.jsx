@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
-import { useLocation } from 'react-router-dom'
 import { Bell, WifiOff, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
@@ -7,7 +6,7 @@ import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
-import { pageTitle, scopeLabel } from '../../lib/navigation'
+import { scopeLabel } from '../../lib/navigation'
 
 function useOnline() {
   return useSyncExternalStore(
@@ -64,14 +63,12 @@ function SyncStatus() {
 
 export default function TopBar({ onMenuClick }) {
   const { user } = useAuth()
-  const { pathname } = useLocation()
   const { resolved, toggle } = useTheme()
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const bellRef  = useRef(null)
 
   const initial = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
-  const title   = pageTitle(pathname)
   const showBell = user?.role !== 'facility_worker'
 
   const { data: countData } = useQuery({
@@ -102,7 +99,6 @@ export default function TopBar({ onMenuClick }) {
       <button onClick={onMenuClick} className={`${iconBtn} -ml-1.5 lg:hidden`} aria-label="Open navigation">
         <Menu size={20} strokeWidth={1.75} />
       </button>
-      {title && <p className="lg:hidden text-base font-medium text-text truncate min-w-0">{title}</p>}
 
       <div className="flex-1" />
 

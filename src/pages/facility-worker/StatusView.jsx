@@ -1,122 +1,83 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Syringe } from 'lucide-react'
+import { Syringe } from 'lucide-react'
 import { getDashboard } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import PageHeader from '../../components/shared/PageHeader'
+import Card from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
-import SkeletonCard from '../../components/shared/SkeletonCard'
-import { statusConfig } from '../../lib/status'
+import FilterChips from '../../components/shared/FilterChips'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import { STATUS_RANK, statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
-function SummaryPill({ icon: Icon, label, count, colorClass }) {
-  return (
-    <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold border shadow-sm transition-all hover:scale-105 duration-200 ${colorClass}`}>
-      <Icon size={13} strokeWidth={2.2} />
-      <span>{count} {label}</span>
-    </div>
-  )
-}
+const STATUS_ORDER = ['critical', 'low', 'adequate', 'no_data']
 
-function StockCard({ row }) {
-  const hasData    = row.quantity !== null
-  const outOfStock = row.quantity === 0
-  const cfg        = statusConfig(row.status)
-  const borderColor = cfg.borderL
-  const ringClass   = cfg.ring
-
-  return (
-    <div className={`bg-surface rounded-2xl border border-surface-border border-l-4 ${borderColor} ${ringClass} p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-200`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-lg bg-red-50 text-primary">
-            <Syringe size={14} />
-          </div>
-          <p className="font-bold text-sm text-text truncate" dir="rtl">{displayVaccineName(row.vaccineName)}</p>
-        </div>
-        <StatusBadge status={row.status} />
-      </div>
-
-      <div className="flex items-center text-xs pt-1 border-t border-surface-border mt-1 font-medium">
-        {!hasData ? (
-          <span className="italic text-text-muted">Not recorded yet</span>
-        ) : outOfStock ? (
-          <span className="font-extrabold text-danger flex items-center gap-1">
-            <AlertCircle size={12} /> Out of Stock
-          </span>
-        ) : (
-          <span className="text-text font-bold text-sm">{row.quantity} <span className="text-xs font-semibold text-text-muted">doses</span></span>
-        )}
-      </div>
-    </div>
-  )
+function quantityText(row) {
+  if (row.quantity === null) return <span className="text-text-muted">Not recorded</span>
+  if (row.quantity === 0) return <span className="text-danger-dark font-medium">Out of stock</span>
+  return <>{row.quantity}<span className="text-xs text-text-muted ml-1">doses</span></>
 }
 
 export default function WorkerStatusView() {
   const { user } = useAuth()
-  const { data, isLoading, isError } = useQuery({
+  const [filter, setFilter] = useState('all')
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 20_000,
     staleTime: 10_000,
   })
 
-  const { rows, facilityName, districtName, okCount, lowCount, criticalCount, noDataCount } = useMemo(() => {
-    const rows = (data?.facilities ?? []).filter((r) => r.facilityId === user?.facilityId)
-    return {
-      rows,
-      facilityName:  rows[0]?.facilityName,
-      districtName:  rows[0]?.districtName,
-      okCount:       rows.filter((r) => r.status === 'adequate').length,
-      lowCount:      rows.filter((r) => r.status === 'low').length,
-      criticalCount: rows.filter((r) => r.status === 'critical').length,
-      noDataCount:   rows.filter((r) => r.status === 'no_data').length,
-    }
+  const { rows, facilityName, districtName, counts } = useMemo(() => {
+    const rows = (data?.facilities ?? [])
+      .filter((r) => r.facilityId === user?.facilityId)
+      .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
+    const counts = Object.fromEntries(STATUS_ORDER.map((s) => [s, rows.filter((r) => r.status === s).length]))
+    return { rows, facilityName: rows[0]?.facilityName, districtName: rows[0]?.districtName, counts }
   }, [data, user?.facilityId])
 
+  const visible = filter === 'all' ? rows : rows.filter((r) => r.status === filter)
+  const options = [
+    { value: 'all', label: 'All', count: rows.length },
+    ...STATUS_ORDER.filter((s) => counts[s] > 0).map((s) => ({ value: s, label: statusConfig(s).label, count: counts[s], status: s })),
+  ]
+
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto pt-6 px-1">
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">Stock Catalog Status</h1>
-        <p className="text-sm text-text-muted mt-0.5">
-          {facilityName
-            ? `${facilityName}${districtName ? `, ${districtName} District` : ''}`
-            : 'Current stock at your facility'}
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <PageHeader
+        title="Stock Status"
+        subtitle={facilityName ? `${facilityName}${districtName ? ` · ${districtName} District` : ''}` : 'Current stock at your facility'}
+      />
 
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load status. Please check your connection.
-        </div>
-      )}
-
-      {!isLoading && !isError && rows.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <SummaryPill icon={CheckCircle2} label="Normal" count={okCount}
-            colorClass="bg-success-bg border-success/20 text-success-dark" />
-          <SummaryPill icon={AlertTriangle} label="Low" count={lowCount}
-            colorClass="bg-warning-bg border-warning/20 text-warning-dark" />
-          <SummaryPill icon={AlertCircle} label="Critical" count={criticalCount}
-            colorClass="bg-danger-bg border-danger/20 text-danger" />
-          <SummaryPill icon={HelpCircle} label="No data" count={noDataCount}
-            colorClass="bg-surface-alt border-surface-border text-text-muted" />
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        {isLoading
-          ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} lines={2} />)
-          : rows.map((row) => (
-              <StockCard key={`${row.facilityId}-${row.vaccineId}`} row={row} />
-            ))
-        }
-      </div>
-
-      {!isLoading && !isError && rows.length === 0 && (
-        <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm px-6 max-w-md mx-auto">
-          <Syringe size={40} className="mx-auto mb-3 text-text-muted/40 animate-pulse" />
-          <p className="font-bold text-text">No Vaccines Configured</p>
-          <p className="text-xs text-text-muted/80 mt-1 max-w-[280px] mx-auto leading-relaxed">Please ask your facility supervisor to configure your vaccine catalog and alerts.</p>
+      {isError ? (
+        <ErrorState title="Couldn’t load stock status" error={error} onRetry={refetch} />
+      ) : isLoading ? (
+        <Card padding={false}><SkeletonRows rows={6} /></Card>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          framed
+          icon={Syringe}
+          title="No vaccines set up yet"
+          message="Ask your facility supervisor to add vaccines and thresholds for this facility."
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <FilterChips options={options} value={filter} onChange={setFilter} label="Filter by status" />
+          <Card padding={false}>
+            <ul className="divide-y divide-surface-border">
+              {visible.map((row) => (
+                <li key={row.vaccineId} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_7rem] items-center gap-x-3 gap-y-1.5 px-4 sm:px-5 py-3.5">
+                  <p className="min-w-0 truncate text-base font-medium text-text" dir="auto">{displayVaccineName(row.vaccineName)}</p>
+                  <p className="sm:order-last text-right tabular-nums text-sm text-text">{quantityText(row)}</p>
+                  <div className="col-span-2 sm:col-span-1"><StatusBadge status={row.status} /></div>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       )}
     </div>

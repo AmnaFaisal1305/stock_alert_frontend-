@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Truck, BookOpen, Sunset, BarChart3, FileSpreadsheet, LifeBuoy, Activity,
 } from 'lucide-react'
 
-// Single source for sidebar items, section groups, per-role CTA and mobile page titles.
+// Single source for sidebar items, section groups, per-role CTA and scope label.
 // Group `items` with `depth` render as an indented tree (admin geography).
 
 const records = (base, { sheet = true } = {}) => ({
@@ -113,20 +113,6 @@ export const NAV = {
 
 export function navFor(role) {
   return NAV[role] ?? { section: 'Navigation', groups: [] }
-}
-
-// Mobile top-bar title: the nav label for this path (any role), else the guide.
-const TITLES = Object.fromEntries(
-  Object.values(NAV).flatMap((n) => [
-    ...n.groups.flatMap((g) => g.items.map((i) => [i.to, i.label])),
-    [n.guide, 'Guide'],
-  ]),
-)
-
-export function pageTitle(pathname) {
-  if (TITLES[pathname]) return TITLES[pathname]
-  const parent = Object.keys(TITLES).find((p) => pathname.startsWith(p + '/'))
-  return parent ? TITLES[parent] : ''
 }
 
 // What the signed-in user is responsible for (PRODUCT.md "Scope is always visible").

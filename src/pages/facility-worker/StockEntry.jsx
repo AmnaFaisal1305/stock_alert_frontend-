@@ -1,111 +1,106 @@
+import { useMemo } from 'react'
 import { Syringe } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getHoldings } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import SkeletonCard from '../../components/shared/SkeletonCard'
+import PageHeader from '../../components/shared/PageHeader'
+import Card from '../../components/shared/Card'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
+
+function HoldingRow({ r }) {
+  const done = r.remaining === 0
+  return (
+    <li className="px-4 sm:px-5 py-3.5">
+      <div className="flex items-baseline justify-between gap-4">
+        <p className={`text-base font-medium min-w-0 truncate ${done ? 'text-text-muted' : 'text-text'}`} dir="auto">
+          {displayVaccineName(r.vaccineName)}
+        </p>
+        <p className={`tabular-nums flex-shrink-0 ${done ? 'text-text-muted text-sm' : 'text-text text-xl font-light'}`}>
+          {r.remaining}<span className="text-xs text-text-muted ml-1">{r.remaining === 1 ? 'vial' : 'vials'}</span>
+        </p>
+      </div>
+      <p className="text-xs text-text-muted mt-1 tabular-nums">
+        {r.assigned} assigned · {r.used} used · {r.returned} returned · {r.wasted} wasted
+      </p>
+    </li>
+  )
+}
 
 export default function StockEntry() {
   const { user } = useAuth()
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['holdings'],
     queryFn:  getHoldings,
     refetchInterval: 30_000,
   })
 
-  const rows = (data?.holdings ?? []).filter((r) => r.workerId === user?.id)
+  const { inHand, usedUp, totalRemaining } = useMemo(() => {
+    const rows = (data?.holdings ?? []).filter((r) => r.workerId === user?.id)
+    const inHand = rows.filter((r) => r.remaining > 0).sort((a, b) => b.remaining - a.remaining)
+    return {
+      inHand,
+      usedUp: rows.filter((r) => r.remaining === 0),
+      totalRemaining: inHand.reduce((sum, r) => sum + r.remaining, 0),
+    }
+  }, [data, user?.id])
 
-  if (isLoading) return (
-    <div className="max-w-3xl mx-auto pt-6 px-1 flex flex-col gap-4">
-      {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-    </div>
-  )
-
-  if (isError) return (
-    <div className="max-w-3xl mx-auto pt-6 px-4 text-sm text-danger font-medium">
-      Failed to load holdings. Please refresh.
-    </div>
-  )
+  const updated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
+  const hasRows = inHand.length + usedUp.length > 0
 
   return (
-    <div className="max-w-3xl mx-auto pt-6 px-1 flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-text tracking-tight">My Holdings</h1>
-        <p className="text-sm text-text-muted mt-0.5">Vials currently assigned to you by your supervisor</p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <PageHeader
+        title="My Holdings"
+        subtitle={updated ? `Vials assigned to you today · updated ${updated}` : 'Vials assigned to you today'}
+      />
 
-      {rows.length === 0 ? (
-        <div className="text-center py-14 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted px-4">
-          <Syringe size={28} className="mx-auto mb-3 text-text-muted/30" />
-          <p className="font-bold text-sm">No vials assigned yet</p>
-          <p className="text-xs mt-1 text-text-muted/70">Your supervisor will assign vials to you each morning.</p>
-        </div>
+      {isError ? (
+        <ErrorState title="Couldn’t load your holdings" error={error} onRetry={refetch} />
+      ) : isLoading ? (
+        <Card padding={false}><SkeletonRows rows={4} /></Card>
+      ) : !hasRows ? (
+        <EmptyState
+          framed
+          icon={Syringe}
+          title="No vials assigned yet"
+          message="Your supervisor assigns vials each morning. They’ll appear here as soon as they do."
+        />
       ) : (
-        <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
-          {/* Desktop table */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-surface-border bg-surface-alt">
-                  <th className="px-5 py-3 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Vaccine</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Assigned</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Used</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Returned</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Wasted</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Remaining</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border">
-                {rows.map((r) => (
-                  <tr key={r.vaccineId} className="hover:bg-surface-alt/50 transition-colors">
-                    <td className="px-5 py-3.5 font-semibold text-text" dir="rtl">{displayVaccineName(r.vaccineName)}</td>
-                    <td className="px-4 py-3.5 text-right text-text-muted">{r.assigned}</td>
-                    <td className="px-4 py-3.5 text-right text-text-muted">{r.used}</td>
-                    <td className="px-4 py-3.5 text-right text-text-muted">{r.returned}</td>
-                    <td className="px-4 py-3.5 text-right text-text-muted">{r.wasted}</td>
-                    <td className="px-4 py-3.5 text-right">
-                      <span className={`font-bold ${r.remaining === 0 ? 'text-text-muted' : 'text-text'}`}>
-                        {r.remaining}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="flex flex-col gap-4">
+          <Card className="flex items-baseline gap-3">
+            <p className="text-[32px] font-light leading-none tabular-nums text-text">{totalRemaining}</p>
+            <p className="text-sm text-text-muted">
+              {totalRemaining === 1 ? 'vial' : 'vials'} in hand
+              {inHand.length > 0 && <> across {inHand.length} {inHand.length === 1 ? 'vaccine' : 'vaccines'}</>}
+            </p>
+          </Card>
 
-          {/* Mobile cards */}
-          <div className="sm:hidden divide-y divide-surface-border">
-            {rows.map((r) => (
-              <div key={r.vaccineId} className="px-4 py-4 flex flex-col gap-3">
-                <p className="font-bold text-sm text-text" dir="rtl">{displayVaccineName(r.vaccineName)}</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  {[
-                    ['Assigned', r.assigned],
-                    ['Used',     r.used],
-                    ['Returned', r.returned],
-                    ['Wasted',   r.wasted],
-                  ].map(([label, val]) => (
-                    <div key={label} className="flex justify-between">
-                      <span className="text-text-muted">{label}</span>
-                      <span className="font-medium text-text">{val}</span>
-                    </div>
-                  ))}
-                  <div className="col-span-2 flex justify-between border-t border-surface-border pt-1.5 mt-0.5">
-                    <span className="font-bold text-text-muted">Remaining</span>
-                    <span className={`font-bold ${r.remaining === 0 ? 'text-text-muted' : 'text-text'}`}>{r.remaining} vials</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {inHand.length > 0 && (
+            <Card padding={false}>
+              <ul className="divide-y divide-surface-border">
+                {inHand.map((r) => <HoldingRow key={r.vaccineId} r={r} />)}
+              </ul>
+            </Card>
+          )}
+
+          {usedUp.length > 0 && (
+            <section aria-labelledby="used-up">
+              <h2 id="used-up" className="text-sm font-medium text-text-muted mb-2 px-1">Used up</h2>
+              <Card padding={false}>
+                <ul className="divide-y divide-surface-border">
+                  {usedUp.map((r) => <HoldingRow key={r.vaccineId} r={r} />)}
+                </ul>
+              </Card>
+            </section>
+          )}
+
+          <p className="text-xs text-text-muted text-center">Counts are in vials and refresh every 30 seconds.</p>
         </div>
       )}
-
-      <p className="text-[10px] text-text-muted/60 text-center pb-2">
-        All counts are in vials · Refreshes every 30 seconds
-      </p>
     </div>
   )
 }
