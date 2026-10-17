@@ -261,10 +261,6 @@ export async function getDashboard(params) {
 
 // ── Stock entries ─────────────────────────────────────────────────────────────
 
-export async function createStockEntry(payload) {
-  return request('POST', '/api/stock-entries', payload)
-}
-
 export async function assignVials(payload) {
   return request('POST', '/api/stock-entries/assign', payload)
 }

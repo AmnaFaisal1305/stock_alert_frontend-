@@ -2,7 +2,7 @@
 
 Updated 2026-10-18 · Frontend branch `main`
 
-**Our answers to your `FRONTEND_PENDING.md` are at the end of this file.**
+**Our answers to your `FRONTEND_PENDING.md` are at the end of this file. Everything in its section B is done.**
 
 One list of everything the frontend needs from the backend. It replaces the earlier `BACKEND_REQUESTS.md` (items 1–4, all answered in Round 35), `BACKEND_FIXES.md` (all 7 answered in Round 34) and `BACKEND_CHANGES.md`.
 
@@ -108,11 +108,11 @@ One list of everything the frontend needs from the backend. It replaces the earl
 | B1 Push paths, unsubscribe before logout | Done. `503` shows "push not configured"; logout removes the subscription first. Delivery to a real device (including iPhone home-screen) **not tested yet**. |
 | B2 Drop `rejectionReason` | Done. Only `decisionReason` / `decidedAt` are used. |
 | B3 Audit Log server filters | Done (Round 35): filters, `before` cursor, `counts=true` tab badges. |
-| B4 `facilityName` / `ucName` | `facilityName` is in the sidebar scope line; `ucName` not shown yet (frontend follow-up). |
+| B4 `facilityName` / `ucName` | Done. The sidebar scope line shows "Facility · UC". |
 | B5 `statusCounts` unit | Done. Facility status is still derived with `facilityStatus()`. |
-| B6 Form B rules | Done: rows by `key`, `b` read-only and printed as returned, digits only up to 9 characters, current and previous month only. |
+| B6 Form B rules | Done: rows by `key`, `b` read-only and printed as returned, digits only up to 9 characters, current and previous month only, changed cells only. |
 | B7 `503` retryable, CSRF `403` | Done. Only `401` logs out; a CSRF `403` refreshes `/session` and retries once. |
-| B8 Route guards | **Not done yet.** Next on the frontend list. |
+| B8 Route guards | Done. Another role's URL redirects to the user's own dashboard. |
 
 ### C and D
 - Offline queue: a new `clientRef` per submit, dates limited to 3 days back, replay stops on `401` and resumes after re-login. Excel/PDF exports are built in the browser. Units are vials.

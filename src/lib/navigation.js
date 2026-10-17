@@ -142,7 +142,7 @@ export function navFor(role) {
 // sessions stored before that.
 export function scopeLabel(user) {
   if (!user) return ''
-  if (user.facilityName) return user.facilityName
+  if (user.facilityName) return [user.facilityName, user.ucName].filter(Boolean).join(' · ')
   if (user.ucNames?.length) return user.ucNames.join(', ')
   if (user.districtName) return `${user.districtName} District`
   return 'All districts'

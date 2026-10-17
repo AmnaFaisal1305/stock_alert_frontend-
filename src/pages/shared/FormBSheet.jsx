@@ -131,9 +131,15 @@ export default function FormBSheet() {
     setSigEdits(null)
   }
 
+  // Only cells that differ from the saved sheet; edits typed back to the original drop out.
+  const changedRows = Object.entries(edits)
+    .map(([key, cols]) => [key, Object.fromEntries(Object.entries(cols).filter(([c, v]) =>
+      v !== (rowByKey[key]?.[c] != null ? String(rowByKey[key][c]) : '')))])
+    .filter(([, cols]) => Object.keys(cols).length)
+
   const saveMut = useMutation({
     mutationFn: () => {
-      const outRows = Object.entries(edits)
+      const outRows = changedRows
         .map(([key, cols]) => {
           const payload = { key }
           for (const c of editableCols) if (cols[c] !== undefined) payload[c] = cols[c]
@@ -154,9 +160,6 @@ export default function FormBSheet() {
     },
     onError: (e) => { setReviewing(false); setToast({ message: e.message || 'Could not save the sheet.', type: 'error' }) },
   })
-
-  const changedRows = Object.entries(edits).filter(([key, cols]) =>
-    Object.entries(cols).some(([c, v]) => v !== (rowByKey[key]?.[c] != null ? String(rowByKey[key][c]) : '')))
 
   const fields = sheet?.fields ?? {}
   const hasDraft = Object.keys(edits).length > 0 || sigEdits !== null

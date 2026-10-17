@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -75,10 +75,23 @@ const ROLE_DEFAULTS = {
   observer:            '/super-admin/dashboard',
 }
 
+// Each role's pages live under one URL prefix; the backend 403s the data, this keeps the screen out too.
+const PREFIX_ROLES = {
+  'super-admin': ['super_admin', 'observer'],
+  district:      ['district_supervisor'],
+  uc:            ['uc_supervisor'],
+  facility:      ['facility_supervisor'],
+  head:          ['facility_head'],
+  worker:        ['facility_worker'],
+}
+
 function AuthLayout() {
-  const { isAuthenticated, bootstrapping } = useAuth()
+  const { user, isAuthenticated, bootstrapping } = useAuth()
+  const { pathname } = useLocation()
   if (bootstrapping) return <PageLoader />
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  const allowed = PREFIX_ROLES[pathname.split('/')[1]]
+  if (allowed && !allowed.includes(user.role)) return <Navigate to={ROLE_DEFAULTS[user.role] ?? '/login'} replace />
   return <Layout><Outlet /></Layout>
 }
 
