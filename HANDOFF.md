@@ -18,8 +18,12 @@ Branch `feature/ui-enhancements` (not merged). Plan: `docs/PLAN_UI_ENHANCEMENTS.
 - **Primitives:** custom `DatePicker` calendar (native on touch), `ViewToggle` + `useViewMode`, `Table` grid mode, `EntityCard`, `RowActions`, `RoleTag`, `ReviewDialog`/`ReviewPanel`/`SummaryDialog`.
 - **Pages:** Grid view (default) on every entity list; KPI icons everywhere; categorical chart series; review-before-submit on Assign Vials, Day End, raise/receive/send stock, head approvals, supervisor approval requests, Form B save; summary dialogs after creates and stock moves.
 
+- **Phase 7 (chosen extras):** "Needs attention" strip (`AttentionStrip`) on admin, UC/district (`FacilityBoard`) and facility supervisor/head dashboards; CSV export (`lib/csv.js` + `ExportButton`) on every entity list, the Audit Log (whole filtered set) and the Stock Register; filters in the URL via `useUrlFilters` (`hooks/useUrlState.js`). Facility lists use `?status=critical|low|adequate|no_data` (dashboard links depend on it); district list replaced its old `?filter=<Label>` key with `?status=`. Page numbers stay local.
+- `BACKEND_REQUESTS.md` at the repo root now holds the session-14 requests (B1–B6).
+
 ### Not done / known
-- Phase 7 extras in the plan are not started (awaiting choice).
+- Phase 7 items not chosen (stock-level bars, Ctrl+K palette, undo toast, shortcuts, …) are not built.
+- CSV/Excel downloads report "canceled" in the headless test browser (the existing Excel export too); CSV content was verified by capturing the blob in-page.
 - **Stock Register shows negative balances** for facilities whose stock arrives via stock requests: it only counts `STOCK_ENTRY`/`ADJUST_STOCK`/`STOCK_DAY_END`, not `STOCK_REQUEST_RECEIVED`/`STOCK_ASSIGN`. Pre-existing; unchanged by this session.
 - Not tested: any confirm/submit against the live backend (dialogs opened and dismissed only); super-admin write actions (admin password in the old notes is wrong; checked as observer); mobile Safari.
 - Dev server must be restarted after `tailwind.config.js` changes or new colour classes don't appear.
