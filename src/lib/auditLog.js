@@ -1,6 +1,5 @@
 // Audit-log vocabulary and parsing shared by every role's Audit Log (components/audit/AuditLogView).
 import { displayVaccineName } from './vaccineNames'
-import { toLocalDateStr } from './format'
 
 export const ACTION_LABELS = {
   LOGOUT:                    'Logged out',
@@ -195,14 +194,16 @@ export function parseEntry(entry, ctx) {
   }
 }
 
-// Date range compares local calendar days (the API returns UTC timestamps).
-export function matchesFilters(entry, { action, from, to, entityId }) {
-  if (entityId && entry.entityId !== entityId) return false
-  if (action && entry.action !== action) return false
-  if (from || to) {
-    const day = toLocalDateStr(new Date(entry.createdAt))
-    if (from && day < from) return false
-    if (to && day > to) return false
-  }
-  return true
+// Actions offered in the Action filter. The list is static because the log is paged on the
+// server; legacy aliases nothing writes any more are left out.
+const FACILITY_ACTIONS = Object.keys(ACTION_LABELS).filter((a) => /^(STOCK_|APPROVAL_|ADJUST_STOCK|SHEET_SAVED|LOGOUT)/.test(a))
+// The API hides these from district and UC supervisors.
+const ADMIN_ONLY = new Set(['CREATE_VACCINE', 'EDIT_VACCINE', 'DELETE_VACCINE', 'CREATE_USER', 'ACTIVATE_USER', 'DEACTIVATE_USER', 'RESET_PASSWORD'])
+const LEGACY = new Set(['APPROVAL_DECLINE', 'SET_THRESHOLD', 'STOCK_RECEIVE'])
+
+export function actionOptionsFor(role) {
+  let actions = Object.keys(ACTION_LABELS)
+  if (['facility_supervisor', 'facility_head', 'facility_worker'].includes(role)) actions = FACILITY_ACTIONS
+  else if (role === 'district_supervisor' || role === 'uc_supervisor') actions = actions.filter((a) => !ADMIN_ONLY.has(a))
+  return actions.filter((a) => !LEGACY.has(a)).map((a) => ({ value: a, label: actionLabel(a) })).sort((a, b) => a.label.localeCompare(b.label))
 }

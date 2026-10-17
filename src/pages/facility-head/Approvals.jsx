@@ -96,7 +96,7 @@ function PendingItem({ a, onApprove, onReject, busy }) {
 }
 
 function HistoryItem({ a }) {
-  const reason = a.decisionReason ?? a.rejectionReason
+  const reason = a.decisionReason
   return (
     <li className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
       <div className="flex-1 min-w-0 flex flex-col gap-1">

@@ -39,6 +39,7 @@ function RequestItem({ a, onCancel, cancelling }) {
         <p className="text-xs text-text-muted mt-1">
           {TYPE_LABEL[a.type] ?? a.type}
           {a.createdAt && <> · {formatDate(a.createdAt, { withYear: false })}</>}
+          {a.decidedAt && a.status !== 'pending' && <> · {a.status} {formatDate(a.decidedAt, { withYear: false })}</>}
           {' · '}
           {a.type === 'stock_correction' && <span className="text-text tabular-nums">store → {a.payload?.storeVials} vials</span>}
           {a.type === 'threshold_change' && (t
@@ -46,7 +47,7 @@ function RequestItem({ a, onCancel, cancelling }) {
             : <span>reset to default</span>)}
         </p>
         {a.note && <p className="text-xs text-text-muted mt-1">“{a.note}”</p>}
-        {a.status === 'rejected' && (a.decisionReason ?? a.rejectionReason) && <p className="text-xs text-danger-dark mt-1">Rejected: {a.decisionReason ?? a.rejectionReason}</p>}
+        {a.status === 'rejected' && a.decisionReason && <p className="text-xs text-danger-dark mt-1">Rejected: {a.decisionReason}</p>}
       </div>
       {onCancel && (
         <Button variant="ghost" size="sm" onClick={() => onCancel(a.id)} disabled={cancelling} aria-label={`Withdraw ${TYPE_LABEL[a.type]} for ${a.vaccineName}`}>

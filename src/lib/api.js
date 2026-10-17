@@ -349,10 +349,9 @@ export async function declineStockRequest(id, reason) {
 
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
-export async function getAuditLog({ limit, feed } = {}) {
-  const params = {}
-  if (limit != null) params.limit = limit
-  if (feed != null) params.feed = feed
+// params: feed, limit, before (previous nextCursor), counts, and filters
+// actorRole, actorId, action, facilityId, entityId, from, to (Karachi days, inclusive).
+export async function getAuditLog(params = {}) {
   return request('GET', `/api/audit-log${buildQs(params)}`)
 }
 

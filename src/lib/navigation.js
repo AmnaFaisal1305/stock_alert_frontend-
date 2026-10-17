@@ -126,8 +126,8 @@ export function navFor(role) {
 }
 
 // What the signed-in user is responsible for (PRODUCT.md "Scope is always visible").
-// shortcut: facility roles show the district because the session payload has no facility
-// name (BACKEND_REQUESTS #1); switch to user.facilityName once the backend sends it.
+// facilityName is on the session user since Round 35; the district is the fallback for
+// sessions stored before that.
 export function scopeLabel(user) {
   if (!user) return ''
   if (user.facilityName) return user.facilityName

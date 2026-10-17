@@ -119,10 +119,11 @@ export default function DistrictDetail() {
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <StatCard label="Critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Restock now" />
-            <StatCard label="Low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Plan a delivery" />
-            <StatCard label="Normal" value={sc.adequate ?? 0} subtitle="Stock is healthy" />
-            <StatCard label="Not updated" value={sc.no_data ?? 0} subtitle="No stock recorded yet" />
+            {/* statusCounts counts facility × vaccine lines, not facilities (Round 35). */}
+            <StatCard label="Critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Vaccine lines to restock now" />
+            <StatCard label="Low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Vaccine lines to plan for" />
+            <StatCard label="Normal" value={sc.adequate ?? 0} subtitle="Vaccine lines in good stock" />
+            <StatCard label="Not updated" value={sc.no_data ?? 0} subtitle="Vaccine lines never recorded" />
           </div>
 
           {towns.length === 0

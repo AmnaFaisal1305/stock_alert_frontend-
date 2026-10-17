@@ -14,7 +14,8 @@ function pageList(current, total) {
 
 const btn = 'inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-control text-sm tabular-nums transition-colors'
 
-export default function Pagination({ currentPage, totalPages, onPageChange }) {
+// maxPage: the furthest page that can be opened (cursor-paged lists only reach pages in order).
+export default function Pagination({ currentPage, totalPages, onPageChange, maxPage = totalPages }) {
   if (totalPages <= 1) return null
   return (
     <nav className="flex items-center justify-between gap-3 px-1 py-2" aria-label="Pagination">
@@ -37,8 +38,9 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
             <button
               key={p}
               onClick={() => onPageChange(p)}
+              disabled={p > maxPage}
               aria-current={p === currentPage ? 'page' : undefined}
-              className={`${btn} ${p === currentPage ? 'bg-primary text-white' : 'text-text hover:bg-surface-chip'}`}
+              className={`${btn} ${p === currentPage ? 'bg-primary text-white' : 'text-text hover:bg-surface-chip'} disabled:opacity-40 disabled:pointer-events-none`}
             >
               {p}
             </button>
@@ -46,7 +48,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         )}
         <button
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage >= Math.min(totalPages, maxPage)}
           className={`${btn} text-text-muted hover:bg-surface-chip hover:text-text disabled:opacity-40 disabled:pointer-events-none`}
           aria-label="Next page"
         >

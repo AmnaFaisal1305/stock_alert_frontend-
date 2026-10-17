@@ -34,10 +34,14 @@ export default function StockRegister() {
     queryKey: ['vaccines'],
     queryFn: getVaccines,
   })
-  // Running balance needs the full history; the backend caps limit at 500 (see CLAUDE.md).
+  // Running balance needs the full history, so no `limit`; one call per action keeps it light
+  // (the API takes a single action; BACKEND_REQUESTS_SESSION14 B5).
   const { data: logData, isLoading: loadingLog, isError, error, refetch } = useQuery({
-    queryKey: ['audit-log', 'register', 500],
-    queryFn: () => getAuditLog({ limit: 500 }),
+    queryKey: ['audit-log', 'register'],
+    queryFn: async () => {
+      const parts = await Promise.all(['STOCK_ENTRY', 'ADJUST_STOCK', 'STOCK_DAY_END'].map((action) => getAuditLog({ action })))
+      return { auditLog: parts.flatMap((p) => p.auditLog ?? []) }
+    },
   })
 
   const vaccines = vaccineData?.vaccines ?? []

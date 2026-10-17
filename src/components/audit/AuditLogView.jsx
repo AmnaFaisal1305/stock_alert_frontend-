@@ -1,7 +1,8 @@
 // The one Audit Log for every role. Tabs and the optional scope filter (facility / worker)
-// come from ROLE_CONFIG; parsing and labels live in lib/auditLog.
+// come from ROLE_CONFIG; parsing and labels live in lib/auditLog. Filtering and paging run
+// on the server (Round 35): tab badges come from countsByActorRole, pages from nextCursor.
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { getAuditLog, getVaccines, getUsers, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -16,11 +17,12 @@ import StatusBadge from '../shared/StatusBadge'
 import ErrorState from '../shared/ErrorState'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { formatDate, formatTime, plural } from '../../lib/format'
-import { actionLabel, buildContext, parseEntry, matchesFilters, isRequestEvent } from '../../lib/auditLog'
+import { actionLabel, actionOptionsFor, buildContext, parseEntry, isRequestEvent } from '../../lib/auditLog'
 
 const PER_PAGE = 15
 
-const roleTab = (role, label) => ({ value: role, label, test: (l) => l.actorRole === role })
+// params: what the tab sends to the API; countKey: its badge in countsByActorRole (none = sum).
+const roleTab = (role, label) => ({ value: role, label, params: { actorRole: role }, countKey: role })
 const ROLE_TAB = {
   super_admin:         roleTab('super_admin', 'Super admin'),
   district_supervisor: roleTab('district_supervisor', 'District supervisors'),
@@ -37,7 +39,7 @@ const ROLE_CONFIG = {
   super_admin: { tabs: ADMIN_TABS, where: 'district' },
   observer:    { tabs: ADMIN_TABS, where: 'district' },
   district_supervisor: {
-    tabs: [{ value: 'all', label: 'All', test: () => true }, ...['uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r])],
+    tabs: [{ value: 'all', label: 'All', params: {} }, ...['uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r])],
     scope: 'facility', where: 'facility',
   },
   uc_supervisor: { tabs: [ROLE_TAB.facility_supervisor, ROLE_TAB.facility_worker], where: 'facility' },
@@ -47,8 +49,10 @@ const ROLE_CONFIG = {
   },
   facility_supervisor: {
     tabs: [
-      { value: 'mine', label: 'My actions', test: (l, user) => l.actorId === user.id, hideWho: true },
-      { value: 'workers', label: 'Workers', test: (l) => l.actorRole === 'facility_worker' },
+      // A supervisor's scope holds only their own rows and their workers', so the role filter
+      // equals "mine" and keeps both badges correct (countsByActorRole ignores actorRole only).
+      { ...roleTab('facility_supervisor', 'My actions'), value: 'mine', hideWho: true },
+      { ...roleTab('facility_worker', 'Workers'), value: 'workers' },
     ],
     scope: 'worker',
   },
@@ -97,9 +101,25 @@ export default function AuditLogView() {
   const [tab, setTab] = useState(config.defaultTab ?? config.tabs[0].value)
   const [filters, setFilters] = useState({ action: '', from: '', to: '', entityId: '', scope: '' })
   const [page, setPage] = useState(1)
-  const set = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1) }
+  // cursors[i] is the `before` value that loads page i + 1; only pages already reached are known.
+  const [cursors, setCursors] = useState([null])
+  const set = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1); setCursors([null]) }
 
-  const logQ = useQuery({ queryKey: ['audit-log'], queryFn: () => getAuditLog() })
+  const activeTab = config.tabs.find((t) => t.value === tab) ?? config.tabs[0]
+  const scopeOn = config.scope && (config.scope === 'worker' ? tab === 'workers' : tab === 'all')
+  const scopeId = scopeOn ? filters.scope : ''
+  const params = {
+    ...activeTab.params,
+    action: filters.action, from: filters.from, to: filters.to, entityId: filters.entityId,
+    ...(scopeId ? (config.scope === 'worker' ? { actorId: scopeId } : { facilityId: scopeId }) : {}),
+  }
+  const before = cursors[page - 1]
+
+  const logQ = useQuery({
+    queryKey: ['audit-log', params, before],
+    queryFn: () => getAuditLog({ ...params, limit: PER_PAGE, before, counts: true }),
+    placeholderData: keepPreviousData,
+  })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: userData } = useQuery({ queryKey: ['users'], queryFn: getUsers, enabled: config.scope === 'worker' })
   const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, enabled: config.scope === 'facility', staleTime: 30_000 })
@@ -109,9 +129,6 @@ export default function AuditLogView() {
     () => buildContext(logs ?? [], vaccineData?.vaccines, userData?.users),
     [logs, vaccineData, userData],
   )
-
-  const activeTab = config.tabs.find((t) => t.value === tab) ?? config.tabs[0]
-  const scopeOn = config.scope && (config.scope === 'worker' ? tab === 'workers' : tab === 'all')
   const scopeOptions = useMemo(() => {
     if (config.scope === 'worker') {
       return (userData?.users ?? []).filter((u) => u.role === 'facility_worker').map((u) => ({ value: u.id, label: ctx.userNameById[u.id] || u.email }))
@@ -120,28 +137,21 @@ export default function AuditLogView() {
     return []
   }, [config.scope, userData, facilityData, ctx])
 
-  const tabLogs = useMemo(() => (logs ?? []).filter((l) => activeTab.test(l, user)), [logs, activeTab, user])
-  const rows = useMemo(() => {
-    const scopeId = scopeOn ? filters.scope : ''
-    const facilityName = facilityData?.facilities?.find((x) => x.id === scopeId)?.name
-    const inScope = (l) => {
-      if (!scopeId) return true
-      if (config.scope === 'worker') return l.actorId === scopeId
-      return l.facilityId ? l.facilityId === scopeId : l.facilityName === facilityName
-    }
-    return tabLogs
-      .filter((l) => matchesFilters(l, filters) && inScope(l))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  }, [tabLogs, filters, scopeOn, config.scope, facilityData])
-  const actionOptions = useMemo(
-    () => [{ value: '', label: 'All actions' }, ...[...new Set(tabLogs.map((l) => l.action))].filter(Boolean)
-      .map((a) => ({ value: a, label: actionLabel(a) }))
-      .sort((a, b) => a.label.localeCompare(b.label))],
-    [tabLogs],
-  )
+  const actionOptions = useMemo(() => [{ value: '', label: 'All actions' }, ...actionOptionsFor(user.role)], [user.role])
 
-  const totalPages = Math.ceil(rows.length / PER_PAGE)
-  const pageRows = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  const counts = logQ.data?.countsByActorRole
+  const tabCount = (t) => (counts ? (t.countKey ? counts[t.countKey] ?? 0 : Object.values(counts).reduce((s, n) => s + n, 0)) : undefined)
+  const total = logQ.data?.total ?? 0
+  const totalPages = Math.ceil(total / PER_PAGE)
+  // Cursor paging: a page is reachable once the page before it has loaded.
+  const nextCursor = logQ.isPlaceholderData ? null : logQ.data?.nextCursor
+  const maxPage = Math.min(totalPages, cursors.length + (page === cursors.length && nextCursor ? 1 : 0))
+  const goTo = (p) => {
+    if (p > maxPage) return
+    if (p === cursors.length + 1) setCursors((c) => [...c, nextCursor])
+    setPage(p)
+  }
+  const pageRows = logs ?? []
   const hasFilters = !!(filters.action || filters.from || filters.to || filters.entityId || filters.scope)
   const showWho = !activeTab.hideWho
   const onRequest = (id) => set({ entityId: id, action: '' })
@@ -190,8 +200,8 @@ export default function AuditLogView() {
           <Tabs
             label="Who did it"
             value={tab}
-            onChange={(v) => { setTab(v); setFilters({ action: '', from: '', to: '', entityId: '', scope: '' }); setPage(1) }}
-            tabs={config.tabs.map((t) => ({ value: t.value, label: t.label, count: logs ? logs.filter((l) => t.test(l, user)).length : undefined }))}
+            onChange={(v) => { setTab(v); set({ action: '', from: '', to: '', entityId: '', scope: '' }) }}
+            tabs={config.tabs.map((t) => ({ value: t.value, label: t.label, count: tabCount(t) }))}
             className="self-start"
           />
 
@@ -225,7 +235,7 @@ export default function AuditLogView() {
               </span>
             )}
             {hasFilters && <Button variant="ghost" onClick={() => set({ action: '', from: '', to: '', entityId: '', scope: '' })}>Clear</Button>}
-            <p className="ml-auto text-sm text-text-muted tabular-nums pb-2">{logs ? plural(rows.length, 'entry', 'entries') : ''}</p>
+            <p className="ml-auto text-sm text-text-muted tabular-nums pb-2">{logs ? plural(total, 'entry', 'entries') : ''}</p>
           </div>
 
           <Table
@@ -247,7 +257,7 @@ export default function AuditLogView() {
               </div>
             )}
           />
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          <Pagination currentPage={page} totalPages={totalPages} maxPage={maxPage} onPageChange={goTo} />
         </div>
       )}
     </div>
