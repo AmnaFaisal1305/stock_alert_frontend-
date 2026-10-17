@@ -56,3 +56,49 @@ allowing all 5 values to be overridden for that facility. "Reset to Global" send
 The `thresholdOverridden` flag on each vaccine drives the "Custom" amber badge in the table.
 
 **Frontend function:** `updateFacilityVaccine(facilityId, vaccineId, payload)` in `src/lib/api.js`
+
+---
+
+## 2. Analytics — facility/UC/district filter
+
+**Status:** Frontend cascade UI built; filter not yet wired to analytics data.
+
+**Problem:** The Analytics page Stock Requests tab has a District → UC → Facility cascade filter.
+Currently the main analytics data (`GET /api/analytics`) is fetched without facility scope, so
+the chart and totals always show all facilities. The facility filter only applies client-side to
+the individual-request detail panel (filtered by `req.facilityName`).
+
+**Endpoint change needed:**
+```
+GET /api/analytics?from=&to=&districtId=&ucId=&facilityId=
+```
+
+All three filter params are optional and additive. When provided, restrict all analytics
+aggregations (movement, remaining, requests, pendingApprovals) to matching facilities.
+
+**How it is used:**
+- `src/pages/shared/Analytics.jsx` passes `{ from, to }` to `getAnalytics` today.
+- Once the backend supports the extra params, update `getAnalytics` to accept
+  `{ from, to, districtId, ucId, facilityId }` and pass the selected cascade values.
+
+**Frontend function:** `getAnalytics({ from, to })` in `src/lib/api.js`
+
+---
+
+## 3. Stock requests — month filter
+
+**Status:** Frontend filters client-side; backend could make it more efficient.
+
+**Problem:** `GET /api/stock-requests?status=X` returns all requests for the given status.
+The Analytics detail panel filters by month client-side using `req.createdAt.startsWith(reqMonth)`.
+For deployments with large request histories this could return a large payload unnecessarily.
+
+**Endpoint change (optional optimisation):**
+```
+GET /api/stock-requests?status=&month=YYYY-MM
+```
+
+`month` parameter: if provided, return only requests whose `createdAt` falls in that month.
+
+**Frontend function:** `getStockRequests(status)` in `src/lib/api.js` — extend signature to
+`getStockRequests(status, month)` and pass `month` in the query string when provided.

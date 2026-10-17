@@ -4,12 +4,15 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, LabelList, Cell,
 } from 'recharts'
-import { FileSpreadsheet, FileText, BarChart2 } from 'lucide-react'
-import { getAnalytics } from '../../lib/api'
+import { FileSpreadsheet, FileText, BarChart2, ChevronDown, X } from 'lucide-react'
+import {
+  getAnalytics, getDistricts, getUnionCouncils, getFacilities, getStockRequests,
+} from '../../lib/api'
 import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { displayVaccineName } from '../../lib/vaccineNames'
-import { localDateStr, toLocalDateStr } from '../../lib/format'
+import { localDateStr, toLocalDateStr, formatDate } from '../../lib/format'
 import { ROLE_LABELS } from '../../lib/navigation'
+import { OPEN_STAGES, vaccineSummary } from '../../lib/stockRequests'
 import { useAuth } from '../../context/AuthContext'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import Table from '../../components/shared/Table'
@@ -18,11 +21,14 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import FilterChips from '../../components/shared/FilterChips'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
+import StatusBadge from '../../components/shared/StatusBadge'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import DatePicker from '../../components/ui/DatePicker'
 import Button from '../../components/ui/Button'
+import Select from '../../components/ui/Select'
 import Tabs from '../../components/ui/Tabs'
 import PageHeader from '../../components/shared/PageHeader'
+import { RequestItemsTable } from '../../components/stock-requests/RequestList'
 
 // ── Quick date presets ────────────────────────────────────────────────────────
 const PRESETS = [
@@ -128,6 +134,15 @@ const TABS = [
   { id: 'approvals',    label: 'Approvals'      },
 ]
 
+// Maps analytics display key → API status param for getStockRequests
+const DETAIL_API_PARAM = {
+  completed: 'completed',
+  partial:   'partially_fulfilled',
+  open:      null, // fetch all, filter client-side by OPEN_STAGES
+  declined:  'declined',
+  cancelled: 'cancelled',
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Analytics() {
   const { user } = useAuth()
@@ -138,9 +153,41 @@ export default function Analytics() {
   const [exporting, setExporting]   = useState(null)
   const [exportError, setExportError] = useState('')
 
+  // Requests tab filters
+  const [reqDistrict,    setReqDistrict]    = useState(null)
+  const [reqUc,          setReqUc]          = useState(null)
+  const [reqFacilityId,  setReqFacilityId]  = useState(null)
+  const [reqFacilityName, setReqFacilityName] = useState('')
+  const [reqMonth,       setReqMonth]       = useState(null)
+  const [detailStatus,   setDetailStatus]   = useState(null)
+  const [expandedReq,    setExpandedReq]    = useState(null)
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['analytics', from, to],
     queryFn: () => getAnalytics({ from, to }),
+  })
+
+  // Cascade queries for requests tab filters
+  const { data: reqDistrictsData } = useQuery({
+    queryKey: ['districts'],
+    queryFn:  getDistricts,
+  })
+  const { data: reqUcsData } = useQuery({
+    queryKey: ['ucs', reqDistrict],
+    queryFn:  () => getUnionCouncils({ districtId: reqDistrict }),
+    enabled:  !!reqDistrict,
+  })
+  const { data: reqFacilitiesData } = useQuery({
+    queryKey: ['facilities', reqUc],
+    queryFn:  () => getFacilities({ ucId: reqUc }),
+    enabled:  !!reqUc,
+  })
+
+  const detailApiParam = DETAIL_API_PARAM[detailStatus] ?? null
+  const { data: detailData, isLoading: detailLoading } = useQuery({
+    queryKey: ['stock-requests-detail', detailApiParam],
+    queryFn:  () => getStockRequests(detailApiParam),
+    enabled:  !!detailStatus,
   })
 
   const movement         = data?.movement        ?? []
@@ -304,6 +351,59 @@ export default function Analytics() {
       { name: 'Cancelled', value: tt.cancelled,           key: 'cancelled' },
     ].filter((d) => d.value > 0)
   }, [requests])
+
+  // Month-filtered totals (used when a month is selected)
+  const filteredRequestTotals = useMemo(() => {
+    if (!reqMonth) return requestTotals
+    const row = requestsByMonth.find((r) => r.month === reqMonth)
+    if (!row) return []
+    return [
+      { name: 'Completed', value: row.completed || 0,           key: 'completed' },
+      { name: 'Partial',   value: row.partially_fulfilled || 0, key: 'partial'   },
+      { name: 'Open',      value: row.submitted || 0,           key: 'open'      },
+      { name: 'Declined',  value: row.declined || 0,            key: 'declined'  },
+      { name: 'Cancelled', value: row.cancelled || 0,           key: 'cancelled' },
+    ].filter((d) => d.value > 0)
+  }, [reqMonth, requestTotals, requestsByMonth])
+
+  // Cascade select options
+  const reqDistrictOptions = useMemo(() =>
+    (reqDistrictsData?.districts ?? []).map((d) => ({ value: d.id, label: d.name }))
+  , [reqDistrictsData])
+
+  const reqUcOptions = useMemo(() =>
+    (reqUcsData?.unionCouncils ?? []).map((uc) => ({ value: uc.id, label: uc.name }))
+  , [reqUcsData])
+
+  const reqFacilityOptions = useMemo(() =>
+    (reqFacilitiesData?.facilities ?? []).map((f) => ({ value: f.id, label: f.name }))
+  , [reqFacilitiesData])
+
+  const reqMonthOptions = useMemo(() =>
+    [...requestsByMonth]
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((r) => ({ value: r.month, label: fmtMonth(r.month) }))
+  , [requestsByMonth])
+
+  // Detail requests filtered by month + facility
+  const detailRequests = useMemo(() => {
+    let list = detailData?.stockRequests ?? []
+    if (detailStatus === 'open')    list = list.filter((r) => OPEN_STAGES.has(r.stage))
+    if (detailStatus === 'partial') list = list.filter((r) => r.stage === 'partially_fulfilled')
+    if (reqMonth)       list = list.filter((r) => r.createdAt?.startsWith(reqMonth))
+    if (reqFacilityName) list = list.filter((r) => r.facilityName === reqFacilityName)
+    return list
+  }, [detailData, detailStatus, reqMonth, reqFacilityName])
+
+  // Table rows filtered by selected month
+  const displayedRequestsByMonth = reqMonth
+    ? requestsByMonth.filter((r) => r.month === reqMonth)
+    : requestsByMonth
+
+  function clearReqFilters() {
+    setReqDistrict(null); setReqUc(null); setReqFacilityId(null); setReqFacilityName('')
+    setReqMonth(null); setDetailStatus(null); setExpandedReq(null)
+  }
 
   // ── Approvals rollup ──────────────────────────────────────────────────────
   const approvalsByFacility = useMemo(() => {
@@ -530,6 +630,72 @@ export default function Analytics() {
           {/* ── Stock Requests ── */}
           {activeTab === 'requests' && (
             <div className="flex flex-col gap-5">
+              {/* Cascade + month filter bar */}
+              <Card>
+                <div className="flex flex-wrap items-end gap-3">
+                  <Select
+                    id="req-district"
+                    label="District"
+                    value={reqDistrict ?? ''}
+                    placeholder="All districts"
+                    options={reqDistrictOptions}
+                    onChange={(v) => {
+                      setReqDistrict(v || null)
+                      setReqUc(null); setReqFacilityId(null); setReqFacilityName('')
+                      setDetailStatus(null); setExpandedReq(null)
+                    }}
+                  />
+                  <Select
+                    id="req-uc"
+                    label="UC"
+                    value={reqUc ?? ''}
+                    placeholder="All UCs"
+                    options={reqUcOptions}
+                    disabled={!reqDistrict}
+                    onChange={(v) => {
+                      setReqUc(v || null)
+                      setReqFacilityId(null); setReqFacilityName('')
+                      setDetailStatus(null); setExpandedReq(null)
+                    }}
+                  />
+                  <Select
+                    id="req-facility"
+                    label="Facility"
+                    value={reqFacilityId ?? ''}
+                    placeholder="All facilities"
+                    options={reqFacilityOptions}
+                    disabled={!reqUc}
+                    onChange={(v) => {
+                      const f = (reqFacilitiesData?.facilities ?? []).find((x) => x.id === v)
+                      setReqFacilityId(v || null)
+                      setReqFacilityName(f?.name ?? '')
+                      setDetailStatus(null); setExpandedReq(null)
+                    }}
+                  />
+                  <Select
+                    id="req-month"
+                    label="Month"
+                    value={reqMonth ?? ''}
+                    placeholder="All months"
+                    options={reqMonthOptions}
+                    onChange={(v) => { setReqMonth(v || null); setDetailStatus(null); setExpandedReq(null) }}
+                  />
+                  {(reqDistrict || reqMonth) && (
+                    <button
+                      onClick={clearReqFilters}
+                      className="flex items-center gap-1 text-xs text-text-muted hover:text-text pb-1 self-end"
+                    >
+                      <X size={12} /> Clear
+                    </button>
+                  )}
+                </div>
+                {reqFacilityId && (
+                  // shortcut: facility filter only applies to detail panel (client-side by facilityName); chart + totals show all facilities until backend adds ?facilityId= to /api/analytics
+                  <p className="mt-3 text-xs text-text-muted">Facility filter applies to request details only. Chart and totals show all facilities.</p>
+                )}
+              </Card>
+
+              {/* Chart + totals by status */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <ChartCard
                   title="Requests by month"
@@ -554,23 +720,88 @@ export default function Analytics() {
                 </ChartCard>
 
                 <Card>
-                  <CardHeader title="Totals by status" description="All requests in the period" />
-                  {requestTotals.length === 0 ? <EmptyChart message="No request data" /> : (
+                  <CardHeader
+                    title="Totals by status"
+                    description={reqMonth ? fmtMonth(reqMonth) : 'All requests in the period'}
+                  />
+                  {filteredRequestTotals.length === 0 ? <EmptyChart message="No request data" /> : (
                     <ul className="mt-4 divide-y divide-surface-border">
-                      {requestTotals.map((d) => (
-                        <li key={d.name} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                          <span className="flex items-center gap-2 text-text">
-                            <span className="w-2 h-2 rounded-full" style={{ background: C[d.key] }} aria-hidden="true" />{d.name}
-                          </span>
-                          <span className="font-medium text-text tabular-nums">{d.value.toLocaleString()}</span>
+                      {filteredRequestTotals.map((d) => (
+                        <li key={d.name}>
+                          <button
+                            onClick={() => { setDetailStatus(detailStatus === d.key ? null : d.key); setExpandedReq(null) }}
+                            className={`w-full flex items-center justify-between gap-3 py-2.5 px-1.5 text-sm text-left rounded-control transition-colors hover:bg-surface-alt ${detailStatus === d.key ? 'bg-surface-alt' : ''}`}
+                          >
+                            <span className="flex items-center gap-2 text-text">
+                              <span className="w-2 h-2 rounded-full" style={{ background: C[d.key] }} aria-hidden="true" />
+                              {d.name}
+                            </span>
+                            <span className="font-medium text-text tabular-nums">{d.value.toLocaleString()}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="mt-3 text-xs text-text-muted">Click a status to see individual requests.</p>
+                </Card>
+              </div>
+
+              {/* Detail panel — shown when a status is selected */}
+              {detailStatus && (
+                <Card>
+                  <CardHeader
+                    title={`${requestTotals.find((r) => r.key === detailStatus)?.name ?? ''} requests`}
+                    description={[reqMonth && fmtMonth(reqMonth), reqFacilityName].filter(Boolean).join(' · ') || 'All facilities and months'}
+                  />
+                  {detailLoading ? (
+                    <SkeletonRows rows={4} />
+                  ) : detailRequests.length === 0 ? (
+                    <div className="mt-4">
+                      <EmptyState title="No requests found" description="Try changing the filters." />
+                    </div>
+                  ) : (
+                    <ul className="mt-4 divide-y divide-surface-border">
+                      {detailRequests.map((req) => (
+                        <li key={req.id}>
+                          <button
+                            onClick={() => setExpandedReq(expandedReq === req.id ? null : req.id)}
+                            className="w-full flex items-start justify-between gap-3 py-3 px-1.5 text-left text-sm hover:bg-surface-alt rounded-control transition-colors"
+                          >
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className="font-medium text-text truncate">{req.facilityName}</span>
+                              <span className="text-text-muted text-xs">
+                                {vaccineSummary(req.items)} · {formatDate(req.createdAt)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <StatusBadge kind="workflow" status={req.stage} />
+                              <ChevronDown size={14} className={`text-text-muted transition-transform ${expandedReq === req.id ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+                          {expandedReq === req.id && (
+                            <div className="pb-4 px-1.5">
+                              <RequestItemsTable items={req.items} />
+                              {req.note && (
+                                <p className="mt-2 text-xs text-text-muted">Note: {req.note}</p>
+                              )}
+                              {req.shortfallNote && (
+                                <p className="mt-1 text-xs text-text-muted">Shortfall: {req.shortfallNote}</p>
+                              )}
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
                   )}
                 </Card>
-              </div>
+              )}
 
-              <Table columns={requestColumns} rows={requestsByMonth} rowKey={(r) => r.month} emptyMessage="No stock requests in this date range." />
+              <Table
+                columns={requestColumns}
+                rows={displayedRequestsByMonth}
+                rowKey={(r) => r.month}
+                emptyMessage="No stock requests in this date range."
+              />
             </div>
           )}
 
