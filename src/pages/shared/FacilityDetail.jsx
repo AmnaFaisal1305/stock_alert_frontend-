@@ -1,361 +1,164 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Syringe, AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, Calendar, Building2, LayoutGrid, List, Search, X } from 'lucide-react'
+import { ArrowLeft, Syringe } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import StatusBadge from '../../components/shared/StatusBadge'
-import SkeletonCard from '../../components/shared/SkeletonCard'
+import Button from '../../components/ui/Button'
+import Badge from '../../components/ui/Badge'
 import PageHeader from '../../components/shared/PageHeader'
-import { statusConfig } from '../../lib/status'
+import StatCard from '../../components/shared/StatCard'
+import StatusBadge from '../../components/shared/StatusBadge'
+import Table from '../../components/shared/Table'
+import SearchInput from '../../components/shared/SearchInput'
+import FilterChips from '../../components/shared/FilterChips'
+import Card from '../../components/shared/Card'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import { ROLE_LABELS } from '../../lib/navigation'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { formatDate } from '../../lib/format'
 
-function VaccineCard({ v }) {
-  const cfg        = statusConfig(v.status)
-  const qty        = v.quantity ?? 0
-  const critQty    = v.criticalDoses ?? v.minQuantity ?? 0
-  const refQty     = v.lowDoses ?? critQty
-  const refVials   = v.lowVials ?? v.criticalVials ?? null
-  const fillPct    = v.quantity == null ? 0 : (refQty > 0 ? Math.min((qty / refQty) * 100, 100) : 100)
-  const hasMin     = refQty > 0
+const KPIS = [
+  { key: 'critical', label: 'Critical' },
+  { key: 'low',      label: 'Low' },
+  { key: 'adequate', label: 'Normal' },
+  { key: 'no_data',  label: 'Not updated' },
+]
 
-  const accentBar =
-    v.status === 'critical' ? 'bg-danger' :
-    v.status === 'low'      ? 'bg-warning' :
-    v.status === 'adequate' ? 'bg-success' :
-    'bg-secondary/40'
+const muted = (text) => <span className="text-text-muted">{text}</span>
 
-  const borderColor =
-    v.status === 'critical' ? 'border-danger/20' :
-    v.status === 'low'      ? 'border-warning/20' :
-    'border-surface-border'
-
-  return (
-    <div className={`bg-surface rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${borderColor}`}>
-      <div className={`h-1 ${accentBar}`} />
-      <div className="p-5 flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5 min-w-0">
-            <div className={`p-2 rounded-lg flex-shrink-0 mt-0.5 ${cfg.bg}`}>
-              <Syringe size={14} className={cfg.text} strokeWidth={2.2} />
-            </div>
-            <h3 className="font-bold text-text text-sm leading-tight pt-1 truncate" title={displayVaccineName(v.vaccineName)}>
-              {displayVaccineName(v.vaccineName)}
-            </h3>
-          </div>
-          <div className="flex-shrink-0">
-            <StatusBadge status={v.status} />
-          </div>
-        </div>
-
-        <div className="h-px bg-surface-border" />
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Current Stock</p>
-            <p className="text-2xl font-extrabold text-text tabular-nums leading-none">{v.quantity ?? '—'}</p>
-            <p className="text-[10px] text-text-muted font-medium mt-0.5">doses</p>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Min. Threshold</p>
-              {v.thresholdOverridden && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">Custom</span>
-              )}
-            </div>
-            <p className={`text-2xl font-extrabold tabular-nums leading-none ${hasMin ? 'text-text' : 'text-text-muted/40'}`}>
-              {hasMin ? refQty : '—'}
-            </p>
-            <p className="text-[10px] text-text-muted font-medium mt-0.5">{hasMin ? 'doses' : 'not set'}</p>
-            {hasMin && refVials != null && (
-              <p className="text-[10px] text-text-muted font-medium">{refVials} vials</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 pt-1 border-t border-surface-border">
-          <Calendar size={11} className="text-text-muted/50 flex-shrink-0" />
-          <p className="text-[10px] font-semibold text-text-muted/70 uppercase tracking-wider">
-            {v.recordedAt
-              ? `Last recorded ${new Date(v.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-              : 'Never recorded'}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
+// Threshold the status is judged against: low first, then critical (legacy minQuantity fallback).
+function threshold(v) {
+  const doses = v.lowDoses ?? v.criticalDoses ?? v.minQuantity ?? 0
+  return { doses, vials: v.lowVials ?? v.criticalVials ?? null }
 }
+
+const columns = [
+  { key: 'vaccine', label: 'Vaccine', render: (v) => <span className="font-medium whitespace-nowrap" dir="auto">{displayVaccineName(v.vaccineName)}</span> },
+  { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v.status} /> },
+  {
+    key: 'stock', label: 'In stock', align: 'right',
+    render: (v) => v.quantity == null ? muted('—') : <span className="tabular-nums whitespace-nowrap">{v.quantity} <span className="text-xs text-text-muted">doses</span></span>,
+  },
+  {
+    key: 'threshold', label: 'Low threshold', align: 'right',
+    render: (v) => {
+      const t = threshold(v)
+      if (!(t.doses > 0)) return muted('Not set')
+      return (
+        <span className="tabular-nums whitespace-nowrap">
+          {t.doses} <span className="text-xs text-text-muted">doses</span>
+          {t.vials != null && <span className="block text-xs text-text-muted">{t.vials} vials</span>}
+          {v.thresholdOverridden && <span className="block text-xs text-text-muted">Facility override</span>}
+        </span>
+      )
+    },
+  },
+  {
+    key: 'recorded', label: 'Last recorded', align: 'right',
+    render: (v) => v.recordedAt ? <span className="text-text-muted whitespace-nowrap">{formatDate(v.recordedAt)}</span> : <span className="text-warning-dark">Never</span>,
+  },
+]
 
 export default function FacilityDetail() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [view, setView] = useState('cards')
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['facility', id],
     queryFn: () => getFacility(id),
   })
 
   const facility = data?.facility
   const counts = facility?.statusCounts ?? {}
-
-  const statRows = [
-    { label: 'Critical',  value: counts.critical ?? 0, icon: AlertCircle,   color: 'text-danger',       bg: 'bg-danger-bg',   bar: 'bg-danger',   key: 'critical' },
-    { label: 'Low Stock', value: counts.low ?? 0,       icon: AlertTriangle, color: 'text-warning-dark', bg: 'bg-warning-bg',  bar: 'bg-warning',  key: 'low'      },
-    { label: 'Normal',    value: counts.adequate ?? 0,  icon: CheckCircle2,  color: 'text-success-dark', bg: 'bg-success-bg',  bar: 'bg-success',  key: 'adequate' },
-    { label: 'No Data',   value: counts.no_data ?? 0,   icon: HelpCircle,    color: 'text-text-muted',   bg: 'bg-surface-alt', bar: 'bg-secondary',key: 'no_data'  },
-  ]
-
   const allVaccines = facility?.vaccines ?? []
 
-  const filteredVaccines = allVaccines.filter((v) => {
-    const matchesSearch = displayVaccineName(v.vaccineName).toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || v.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const q = searchQuery.trim().toLowerCase()
+  const filteredVaccines = allVaccines.filter((v) =>
+    displayVaccineName(v.vaccineName).toLowerCase().includes(q) &&
+    (statusFilter === 'all' || v.status === statusFilter))
 
-  const filterPills = [
-    { key: 'all',      label: 'All',      count: allVaccines.length,                                        activeClass: 'bg-primary text-white border-primary'              },
-    { key: 'critical', label: 'Critical', count: counts.critical ?? 0, icon: AlertCircle,                   activeClass: 'bg-danger text-white border-danger'                },
-    { key: 'low',      label: 'Low Stock',count: counts.low ?? 0,      icon: AlertTriangle,                 activeClass: 'bg-warning text-white border-warning'              },
-    { key: 'adequate', label: 'Normal',   count: counts.adequate ?? 0, icon: CheckCircle2,                  activeClass: 'bg-success text-white border-success'              },
-    { key: 'no_data',  label: 'No Data',  count: counts.no_data ?? 0,  icon: HelpCircle,                   activeClass: 'bg-surface-chip text-text-muted border-surface-border' },
+  const chipOptions = [
+    { value: 'all', label: 'All', count: allVaccines.length },
+    ...KPIS.map((k) => ({ value: k.key, label: k.label, status: k.key, count: counts[k.key] ?? 0 })),
   ]
 
-  const hasActiveFilter = statusFilter !== 'all' || searchQuery !== ''
-
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+    <div>
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-3 -ml-2">
+        <ArrowLeft size={14} strokeWidth={1.75} /> Back
+      </Button>
 
-      {/* Back link */}
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary w-fit font-semibold transition-colors"
-      >
-        <ArrowLeft size={14} /> Back
-      </button>
-
-      {isLoading && (
-        <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-[88px] bg-surface-chip rounded-2xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-surface-alt border border-surface-border rounded-2xl" />)}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1,2,3,4,5,6].map((i) => <SkeletonCard key={i} lines={3} />)}
-          </div>
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load facility. Please try refreshing.
-        </div>
-      )}
-
-      {!isLoading && !isError && facility && (
+      {isError ? (
+        <ErrorState title="Couldn’t load this facility" error={error} onRetry={refetch} />
+      ) : isLoading ? (
+        <Card padding={false}><SkeletonRows rows={6} /></Card>
+      ) : facility && (
         <>
-          {/* Page Header */}
           <PageHeader
-            breadcrumb="Facility"
+            size="display"
+            breadcrumb={`${ROLE_LABELS[user?.role] ?? 'Facility'} › Facilities`}
             title={facility.name}
             subtitle={`${facility.districtName} District${facility.facilitySupervisorName ? ` · ${facility.facilitySupervisorName}` : ''}`}
-            actions={
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                facility.isActive
-                  ? 'bg-success-bg text-success-dark border-success/15'
-                  : 'bg-surface-chip text-text-muted border-surface-border'
-              }`}>
-                {facility.isActive ? 'Active' : 'Inactive'}
-              </span>
-            }
+            actions={<Badge type={facility.isActive ? 'active' : 'inactive'} />}
           />
 
-          {/* Status Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statRows.map(({ label, value, icon: Icon, color, bg, bar, key }) => (
-              <button
-                key={label}
-                onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
-                className={`bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm text-left transition-all duration-150 ${
-                  statusFilter === key ? 'ring-2 ring-primary/30 border-primary/30' : 'hover:shadow-md'
-                }`}
-              >
-                <div className={`h-1 ${bar}`} />
-                <div className="px-5 py-4 flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl flex-shrink-0 ${bg}`}>
-                    <Icon size={16} className={color} strokeWidth={2.2} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</p>
-                    <p className={`text-2xl font-extrabold tabular-nums leading-none mt-0.5 ${value > 0 && key === 'critical' ? 'text-danger' : value > 0 && key === 'low' ? 'text-warning-dark' : 'text-text'}`}>
-                      {value}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+            {KPIS.map(({ key, label }) => {
+              const value = counts[key] ?? 0
+              return (
+                <StatCard
+                  key={key}
+                  label={label}
+                  value={value}
+                  unit={value === 1 ? 'vaccine' : 'vaccines'}
+                  tone={value > 0 && key !== 'no_data' ? key : undefined}
+                  onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
+                  active={statusFilter === key}
+                />
+              )
+            })}
           </div>
 
-          {/* Vaccines Section */}
-          <div>
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 flex-wrap">
-              <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">
-                Vaccine Inventory
-              </h2>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-bold text-text-muted bg-surface border border-surface-border px-2.5 py-1 rounded-lg tabular-nums">
-                  {filteredVaccines.length} of {allVaccines.length} vaccines
-                </span>
-                {allVaccines.length > 0 && (
-                  <div className="flex items-center gap-0.5 bg-surface border border-surface-border rounded-xl p-1 shadow-sm">
-                    <button
-                      onClick={() => setView('cards')}
-                      title="Card view"
-                      className={`p-1.5 rounded-lg transition-all ${view === 'cards' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
-                    >
-                      <LayoutGrid size={14} />
-                    </button>
-                    <button
-                      onClick={() => setView('table')}
-                      title="Table view"
-                      className={`p-1.5 rounded-lg transition-all ${view === 'table' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
-                    >
-                      <List size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Search + Status filters */}
-            {allVaccines.length > 0 && (
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap mb-4">
-                <div className="relative w-full sm:w-64">
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search vaccine..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-surface-border rounded-xl bg-surface shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-muted/60"
-                  />
-                </div>
-
-                <div className="flex gap-1.5 flex-wrap">
-                  {filterPills.map(({ key, label, count, icon: Icon, activeClass }) => (
-                    <button
-                      key={key}
-                      onClick={() => setStatusFilter(key)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                        statusFilter === key
-                          ? activeClass
-                          : 'bg-surface border-surface-border text-text-muted hover:text-text hover:border-primary/40'
-                      }`}
-                    >
-                      {Icon && <Icon size={10} />}
-                      {label}
-                      <span className="opacity-75">({count})</span>
-                    </button>
-                  ))}
-                </div>
-
-                {hasActiveFilter && (
-                  <button
-                    onClick={() => { setStatusFilter('all'); setSearchQuery('') }}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-text transition-colors"
-                  >
-                    <X size={12} /> Clear
-                  </button>
-                )}
-              </div>
-            )}
+          <section aria-labelledby="inventory-heading">
+            <h2 id="inventory-heading" className="text-base font-semibold text-text mb-3">
+              Vaccine stock
+              <span className="ml-2 text-sm font-normal text-text-muted tabular-nums">{filteredVaccines.length} of {allVaccines.length}</span>
+            </h2>
 
             {allVaccines.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
-                <Syringe size={36} className="mx-auto mb-3 opacity-20" />
-                <p className="font-bold text-text">No vaccines configured</p>
-                <p className="text-xs mt-1">No vaccine records have been set up for this facility yet.</p>
-              </div>
-            ) : filteredVaccines.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-surface-border bg-surface rounded-2xl text-text-muted shadow-sm">
-                <Search size={28} className="mx-auto mb-3 opacity-20" />
-                <p className="font-bold text-text">No matches</p>
-                <p className="text-xs mt-1">Try adjusting the search or status filter.</p>
-              </div>
-            ) : view === 'cards' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredVaccines.map((v) => (
-                  <VaccineCard key={v.vaccineId} v={v} />
-                ))}
-              </div>
+              <EmptyState framed icon={Syringe} title="No vaccines configured" message="No vaccine records have been set up for this facility yet." />
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-surface-border shadow-sm">
-              <div className="bg-surface min-w-[640px]">
-                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3 bg-surface-alt border-b border-surface-border gap-4 items-center">
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Vaccine</span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Stock</span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Threshold</span>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Level</span>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                  <SearchInput value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vaccine…" />
+                  <FilterChips label="Stock status" value={statusFilter} onChange={setStatusFilter} options={chipOptions} />
                 </div>
-                {filteredVaccines.map((v) => {
-                  const cfg      = statusConfig(v.status)
-                  const qty      = v.quantity ?? 0
-                  const critQty  = v.criticalDoses ?? v.minQuantity ?? 0
-                  const refQty   = v.lowDoses ?? critQty
-                  const refVials = v.lowVials ?? v.criticalVials ?? null
-                  const hasMin   = refQty > 0
-                  const pct      = v.quantity == null ? 0 : (hasMin ? Math.min(Math.round((qty / refQty) * 100), 100) : 100)
-                  return (
-                    <div
-                      key={v.vaccineId}
-                      className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] px-5 py-3.5 gap-4 items-center border-b border-surface-border last:border-b-0 hover:bg-surface-alt/60 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`w-1 h-7 rounded-full flex-shrink-0 ${
-                          v.status === 'critical' ? 'bg-danger' :
-                          v.status === 'low'      ? 'bg-warning' :
-                          v.status === 'adequate' ? 'bg-success' : 'bg-secondary'
-                        }`} />
-                        <p className="font-semibold text-sm text-text truncate" dir="rtl">{displayVaccineName(v.vaccineName)}</p>
+                <Table
+                  columns={columns}
+                  rows={filteredVaccines}
+                  rowKey={(v) => v.vaccineId}
+                  emptyMessage="No vaccines match the search or status filter."
+                  mobileCard={(v) => (
+                    <div className="px-4 py-3.5 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(v.vaccineName)}</p>
+                        <p className="text-xs text-text-muted tabular-nums">
+                          {v.quantity ?? '—'} doses · {v.recordedAt ? formatDate(v.recordedAt) : 'never recorded'}
+                        </p>
                       </div>
-                      <div><StatusBadge status={v.status} /></div>
-                      <p className="text-sm font-bold text-text tabular-nums">
-                        {v.quantity ?? '—'}
-                        <span className="text-[10px] text-text-muted font-normal ml-1">doses</span>
-                      </p>
-                      {hasMin ? (
-                        <div>
-                          <p className="text-sm text-text tabular-nums">{refQty} <span className="text-[10px] text-text-muted">doses</span></p>
-                          {refVials != null && (
-                            <p className="text-[10px] text-text-muted">{refVials} vials</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-text-muted italic">Not set</span>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 rounded-full bg-surface-chip overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${
-                            v.status === 'critical' ? 'bg-danger' :
-                            v.status === 'low'      ? 'bg-warning' :
-                            v.status === 'adequate' ? 'bg-success' : 'bg-secondary'
-                          }`} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-[11px] font-bold text-text-muted tabular-nums w-8 text-right">{pct}%</span>
-                      </div>
+                      <StatusBadge status={v.status} />
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+                />
               </div>
             )}
-          </div>
+          </section>
         </>
       )}
     </div>

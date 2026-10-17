@@ -2,35 +2,27 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, Cell, PieChart, Pie, Legend, LabelList,
+  ResponsiveContainer, LabelList,
 } from 'recharts'
+import { FileSpreadsheet, FileText, BarChart2 } from 'lucide-react'
 import { getAnalytics } from '../../lib/api'
 import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { displayVaccineName } from '../../lib/vaccineNames'
+import { localDateStr, toLocalDateStr } from '../../lib/format'
+import { ROLE_LABELS } from '../../lib/navigation'
+import { useAuth } from '../../context/AuthContext'
+import { useChartTheme } from '../../hooks/useChartTheme'
 import Table from '../../components/shared/Table'
 import StatCard from '../../components/shared/StatCard'
+import Card, { CardHeader } from '../../components/shared/Card'
+import FilterChips from '../../components/shared/FilterChips'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import DatePicker from '../../components/ui/DatePicker'
 import Button from '../../components/ui/Button'
+import Tabs from '../../components/ui/Tabs'
 import PageHeader from '../../components/shared/PageHeader'
-import {
-  Package, TrendingDown, AlertTriangle, Clock, FileSpreadsheet, FileText,
-  BarChart2, Activity, Percent, CheckCircle2,
-} from 'lucide-react'
-
-// ── Chart colour constants (aligned to Tailwind tokens) ───────────────────────
-const C = {
-  received:   '#006241',  // primary
-  used:       '#3B82F6',  // blue-500
-  wasted:     '#F59E0B',  // amber-500
-  completed:  '#10B981',  // success
-  partial:    '#F59E0B',  // amber
-  open:       '#3B82F6',  // blue
-  declined:   '#EF4444',  // danger
-  cancelled:  '#94A3B8',  // slate-400
-  remaining:  '#0EA5E9',  // sky-500
-  correction: '#8B5CF6',  // violet-500
-  threshold:  '#06B6D4',  // cyan-500
-}
 
 // ── Quick date presets ────────────────────────────────────────────────────────
 const PRESETS = [
@@ -45,14 +37,14 @@ function applyPreset(months) {
   const from = new Date()
   from.setMonth(from.getMonth() - months)
   from.setDate(1)
-  return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] }
+  return { from: toLocalDateStr(from), to: toLocalDateStr(to) }
 }
 
 function defaultFrom() {
   const d = new Date()
   d.setMonth(d.getMonth() - 11)
   d.setDate(1)
-  return d.toISOString().split('T')[0]
+  return toLocalDateStr(d)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -66,78 +58,76 @@ function abbrev(name, max = 13) {
 }
 
 function fmtNum(v) {
-  return v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+  return v >= 1000 ? `${+(v / 1000).toFixed(1)}k` : String(v)
 }
 
-// ── Shared tooltip ────────────────────────────────────────────────────────────
+const muted = (v) => <span className="text-text-muted">{v}</span>
+const toned = (n, cls) => <span className={n > 0 ? `${cls} font-medium` : 'text-text-muted'}>{n || 0}</span>
+
+// ── Chart pieces ──────────────────────────────────────────────────────────────
 function ChartTooltip({ active, payload, label, nameKey }) {
   if (!active || !payload?.length) return null
   const title = nameKey ? (payload[0]?.payload?.[nameKey] ?? label) : label
   return (
-    <div className="bg-surface border border-surface-border rounded-xl shadow-lg px-3.5 py-3 text-xs min-w-[150px] max-w-[230px]">
-      <p className="font-bold text-text mb-2 leading-tight break-words">{title}</p>
-      {payload.map((p) =>
-        (p.value ?? 0) > 0 ? (
-          <div key={p.dataKey ?? p.name} className="flex items-center justify-between gap-4 mb-1 last:mb-0">
-            <span className="flex items-center gap-1.5 min-w-0">
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.fill ?? p.color }} />
-              <span className="text-text-muted truncate">{p.name}</span>
-            </span>
-            <span className="font-bold text-text tabular-nums flex-shrink-0">{(p.value ?? 0).toLocaleString()}</span>
-          </div>
-        ) : null
-      )}
+    <div className="bg-surface border border-surface-border rounded-control shadow-float px-3.5 py-2.5 text-xs min-w-[150px] max-w-[230px]">
+      <p className="font-semibold text-text mb-1.5 leading-tight break-words">{title}</p>
+      {payload.filter((p) => (p.value ?? 0) > 0).map((p) => (
+        <p key={p.dataKey ?? p.name} className="flex items-center justify-between gap-6">
+          <span className="flex items-center gap-1.5 min-w-0 text-text-muted">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.fill ?? p.color }} aria-hidden="true" />
+            <span className="truncate">{p.name}</span>
+          </span>
+          <span className="font-medium text-text tabular-nums">{(p.value ?? 0).toLocaleString()}</span>
+        </p>
+      ))}
     </div>
   )
 }
 
-// ── Chart empty state ─────────────────────────────────────────────────────────
+function SeriesLegend({ items }) {
+  return (
+    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted">
+      {items.map(({ label, color }) => (
+        <li key={label} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: color }} aria-hidden="true" />{label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function ChartCard({ title, subtitle, legend, className = '', children }) {
+  return (
+    <Card className={className}>
+      <CardHeader title={title} description={subtitle} action={legend && <SeriesLegend items={legend} />} />
+      <div className="mt-4">{children}</div>
+    </Card>
+  )
+}
+
 function EmptyChart({ message = 'No data for this period' }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-14 text-text-muted">
-      <BarChart2 size={28} className="opacity-15 mb-2.5" />
-      <p className="text-sm font-semibold">{message}</p>
-    </div>
-  )
-}
-
-// ── Chart card wrapper ────────────────────────────────────────────────────────
-function ChartCard({ title, subtitle, icon: Icon, children }) {
-  return (
-    <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-surface-border flex items-center gap-2.5">
-        {Icon && (
-          <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
-            <Icon size={13} className="text-primary" />
-          </div>
-        )}
-        <div>
-          <p className="text-sm font-bold text-text">{title}</p>
-          {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
-        </div>
-      </div>
-      <div className="p-4 sm:p-5">{children}</div>
-    </div>
-  )
+  return <EmptyState icon={BarChart2} title={message} />
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'movement',  label: 'Movement'          },
-  { id: 'remaining', label: 'Remaining Stock'    },
-  { id: 'requests',  label: 'Requests'           },
-  { id: 'approvals', label: 'Pending Approvals'  },
+  { id: 'remaining', label: 'Remaining stock'   },
+  { id: 'requests',  label: 'Requests'          },
+  { id: 'approvals', label: 'Pending approvals' },
 ]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Analytics() {
+  const { user } = useAuth()
+  const t = useChartTheme()
   const [from, setFrom]             = useState(defaultFrom)
-  const [to, setTo]                 = useState(() => new Date().toISOString().split('T')[0])
+  const [to, setTo]                 = useState(() => localDateStr())
   const [activeTab, setTab]         = useState('movement')
   const [exporting, setExporting]   = useState(null)
   const [exportError, setExportError] = useState('')
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['analytics', from, to],
     queryFn: () => getAnalytics({ from, to }),
   })
@@ -146,6 +136,21 @@ export default function Analytics() {
   const remaining        = data?.remaining       ?? []
   const requests         = data?.requests        ?? []
   const pendingApprovals = data?.pendingApprovals ?? []
+
+  // Non-status series take the forest/neutral ramp; request statuses take status hues.
+  const C = {
+    received:   t.series[0],
+    used:       t.series[1],
+    wasted:     t.series[3],
+    remaining:  t.series[0],
+    correction: t.series[0],
+    threshold:  t.series[1],
+    completed:  t.status('adequate'),
+    partial:    t.status('low'),
+    open:       t.series[1],
+    declined:   t.status('critical'),
+    cancelled:  t.status('no_data'),
+  }
 
   // ── Vaccine movement rollup ───────────────────────────────────────────────
   const vaccineMovement = useMemo(() => {
@@ -180,11 +185,10 @@ export default function Analytics() {
     ? +((totals.wasted / totals.received) * 100).toFixed(1)
     : 0
 
-  const wastageColor = wastageRate === 0
-    ? 'text-primary'
-    : wastageRate < 3  ? 'text-success-dark'
-    : wastageRate < 7  ? 'text-amber-500'
-    : 'text-danger'
+  const wastageTone = wastageRate === 0 ? undefined
+    : wastageRate < 3 ? 'adequate'
+    : wastageRate < 7 ? 'low'
+    : 'critical'
 
   const movementChartData = useMemo(() =>
     vaccineMovement.map((v) => ({
@@ -235,14 +239,14 @@ export default function Analytics() {
   , [requestsByMonth])
 
   const requestTotals = useMemo(() => {
-    const t = { completed: 0, partially_fulfilled: 0, submitted: 0, declined: 0, cancelled: 0 }
-    for (const row of requests) t[row.status] = (t[row.status] || 0) + row.count
+    const tt = { completed: 0, partially_fulfilled: 0, submitted: 0, declined: 0, cancelled: 0 }
+    for (const row of requests) tt[row.status] = (tt[row.status] || 0) + row.count
     return [
-      { name: 'Completed', value: t.completed,           color: C.completed  },
-      { name: 'Partial',   value: t.partially_fulfilled, color: C.partial    },
-      { name: 'Open',      value: t.submitted,           color: C.open       },
-      { name: 'Declined',  value: t.declined,            color: C.declined   },
-      { name: 'Cancelled', value: t.cancelled,           color: C.cancelled  },
+      { name: 'Completed', value: tt.completed,           key: 'completed' },
+      { name: 'Partial',   value: tt.partially_fulfilled, key: 'partial'   },
+      { name: 'Open',      value: tt.submitted,           key: 'open'      },
+      { name: 'Declined',  value: tt.declined,            key: 'declined'  },
+      { name: 'Cancelled', value: tt.cancelled,           key: 'cancelled' },
     ].filter((d) => d.value > 0)
   }, [requests])
 
@@ -264,6 +268,7 @@ export default function Analytics() {
     corrections: pendingApprovals.filter((r) => r.type === 'stock_correction').reduce((s, r) => s + r.count, 0),
     thresholds:  pendingApprovals.filter((r) => r.type === 'threshold_change').reduce((s, r) => s + r.count, 0),
   }), [pendingApprovals])
+  const totalPending = approvalTotals.corrections + approvalTotals.thresholds
 
   // ── Tab data counts ───────────────────────────────────────────────────────
   const tabCounts = useMemo(() => ({
@@ -288,513 +293,236 @@ export default function Analytics() {
   }
 
   const canExport = !isLoading && !isError && movement.length > 0
+  const activePreset = PRESETS.find((p) => {
+    const r = applyPreset(p.months)
+    return r.from === from && r.to === to
+  })?.label ?? null
 
   // ── Column definitions ────────────────────────────────────────────────────
   const movementColumns = [
-    { key: 'vaccineName', label: 'Vaccine',
-      render: (r) => <span className="text-sm font-semibold text-text">{r.vaccineName}</span> },
-    { key: 'opening', label: 'Opening',
-      render: (r) => <span className={`text-sm tabular-nums ${r.opening > 0 ? 'text-sky-700 font-semibold' : 'text-text-muted'}`}>{r.opening || '—'}</span> },
-    { key: 'received', label: 'Received (vials)',
-      render: (r) => <span className="text-sm tabular-nums text-text">{r.received}</span> },
-    { key: 'usedDoses', label: 'Used (doses)',
-      render: (r) => <span className="text-sm tabular-nums text-text">{r.usedDoses}</span> },
-    { key: 'wasted', label: 'Wasted (vials)',
-      render: (r) => (
-        <span className={`text-sm font-semibold tabular-nums ${r.wasted > 0 ? 'text-amber-600' : 'text-text-muted'}`}>
-          {r.wasted}
-        </span>
-      ) },
-    { key: 'adj', label: 'Adj. (net)',
+    { key: 'vaccineName', label: 'Vaccine', render: (r) => <span className="font-medium">{r.vaccineName}</span> },
+    { key: 'opening', label: 'Opening', align: 'right', render: (r) => r.opening || muted('—') },
+    { key: 'received', label: 'Received (vials)', align: 'right', render: (r) => r.received },
+    { key: 'usedDoses', label: 'Used (doses)', align: 'right', render: (r) => r.usedDoses },
+    { key: 'wasted', label: 'Wasted (vials)', align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
+    { key: 'adj', label: 'Adjustment (net)', align: 'right',
       render: (r) => {
         const net = r.adjustmentIncrease - r.adjustmentDecrease
-        return (
-          <span className={`text-sm font-semibold tabular-nums ${net > 0 ? 'text-emerald-600' : net < 0 ? 'text-danger' : 'text-text-muted'}`}>
-            {net > 0 ? `+${net}` : net === 0 ? '—' : net}
-          </span>
-        )
+        if (net === 0) return muted('—')
+        return <span className={`font-medium ${net > 0 ? 'text-success-dark' : 'text-danger-dark'}`}>{net > 0 ? `+${net}` : `−${Math.abs(net)}`}</span>
       } },
   ]
 
   const remainingColumns = [
-    { key: 'facilityName', label: 'Facility',
-      render: (r) => <span className="text-sm font-semibold text-text">{r.facilityName}</span> },
-    { key: 'vaccineName', label: 'Vaccine',
-      render: (r) => <span className="text-sm text-text">{displayVaccineName(r.vaccineName)}</span> },
-    { key: 'storeVials', label: 'Store (vials)',
-      render: (r) => <span className="text-sm tabular-nums text-text">{r.storeVials}</span> },
-    { key: 'heldVials', label: 'Held (vials)',
-      render: (r) => <span className="text-sm tabular-nums text-text">{r.heldVials}</span> },
-    { key: 'totalDoses', label: 'Total (doses)',
-      render: (r) => <span className="text-sm font-bold tabular-nums text-text">{r.totalDoses}</span> },
+    { key: 'facilityName', label: 'Facility', render: (r) => <span className="font-medium">{r.facilityName}</span> },
+    { key: 'vaccineName', label: 'Vaccine', render: (r) => displayVaccineName(r.vaccineName) },
+    { key: 'storeVials', label: 'Store (vials)', align: 'right', render: (r) => r.storeVials },
+    { key: 'heldVials', label: 'Held (vials)', align: 'right', render: (r) => r.heldVials },
+    { key: 'totalDoses', label: 'Total (doses)', align: 'right', render: (r) => <span className="font-medium">{r.totalDoses}</span> },
   ]
 
   const requestColumns = [
-    { key: 'month', label: 'Month',
-      render: (r) => <span className="text-sm font-semibold text-text">{r.month}</span> },
-    { key: 'completed', label: 'Completed',
-      render: (r) => <span className="text-sm font-semibold tabular-nums text-emerald-600">{r.completed || 0}</span> },
-    { key: 'partially_fulfilled', label: 'Partial',
-      render: (r) => <span className="text-sm font-semibold tabular-nums text-amber-600">{r.partially_fulfilled || 0}</span> },
-    { key: 'submitted', label: 'Open',
-      render: (r) => <span className="text-sm font-semibold tabular-nums text-blue-600">{r.submitted || 0}</span> },
-    { key: 'cancelled', label: 'Cancelled',
-      render: (r) => <span className="text-sm tabular-nums text-text-muted">{r.cancelled || 0}</span> },
-    { key: 'declined', label: 'Declined',
-      render: (r) => <span className="text-sm font-semibold tabular-nums text-danger">{r.declined || 0}</span> },
+    { key: 'month', label: 'Month', render: (r) => <span className="font-medium">{fmtMonth(r.month)}</span> },
+    { key: 'completed', label: 'Completed', align: 'right', render: (r) => toned(r.completed, 'text-success-dark') },
+    { key: 'partially_fulfilled', label: 'Partial', align: 'right', render: (r) => toned(r.partially_fulfilled, 'text-warning-dark') },
+    { key: 'submitted', label: 'Open', align: 'right', render: (r) => r.submitted || muted(0) },
+    { key: 'cancelled', label: 'Cancelled', align: 'right', render: (r) => muted(r.cancelled || 0) },
+    { key: 'declined', label: 'Declined', align: 'right', render: (r) => toned(r.declined, 'text-danger-dark') },
   ]
 
   const approvalsColumns = [
-    { key: 'facilityName', label: 'Facility',
-      render: (r) => <span className="text-sm font-semibold text-text">{r.facilityName}</span> },
-    { key: 'type', label: 'Type',
-      render: (r) => (
-        <span className="text-sm text-text">
-          {r.type === 'stock_correction' ? 'Stock Correction' : 'Threshold Change'}
-        </span>
-      ) },
-    { key: 'count', label: 'Pending',
-      render: (r) => <span className="text-sm font-bold tabular-nums text-amber-600">{r.count}</span> },
+    { key: 'facilityName', label: 'Facility', render: (r) => <span className="font-medium">{r.facilityName}</span> },
+    { key: 'type', label: 'Type', render: (r) => (r.type === 'stock_correction' ? 'Stock correction' : 'Threshold change') },
+    { key: 'count', label: 'Pending', align: 'right', render: (r) => toned(r.count, 'text-warning-dark') },
   ]
 
-  // ── Legend formatter ──────────────────────────────────────────────────────
-  const legendFmt = (v) => <span style={{ fontSize: 11, color: '#64748B' }}>{v}</span>
+  const grid = <CartesianGrid vertical={false} stroke={t.grid} />
+  const cursor = { fill: t.grid, fillOpacity: 0.4 }
+  const loaded = !isLoading && !isError
 
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in duration-200">
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+    <div>
       <PageHeader
-        breadcrumb="Analytics"
+        breadcrumb={`${ROLE_LABELS[user?.role] ?? 'Analytics'} › Records`}
         title="Analytics"
-        subtitle="Stock movement · Remaining inventory · Requests · Approvals"
+        subtitle="Stock movement, remaining inventory, requests and approvals for a period"
       />
 
-      {/* ── Date range controls ──────────────────────────────────────────── */}
-      <div className="bg-surface rounded-2xl border border-surface-border px-4 sm:px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Clock size={13} className="text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Period</span>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <DatePicker id="analytics-from" label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
-          <DatePicker id="analytics-to"   label="To"   value={to}   onChange={(e) => setTo(e.target.value)} />
-        </div>
-
-        {/* Quick presets */}
-        <div className="flex items-center gap-1.5">
-          {PRESETS.map((p) => {
-            const range = applyPreset(p.months)
-            const active = from === range.from && to === range.to
-            return (
-              <button
-                key={p.label}
-                onClick={() => { setFrom(range.from); setTo(range.to) }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                  active
-                    ? 'bg-primary text-white'
-                    : 'text-text-muted hover:text-primary hover:bg-primary/5 border border-surface-border'
-                }`}
-              >
-                {p.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Export */}
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <Button
-            variant="secondary" size="sm"
-            onClick={() => runExport('xlsx')}
-            disabled={!canExport || exporting !== null}
-            title={canExport ? 'Download Excel report' : 'No data to export'}
-          >
-            <FileSpreadsheet size={14} /> {exporting === 'xlsx' ? 'Preparing…' : 'Excel'}
-          </Button>
-          <Button
-            variant="secondary" size="sm"
-            onClick={() => runExport('pdf')}
-            disabled={!canExport || exporting !== null}
-            title={canExport ? 'Download PDF report' : 'No data to export'}
-          >
-            <FileText size={14} /> {exporting === 'pdf' ? 'Preparing…' : 'PDF'}
-          </Button>
-        </div>
-      </div>
-
-      {exportError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          {exportError}
-        </div>
-      )}
-
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto -mx-1 px-1 pb-0.5">
-        <div className="flex gap-1 p-1 bg-surface-chip rounded-xl w-fit min-w-max">
-          {TABS.map((t) => {
-            const count = !isLoading && !isError ? tabCounts[t.id] : null
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === t.id
-                    ? 'bg-surface text-primary shadow-sm'
-                    : 'text-text-muted hover:text-text'
-                }`}
-              >
-                {count !== null && count > 0 ? `${t.label} ${count}` : t.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── Loading skeleton ─────────────────────────────────────────────── */}
-      {isLoading && (
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-surface-alt border border-surface-border rounded-2xl animate-pulse" />)}
+      {/* ── Period + export ──────────────────────────────────────────────── */}
+      <Card className="mb-5">
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4 flex-wrap">
+          <div className="flex items-end gap-3 flex-wrap">
+            <DatePicker id="analytics-from" label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DatePicker id="analytics-to"   label="To"   value={to}   onChange={(e) => setTo(e.target.value)} />
           </div>
-          <div className="h-[300px] bg-surface-alt border border-surface-border rounded-2xl animate-pulse" />
-          <div className="flex flex-col gap-2">
-            {[1,2,3,4].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
+          <FilterChips
+            label="Quick period"
+            value={activePreset}
+            onChange={(label) => {
+              const r = applyPreset(PRESETS.find((p) => p.label === label).months)
+              setFrom(r.from); setTo(r.to)
+            }}
+            options={PRESETS.map((p) => ({ value: p.label, label: p.label }))}
+          />
+          <div className="flex items-center gap-2 lg:ml-auto">
+            <Button variant="secondary" size="sm" onClick={() => runExport('xlsx')} disabled={!canExport || exporting !== null} title={canExport ? 'Download Excel report' : 'No data to export'}>
+              <FileSpreadsheet size={14} strokeWidth={1.75} /> {exporting === 'xlsx' ? 'Preparing…' : 'Excel'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => runExport('pdf')} disabled={!canExport || exporting !== null} title={canExport ? 'Download PDF report' : 'No data to export'}>
+              <FileText size={14} strokeWidth={1.75} /> {exporting === 'pdf' ? 'Preparing…' : 'PDF'}
+            </Button>
           </div>
         </div>
-      )}
+        {exportError && <p role="alert" className="mt-3 text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{exportError}</p>}
+      </Card>
 
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load analytics data. Please try refreshing.
-        </div>
-      )}
+      <Tabs
+        label="Analytics sections"
+        value={activeTab}
+        onChange={setTab}
+        tabs={TABS.map((tb) => ({ value: tb.id, label: tb.label, count: loaded && tabCounts[tb.id] > 0 ? tabCounts[tb.id] : undefined }))}
+        className="mb-5"
+      />
 
-      {/* ── Tab content ──────────────────────────────────────────────────── */}
-      {!isLoading && !isError && (
+      {isLoading && <Card padding={false}><SkeletonRows rows={6} /></Card>}
+
+      {isError && <ErrorState title="Couldn’t load analytics" error={error} onRetry={refetch} />}
+
+      {loaded && (
         <>
-          {/* ══════════════════════════════════════ MOVEMENT ════════════════════════════════════ */}
+          {/* ── Movement ── */}
           {activeTab === 'movement' && (
             <div className="flex flex-col gap-5">
-
-              {/* KPI cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                  label="Total Stock In"
-                  value={totals.received}
-                  unit="opening + received vials"
-                  icon={Package}
-                  colorClass="text-primary"
-                />
-                <StatCard
-                  label="Total Used"
-                  value={totals.usedDoses}
-                  unit="doses administered"
-                  icon={TrendingDown}
-                  colorClass="text-blue-600"
-                />
-                <StatCard
-                  label="Total Wasted"
-                  value={totals.wasted}
-                  unit="vials discarded"
-                  icon={AlertTriangle}
-                  colorClass="text-amber-500"
-                />
-                <StatCard
-                  label="Wastage Rate"
-                  value={`${wastageRate}%`}
-                  unit="of vials received"
-                  icon={Percent}
-                  colorClass={wastageColor}
-                />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard label="Stock in" value={totals.received} subtitle="Opening + received vials" />
+                <StatCard label="Used" value={totals.usedDoses} subtitle="Doses administered" />
+                <StatCard label="Wasted" value={totals.wasted} subtitle="Vials discarded" />
+                <StatCard label="Wastage rate" value={`${wastageRate}%`} tone={wastageTone} subtitle="Of vials received" />
               </div>
 
-              {/* Stock Flow grouped bar chart */}
               <ChartCard
-                title="Stock Flow by Vaccine"
-                subtitle="Received vials · Used doses · Wasted vials"
-                icon={BarChart2}
+                title="Stock flow by vaccine"
+                subtitle="Received vials, used doses and wasted vials"
+                legend={[{ label: 'Received', color: C.received }, { label: 'Used', color: C.used }, { label: 'Wasted', color: C.wasted }]}
               >
-                {movementChartData.length === 0 ? (
-                  <EmptyChart />
-                ) : (
+                {movementChartData.length === 0 ? <EmptyChart /> : (
                   <ResponsiveContainer width="100%" height={295}>
-                    <BarChart
-                      data={movementChartData}
-                      margin={{ top: 6, right: 12, left: 0, bottom: 56 }}
-                      barGap={2}
-                      barCategoryGap="28%"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 10, fill: '#94A3B8' }}
-                        angle={-35}
-                        textAnchor="end"
-                        height={60}
-                        interval={0}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 10, fill: '#94A3B8' }}
-                        tickFormatter={fmtNum}
-                        width={38}
-                      />
-                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={{ fill: '#F8FAFC' }} />
-                      <Legend verticalAlign="top" height={30} iconType="circle" iconSize={7} formatter={legendFmt} />
-                      <Bar dataKey="Received" fill={C.received} radius={[3,3,0,0]} maxBarSize={18} />
-                      <Bar dataKey="Used"     fill={C.used}     radius={[3,3,0,0]} maxBarSize={18} />
-                      <Bar dataKey="Wasted"   fill={C.wasted}   radius={[3,3,0,0]} maxBarSize={18} />
+                    <BarChart data={movementChartData} margin={{ top: 6, right: 12, left: 0, bottom: 56 }} barGap={2} barCategoryGap="28%">
+                      {grid}
+                      <XAxis dataKey="name" tick={t.tick} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} interval={0} />
+                      <YAxis tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} width={38} />
+                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
+                      <Bar dataKey="Received" fill={C.received} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Used"     fill={C.used}     radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Wasted"   fill={C.wasted}   radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </ChartCard>
 
-              {/* Movement table */}
-              <div>
-                <Table
-                  columns={movementColumns}
-                  rows={vaccineMovement}
-                  emptyMessage="No movement recorded in this date range."
-                />
-              </div>
+              <Table columns={movementColumns} rows={vaccineMovement} rowKey={(r) => r.vaccineName} emptyMessage="No movement recorded in this date range." />
             </div>
           )}
 
-          {/* ══════════════════════════════════════ REMAINING STOCK ═════════════════════════════ */}
+          {/* ── Remaining stock ── */}
           {activeTab === 'remaining' && (
             <div className="flex flex-col gap-5">
-
-              {/* Remaining doses horizontal bar */}
-              <ChartCard
-                title="Remaining Doses by Vaccine"
-                subtitle="Aggregated across all facilities — total doses available"
-                icon={Package}
-              >
-                {remainingByVaccine.length === 0 ? (
-                  <EmptyChart message="No stock data available" />
-                ) : (
-                  <ResponsiveContainer
-                    width="100%"
-                    height={Math.max(200, remainingByVaccine.length * 46)}
-                  >
-                    <BarChart
-                      layout="vertical"
-                      data={remainingByVaccine.map((v) => ({ ...v, name: v.shortName }))}
-                      margin={{ top: 4, right: 56, left: 4, bottom: 4 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
-                      <XAxis
-                        type="number"
-                        tick={{ fontSize: 10, fill: '#94A3B8' }}
-                        tickFormatter={fmtNum}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fontSize: 11, fill: '#475569' }}
-                        width={140}
-                      />
-                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={{ fill: '#F8FAFC' }} />
-                      <Bar dataKey="doses" name="Doses" fill={C.remaining} radius={[0,3,3,0]} maxBarSize={22}>
-                        <LabelList
-                          dataKey="doses"
-                          position="right"
-                          style={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
-                          formatter={fmtNum}
-                        />
+              <ChartCard title="Remaining doses by vaccine" subtitle="Total doses available across all facilities">
+                {remainingByVaccine.length === 0 ? <EmptyChart message="No stock data available" /> : (
+                  <ResponsiveContainer width="100%" height={Math.max(200, remainingByVaccine.length * 46)}>
+                    <BarChart layout="vertical" data={remainingByVaccine.map((v) => ({ ...v, name: v.shortName }))} margin={{ top: 4, right: 56, left: 4, bottom: 4 }}>
+                      <CartesianGrid horizontal={false} stroke={t.grid} />
+                      <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} />
+                      <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
+                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
+                      <Bar dataKey="doses" name="Doses" fill={C.remaining} radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
+                        <LabelList dataKey="doses" position="right" style={{ fontSize: 11, fill: t.tickStrong }} formatter={fmtNum} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </ChartCard>
 
-              {/* Remaining table */}
-              <div>
-                <Table
-                  columns={remainingColumns}
-                  rows={remaining}
-                  emptyMessage="No stock data available."
-                />
-              </div>
+              <Table columns={remainingColumns} rows={remaining} rowKey={(r) => `${r.facilityName}-${r.vaccineName}`} emptyMessage="No stock data available." />
             </div>
           )}
 
-          {/* ══════════════════════════════════════ REQUESTS ════════════════════════════════════ */}
+          {/* ── Requests ── */}
           {activeTab === 'requests' && (
             <div className="flex flex-col gap-5">
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Stacked bar — monthly trend (2/3 width on desktop) */}
                 <ChartCard
-                  title="Monthly Request Trend"
-                  subtitle="Request status breakdown by month"
-                  icon={Activity}
+                  title="Requests by month"
+                  subtitle="Status of requests raised each month"
                   className="lg:col-span-2"
+                  legend={[{ label: 'Completed', color: C.completed }, { label: 'Partial', color: C.partial }, { label: 'Open', color: C.open }, { label: 'Declined', color: C.declined }]}
                 >
-                  {requestChartData.length === 0 ? (
-                    <EmptyChart message="No requests in this period" />
-                  ) : (
+                  {requestChartData.length === 0 ? <EmptyChart message="No requests in this period" /> : (
                     <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        data={requestChartData}
-                        margin={{ top: 6, right: 10, left: 0, bottom: 4 }}
-                        barCategoryGap="32%"
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                        <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94A3B8' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94A3B8' }} allowDecimals={false} width={32} />
-                        <ReTooltip content={<ChartTooltip />} cursor={{ fill: '#F8FAFC' }} />
-                        <Legend verticalAlign="top" height={30} iconType="circle" iconSize={7} formatter={legendFmt} />
-                        <Bar dataKey="Completed" stackId="a" fill={C.completed} maxBarSize={30} />
-                        <Bar dataKey="Partial"   stackId="a" fill={C.partial}   maxBarSize={30} />
-                        <Bar dataKey="Open"      stackId="a" fill={C.open}      maxBarSize={30} />
-                        <Bar dataKey="Declined"  stackId="a" fill={C.declined}  radius={[3,3,0,0]} maxBarSize={30} />
+                      <BarChart data={requestChartData} margin={{ top: 6, right: 10, left: 0, bottom: 4 }} barCategoryGap="32%">
+                        {grid}
+                        <XAxis dataKey="month" tick={t.tick} tickLine={false} axisLine={false} />
+                        <YAxis tick={t.tick} tickLine={false} axisLine={false} allowDecimals={false} width={32} />
+                        <ReTooltip content={<ChartTooltip />} cursor={cursor} />
+                        <Bar dataKey="Completed" stackId="a" fill={C.completed} maxBarSize={30} isAnimationActive={false} />
+                        <Bar dataKey="Partial"   stackId="a" fill={C.partial}   maxBarSize={30} isAnimationActive={false} />
+                        <Bar dataKey="Open"      stackId="a" fill={C.open}      maxBarSize={30} isAnimationActive={false} />
+                        <Bar dataKey="Declined"  stackId="a" fill={C.declined}  radius={[3, 3, 0, 0]} maxBarSize={30} isAnimationActive={false} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
                 </ChartCard>
 
-                {/* Donut — overall status split (1/3 width on desktop) */}
-                <div className="bg-surface rounded-2xl border border-surface-border shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-surface-border flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
-                      <CheckCircle2 size={13} className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-text">Status Distribution</p>
-                      <p className="text-xs text-text-muted mt-0.5">All requests in period</p>
-                    </div>
-                  </div>
-                  <div className="p-4 sm:p-5">
-                    {requestTotals.length === 0 ? (
-                      <EmptyChart message="No request data" />
-                    ) : (
-                      <>
-                        <ResponsiveContainer width="100%" height={175}>
-                          <PieChart>
-                            <Pie
-                              data={requestTotals}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={52}
-                              outerRadius={80}
-                              paddingAngle={3}
-                              dataKey="value"
-                            >
-                              {requestTotals.map((entry, i) => (
-                                <Cell key={i} fill={entry.color} stroke="none" />
-                              ))}
-                            </Pie>
-                            <ReTooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null
-                                const d = payload[0].payload
-                                return (
-                                  <div className="bg-surface border border-surface-border rounded-xl shadow-lg px-3.5 py-2.5 text-xs">
-                                    <p className="font-bold text-text">{d.name}</p>
-                                    <p className="text-text-muted mt-0.5">{d.value.toLocaleString()} requests</p>
-                                  </div>
-                                )
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        {/* Legend with counts */}
-                        <div className="flex flex-col gap-1.5 mt-2">
-                          {requestTotals.map((d) => (
-                            <div key={d.name} className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-2 min-w-0">
-                                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: d.color }} />
-                                <span className="text-xs text-text-muted truncate">{d.name}</span>
-                              </span>
-                              <span className="text-xs font-bold text-text tabular-nums flex-shrink-0">{d.value.toLocaleString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader title="Totals by status" description="All requests in the period" />
+                  {requestTotals.length === 0 ? <EmptyChart message="No request data" /> : (
+                    <ul className="mt-4 divide-y divide-surface-border">
+                      {requestTotals.map((d) => (
+                        <li key={d.name} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                          <span className="flex items-center gap-2 text-text">
+                            <span className="w-2 h-2 rounded-full" style={{ background: C[d.key] }} aria-hidden="true" />{d.name}
+                          </span>
+                          <span className="font-medium text-text tabular-nums">{d.value.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
               </div>
 
-              {/* Requests table */}
-              <div>
-                <Table
-                  columns={requestColumns}
-                  rows={requestsByMonth}
-                  emptyMessage="No stock requests in this date range."
-                />
-              </div>
+              <Table columns={requestColumns} rows={requestsByMonth} rowKey={(r) => r.month} emptyMessage="No stock requests in this date range." />
             </div>
           )}
 
-          {/* ══════════════════════════════════════ PENDING APPROVALS ═══════════════════════════ */}
+          {/* ── Pending approvals ── */}
           {activeTab === 'approvals' && (
             <div className="flex flex-col gap-5">
-
-              {/* Summary stat cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard
-                  label="Total Pending"
-                  value={approvalTotals.corrections + approvalTotals.thresholds}
-                  unit="require action"
-                  icon={AlertTriangle}
-                  colorClass={approvalTotals.corrections + approvalTotals.thresholds > 0 ? 'text-amber-500' : 'text-primary'}
-                />
-                <StatCard
-                  label="Stock Corrections"
-                  value={approvalTotals.corrections}
-                  unit="pending approvals"
-                  icon={Package}
-                  colorClass="text-violet-500"
-                />
-                <StatCard
-                  label="Threshold Changes"
-                  value={approvalTotals.thresholds}
-                  unit="pending approvals"
-                  icon={TrendingDown}
-                  colorClass="text-cyan-600"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <StatCard label="Pending" value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for a facility head' : 'Nothing waiting'} />
+                <StatCard label="Stock corrections" value={approvalTotals.corrections} subtitle="Pending" />
+                <StatCard label="Threshold changes" value={approvalTotals.thresholds} subtitle="Pending" />
               </div>
 
-              {/* Pending by facility chart */}
               {approvalsByFacility.length > 0 && (
                 <ChartCard
-                  title="Pending Approvals by Facility"
-                  subtitle="Stock corrections vs threshold changes — top 10"
-                  icon={BarChart2}
+                  title="Pending approvals by facility"
+                  subtitle="Stock corrections and threshold changes, top 10"
+                  legend={[{ label: 'Corrections', color: C.correction }, { label: 'Thresholds', color: C.threshold }]}
                 >
-                  <ResponsiveContainer
-                    width="100%"
-                    height={Math.max(160, approvalsByFacility.length * 46)}
-                  >
-                    <BarChart
-                      layout="vertical"
-                      data={approvalsByFacility.map((d) => ({ ...d, name: d.shortName }))}
-                      margin={{ top: 4, right: 30, left: 4, bottom: 4 }}
-                      barCategoryGap="35%"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: '#94A3B8' }} allowDecimals={false} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} width={145} />
-                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={{ fill: '#F8FAFC' }} />
-                      <Legend verticalAlign="top" height={28} iconType="circle" iconSize={7} formatter={legendFmt} />
-                      <Bar dataKey="Corrections" stackId="a" fill={C.correction} maxBarSize={22} />
-                      <Bar dataKey="Thresholds"  stackId="a" fill={C.threshold}  radius={[0,3,3,0]} maxBarSize={22} />
+                  <ResponsiveContainer width="100%" height={Math.max(160, approvalsByFacility.length * 46)}>
+                    <BarChart layout="vertical" data={approvalsByFacility.map((d) => ({ ...d, name: d.shortName }))} margin={{ top: 4, right: 30, left: 4, bottom: 4 }} barCategoryGap="35%">
+                      <CartesianGrid horizontal={false} stroke={t.grid} />
+                      <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={145} />
+                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
+                      <Bar dataKey="Corrections" stackId="a" fill={C.correction} maxBarSize={22} isAnimationActive={false} />
+                      <Bar dataKey="Thresholds"  stackId="a" fill={C.threshold}  radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartCard>
               )}
 
-              {/* Approvals table */}
-              <div>
-                <Table
-                  columns={approvalsColumns}
-                  rows={pendingApprovals}
-                  emptyMessage="No pending approvals."
-                />
-              </div>
+              <Table columns={approvalsColumns} rows={pendingApprovals} rowKey={(r) => `${r.facilityName}-${r.type}`} emptyMessage="No pending approvals." />
             </div>
           )}
         </>

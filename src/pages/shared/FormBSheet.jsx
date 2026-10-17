@@ -5,7 +5,13 @@ import { useAuth } from '../../context/AuthContext'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Toast from '../../components/ui/Toast'
-import { Printer, Save } from 'lucide-react'
+import PageHeader from '../../components/shared/PageHeader'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import Card from '../../components/shared/Card'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import { ROLE_LABELS } from '../../lib/navigation'
+import { FileSpreadsheet, Printer, Save } from 'lucide-react'
 
 // Columns a facility supervisor / head may write = C–G; a UC supervisor = C–J.
 // Column I is always computed (= H − G) so it can never fail the server's I = H−G check.
@@ -85,7 +91,7 @@ export default function FormBSheet() {
   })
   const facilities = facData?.facilities ?? []
 
-  const { data: sheet, isLoading, isError, error } = useQuery({
+  const { data: sheet, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['sheet', facilityId, month],
     queryFn: () => getSheet(facilityId, month),
     enabled: !!facilityId,
@@ -172,18 +178,31 @@ export default function FormBSheet() {
   }
 
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-5">
       <style>{PRINT_CSS}</style>
 
-      {/* Header card — title + controls in one row, matching reference design */}
-      <div className="no-print bg-surface rounded-2xl border border-surface-border px-5 py-4 shadow-sm flex flex-wrap items-center gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-text leading-tight">EPI Form B</h1>
-          <p className="text-sm text-text-muted mt-0.5">Monthly consumption &amp; requisition — Routine Immunization</p>
-        </div>
-        <div className="flex flex-wrap items-end gap-3 shrink-0">
+      <div className="no-print">
+        <PageHeader
+          breadcrumb={`${ROLE_LABELS[role] ?? 'Records'} › Records`}
+          title="EPI Form B"
+          subtitle="Monthly consumption and requisition, routine immunization"
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => window.print()} disabled={!sheet}>
+                <Printer size={16} strokeWidth={1.75} /> Print / PDF
+              </Button>
+              {canSave && (
+                <Button onClick={() => saveMut.mutate()} disabled={!hasDraft || saveMut.isPending}>
+                  <Save size={16} strokeWidth={1.75} />
+                  {saveMut.isPending ? 'Saving…' : 'Save'}
+                </Button>
+              )}
+            </>
+          }
+        />
+        <div className="flex flex-wrap items-end gap-3 -mt-2">
           {needsPicker && (
-            <div className="w-56">
+            <div className="w-full sm:w-64">
               <Select
                 id="facility"
                 label="Facility"
@@ -194,7 +213,7 @@ export default function FormBSheet() {
               />
             </div>
           )}
-          <div className="w-44">
+          <div className="w-full sm:w-48">
             <Select
               id="month"
               label="Month"
@@ -204,40 +223,32 @@ export default function FormBSheet() {
             />
           </div>
           {isWriter && !canSave && facilityId && (
-            <span className="text-xs text-text-muted font-medium self-center">Read-only: only this and last month can be edited.</span>
-          )}
-          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={!sheet}>
-            <Printer size={14} className="mr-1.5 inline" /> Print / PDF
-          </Button>
-          {canSave && (
-            <Button size="sm" onClick={() => saveMut.mutate()} disabled={!hasDraft || saveMut.isPending}>
-              <Save size={14} className="mr-1.5 inline" />
-              {saveMut.isPending ? 'Saving…' : 'Save'}
-            </Button>
+            <p className="text-sm text-text-muted pb-2">Read-only: only this month and last month can be edited.</p>
           )}
         </div>
       </div>
 
       {!facilityId && (
-        <div className="bg-surface rounded-2xl border border-surface-border px-5 py-10 text-center text-sm text-text-muted">
-          Choose a facility to view its sheet.
-        </div>
+        <EmptyState framed icon={FileSpreadsheet} title="Choose a facility" message="Its Form B for the selected month appears here." className="no-print" />
       )}
 
       {facilityId && isLoading && (
-        <div className="h-96 bg-surface-alt border border-surface-border rounded-2xl animate-pulse" />
+        <Card padding={false} className="no-print"><SkeletonRows rows={8} /></Card>
       )}
 
       {facilityId && isError && (
-        <div className="bg-danger-bg border border-danger/10 text-sm font-semibold text-danger rounded-xl px-4 py-3">
-          {error?.status === 403 ? 'You do not have access to this facility’s sheet.' : 'Failed to load the sheet.'}
-        </div>
+        <ErrorState
+          className="no-print"
+          title={error?.status === 403 ? 'You don’t have access to this facility’s sheet' : 'Couldn’t load the sheet'}
+          error={error?.status === 403 ? null : error}
+          onRetry={error?.status === 403 ? undefined : refetch}
+        />
       )}
 
       {/* The printable paper */}
       {facilityId && !isLoading && !isError && sheet && (
         <div className="overflow-x-auto">
-          <div id="form-b-print" className="bg-white text-black mx-auto p-6 rounded-lg shadow-sm border border-surface-border" style={{ minWidth: 900 }}>
+          <div id="form-b-print" className="bg-white text-black mx-auto p-6 rounded-control border border-surface-border" style={{ minWidth: 900 }}>
             {/* Title */}
             <div className="text-center mb-2">
               <p className="text-[10px] text-left font-semibold">Form-B (EPI)</p>

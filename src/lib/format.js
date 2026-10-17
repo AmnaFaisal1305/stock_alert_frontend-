@@ -24,8 +24,11 @@ export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many
 
 // Local calendar date (YYYY-MM-DD). toISOString() would give the UTC date, which is
 // yesterday for Pakistan users between 00:00 and 05:00.
+export const toLocalDateStr = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
 export function localDateStr(offsetDays = 0) {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return toLocalDateStr(d)
 }

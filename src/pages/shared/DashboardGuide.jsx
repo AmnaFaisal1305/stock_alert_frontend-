@@ -1,9 +1,4 @@
 import { useAuth } from '../../context/AuthContext'
-import {
-  Compass, Info, CheckCircle2, AlertTriangle,
-  LayoutDashboard, Map, MapPin, Building2, Syringe, Users, ClipboardList,
-  BarChart2, ClipboardCheck, PackageOpen, PackagePlus, UserCog, BookOpen,
-} from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 
 const GUIDE = {
@@ -26,14 +21,14 @@ const GUIDE = {
       { title: 'Monitor', desc: 'Watch the dashboard, analytics and audit log for critical/low stock.' },
     ],
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: 'Live stock status across every facility, with status rollups.' },
-      { icon: Map, name: 'Districts', desc: 'Create, rename, deactivate districts and drill into each one.' },
-      { icon: MapPin, name: 'UC Management', desc: 'Manage towns and union councils under each district.' },
-      { icon: Building2, name: 'Facilities', desc: 'Create and manage facilities; view per-facility stock.' },
-      { icon: Syringe, name: 'Vaccines', desc: 'The global catalog — doses-per-vial and threshold defaults.' },
-      { icon: Users, name: 'User Management', desc: 'Create and manage every account; reassign UC Supervisors.' },
-      { icon: ClipboardList, name: 'Audit Log', desc: 'Every action, unscoped — who did what, when.' },
-      { icon: BarChart2, name: 'Analytics', desc: 'Stock movement, balances, requests and approvals.' },
+      { name: 'Dashboard', desc: 'Live stock status across every facility, with status rollups.' },
+      { name: 'Districts', desc: 'Create, rename, deactivate districts and drill into each one.' },
+      { name: 'Union Councils', desc: 'Manage towns and union councils under each district.' },
+      { name: 'Facilities', desc: 'Create and manage facilities; view per-facility stock.' },
+      { name: 'Vaccines', desc: 'The global catalog — doses-per-vial and threshold defaults.' },
+      { name: 'Users', desc: 'Create and manage every account; reassign UC Supervisors.' },
+      { name: 'Audit Log', desc: 'Every action, unscoped — who did what, when.' },
+      { name: 'Analytics', desc: 'Stock movement, balances, requests and approvals.' },
     ],
   },
 
@@ -55,13 +50,13 @@ const GUIDE = {
     ],
     note: 'Every create / edit / approve / delete control is hidden for your role. The view is read-only.',
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: 'Live stock status across every facility.' },
-      { icon: Map, name: 'Districts', desc: 'View every district and drill into its facilities.' },
-      { icon: Building2, name: 'Facilities', desc: "View any facility's stock and status." },
-      { icon: Syringe, name: 'Vaccines', desc: 'View the global vaccine catalog.' },
-      { icon: Users, name: 'Users', desc: 'View every account in the system.' },
-      { icon: ClipboardList, name: 'Audit Log', desc: 'Every action, unscoped.' },
-      { icon: BarChart2, name: 'Analytics', desc: 'Stock movement, balances, requests and approvals.' },
+      { name: 'Dashboard', desc: 'Live stock status across every facility.' },
+      { name: 'Districts', desc: 'View every district and drill into its facilities.' },
+      { name: 'Facilities', desc: "View any facility's stock and status." },
+      { name: 'Vaccines', desc: 'View the global vaccine catalog.' },
+      { name: 'Users', desc: 'View every account in the system.' },
+      { name: 'Audit Log', desc: 'Every action, unscoped.' },
+      { name: 'Analytics', desc: 'Stock movement, balances, requests and approvals.' },
     ],
   },
 
@@ -82,11 +77,11 @@ const GUIDE = {
       { title: 'Review', desc: 'Check the audit log and analytics for your district.' },
     ],
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: "Stock status across your district's facilities." },
-      { icon: Building2, name: 'Vaccine Performance', desc: 'Per-facility vaccine stock within your district.' },
-      { icon: Users, name: 'Users', desc: 'Create and manage your Facility Supervisors.' },
-      { icon: ClipboardList, name: 'Audit Log', desc: 'Activity within your district (admin actions hidden).' },
-      { icon: BarChart2, name: 'Analytics', desc: 'Movement, balances and requests for your district.' },
+      { name: 'Dashboard', desc: "Stock status across your district's facilities." },
+      { name: 'Facilities', desc: 'Per-facility vaccine stock within your district.' },
+      { name: 'Users', desc: 'Create and manage your Facility Supervisors.' },
+      { name: 'Audit Log', desc: 'Activity within your district (admin actions hidden).' },
+      { name: 'Analytics', desc: 'Movement, balances and requests for your district.' },
     ],
   },
 
@@ -108,12 +103,12 @@ const GUIDE = {
       { title: 'Monitor', desc: "Track your UCs' dashboard and analytics." },
     ],
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: 'Stock status for facilities under your UCs.' },
-      { icon: Building2, name: 'Vaccine Performance', desc: 'Per-facility vaccine stock in your UCs.' },
-      { icon: Users, name: 'Users', desc: 'View supervisors and workers under your UCs.' },
-      { icon: PackageOpen, name: 'Stock Requests', desc: 'Record sent figures; decline requests before handover.' },
-      { icon: ClipboardList, name: 'Audit Log', desc: 'Activity under your UCs (admin actions hidden).' },
-      { icon: BarChart2, name: 'Analytics', desc: 'Movement, balances and requests for your UCs.' },
+      { name: 'Dashboard', desc: 'Stock status for facilities under your UCs.' },
+      { name: 'Facilities', desc: 'Per-facility vaccine stock in your UCs.' },
+      { name: 'Users', desc: 'View supervisors and workers under your UCs.' },
+      { name: 'Stock Requests', desc: 'Record sent figures; decline requests before handover.' },
+      { name: 'Audit Log', desc: 'Activity under your UCs (admin actions hidden).' },
+      { name: 'Analytics', desc: 'Movement, balances and requests for your UCs.' },
     ],
   },
 
@@ -138,14 +133,14 @@ const GUIDE = {
       { title: 'Corrections', desc: 'Need a stock correction or threshold change? Propose it for Head approval.' },
     ],
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: "Your facility's live stock status." },
-      { icon: ClipboardCheck, name: 'Approvals', desc: 'Propose stock corrections and threshold changes.' },
-      { icon: PackageOpen, name: 'Stock Requests', desc: 'Raise requests and record received stock.' },
-      { icon: BookOpen, name: 'Stock Register', desc: 'The inward / outward ledger with running balance.' },
-      { icon: UserCog, name: 'Users Info', desc: 'Create and manage your vaccinators.' },
-      { icon: PackagePlus, name: 'Assign Vials', desc: 'Morning handout of vials to each worker.' },
-      { icon: ClipboardList, name: 'Day End', desc: "Record each worker's used / returned / wasted." },
-      { icon: BarChart2, name: 'Analytics', desc: 'Movement, balances and requests for your facility.' },
+      { name: 'Dashboard', desc: "Your facility's live stock status." },
+      { name: 'Approvals', desc: 'Propose stock corrections and threshold changes.' },
+      { name: 'Stock Requests', desc: 'Raise requests and record received stock.' },
+      { name: 'Stock Register', desc: 'The inward / outward ledger with running balance.' },
+      { name: 'Workers', desc: 'Create and manage your vaccinators.' },
+      { name: 'Assign Vials', desc: 'Morning handout of vials to each worker.' },
+      { name: 'Day End', desc: "Record each worker's used / returned / wasted." },
+      { name: 'Analytics', desc: 'Movement, balances and requests for your facility.' },
     ],
   },
 
@@ -166,8 +161,8 @@ const GUIDE = {
       { title: 'Check anytime', desc: "Review your holdings and your facility's stock status." },
     ],
     modules: [
-      { icon: Syringe, name: 'My Holdings', desc: 'Vials assigned to you, used, returned, wasted and remaining.' },
-      { icon: LayoutDashboard, name: 'Stock Status', desc: "Your facility's current vaccine stock status." },
+      { name: 'My Holdings', desc: 'Vials assigned to you, used, returned, wasted and remaining.' },
+      { name: 'Stock Status', desc: "Your facility's current vaccine stock status." },
     ],
   },
 
@@ -189,105 +184,72 @@ const GUIDE = {
       { title: 'Monitor', desc: 'Follow the activity history, dashboard and analytics.' },
     ],
     modules: [
-      { icon: LayoutDashboard, name: 'Dashboard', desc: "Your facility's live stock status." },
-      { icon: Users, name: 'Users', desc: 'View the supervisor and workers at your facility.' },
-      { icon: ClipboardCheck, name: 'Approvals', desc: 'Approve or reject corrections and threshold changes.' },
-      { icon: PackageOpen, name: 'Stock Requests', desc: 'Give the final approval once figures match.' },
-      { icon: ClipboardList, name: 'Audit Log', desc: 'Every action at your facility, with current status.' },
-      { icon: BarChart2, name: 'Analytics', desc: 'Movement, balances and requests for your facility.' },
+      { name: 'Dashboard', desc: "Your facility's live stock status." },
+      { name: 'Users', desc: 'View the supervisor and workers at your facility.' },
+      { name: 'Approvals', desc: 'Approve or reject corrections and threshold changes.' },
+      { name: 'Stock Requests', desc: 'Give the final approval once figures match.' },
+      { name: 'Audit Log', desc: 'Every action at your facility, with current status.' },
+      { name: 'Analytics', desc: 'Movement, balances and requests for your facility.' },
     ],
   },
 }
 
+function Section({ title, children }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-base font-semibold text-text mb-3">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+// Read-mode page: one column at a readable measure, plain headings, no icon tiles.
 export default function DashboardGuide() {
   const { user } = useAuth()
   const g = GUIDE[user?.role] ?? GUIDE.super_admin
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200 max-w-5xl">
+    <div className="max-w-prose">
+      <PageHeader breadcrumb="Help › Guide" title={`${g.label} guide`} subtitle={g.tagline} />
 
-      <PageHeader
-        breadcrumb="Guide"
-        title={`${g.label} Guide`}
-        subtitle={g.tagline}
-      />
+      <p className="text-base text-text leading-relaxed">{g.purpose}</p>
 
-      {/* Purpose */}
-      <section className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <Info size={16} className="text-primary flex-shrink-0" />
-          <h2 className="text-sm font-bold text-text uppercase tracking-wider">What this dashboard is for</h2>
-        </div>
-        <p className="text-sm text-text-muted leading-relaxed">{g.purpose}</p>
-      </section>
-
-      {/* Note callout (role-specific) */}
       {g.note && (
-        <div className="flex items-start gap-2.5 bg-warning-bg border border-warning/20 rounded-2xl px-5 py-4">
-          <AlertTriangle size={16} className="text-warning-dark flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-warning-dark font-medium leading-relaxed">{g.note}</p>
-        </div>
+        <p role="note" className="mt-5 rounded-control bg-warning-bg px-4 py-3 text-sm text-warning-dark leading-relaxed">{g.note}</p>
       )}
 
-      {/* Responsibilities */}
-      <section className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-text uppercase tracking-wider mb-3">Your responsibilities</h2>
-        <ul className="flex flex-col gap-2.5">
-          {g.responsibilities.map((r) => (
-            <li key={r} className="flex items-start gap-2.5">
-              <CheckCircle2 size={16} className="text-success flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-text-muted leading-relaxed">{r}</span>
+      <Section title="Your responsibilities">
+        <ul className="list-disc pl-5 flex flex-col gap-1.5 text-sm text-text leading-relaxed marker:text-text-muted">
+          {g.responsibilities.map((r) => <li key={r}>{r}</li>)}
+        </ul>
+      </Section>
+
+      <Section title="Your workflow">
+        <ol className="flex flex-col gap-4">
+          {g.workflow.map((step, i) => (
+            <li key={step.title} className="flex gap-3.5">
+              <span className="w-6 h-6 mt-px rounded-full bg-surface-chip text-text text-xs font-medium flex items-center justify-center flex-shrink-0 tabular-nums" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-text">{step.title}</p>
+                <p className="text-sm text-text-muted mt-0.5 leading-relaxed">{step.desc}</p>
+              </div>
             </li>
           ))}
-        </ul>
-      </section>
-
-      {/* Workflow — numbered visual flow */}
-      <section className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-text uppercase tracking-wider mb-4">Your workflow</h2>
-        <ol className="flex flex-col">
-          {g.workflow.map((step, i) => {
-            const last = i === g.workflow.length - 1
-            return (
-              <li key={step.title} className="flex gap-3.5">
-                {/* Number + connector */}
-                <div className="flex flex-col items-center flex-shrink-0">
-                  <span className="w-7 h-7 rounded-full bg-primary-bg text-primary text-xs font-bold flex items-center justify-center tabular-nums">
-                    {i + 1}
-                  </span>
-                  {!last && <span className="w-px flex-1 bg-surface-border my-1" aria-hidden="true" />}
-                </div>
-                {/* Content */}
-                <div className={last ? '' : 'pb-4'}>
-                  <p className="text-sm font-semibold text-text leading-tight">{step.title}</p>
-                  <p className="text-sm text-text-muted mt-0.5 leading-relaxed">{step.desc}</p>
-                </div>
-              </li>
-            )
-          })}
         </ol>
-      </section>
+      </Section>
 
-      {/* Modules */}
-      <section className="bg-surface rounded-2xl border border-surface-border p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-text uppercase tracking-wider mb-4">Sections on your dashboard</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {g.modules.map((m) => {
-            const Icon = m.icon
-            return (
-              <div key={m.name} className="flex items-start gap-3 border border-surface-border rounded-xl p-3.5">
-                <div className="p-2 rounded-lg bg-primary-bg flex-shrink-0">
-                  <Icon size={16} className="text-primary" strokeWidth={2} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-text leading-tight">{m.name}</p>
-                  <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{m.desc}</p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
+      <Section title="Pages in your sidebar">
+        <dl className="divide-y divide-surface-border border-y border-surface-border">
+          {g.modules.map((m) => (
+            <div key={m.name} className="py-3 sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
+              <dt className="text-sm font-medium text-text">{m.name}</dt>
+              <dd className="text-sm text-text-muted leading-relaxed mt-0.5 sm:mt-0">{m.desc}</dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
     </div>
   )
 }

@@ -64,7 +64,7 @@ export default function HeroCarousel({ images }) {
 
   return (
     <div
-      className="relative w-full h-full overflow-hidden bg-slate-900"
+      className="relative w-full h-full overflow-hidden bg-epi-dark"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -98,27 +98,20 @@ export default function HeroCarousel({ images }) {
       })}
 
       {/* Gradient overlay — keeps text legible over any photo */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(0deg, rgba(15,4,6,0.9) 0%, rgba(15,4,6,0.2) 60%, transparent 100%)',
-        }}
-      />
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none bg-gradient-to-t from-epi-dark/90 via-epi-dark/20 to-transparent" />
 
       {/* Bottom-anchored overlay content */}
       <div className="absolute bottom-0 left-0 right-0 px-10 pb-10">
         {/* Main tagline */}
-        <p className="text-white font-bold text-base leading-snug mb-1">
+        <p className="text-text-inverse font-medium text-base leading-snug mb-1">
           Piloting Stock Management &amp; Alert System Expansion
         </p>
-        <p className="text-white/80 text-sm font-medium mb-3">
+        <p className="text-text-inverse/80 text-sm mb-3">
           To The Facility Level in Sindh
         </p>
 
         {/* Sub label */}
-        <p className="text-white/50 text-[11px] mb-5 uppercase tracking-wider font-semibold">
+        <p className="text-text-inverse/60 text-xs mb-5">
           Sprint 02 Digital Intervention
         </p>
 
