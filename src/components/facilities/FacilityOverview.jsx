@@ -1,5 +1,5 @@
 // Multi-facility dashboard pieces shared by the UC and district dashboards.
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertCircle, AlertTriangle, ArrowRight } from 'lucide-react'
 import Button, { buttonClasses } from '../ui/Button'
@@ -33,20 +33,22 @@ export function FacilityAlert({ critical, low, action }) {
 }
 
 // Facilities × vaccines, doses in store. Each cell pairs its colour with a dot and a screen-reader label.
-export function StockMatrix({ rows, base }) {
+// groupByDistrict: system-wide view, one header row per district.
+export function StockMatrix({ rows, base, groupByDistrict = false }) {
   const { vaccines, facilities } = useMemo(() => {
     const vaccines = new Map()
     const facilities = new Map()
     rows.forEach((r) => {
       if (!vaccines.has(r.vaccineId)) vaccines.set(r.vaccineId, displayVaccineName(r.vaccineName))
-      if (!facilities.has(r.facilityId)) facilities.set(r.facilityId, { id: r.facilityId, name: r.facilityName, cells: new Map() })
+      if (!facilities.has(r.facilityId)) facilities.set(r.facilityId, { id: r.facilityId, name: r.facilityName, district: r.districtName ?? '', cells: new Map() })
       facilities.get(r.facilityId).cells.set(r.vaccineId, r)
     })
     return {
       vaccines: [...vaccines].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
-      facilities: [...facilities.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      facilities: [...facilities.values()].sort((a, b) =>
+        (groupByDistrict && a.district.localeCompare(b.district)) || a.name.localeCompare(b.name)),
     }
-  }, [rows])
+  }, [rows, groupByDistrict])
 
   if (!vaccines.length) return null
 
@@ -65,8 +67,14 @@ export function StockMatrix({ rows, base }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
-            {facilities.map((f) => (
-              <tr key={f.id} className="hover:bg-surface-alt">
+            {facilities.map((f, i) => (
+              <Fragment key={f.id}>
+              {groupByDistrict && f.district !== facilities[i - 1]?.district && (
+                <tr className="bg-surface-alt">
+                  <th scope="rowgroup" colSpan={vaccines.length + 1} className="sticky left-0 px-4 py-2 text-left text-xs font-semibold text-text">{f.district || 'Unknown district'}</th>
+                </tr>
+              )}
+              <tr className="hover:bg-surface-alt">
                 <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left font-medium text-text whitespace-nowrap">
                   <Link to={`${base}/facilities/${f.id}`} className="hover:text-primary hover:underline">{f.name}</Link>
                 </th>
@@ -86,6 +94,7 @@ export function StockMatrix({ rows, base }) {
                   )
                 })}
               </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
