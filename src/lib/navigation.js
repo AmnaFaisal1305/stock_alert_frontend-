@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, Map, MapPin, Building2, Users, ScrollText, Syringe, PackagePlus,
   ClipboardCheck, Truck, BookOpen, Sunset, BarChart3, FileSpreadsheet, LifeBuoy, Activity,
+  ShieldCheck, Eye, BadgeCheck,
 } from 'lucide-react'
 
 // Single source for sidebar items, section groups, per-role CTA and scope label.
@@ -119,6 +120,16 @@ export const ROLE_LABELS = {
   facility_worker:     'Facility Worker',
   facility_head:       'Facility Head',
   observer:            'Observer',
+}
+
+// Category colour (StatCard ACCENT key) and icon per role, for role tags and user cards.
+export const ROLE_ACCENT = {
+  super_admin: 5, observer: 5, district_supervisor: 2, uc_supervisor: 4,
+  facility_head: 3, facility_supervisor: 1, facility_worker: 'primary',
+}
+export const ROLE_ICON = {
+  super_admin: ShieldCheck, observer: Eye, district_supervisor: Map, uc_supervisor: MapPin,
+  facility_head: BadgeCheck, facility_supervisor: ClipboardCheck, facility_worker: Syringe,
 }
 
 export function navFor(role) {

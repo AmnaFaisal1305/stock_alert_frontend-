@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, KeyRound } from 'lucide-react'
+import { Plus, KeyRound, MapPin, UserX, UserCheck } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
@@ -10,10 +10,16 @@ import SearchInput from '../../components/shared/SearchInput'
 import Pagination from '../../components/shared/Pagination'
 import FilterChips from '../../components/shared/FilterChips'
 import ErrorState from '../../components/shared/ErrorState'
-import { ROLE_LABELS } from '../../lib/navigation'
+import EntityCard from '../../components/shared/EntityCard'
+import RoleTag from '../../components/shared/RoleTag'
+import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
 import { plural } from '../../lib/format'
+import { useViewMode } from '../../hooks/useViewMode'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { SummaryDialog } from '../../components/ui/ReviewDialog'
+import RowActions from '../../components/ui/RowActions'
+import ViewToggle from '../../components/ui/ViewToggle'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -33,6 +39,8 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
+  const [created, setCreated] = useState(null)
+  const [view, setView] = useViewMode('admin-users')
 
   // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('')
@@ -97,10 +105,20 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['facilities'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      const label = (opts, id) => opts.find((o) => o.value === id)?.label.replace(/ \(staffed\)$/, '')
+      setCreated({
+        role: ROLE_SUCCESS_LABELS[form.role] ?? 'User',
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        zmid: form.zmid,
+        scope: form.role === 'uc_supervisor' ? form.ucIds.map((id) => label(ucOptions, id)).join(', ')
+          : form.facilityId ? label(facilityOptions, form.facilityId)
+          : form.districtId ? label(districtOptions, form.districtId)
+          : 'All districts',
+      })
       setCreateOpen(false)
       setForm(EMPTY_FORM)
       setFormError('')
-      setToast({ message: `${ROLE_SUCCESS_LABELS[form.role] ?? 'User'} created successfully.`, type: 'success' })
     },
     onError: (err) => setFormError(
       err.status === 409 && err.body?.error?.includes('ZMID')
@@ -180,7 +198,7 @@ export default function UserManagement() {
   })
 
   // Pagination logic
-  const itemsPerPage = 10
+  const itemsPerPage = view === 'grid' ? 12 : 10
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
@@ -208,18 +226,37 @@ export default function UserManagement() {
   }
 
   const actions = (row) => !readOnly && (
-    <div className="flex flex-wrap items-center justify-end gap-1">
-      {row.role === 'uc_supervisor' && (
-        <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
-      )}
-      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><KeyRound size={14} strokeWidth={1.75} /> Reset password</Button>
-      {row.isActive ? (
-        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}>Deactivate</Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
-      )}
-    </div>
+    <RowActions
+      className="justify-end"
+      actions={[
+        row.role === 'uc_supervisor' && { icon: MapPin, label: 'Reassign UCs', onClick: () => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') } },
+        { icon: KeyRound, label: 'Reset password', onClick: () => { setResetTarget(row); setFormError('') } },
+        row.isActive
+          ? { icon: UserX, label: 'Deactivate', danger: true, onClick: () => setDeactivateTarget(row) }
+          : { icon: UserCheck, label: 'Activate', onClick: () => activateMutation.mutate(row.id), disabled: activateMutation.isPending },
+      ]}
+    />
   )
+
+  const gridCard = (row) => {
+    const a = assignment(row)
+    return (
+      <EntityCard
+        icon={ROLE_ICON[row.role]}
+        accent={row.isActive ? ROLE_ACCENT[row.role] : 'no_data'}
+        title={row.name ?? '—'}
+        subtitle={row.email}
+        badge={<Badge type={row.isActive ? 'active' : 'inactive'} />}
+        meta={[
+          { label: 'Role', value: <RoleTag role={row.role} /> },
+          { label: row.role === 'uc_supervisor' ? 'Union councils' : isFacilityRole(row.role) ? 'Facility' : 'District', value: a.primary ?? a.empty },
+          a.sub && { label: 'District', value: a.sub },
+        ]}
+        footnote={row.zmid ? `ZMID ${row.zmid}` : null}
+        actions={actions(row)}
+      />
+    )
+  }
 
   const columns = [
     {
@@ -231,7 +268,7 @@ export default function UserManagement() {
         </div>
       ),
     },
-    ...(activeRole ? [] : [{ key: 'role', label: 'Role', render: (row) => <span className="whitespace-nowrap">{ROLE_LABELS[row.role] ?? row.role}</span> }]),
+    ...(activeRole ? [] : [{ key: 'role', label: 'Role', render: (row) => <RoleTag role={row.role} /> }]),
     {
       key: 'assignment', label: assignmentColLabel,
       render: (row) => {
@@ -263,11 +300,16 @@ export default function UserManagement() {
         <ErrorState title="Couldn’t load users" error={error} onRetry={refetch} />
       ) : (
         <div className="flex flex-col gap-4">
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            placeholder="Search name or email…"
-          />
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                placeholder="Search name or email…"
+              />
+            </div>
+            <ViewToggle value={view} onChange={setView} />
+          </div>
           <FilterChips
             label="Role"
             value={String(roleFilter)}
@@ -278,6 +320,8 @@ export default function UserManagement() {
             columns={columns}
             rows={paginatedUsers}
             loading={isLoading}
+            view={view}
+            gridCard={gridCard}
             emptyMessage={
               searchQuery || roleFilter !== 0
                 ? `No users match${searchQuery ? ` “${searchQuery}”` : ''}${roleFilter !== 0 ? ` in ${ROLE_FILTERS[roleFilter].label}` : ''}.`
@@ -449,6 +493,20 @@ export default function UserManagement() {
           </div>
         </div>
       </Modal>
+
+      <SummaryDialog
+        open={!!created}
+        onClose={() => setCreated(null)}
+        title={`${created?.role ?? 'User'} created`}
+        message={<>The account is active. Share the password with <span className="font-medium">{created?.name}</span> over a secure channel.</>}
+        rows={created ? [
+          { label: 'Name', value: created.name },
+          { label: 'Role', value: created.role },
+          { label: 'Email', value: created.email },
+          { label: 'ZMID', value: created.zmid },
+          { label: 'Scope', value: created.scope || '—' },
+        ] : []}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
