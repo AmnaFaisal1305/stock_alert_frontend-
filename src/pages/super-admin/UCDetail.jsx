@@ -1,13 +1,37 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Building2, AlertCircle, AlertTriangle, CheckCircle2, User } from 'lucide-react'
-import PageHeader from '../../components/shared/PageHeader'
+import { ArrowLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getUnionCouncils, getFacilities, getDashboard } from '../../lib/api'
+import PageHeader from '../../components/shared/PageHeader'
 import StatusBadge from '../../components/shared/StatusBadge'
 import StatCard from '../../components/shared/StatCard'
-import SkeletonCard from '../../components/shared/SkeletonCard'
+import Table from '../../components/shared/Table'
+import Card from '../../components/shared/Card'
+import EmptyState from '../../components/shared/EmptyState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import Badge from '../../components/ui/Badge'
+import { buttonClasses } from '../../components/ui/Button'
 import { facilityStatus } from '../../lib/status'
+import { plural } from '../../lib/format'
+
+const KPIS = [
+  { status: 'critical', label: 'Critical',    context: 'Restock now' },
+  { status: 'low',      label: 'Low',         context: 'Plan a delivery' },
+  { status: 'adequate', label: 'Normal',      context: 'Stock is healthy' },
+  { status: 'no_data',  label: 'Not updated', context: 'No stock recorded yet' },
+]
+
+// Per-facility vaccine-line counts, e.g. "2 critical · 1 low · 9 normal".
+function VaccineCounts({ sc = {} }) {
+  const parts = [
+    sc.critical > 0 && <span key="c" className="text-danger-dark">{sc.critical} critical</span>,
+    sc.low > 0 && <span key="l" className="text-warning-dark">{sc.low} low</span>,
+    sc.adequate > 0 && <span key="a">{sc.adequate} normal</span>,
+  ].filter(Boolean)
+  if (!parts.length) return <span className="text-text-muted">—</span>
+  return <span className="tabular-nums">{parts.reduce((acc, p, i) => (i ? [...acc, ' · ', p] : [p]), [])}</span>
+}
 
 export default function UCDetail() {
   const { id } = useParams()
@@ -54,135 +78,66 @@ export default function UCDetail() {
   }, [facilities, statusByFacilityId])
 
   const isLoading = ucLoading || facLoading
+  const statusOf = (f) => statusByFacilityId.get(f.id) ?? 'no_data'
+
+  const columns = [
+    {
+      key: 'name', label: 'Facility',
+      render: (f) => <Link to={`/super-admin/facilities/${f.id}`} className="font-medium text-text hover:text-primary hover:underline">{f.name}</Link>,
+    },
+    { key: 'supervisor', label: 'Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
+    { key: 'vaccines', label: 'Vaccines', render: (f) => <VaccineCounts sc={f.statusCounts} /> },
+    { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
+  ]
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      <Link
-        to="/super-admin/ucs"
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary w-fit font-semibold transition-colors"
-      >
-        <ArrowLeft size={14} /> Back to UC Management
+    <div>
+      <Link to="/super-admin/ucs" className={buttonClasses({ variant: 'ghost', size: 'sm', className: '-ml-3 mb-3' })}>
+        <ArrowLeft size={14} strokeWidth={1.75} /> Union Councils
       </Link>
 
-      {isLoading && (
-        <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-6 bg-surface-chip rounded w-1/4" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
-          </div>
-        </div>
-      )}
-
-      {!isLoading && !uc && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          UC not found. It may have been removed.
-        </div>
-      )}
-
-      {!isLoading && uc && (
+      {isLoading ? (
+        <Card padding={false}><SkeletonRows rows={5} /></Card>
+      ) : !uc ? (
+        <EmptyState framed title="Union council not found" message="It may have been removed or you no longer have access." />
+      ) : (
         <>
           <PageHeader
-            breadcrumb="Super Admin › UC Management › UC Detail"
+            breadcrumb="Super Admin › Network › Union Councils"
             title={uc.name}
-            subtitle={`${uc.townName} · ${uc.districtName} · ${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'}`}
-            actions={
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  uc.isActive
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'bg-surface-chip text-text-muted border border-surface-border'
-                }`}>
-                  {uc.isActive ? 'Active' : 'Inactive'}
-                </span>
-                {uc.ucSupervisorName && (
-                  <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
-                    <User size={13} className="text-primary flex-shrink-0" />
-                    <div>
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">UC Supervisor</p>
-                      <p className="text-sm font-bold text-text">{uc.ucSupervisorName}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            }
+            subtitle={[uc.townName, uc.districtName, plural(facilities.length, 'facility', 'facilities'), uc.ucSupervisorName ? `Supervisor: ${uc.ucSupervisorName}` : 'No UC supervisor'].filter(Boolean).join(' · ')}
+            actions={<Badge type={uc.isActive ? 'active' : 'inactive'} />}
           />
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Critical" value={statusCounts.critical} icon={AlertCircle} colorClass="text-danger" subtitle="Urgent action required" />
-            <StatCard label="Low" value={statusCounts.low} icon={AlertTriangle} colorClass="text-warning-dark" subtitle="Attention suggested" />
-            <StatCard label="Normal" value={statusCounts.adequate} icon={CheckCircle2} colorClass="text-success-dark" subtitle="All lines healthy" />
-            <StatCard label="No Data" value={statusCounts.no_data} icon={Building2} colorClass="text-text-muted" subtitle="Not yet reporting" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+            {KPIS.map(({ status, label, context }) => (
+              <StatCard
+                key={status}
+                label={label}
+                value={statusCounts[status]}
+                unit={statusCounts[status] === 1 ? 'facility' : 'facilities'}
+                tone={statusCounts[status] > 0 && status !== 'no_data' ? status : undefined}
+                subtitle={context}
+              />
+            ))}
           </div>
 
-          {/* Facility cards */}
-          {facilities.length === 0 ? (
-            <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
-              <Building2 size={36} className="mx-auto mb-3 opacity-20" />
-              <p className="font-bold text-text">No facilities found</p>
-              <p className="text-xs mt-1">Add facilities under this UC to start logging stocks.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...facilities]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((f) => {
-                  const fStatus = statusByFacilityId.get(f.id) ?? 'no_data'
-                  const sc = f.statusCounts ?? {}
-                  const hasAny = sc.critical > 0 || sc.low > 0 || sc.adequate > 0
-
-                  return (
-                    <Link
-                      key={f.id}
-                      to={`/super-admin/facilities/${f.id}`}
-                      className="bg-surface rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
-                    >
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5 flex-shrink-0">
-                              <Building2 size={16} />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-text text-sm leading-tight truncate" title={f.name}>{f.name}</p>
-                              <p className="text-[10px] text-text-muted mt-1 font-semibold">
-                                {f.facilitySupervisorName ?? 'Unstaffed'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <StatusBadge status={fStatus} />
-                          </div>
-                        </div>
-
-                        {hasAny && (
-                          <div className="flex gap-1.5 pt-3 border-t border-surface-border flex-wrap">
-                            {sc.critical > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-danger-bg text-danger border border-danger/10">
-                                {sc.critical} Critical
-                              </span>
-                            )}
-                            {sc.low > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10">
-                                {sc.low} Low
-                              </span>
-                            )}
-                            {sc.adequate > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-success-bg text-success-dark border border-success/10">
-                                {sc.adequate} Healthy
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
-            </div>
-          )}
+          <Table
+            columns={columns}
+            rows={[...facilities].sort((a, b) => a.name.localeCompare(b.name))}
+            emptyMessage="No facilities under this union council yet. Add one to start recording stock."
+            mobileCard={(f) => (
+              <Link to={`/super-admin/facilities/${f.id}`} className="block px-4 py-3.5 hover:bg-surface-alt">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-text truncate">{f.name}</p>
+                    <p className="text-xs text-text-muted truncate">{f.facilitySupervisorName ?? 'Unstaffed'}</p>
+                  </div>
+                  <StatusBadge status={statusOf(f)} />
+                </div>
+              </Link>
+            )}
+          />
         </>
       )}
     </div>

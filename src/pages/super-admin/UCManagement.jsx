@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RefreshCcw, MapPin, Map, User, UserPlus, ChevronDown, Building2, Loader2 } from 'lucide-react'
+import { Plus, ChevronDown } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getTowns, createTown, updateTown, deleteTown, activateTown,
   getUnionCouncils, createUnionCouncil, updateUnionCouncil, deleteUnionCouncil, activateUnionCouncil,
   getDistricts, assignUcSupervisor, getUsers, getFacilities, getDashboard,
 } from '../../lib/api'
-import { facilityStatus, statusConfig } from '../../lib/status'
+import { facilityStatus } from '../../lib/status'
 import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/shared/SearchInput'
 import StatusBadge from '../../components/shared/StatusBadge'
@@ -19,9 +19,14 @@ import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import Table from '../../components/shared/Table'
 import PageHeader from '../../components/shared/PageHeader'
+import Card from '../../components/shared/Card'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import Tabs from '../../components/ui/Tabs'
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Towns', 'Union Councils']
+const TABS = [{ value: 'Towns', label: 'Towns' }, { value: 'Union Councils', label: 'Union councils' }]
+
+const errorText = (msg) => msg && <p role="alert" className="text-sm text-danger-dark">{msg}</p>
 
 // ─── UC Expanded Panel — facility cards for a single UC ──────────────────────
 function UCExpandedPanel({ ucId }) {
@@ -35,86 +40,41 @@ function UCExpandedPanel({ ucId }) {
     staleTime: 30_000,
   })
 
-  if (isLoading) {
-    return (
-      <div className="border-t border-primary/10 bg-surface-alt px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
-        <Loader2 size={14} className="animate-spin flex-shrink-0" />
-        Loading facilities…
-      </div>
-    )
-  }
+  if (isLoading) return <div className="border-t border-surface-border"><SkeletonRows rows={2} /></div>
 
   const facilities = [...(facilityData?.facilities ?? [])].sort((a, b) => a.name.localeCompare(b.name))
   const byFacility = dashData?.summary?.byFacility ?? []
 
   if (facilities.length === 0) {
-    return (
-      <div className="border-t border-primary/10 bg-surface-alt/80 px-8 py-5 flex items-center gap-3 text-text-muted">
-        <Building2 size={16} className="opacity-30 flex-shrink-0" />
-        <p className="text-sm font-medium">No facilities registered under this UC.</p>
-      </div>
-    )
+    return <p className="border-t border-surface-border bg-surface-alt px-4 sm:px-5 py-4 text-sm text-text-muted">No facilities registered under this UC.</p>
   }
 
   return (
-    <div className="border-t border-primary/10 bg-surface-alt/80 px-6 py-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {facilities.map((f) => {
-          const facDash = byFacility.find((b) => b.facilityId === f.id)
-          const fStatus = facilityStatus(facDash?.statusCounts ?? f.statusCounts)
-          const cfg = statusConfig(fStatus)
-          const sc = facDash?.statusCounts ?? f.statusCounts ?? {}
-          const hasAny = sc.critical > 0 || sc.low > 0 || sc.adequate > 0
-
-          return (
-            <Link
-              key={f.id}
-              to={`/super-admin/facilities/${f.id}`}
-              className={`group bg-surface-alt rounded-lg border border-surface-border border-l-4 ${cfg.borderL} p-3.5 flex flex-col gap-2.5 hover:bg-surface hover:shadow-md transition-all duration-200`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
-                    <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
-                  </div>
-                  <p className="font-bold text-sm text-text truncate group-hover:text-primary transition-colors" title={f.name}>
-                    {f.name}
-                  </p>
-                </div>
-                <StatusBadge status={fStatus} />
+    <ul className="border-t border-surface-border bg-surface-alt divide-y divide-surface-border">
+      {facilities.map((f) => {
+        const facDash = byFacility.find((b) => b.facilityId === f.id)
+        const fStatus = facilityStatus(facDash?.statusCounts ?? f.statusCounts)
+        const sc = facDash?.statusCounts ?? f.statusCounts ?? {}
+        const lines = [
+          sc.critical > 0 && `${sc.critical} critical`,
+          sc.low > 0 && `${sc.low} low`,
+          sc.adequate > 0 && `${sc.adequate} normal`,
+        ].filter(Boolean)
+        return (
+          <li key={f.id}>
+            <Link to={`/super-admin/facilities/${f.id}`} className="flex items-center justify-between gap-3 px-4 sm:px-12 py-3 hover:bg-surface">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-text truncate">{f.name}</p>
+                <p className="text-xs text-text-muted truncate tabular-nums">
+                  {f.facilitySupervisorName ?? 'Unstaffed'} · {lines.length ? lines.join(' · ') : 'no stock recorded'}
+                </p>
               </div>
-
-              <p className={`text-xs truncate pl-0.5 ${f.facilitySupervisorName ? 'text-text-muted font-medium' : 'text-text-muted italic'}`}>
-                {f.facilitySupervisorName ?? 'Unstaffed'}
-              </p>
-
-              <div className="flex flex-wrap gap-1 pt-2 border-t border-surface-border">
-                {sc.critical > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
-                    {sc.critical} Critical
-                  </span>
-                )}
-                {sc.low > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
-                    {sc.low} Low
-                  </span>
-                )}
-                {sc.adequate > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
-                    {sc.adequate} Normal
-                  </span>
-                )}
-                {!hasAny && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
-                    No Data
-                  </span>
-                )}
-              </div>
+              <StatusBadge status={fStatus} />
             </Link>
-          )
-        })}
-      </div>
-    </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -131,7 +91,7 @@ function TownsTab({ readOnly }) {
   const [delTarget, setDelTarget] = useState(null)
   const [delError, setDelError]   = useState('')
 
-  const { data: townsData, isLoading, isError } = useQuery({ queryKey: ['towns'], queryFn: getTowns })
+  const { data: townsData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['towns'], queryFn: getTowns })
   const { data: districtsData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })
 
   const towns    = townsData?.towns ?? []
@@ -172,112 +132,77 @@ function TownsTab({ readOnly }) {
     return t.name.toLowerCase().includes(q) || (districtMap[t.districtId] ?? '').toLowerCase().includes(q)
   })
 
+  const townActions = (t) => !readOnly && (
+    <div className="flex items-center justify-end gap-1">
+      <Button variant="ghost" size="sm" onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}>Rename</Button>
+      {t.isActive ? (
+        <Button variant="ghost-danger" size="sm" onClick={() => { setDelTarget(t); setDelError('') }}>Deactivate</Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(t.id)} disabled={activateMutation.isPending}>Reactivate</Button>
+      )}
+    </div>
+  )
+
   const columns = [
-    { key: 'name', label: 'Town', render: (t) => (
-      <div className="flex items-center gap-2">
-        <Map size={13} className="text-primary flex-shrink-0" />
-        <span className="font-semibold text-sm text-text">{t.name}</span>
-      </div>
-    )},
-    { key: 'district', label: 'District', render: (t) => (
-      <span className="text-xs text-text-muted font-semibold">{districtMap[t.districtId] ?? '—'}</span>
-    )},
-    { key: 'status', label: 'Status', render: (t) => (
-      <Badge type={t.isActive ? 'active' : 'inactive'} />
-    )},
-    ...(!readOnly ? [{ key: 'actions', label: '', render: (t) => (
-      <div className="flex items-center gap-1 justify-end">
-        <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
-          title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-          <Pencil size={13} />
-        </button>
-        {t.isActive ? (
-          <button onClick={() => { setDelTarget(t); setDelError('') }}
-            title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-            <Trash2 size={13} />
-          </button>
-        ) : (
-          <button onClick={() => activateMutation.mutate(t.id)}
-            title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-            <RefreshCcw size={13} />
-          </button>
-        )}
-      </div>
-    )}] : []),
+    { key: 'name', label: 'Town', render: (t) => <span className={`font-medium ${t.isActive ? '' : 'opacity-60'}`}>{t.name}</span> },
+    { key: 'district', label: 'District', render: (t) => districtMap[t.districtId] ?? <span className="text-text-muted">—</span> },
+    { key: 'status', label: 'Status', render: (t) => <Badge type={t.isActive ? 'active' : 'inactive'} /> },
+    ...(!readOnly ? [{ key: 'actions', label: '', align: 'right', render: townActions }] : []),
   ]
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns…" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search towns or districts…" />
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
-            <Plus size={15} /> Add Town
+            <Plus size={16} strokeWidth={1.75} /> Add town
           </Button>
         )}
       </div>
 
-      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
-      {isError && <p className="text-sm text-danger">Failed to load towns.</p>}
-      {!isLoading && !isError && (
-        <Table columns={columns} rows={filtered} rowKey={(t) => t.id}
-          emptyMessage={search ? `No towns match "${search}".` : 'No towns yet.'}
+      {isError ? (
+        <ErrorState title="Couldn’t load towns" error={error} onRetry={refetch} />
+      ) : (
+        <Table columns={columns} rows={filtered} rowKey={(t) => t.id} loading={isLoading}
+          emptyMessage={search ? `No towns match “${search}”.` : 'No towns yet.'}
           mobileCard={(t) => (
-            <div className="px-4 py-3 hover:bg-surface-alt">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Map size={12} className="text-primary flex-shrink-0" />
-                  <span className="font-semibold text-sm text-text truncate">{t.name}</span>
+            <div className="px-4 py-3.5 flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className={`min-w-0 ${t.isActive ? '' : 'opacity-60'}`}>
+                  <p className="font-medium text-text truncate">{t.name}</p>
+                  <p className="text-xs text-text-muted truncate">{districtMap[t.districtId] ?? '—'}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Badge type={t.isActive ? 'active' : 'inactive'} />
-                  {!readOnly && (<>
-                    <button onClick={() => { setEditing(t); setEditName(t.name); setEditError('') }}
-                      title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                      <Pencil size={13} />
-                    </button>
-                    {t.isActive ? (
-                      <button onClick={() => { setDelTarget(t); setDelError('') }}
-                        title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    ) : (
-                      <button onClick={() => activateMutation.mutate(t.id)}
-                        title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                        <RefreshCcw size={13} />
-                      </button>
-                    )}
-                  </>)}
-                </div>
+                <Badge type={t.isActive ? 'active' : 'inactive'} />
               </div>
-              <p className="text-xs text-text-muted pl-5">{districtMap[t.districtId] ?? '—'}</p>
+              {townActions(t)}
             </div>
           )}
         />
       )}
 
       {/* Add Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Town">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add town">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
-          <Input id="tname" label="Town Name *" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
-          <Select id="tdist" label="District *" options={districtOptions} placeholder="Select district…"
+          <Input id="tname" label="Town name" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
+          <Select id="tdist" label="District" options={districtOptions} placeholder="Select district…"
             value={addForm.districtId} onChange={(e) => setAddForm({ ...addForm, districtId: e.target.value })} required />
-          {addError && <p className="text-xs text-danger">{addError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {errorText(addError)}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending || !addForm.name || !addForm.districtId}>
-              {createMutation.isPending ? 'Adding…' : 'Add Town'}
+              {createMutation.isPending ? 'Adding…' : 'Add town'}
             </Button>
           </div>
         </form>
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Rename Town — ${editing?.name ?? ''}`}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Rename ${editing?.name ?? 'town'}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); editMutation.mutate() }}>
-          <Input id="tename" label="New Name *" value={editName} onChange={(e) => { setEditName(e.target.value); setEditError('') }} required />
-          {editError && <p className="text-xs text-danger">{editError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          <Input id="tename" label="New name" value={editName} onChange={(e) => { setEditName(e.target.value); setEditError('') }} required />
+          {errorText(editError)}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setEditing(null)}>Cancel</Button>
             <Button type="submit" disabled={editMutation.isPending || !editName}>{editMutation.isPending ? 'Saving…' : 'Save'}</Button>
           </div>
@@ -288,7 +213,7 @@ function TownsTab({ readOnly }) {
         open={!!delTarget}
         onClose={() => setDelTarget(null)}
         onConfirm={() => deleteMutation.mutate()}
-        title="Deactivate Town"
+        title="Deactivate town?"
         message={`Deactivate ${delTarget?.name ?? ''}? It can be reactivated later.`}
         confirmLabel="Deactivate"
         isPending={deleteMutation.isPending}
@@ -315,7 +240,7 @@ function UCsTab({ readOnly }) {
   const [assignUserId, setAssignUserId] = useState('')
   const [assignError, setAssignError]   = useState('')
 
-  const { data: ucsData, isLoading, isError } = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils() })
+  const { data: ucsData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils() })
   const { data: townsData } = useQuery({ queryKey: ['towns'], queryFn: getTowns })
   const { data: usersData } = useQuery({ queryKey: ['users'], queryFn: getUsers })
 
@@ -389,205 +314,97 @@ function UCsTab({ readOnly }) {
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
+  const openAssign = (uc) => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UCs…" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search UC, town, district or supervisor…" />
         {!readOnly && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}>
-            <Plus size={15} /> Add UC
+            <Plus size={16} strokeWidth={1.75} /> Add union council
           </Button>
         )}
       </div>
 
-      {isLoading && <div className="flex flex-col gap-3">{[1,2,3].map((i) => <div key={i} className="h-12 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}</div>}
-      {isError && <p className="text-sm text-danger">Failed to load union councils.</p>}
-
-      {!isLoading && !isError && (
-        <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-
-          {/* Column headers — desktop only */}
-          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_2fr_240px] px-6 py-3.5 bg-surface-alt border-b border-surface-border gap-4 items-center">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">UC Name</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Town</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">UC Supervisor</span>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right pr-8">Actions</span>
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="px-6 py-10 text-center text-sm text-text-muted">
-              {search ? `No UCs match "${search}".` : 'No union councils yet.'}
-            </div>
-          )}
-
-          {filtered.map((uc) => {
-            const isExpanded = expandedId === uc.id
-            return (
-              <div key={uc.id} className="border-b border-surface-border last:border-b-0">
-
-                {/* ── Mobile card ── */}
-                <div className={['sm:hidden px-4 py-3 flex flex-col gap-2 transition-colors duration-150', isExpanded ? 'bg-primary/[0.04]' : ''].join(' ')}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPin size={12} className="text-primary flex-shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-sm text-text truncate">{uc.name}</p>
+      {isError ? (
+        <ErrorState title="Couldn’t load union councils" error={error} onRetry={refetch} />
+      ) : (
+        <Card padding={false}>
+          {isLoading ? (
+            <SkeletonRows rows={4} />
+          ) : filtered.length === 0 ? (
+            <p className="px-6 py-12 text-center text-sm text-text-muted">{search ? `No union councils match “${search}”.` : 'No union councils yet.'}</p>
+          ) : (
+            <ul className="divide-y divide-surface-border">
+              {filtered.map((uc) => {
+                const isExpanded = expandedId === uc.id
+                return (
+                  <li key={uc.id}>
+                    <div className="px-4 sm:px-5 py-3.5 flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(uc.id)}
+                        aria-expanded={isExpanded}
+                        aria-controls={`uc-${uc.id}`}
+                        className="flex-1 min-w-0 flex items-center gap-3 text-left rounded-control -m-1 p-1 hover:bg-surface-alt"
+                      >
+                        <ChevronDown size={16} strokeWidth={1.75} className={`text-text-muted flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                        <div className={`min-w-0 ${uc.isActive ? '' : 'opacity-60'}`}>
+                          <p className="text-sm font-medium text-text truncate">{uc.name}</p>
+                          <p className="text-xs text-text-muted truncate">
+                            {[uc.townName, uc.districtName].filter(Boolean).join(' · ') || '—'}
+                            {' · '}
+                            {uc.ucSupervisorName ? <span className="text-text">{uc.ucSupervisorName}</span> : 'No UC supervisor'}
+                          </p>
+                        </div>
+                      </button>
+                      <div className="flex flex-wrap items-center gap-1 pl-7 lg:pl-0">
                         <Badge type={uc.isActive ? 'active' : 'inactive'} />
+                        {!readOnly && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => openAssign(uc)}>{uc.ucSupervisorName ? 'Reassign' : 'Assign supervisor'}</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}>Rename</Button>
+                            {uc.isActive ? (
+                              <Button variant="ghost-danger" size="sm" onClick={() => { setDelTarget(uc); setDelError('') }}>Deactivate</Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(uc.id)} disabled={activateMutation.isPending}>Reactivate</Button>
+                            )}
+                          </>
+                        )}
                       </div>
-                      <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                        {uc.townName ?? '—'} · {uc.districtName ?? '—'}
-                      </p>
                     </div>
-                  </div>
-                  <div className="text-xs text-text-muted pl-5">
-                    {uc.ucSupervisorName ? (
-                      <span className="flex items-center gap-1">
-                        <User size={10} className="text-primary" />
-                        <span className="font-semibold text-text">{uc.ucSupervisorName}</span>
-                      </span>
-                    ) : !readOnly ? (
-                      <button
-                        onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        className="font-semibold text-primary hover:underline flex items-center gap-1"
-                      >
-                        <UserPlus size={10} /> Assign Supervisor
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap pl-5 pt-0.5">
-                    <button
-                      onClick={() => toggleExpand(uc.id)}
-                      className={['inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150', isExpanded ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'].join(' ')}
-                    >
-                      <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                      {isExpanded ? 'Collapse' : 'View Details'}
-                    </button>
-                    {!readOnly && (<>
-                      {uc.ucSupervisorName && (
-                        <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                          title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                          <UserPlus size={13} />
-                        </button>
-                      )}
-                      <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                        title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                        <Pencil size={13} />
-                      </button>
-                      {uc.isActive ? (
-                        <button onClick={() => { setDelTarget(uc); setDelError('') }}
-                          title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                          <Trash2 size={13} />
-                        </button>
-                      ) : (
-                        <button onClick={() => activateMutation.mutate(uc.id)}
-                          title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                          <RefreshCcw size={13} />
-                        </button>
-                      )}
-                    </>)}
-                  </div>
-                </div>
-
-                {/* ── Desktop row ── */}
-                <div className={[
-                  'hidden sm:grid grid-cols-[2fr_1fr_1fr_2fr_240px] px-6 py-4 gap-4 items-center transition-colors duration-150',
-                  isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-surface-alt/60',
-                ].join(' ')}>
-
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPin size={13} className="text-primary flex-shrink-0" />
-                    <span className="font-semibold text-sm text-text truncate">{uc.name}</span>
-                    <Badge type={uc.isActive ? 'active' : 'inactive'} />
-                  </div>
-
-                  <span className="text-xs text-text-muted font-semibold truncate">{uc.townName ?? '—'}</span>
-
-                  <span className="text-xs text-text-muted truncate">{uc.districtName ?? '—'}</span>
-
-                  <div>
-                    {uc.ucSupervisorName ? (
-                      <div className="flex items-center gap-1.5">
-                        <User size={12} className="text-primary flex-shrink-0" />
-                        <span className="text-xs font-semibold text-text truncate">{uc.ucSupervisorName}</span>
-                      </div>
-                    ) : !readOnly ? (
-                      <button
-                        onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                      >
-                        <UserPlus size={11} /> Assign Supervisor
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-1 justify-end">
-                    <button
-                      onClick={() => toggleExpand(uc.id)}
-                      className={[
-                        'inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150',
-                        isExpanded ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5',
-                      ].join(' ')}
-                    >
-                      <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                      {isExpanded ? 'Collapse' : 'View Details'}
-                    </button>
-                    {!readOnly && (<>
-                      {uc.ucSupervisorName && (
-                        <button onClick={() => { setAssignTarget(uc); setAssignUserId(''); setAssignError('') }}
-                          title="Reassign Supervisor" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                          <UserPlus size={13} />
-                        </button>
-                      )}
-                      <button onClick={() => { setEditing(uc); setEditName(uc.name); setEditError('') }}
-                        title="Rename" className="p-1.5 rounded-lg text-text-muted hover:bg-surface-alt hover:text-text transition-colors">
-                        <Pencil size={13} />
-                      </button>
-                      {uc.isActive ? (
-                        <button onClick={() => { setDelTarget(uc); setDelError('') }}
-                          title="Deactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-danger-bg hover:text-danger transition-colors">
-                          <Trash2 size={13} />
-                        </button>
-                      ) : (
-                        <button onClick={() => activateMutation.mutate(uc.id)}
-                          title="Reactivate" className="p-1.5 rounded-lg text-text-muted hover:bg-success/10 hover:text-success-dark transition-colors">
-                          <RefreshCcw size={13} />
-                        </button>
-                      )}
-                    </>)}
-                  </div>
-                </div>
-
-                {/* Inline expanded facilities panel */}
-                {isExpanded && <UCExpandedPanel ucId={uc.id} />}
-              </div>
-            )
-          })}
-        </div>
+                    {isExpanded && <div id={`uc-${uc.id}`}><UCExpandedPanel ucId={uc.id} /></div>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Card>
       )}
 
       {/* Add Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Union Council">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add union council">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
-          <Input id="ucname" label="UC Name *" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
-          <Select id="uctown" label="Town *" options={townOptions} placeholder="Select town…"
+          <Input id="ucname" label="Union council name" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
+          <Select id="uctown" label="Town" options={townOptions} placeholder="Select town…"
             value={addForm.townId} onChange={(e) => setAddForm({ ...addForm, townId: e.target.value })} required />
-          {addError && <p className="text-xs text-danger">{addError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {errorText(addError)}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending || !addForm.name || !addForm.townId}>
-              {createMutation.isPending ? 'Adding…' : 'Add UC'}
+              {createMutation.isPending ? 'Adding…' : 'Add union council'}
             </Button>
           </div>
         </form>
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Rename UC — ${editing?.name ?? ''}`}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Rename ${editing?.name ?? 'union council'}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); editMutation.mutate() }}>
-          <Input id="ucename" label="New Name *" value={editName} onChange={(e) => { setEditName(e.target.value); setEditError('') }} required />
-          {editError && <p className="text-xs text-danger">{editError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          <Input id="ucename" label="New name" value={editName} onChange={(e) => { setEditName(e.target.value); setEditError('') }} required />
+          {errorText(editError)}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setEditing(null)}>Cancel</Button>
             <Button type="submit" disabled={editMutation.isPending || !editName}>{editMutation.isPending ? 'Saving…' : 'Save'}</Button>
           </div>
@@ -598,25 +415,25 @@ function UCsTab({ readOnly }) {
       <Modal
         open={!!assignTarget}
         onClose={() => { setAssignTarget(null); setAssignUserId(''); setAssignError('') }}
-        title={assignTarget?.ucSupervisorName ? 'Reassign UC Supervisor' : 'Assign UC Supervisor'}
+        title={assignTarget?.ucSupervisorName ? 'Reassign UC supervisor' : 'Assign UC supervisor'}
       >
         <div className="flex flex-col gap-4">
-          <div className="bg-surface-alt border border-surface-border rounded-xl px-4 py-3 text-sm">
-            <p className="font-bold text-text">{assignTarget?.name}</p>
+          <div className="rounded-control bg-surface-alt px-3.5 py-2.5 text-sm">
+            <p className="font-medium text-text">{assignTarget?.name}</p>
             <p className="text-xs text-text-muted mt-0.5">{assignTarget?.townName} · {assignTarget?.districtName}</p>
             {assignTarget?.ucSupervisorName && (
-              <p className="text-xs text-text-muted mt-1.5">
-                Current supervisor: <span className="font-semibold text-text">{assignTarget.ucSupervisorName}</span>
+              <p className="text-xs text-text-muted mt-1">
+                Current supervisor: <span className="text-text">{assignTarget.ucSupervisorName}</span>
               </p>
             )}
           </div>
 
           {supervisorOptions.length === 0 ? (
-            <p className="text-xs text-text-muted italic">No active UC supervisors found. Create a UC Supervisor user first.</p>
+            <p className="text-sm text-text-muted">No active UC supervisors yet. Create a UC supervisor under Users first.</p>
           ) : (
             <Select
               id="uc-assign-user"
-              label="Select UC Supervisor *"
+              label="UC supervisor"
               options={supervisorOptions}
               placeholder="Choose a supervisor…"
               value={assignUserId}
@@ -624,9 +441,9 @@ function UCsTab({ readOnly }) {
             />
           )}
 
-          {assignError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{assignError}</p>}
+          {errorText(assignError)}
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => { setAssignTarget(null); setAssignUserId('') }}>Cancel</Button>
             <Button
               disabled={!assignUserId || assignMutation.isPending}
@@ -642,7 +459,7 @@ function UCsTab({ readOnly }) {
         open={!!delTarget}
         onClose={() => setDelTarget(null)}
         onConfirm={() => deleteMutation.mutate()}
-        title="Deactivate UC"
+        title="Deactivate union council?"
         message={`Deactivate ${delTarget?.name ?? ''}? It can be reactivated later.`}
         confirmLabel="Deactivate"
         isPending={deleteMutation.isPending}
@@ -659,29 +476,13 @@ export default function UCManagement() {
   const [tab, setTab] = useState('Towns')
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-
+    <div>
       <PageHeader
-        breadcrumb="Super Admin › UC Management"
-        title="UC Management"
-        subtitle="Manage Towns and Union Councils · District → Town → UC → Facility"
+        breadcrumb="Super Admin › Network"
+        title="Union Councils"
+        subtitle="Each district has towns, each town has union councils, each union council has facilities."
       />
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-surface-chip rounded-xl p-1 w-fit">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-              tab === t ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
+      <Tabs label="Network level" value={tab} onChange={setTab} tabs={TABS} className="mb-4" />
       {tab === 'Towns' ? <TownsTab readOnly={readOnly} /> : <UCsTab readOnly={readOnly} />}
     </div>
   )

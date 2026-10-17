@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, RotateCcw, UserX, UserCheck, User } from 'lucide-react'
+import { Plus, KeyRound } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
@@ -8,6 +8,10 @@ import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
 import SearchInput from '../../components/shared/SearchInput'
 import Pagination from '../../components/shared/Pagination'
+import FilterChips from '../../components/shared/FilterChips'
+import ErrorState from '../../components/shared/ErrorState'
+import { ROLE_LABELS } from '../../lib/navigation'
+import { plural } from '../../lib/format'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
@@ -45,7 +49,7 @@ export default function UserManagement() {
     { label: 'Observer',            value: 'observer' },
   ]
 
-  const { data: userData, isLoading, isError } = useQuery({ queryKey: ['users'], queryFn: getUsers })
+  const { data: userData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts, staleTime: 0 })
   const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, staleTime: 0 })
   const { data: ucData }       = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils(), staleTime: 0 })
@@ -180,260 +184,155 @@ export default function UserManagement() {
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const ROLE_LABELS = {
-    district_supervisor: 'District Supervisor',
-    uc_supervisor:       'UC Supervisor',
-    facility_supervisor: 'Facility Supervisor',
-    facility_worker:     'Facility Worker',
-    facility_head:       'Facility Head',
-    observer:            'Observer',
+  const activeRole = ROLE_FILTERS[roleFilter].value
+  const assignmentColLabel =
+    activeRole === 'district_supervisor' ? 'District' :
+    activeRole === 'uc_supervisor'       ? 'Union councils' :
+    activeRole === 'facility_supervisor' ? 'Facility' :
+    activeRole === 'facility_worker'     ? 'Facility' :
+    activeRole === 'facility_head'       ? 'Facility' :
+    'Assignment'
+
+  const readOnly = authUser?.role === 'observer'
+  const isFacilityRole = (role) => role === 'facility_supervisor' || role === 'facility_worker' || role === 'facility_head'
+
+  // Where the account is scoped: UC list, facility (with district), or district.
+  function assignment(row) {
+    if (row.role === 'uc_supervisor') {
+      const ucs = row.ucNames ?? row.ucIds ?? []
+      return { primary: ucs.length ? (Array.isArray(ucs) ? ucs.join(', ') : ucs) : null, empty: 'No UCs assigned' }
+    }
+    return isFacilityRole(row.role)
+      ? { primary: row.facilityName, sub: row.districtName, empty: 'Unassigned' }
+      : { primary: row.districtName, empty: row.role === 'observer' ? 'All districts' : 'Unassigned' }
   }
 
-  const activeRole = ROLE_FILTERS[roleFilter].value
-  const nameColLabel       = activeRole ? `${ROLE_LABELS[activeRole] ?? activeRole} Name` : 'Name'
-  const assignmentColLabel =
-    activeRole === 'district_supervisor' ? 'District Name' :
-    activeRole === 'uc_supervisor'       ? 'UC Assignments' :
-    activeRole === 'facility_supervisor' ? 'Facility Name' :
-    activeRole === 'facility_worker'     ? 'Facility Name' :
-    activeRole === 'facility_head'       ? 'Facility Name' :
-    'Assignment'
+  const actions = (row) => !readOnly && (
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      {row.role === 'uc_supervisor' && (
+        <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
+      )}
+      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><KeyRound size={14} strokeWidth={1.75} /> Reset password</Button>
+      {row.isActive ? (
+        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}>Deactivate</Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
+      )}
+    </div>
+  )
 
   const columns = [
     {
-      key: 'name',
-      label: nameColLabel,
+      key: 'name', label: 'Name',
       render: (row) => (
-        <div className="flex items-center gap-2 font-bold text-text">
-          <div className="w-6 h-6 rounded bg-surface-chip text-text-muted flex items-center justify-center flex-shrink-0">
-            <User size={12} />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate">{row.name ?? '—'}</p>
-            {!activeRole && (
-              <p className="text-[10px] font-semibold text-text-muted normal-case">{ROLE_LABELS[row.role] ?? row.role}</p>
-            )}
-          </div>
+        <div className={row.isActive ? '' : 'opacity-60'}>
+          <p className="font-medium text-text">{row.name ?? '—'}</p>
+          <p className="text-xs text-text-muted">{row.email}</p>
         </div>
-      )
+      ),
     },
-    { key: 'email', label: 'Email Address', render: (row) => <span className="text-xs text-text-muted font-medium">{row.email}</span> },
+    ...(activeRole ? [] : [{ key: 'role', label: 'Role', render: (row) => <span className="whitespace-nowrap">{ROLE_LABELS[row.role] ?? row.role}</span> }]),
     {
-      key: 'assignment',
-      label: assignmentColLabel,
+      key: 'assignment', label: assignmentColLabel,
       render: (row) => {
-        if (row.role === 'uc_supervisor') {
-          const ucs = row.ucNames ?? row.ucIds ?? []
-          return ucs.length > 0 ? (
-            <p className="text-xs font-semibold text-text">{Array.isArray(ucs) ? ucs.join(', ') : ucs}</p>
-          ) : (
-            <span className="text-text-muted italic text-[11px]">No UCs assigned</span>
-          )
-        }
-        const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker' || row.role === 'facility_head'
-        const primary = isFacilityRole ? row.facilityName : row.districtName
-        const sub     = isFacilityRole ? row.districtName : null
-        return primary ? (
+        const a = assignment(row)
+        return a.primary ? (
           <div>
-            <p className="text-xs font-semibold text-text">{primary}</p>
-            {sub && <p className="text-[10px] text-text-muted font-medium">{sub}</p>}
+            <p>{a.primary}</p>
+            {a.sub && <p className="text-xs text-text-muted">{a.sub}</p>}
           </div>
-        ) : (
-          <span className="text-text-muted italic text-[11px]">Unassigned</span>
-        )
-      }
+        ) : <span className="text-text-muted">{a.empty}</span>
+      },
     },
-    {
-      key: 'isActive',
-      label: 'Status',
-      render: (row) => (
-        <Badge type={row.isActive ? 'active' : 'inactive'} />
-      ),
-    },
-    {
-      key: 'actions',
-      label: '',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end flex-wrap">
-          {authUser?.role !== 'observer' && (<>
-            {row.role === 'uc_supervisor' && (
-              <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>
-                Reassign UCs
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}>
-              <RotateCcw size={12} /> Reset Password
-            </Button>
-            {row.isActive ? (
-              <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}>
-                <UserX size={12} /> Deactivate
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-                <UserCheck size={12} /> Activate
-              </Button>
-            )}
-          </>)}
-        </div>
-      ),
-    },
+    { key: 'isActive', label: 'Status', render: (row) => <Badge type={row.isActive ? 'active' : 'inactive'} /> },
+    ...(readOnly ? [] : [{ key: 'actions', label: '', align: 'right', render: actions }]),
   ]
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      
+    <div>
       <PageHeader
-        breadcrumb="Super Admin › User Management"
-        title="User Management"
-        subtitle={isLoading ? 'Loading users…' : `${users.length} ${users.length === 1 ? 'user' : 'users'} registered under system`}
-        actions={authUser?.role !== 'observer' && (
-          <Button onClick={() => { setCreateOpen(true); setFormError('') }}>
-            <Plus size={15} strokeWidth={2.5} /> Add User
-          </Button>
+        breadcrumb="Super Admin › Manage"
+        title="Users"
+        subtitle={isLoading ? undefined : `${plural(users.length, 'account')} across the system`}
+        actions={!readOnly && (
+          <Button onClick={() => { setCreateOpen(true); setFormError('') }}><Plus size={16} strokeWidth={1.75} /> Add user</Button>
         )}
       />
 
-      {/* Search + Role filters */}
-      {!isLoading && !isError && users.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
+      {isError ? (
+        <ErrorState title="Couldn’t load users" error={error} onRetry={refetch} />
+      ) : (
+        <div className="flex flex-col gap-4">
           <SearchInput
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            placeholder="Search by name or email..."
+            placeholder="Search name or email…"
           />
-          <div className="flex items-center gap-1.5 bg-surface border border-surface-border rounded-xl p-1 shadow-sm">
-            {ROLE_FILTERS.map((f, i) => {
-              const active = roleFilter === i
-              return (
-                <button
-                  key={f.label}
-                  onClick={() => { setRoleFilter(i); setCurrentPage(1) }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${
-                    active ? 'bg-primary text-white' : 'text-text-muted hover:bg-surface-alt'
-                  }`}
-                >
-                  {f.label}
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${
-                    active ? 'bg-white/20 text-white' : 'bg-surface-chip text-text-muted'
-                  }`}>
-                    {roleCounts[i]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Loading Skeletons */}
-      {isLoading && (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load users. Please try refreshing.
-        </div>
-      )}
-
-      {/* Users Table */}
-      {!isLoading && !isError && (
-        <div className="flex flex-col gap-3">
+          <FilterChips
+            label="Role"
+            value={String(roleFilter)}
+            onChange={(v) => { setRoleFilter(Number(v)); setCurrentPage(1) }}
+            options={ROLE_FILTERS.map((f, i) => ({ value: String(i), label: f.label, count: roleCounts[i] }))}
+          />
           <Table
             columns={columns}
             rows={paginatedUsers}
+            loading={isLoading}
             emptyMessage={
               searchQuery || roleFilter !== 0
-                ? `No users match${searchQuery ? ` "${searchQuery}"` : ''}${roleFilter !== 0 ? ` in ${ROLE_FILTERS[roleFilter].label}` : ''}.`
+                ? `No users match${searchQuery ? ` “${searchQuery}”` : ''}${roleFilter !== 0 ? ` in ${ROLE_FILTERS[roleFilter].label}` : ''}.`
                 : 'No users registered yet.'
             }
             mobileCard={(row) => {
-              const isFacilityRole = row.role === 'facility_supervisor' || row.role === 'facility_worker' || row.role === 'facility_head'
-              const assignment = isFacilityRole ? row.facilityName : row.role === 'uc_supervisor' ? (row.ucNames ?? []).join(', ') || 'No UCs' : row.districtName
+              const a = assignment(row)
               return (
-                <div className="px-4 py-3 hover:bg-surface-alt">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-text truncate">{row.name ?? '—'}</p>
-                      <p className="text-[10px] font-semibold text-text-muted">{ROLE_LABELS[row.role] ?? row.role}</p>
+                <div className="px-4 py-3.5 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className={`min-w-0 ${row.isActive ? '' : 'opacity-60'}`}>
+                      <p className="font-medium text-text truncate">{row.name ?? '—'}</p>
+                      <p className="text-xs text-text-muted truncate">
+                        {[ROLE_LABELS[row.role] ?? row.role, a.primary ?? a.empty].join(' · ')}
+                      </p>
+                      <p className="text-xs text-text-muted truncate">{row.email}</p>
                     </div>
                     <Badge type={row.isActive ? 'active' : 'inactive'} />
                   </div>
-                  <div className="text-xs text-text-muted mt-1 space-y-0.5">
-                    <p className="truncate">{row.email}</p>
-                    {assignment && <p className="truncate">Assigned: <span className="text-text font-medium">{assignment}</span></p>}
-                  </div>
-                  {authUser?.role !== 'observer' && (
-                    <div className="flex gap-1 flex-wrap mt-2">
-                      {row.role === 'uc_supervisor' && (
-                        <Button variant="ghost" size="sm" onClick={() => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') }}>Reassign UCs</Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(row); setFormError('') }}><RotateCcw size={12} /> Reset Pwd</Button>
-                      {row.isActive ? (
-                        <Button variant="ghost-danger" size="sm" onClick={() => setDeactivateTarget(row)}><UserX size={12} /> Deactivate</Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
-                      )}
-                    </div>
-                  )}
+                  {actions(row)}
                 </div>
               )
             }}
           />
-
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
       )}
 
       {/* Create Modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add User">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add user">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
-          {/* Role selector */}
-          <div>
-            <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Role</p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: 'district_supervisor',  label: 'District Supervisor' },
-                { value: 'uc_supervisor',        label: 'UC Supervisor' },
-                { value: 'facility_supervisor',  label: 'Facility Supervisor' },
-                { value: 'facility_worker',      label: 'Facility Worker' },
-                { value: 'facility_head',        label: 'Facility Head' },
-                { value: 'observer',             label: 'Observer' },
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, role: value, districtId: '', facilityId: '', ucIds: [] }))}
-                  className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center leading-snug ${
-                    form.role === value
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-surface text-text-muted border-surface-border hover:border-primary/40 hover:text-text'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Select
+            id="sup-role"
+            label="Role"
+            options={ROLE_FILTERS.filter((f) => f.value).map((f) => ({ value: f.value, label: f.label }))}
+            value={form.role}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, districtId: '', facilityId: '', ucIds: [] }))}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input id="sup-first-name" label="First Name" placeholder="Jane"
+            <Input id="sup-first-name" label="First name" placeholder="Jane"
               value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-            <Input id="sup-last-name" label="Last Name" placeholder="Doe"
+            <Input id="sup-last-name" label="Last name" placeholder="Doe"
               value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
           </div>
-          <Input id="sup-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-1001"
+          <Input id="sup-zmid" label="ZMID (organisation ID)" placeholder="e.g. Z-1001"
             value={form.zmid} onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
           <Input id="sup-email" label="Email" type="email" placeholder="user@akuh.org"
             value={form.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormError('') }} required />
-          <Input id="sup-password" label="Password (min 8 chars)" type="password" minLength={8}
+          <Input id="sup-password" label="Password (at least 8 characters)" type="password" minLength={8}
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
 
           {/* District picker — only for district_supervisor */}
           {form.role === 'district_supervisor' && (
-            <Select id="sup-district" label="Assign District" options={districtOptions}
+            <Select id="sup-district" label="District" options={districtOptions}
               placeholder="Select a district…"
               value={form.districtId} onChange={(e) => setForm({ ...form, districtId: e.target.value })} required />
           )}
@@ -441,11 +340,11 @@ export default function UserManagement() {
           {/* UC multi-select — for uc_supervisor */}
           {form.role === 'uc_supervisor' && (
             <div>
-              <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Assign Union Councils *</p>
+              <p className="text-sm font-medium text-text mb-1.5">Union councils</p>
               {ucOptions.length === 0 ? (
-                <p className="text-xs text-text-muted italic">No active UCs available.</p>
+                <p className="text-sm text-text-muted">No active union councils yet.</p>
               ) : (
-                <div className="border border-surface-border rounded-xl overflow-y-auto max-h-48 divide-y divide-surface-border">
+                <div className="border border-surface-border rounded-control overflow-y-auto max-h-48 divide-y divide-surface-border">
                   {ucOptions.map((uc) => {
                     const checked = form.ucIds.includes(uc.value)
                     return (
@@ -457,21 +356,21 @@ export default function UserManagement() {
                             ...f,
                             ucIds: checked ? f.ucIds.filter((id) => id !== uc.value) : [...f.ucIds, uc.value]
                           }))}
-                          className="accent-primary"
+                          className="accent-primary w-4 h-4 flex-shrink-0"
                         />
-                        <span className="text-xs font-semibold text-text">{uc.label}</span>
+                        <span className="text-sm text-text">{uc.label}</span>
                       </label>
                     )
                   })}
                 </div>
               )}
-              {form.ucIds.length === 0 && <p className="text-[11px] text-danger mt-1">Select at least one UC.</p>}
+              {form.ucIds.length === 0 && <p className="text-xs text-text-muted mt-1.5">Select at least one union council.</p>}
             </div>
           )}
 
           {/* Facility picker — for facility_supervisor, facility_worker, facility_head */}
           {(form.role === 'facility_supervisor' || form.role === 'facility_worker' || form.role === 'facility_head') && (
-            <Select id="sup-facility" label="Assign Facility" options={facilityOptions}
+            <Select id="sup-facility" label="Facility" options={facilityOptions}
               placeholder="Select a facility…"
               value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />
           )}
@@ -480,8 +379,8 @@ export default function UserManagement() {
             value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input id="sup-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
             value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} />
-          {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {formError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{formError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating…' : 'Create'}
@@ -491,12 +390,12 @@ export default function UserManagement() {
       </Modal>
 
       {/* Reset Modal */}
-      <Modal open={!!resetTarget} onClose={() => setResetTarget(null)} title={`Reset Password — ${resetTarget?.email ?? ''}`}>
+      <Modal open={!!resetTarget} onClose={() => setResetTarget(null)} title={`Reset password for ${resetTarget?.email ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); resetMutation.mutate() }}>
-          <Input id="reset-password" label="New Password (min 8 chars)" type="password" minLength={8}
+          <Input id="reset-password" label="New password (at least 8 characters)" type="password" minLength={8}
             value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
-          {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {formError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{formError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setResetTarget(null)}>Cancel</Button>
             <Button type="submit" disabled={resetMutation.isPending || newPassword.length < 8}>
               {resetMutation.isPending ? 'Saving…' : 'Save'}
@@ -509,20 +408,20 @@ export default function UserManagement() {
         open={!!deactivateTarget}
         onClose={() => setDeactivateTarget(null)}
         onConfirm={() => deactivateMutation.mutate(deactivateTarget.id)}
-        title="Deactivate Account"
-        message={<p className="text-sm text-text">Deactivate <span className="font-bold">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.</p>}
+        title="Deactivate account?"
+        message={<p className="text-sm text-text">Deactivate <span className="font-medium">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.</p>}
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
       />
 
       {/* Reassign UCs Modal */}
-      <Modal open={!!reassignTarget} onClose={() => setReassignTarget(null)} title={`Reassign UCs — ${reassignTarget?.name ?? ''}`}>
+      <Modal open={!!reassignTarget} onClose={() => setReassignTarget(null)} title={`Reassign UCs for ${reassignTarget?.name ?? ''}`}>
         <div className="flex flex-col gap-4">
-          <p className="text-xs text-text-muted">Select the union councils this supervisor should oversee.</p>
+          <p className="text-sm text-text-muted">Select the union councils this supervisor should oversee.</p>
           {ucOptions.length === 0 ? (
-            <p className="text-xs text-text-muted italic">No active UCs available.</p>
+            <p className="text-sm text-text-muted">No active union councils yet.</p>
           ) : (
-            <div className="border border-surface-border rounded-xl overflow-y-auto max-h-64 divide-y divide-surface-border">
+            <div className="border border-surface-border rounded-control overflow-y-auto max-h-64 divide-y divide-surface-border">
               {ucOptions.map((uc) => {
                 const checked = reassignUcIds.includes(uc.value)
                 return (
@@ -533,19 +432,19 @@ export default function UserManagement() {
                       onChange={() => setReassignUcIds((prev) =>
                         checked ? prev.filter((id) => id !== uc.value) : [...prev, uc.value]
                       )}
-                      className="accent-primary"
+                      className="accent-primary w-4 h-4 flex-shrink-0"
                     />
-                    <span className="text-xs font-semibold text-text">{uc.label}</span>
+                    <span className="text-sm text-text">{uc.label}</span>
                   </label>
                 )
               })}
             </div>
           )}
-          {reassignError && <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2">{reassignError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {reassignError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{reassignError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={() => setReassignTarget(null)}>Cancel</Button>
             <Button onClick={() => reassignMutation.mutate()} disabled={reassignMutation.isPending || reassignUcIds.length === 0}>
-              {reassignMutation.isPending ? 'Saving…' : 'Save Assignments'}
+              {reassignMutation.isPending ? 'Saving…' : 'Save assignments'}
             </Button>
           </div>
         </div>

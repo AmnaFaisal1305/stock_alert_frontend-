@@ -1,209 +1,133 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Building2, AlertCircle, AlertTriangle, CheckCircle2, MapPin } from 'lucide-react'
-import PageHeader from '../../components/shared/PageHeader'
+import { ArrowLeft, Building2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getDistrict } from '../../lib/api'
+import { buttonClasses } from '../../components/ui/Button'
+import Badge from '../../components/ui/Badge'
+import PageHeader from '../../components/shared/PageHeader'
+import Card from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
 import StatCard from '../../components/shared/StatCard'
-import SkeletonCard from '../../components/shared/SkeletonCard'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { facilityStatus } from '../../lib/status'
+import { plural } from '../../lib/format'
+
+// district.facilities includes ucId/ucName/townId/townName (Round 23), so one call builds Town → UC → Facility.
+export function groupByTownUc(facilities = []) {
+  const townMap = new Map()
+  for (const f of facilities) {
+    const townKey = f.townId ?? '__none__'
+    if (!townMap.has(townKey)) townMap.set(townKey, { id: townKey, name: f.townName ?? '—', ucs: new Map() })
+    const town = townMap.get(townKey)
+    const ucKey = f.ucId ?? '__none__'
+    if (!town.ucs.has(ucKey)) town.ucs.set(ucKey, { id: ucKey, name: f.ucName ?? '—', facilities: [] })
+    town.ucs.get(ucKey).facilities.push(f)
+  }
+  return Array.from(townMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((town) => ({
+      ...town,
+      ucs: Array.from(town.ucs.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((uc) => ({ ...uc, facilities: [...uc.facilities].sort((a, b) => a.name.localeCompare(b.name)) })),
+    }))
+}
+
+function VaccineCounts({ sc = {} }) {
+  const parts = [
+    sc.critical > 0 && <span key="c" className="text-danger-dark">{sc.critical} critical</span>,
+    sc.low > 0 && <span key="l" className="text-warning-dark">{sc.low} low</span>,
+    sc.adequate > 0 && <span key="a">{sc.adequate} normal</span>,
+  ].filter(Boolean)
+  if (!parts.length) return <span>No vaccine data</span>
+  return parts.reduce((acc, p, i) => (i ? [...acc, ' · ', p] : [p]), [])
+}
+
+// Town headings, then one hairline list per UC. Shared with the DistrictManagement expanded row.
+export function FacilityHierarchy({ towns }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {towns.map((town) => (
+        <section key={town.id} aria-label={`Town ${town.name}`} className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-text">
+            {town.name} <span className="text-sm font-normal text-text-muted">· {plural(town.ucs.length, 'UC')}</span>
+          </h2>
+          {town.ucs.map((uc) => (
+            <Card key={uc.id} padding={false}>
+              <div className="px-4 sm:px-5 py-2.5 border-b border-surface-border flex items-center justify-between gap-3 text-sm">
+                {uc.id !== '__none__'
+                  ? <Link to={`/super-admin/ucs/${uc.id}`} className="font-medium text-text hover:text-primary hover:underline">{uc.name}</Link>
+                  : <span className="font-medium text-text-muted">{uc.name}</span>}
+                <span className="text-xs text-text-muted">{plural(uc.facilities.length, 'facility', 'facilities')}</span>
+              </div>
+              <ul className="divide-y divide-surface-border">
+                {uc.facilities.map((f) => (
+                  <li key={f.id}>
+                    <Link to={`/super-admin/facilities/${f.id}`} className="px-4 sm:px-5 py-3 flex items-start justify-between gap-3 hover:bg-surface-alt">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text truncate">{f.name}</p>
+                        <p className="text-xs text-text-muted truncate tabular-nums">
+                          {f.facilitySupervisorName ?? 'Unstaffed'} · <VaccineCounts sc={f.statusCounts} />
+                        </p>
+                      </div>
+                      <StatusBadge status={facilityStatus(f.statusCounts)} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
+        </section>
+      ))}
+    </div>
+  )
+}
 
 export default function DistrictDetail() {
   const { id } = useParams()
 
-  const { data: districtData, isLoading, isError } = useQuery({
+  const { data: districtData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['district', id],
     queryFn: () => getDistrict(id),
   })
 
   const district = districtData?.district
-
-  // district.facilities now includes ucId/ucName/townId/townName (Round 23) — no second call needed
-  const towns = useMemo(() => {
-    const facilities = district?.facilities ?? []
-
-    const townMap = new Map()
-    for (const f of facilities) {
-      const townKey = f.townId ?? '__none__'
-      if (!townMap.has(townKey)) {
-        townMap.set(townKey, { id: townKey, name: f.townName ?? '—', ucs: new Map() })
-      }
-      const town = townMap.get(townKey)
-      const ucKey = f.ucId ?? '__none__'
-      if (!town.ucs.has(ucKey)) {
-        town.ucs.set(ucKey, { id: ucKey, name: f.ucName ?? '—', facilities: [] })
-      }
-      town.ucs.get(ucKey).facilities.push(f)
-    }
-
-    return Array.from(townMap.values())
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((town) => ({
-        ...town,
-        ucs: Array.from(town.ucs.values())
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((uc) => ({
-            ...uc,
-            facilities: [...uc.facilities].sort((a, b) => a.name.localeCompare(b.name)),
-          })),
-      }))
-  }, [district])
-
+  const towns = useMemo(() => groupByTownUc(district?.facilities), [district])
   const totalUCs = towns.reduce((sum, t) => sum + t.ucs.length, 0)
+  const sc = district?.statusCounts ?? {}
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      <Link
-        to="/super-admin/districts"
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary w-fit font-semibold transition-colors"
-      >
-        <ArrowLeft size={14} /> Back to districts
+    <div>
+      <Link to="/super-admin/districts" className={buttonClasses({ variant: 'ghost', size: 'sm', className: '-ml-3 mb-2' })}>
+        <ArrowLeft size={14} strokeWidth={1.75} /> Districts
       </Link>
 
-      {isLoading && (
-        <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-6 bg-surface-chip rounded w-1/4" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-surface-alt border border-surface-border rounded-2xl" />)}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
-          </div>
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load district details. Please try refreshing.
-        </div>
-      )}
-
-      {!isLoading && !isError && district && (
+      {isError ? (
+        <ErrorState title="Couldn’t load this district" error={error} onRetry={refetch} />
+      ) : isLoading ? (
+        <Card padding={false}><SkeletonRows rows={5} /></Card>
+      ) : district && (
         <>
           <PageHeader
-            breadcrumb="Super Admin › District Management › District Detail"
+            breadcrumb="Super Admin › Network › Districts"
             title={district.name}
-            subtitle={`${towns.length} ${towns.length === 1 ? 'town' : 'towns'} · ${totalUCs} ${totalUCs === 1 ? 'UC' : 'UCs'} · ${district.facilityCount} ${district.facilityCount === 1 ? 'facility' : 'facilities'}`}
-            actions={
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                district.isActive
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'bg-surface-chip text-text-muted border border-surface-border'
-              }`}>
-                {district.isActive ? 'Active' : 'Inactive'}
-              </span>
-            }
+            subtitle={`${plural(towns.length, 'town')} · ${plural(totalUCs, 'UC')} · ${plural(district.facilityCount ?? 0, 'facility', 'facilities')}`}
+            actions={<Badge type={district.isActive ? 'active' : 'inactive'} />}
           />
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Critical" value={district.statusCounts?.critical ?? 0} icon={AlertCircle} colorClass="text-danger" subtitle="Urgent action required" />
-            <StatCard label="Low" value={district.statusCounts?.low ?? 0} icon={AlertTriangle} colorClass="text-warning-dark" subtitle="Attention suggested" />
-            <StatCard label="Normal" value={district.statusCounts?.adequate ?? 0} icon={CheckCircle2} colorClass="text-success-dark" subtitle="All lines healthy" />
-            <StatCard label="No Data" value={district.statusCounts?.no_data ?? 0} icon={Building2} colorClass="text-text-muted" subtitle="Not yet reporting" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <StatCard label="Critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Restock now" />
+            <StatCard label="Low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Plan a delivery" />
+            <StatCard label="Normal" value={sc.adequate ?? 0} subtitle="Stock is healthy" />
+            <StatCard label="Not updated" value={sc.no_data ?? 0} subtitle="No stock recorded yet" />
           </div>
 
-          {/* Town → UC → Facility hierarchy */}
-          {towns.length === 0 ? (
-            <div className="text-center py-16 border border-dashed border-surface-border bg-white rounded-2xl text-text-muted shadow-sm">
-              <Building2 size={36} className="mx-auto mb-3 opacity-20" />
-              <p className="font-bold text-text">No facilities found</p>
-              <p className="text-xs mt-1">Add facilities under this district to start logging stocks.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-10">
-              {towns.map((town) => (
-                <div key={town.id}>
-                  {/* Town heading */}
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary flex-shrink-0">
-                      <MapPin size={13} />
-                    </div>
-                    <h2 className="text-sm font-bold text-text">{town.name}</h2>
-                    <div className="flex-1 h-px bg-surface-border" />
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                      {town.ucs.length} {town.ucs.length === 1 ? 'UC' : 'UCs'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-6 pl-5 border-l-2 border-surface-border">
-                    {town.ucs.map((uc) => (
-                      <div key={uc.id}>
-                        {/* UC heading */}
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2 h-2 rounded-full bg-primary/30 flex-shrink-0" />
-                          {uc.id !== '__none__' ? (
-                            <Link
-                              to={`/super-admin/ucs/${uc.id}`}
-                              className="text-xs font-bold text-primary uppercase tracking-wider hover:underline"
-                            >
-                              {uc.name}
-                            </Link>
-                          ) : (
-                            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">{uc.name}</h3>
-                          )}
-                          <span className="text-[10px] text-text-muted bg-white border border-surface-border px-2 py-0.5 rounded font-semibold">
-                            {uc.facilities.length} {uc.facilities.length === 1 ? 'facility' : 'facilities'}
-                          </span>
-                        </div>
-
-                        {/* Facility cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pl-4">
-                          {uc.facilities.map((f) => (
-                            <Link
-                              key={f.id}
-                              to={`/super-admin/facilities/${f.id}`}
-                              className="bg-surface rounded-2xl border border-surface-border p-5 flex flex-col justify-between min-h-[140px] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200"
-                            >
-                              <div className="flex flex-col gap-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex items-start gap-2.5 min-w-0">
-                                    <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5 flex-shrink-0">
-                                      <Building2 size={16} />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="font-bold text-text text-sm leading-tight truncate" title={f.name}>{f.name}</p>
-                                      <p className="text-[10px] text-text-muted mt-1 font-semibold">
-                                        {f.facilitySupervisorName ?? 'Unstaffed'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex-shrink-0">
-                                    <StatusBadge status={facilityStatus(f.statusCounts)} />
-                                  </div>
-                                </div>
-
-                                {f.statusCounts && (f.statusCounts.critical > 0 || f.statusCounts.low > 0 || f.statusCounts.adequate > 0) && (
-                                  <div className="flex gap-1.5 pt-3 border-t border-surface-border flex-wrap">
-                                    {f.statusCounts.critical > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-danger-bg text-danger border border-danger/10">
-                                        {f.statusCounts.critical} Critical
-                                      </span>
-                                    )}
-                                    {f.statusCounts.low > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10">
-                                        {f.statusCounts.low} Low
-                                      </span>
-                                    )}
-                                    {f.statusCounts.adequate > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-success-bg text-success-dark border border-success/10">
-                                        {f.statusCounts.adequate} Healthy
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {towns.length === 0
+            ? <EmptyState framed icon={Building2} title="No facilities in this district" message="Add facilities under this district to start recording stock." />
+            : <FacilityHierarchy towns={towns} />}
         </>
       )}
     </div>

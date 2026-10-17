@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, UserX, UserCheck, ArrowRight, Building2, AlertCircle, AlertTriangle, CheckCircle2, UserPlus } from 'lucide-react'
+import { Plus, Pencil, UserPlus } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFacilities, getDistricts, getUnionCouncils, createFacility, updateFacility, deleteFacility, activateFacility, getDashboard, createUser } from '../../lib/api'
@@ -10,6 +10,11 @@ import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
 import SearchInput from '../../components/shared/SearchInput'
 import Pagination from '../../components/shared/Pagination'
+import FilterChips from '../../components/shared/FilterChips'
+import StatusBadge from '../../components/shared/StatusBadge'
+import ErrorState from '../../components/shared/ErrorState'
+import { STATUS_FILTERS } from '../../components/facilities/facilityTable'
+import { formatDate, plural } from '../../lib/format'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Button from '../../components/ui/Button'
@@ -45,7 +50,7 @@ export default function SuperAdminFacilityManagement() {
   const statusFilter = searchParams.get('filter') ?? 'all'
   function setStatusFilter(val) { setSearchParams(val === 'all' ? {} : { filter: val }); setPage(1) }
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities })
   const { data: districtData }       = useQuery({ queryKey: ['districts'],  queryFn: getDistricts  })
   const { data: ucData }             = useQuery({ queryKey: ['ucs'],         queryFn: () => getUnionCouncils() })
   const { data: dashboardData }      = useQuery({ queryKey: ['dashboard'],  queryFn: getDashboard, staleTime: 15_000 })
@@ -166,218 +171,114 @@ export default function SuperAdminFacilityManagement() {
   function openRename(row)     { setRenaming(row); setRenameValue(row.name); setRenameError('') }
   function openDeactivate(row) { setDeactivateTarget(row); setDeactivateError('') }
 
+  const readOnly = user?.role === 'observer'
+  const openCreateSup = (row) => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }
+  const statusOf = (f) => statusByFacilityId.get(f.id) ?? 'no_data'
+
+  const actions = (row) => !readOnly && (
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      {!row.facilitySupervisorName && row.isActive && (
+        <Button variant="ghost" size="sm" onClick={() => openCreateSup(row)}><UserPlus size={14} strokeWidth={1.75} /> Add supervisor</Button>
+      )}
+      <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={14} strokeWidth={1.75} /> Rename</Button>
+      {row.isActive ? (
+        <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}>Deactivate</Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
+      )}
+    </div>
+  )
+
+  const activeNote = (row) => row.isActive
+    ? (row.lastActivityAt ? `Last active ${formatDate(row.lastActivityAt)}` : 'No activity yet')
+    : (row.deactivatedAt ? `Since ${formatDate(row.deactivatedAt)}` : null)
+
   const columns = [
     {
-      key: 'name',
-      label: 'Facility Name',
+      key: 'name', label: 'Facility',
       render: (row) => (
-        <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-bold text-text hover:text-primary transition-colors flex items-center gap-2">
-          <Building2 size={14} className="text-text-muted/70 flex-shrink-0" />
-          <span>{row.name}</span>
-        </RouterLink>
+        <div className={row.isActive ? '' : 'opacity-60'}>
+          <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-medium text-text hover:text-primary hover:underline">{row.name}</RouterLink>
+          <p className="text-xs text-text-muted">{districtMap[row.districtId] ?? '—'}{row.ucName && ` · ${row.ucName}`}</p>
+        </div>
       ),
     },
+    { key: 'supervisor', label: 'Supervisor', render: (row) => row.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
+    { key: 'stock', label: 'Stock', render: (row) => <StatusBadge status={statusOf(row)} /> },
     {
-      key: 'district',
-      label: 'District / UC',
+      key: 'isActive', label: 'Account',
       render: (row) => (
         <div>
-          <p className="text-xs font-semibold text-text-muted">{districtMap[row.districtId] ?? '—'}</p>
-          {row.ucName && <p className="text-[10px] text-text-muted/70">{row.ucName} · {row.townName ?? ''}</p>}
-        </div>
-      ),
-    },
-    {
-      key: 'supervisor',
-      label: 'Supervisor',
-      render: (row) => (
-        row.facilitySupervisorName ? (
-          <div>
-            <p className="text-xs font-bold text-text">{row.facilitySupervisorName}</p>
-          </div>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted/70 bg-surface-alt border border-surface-border px-2 py-0.5 rounded uppercase tracking-wider">Unstaffed</span>
-        )
-      ),
-    },
-    {
-      key: 'isActive',
-      label: 'Status',
-      render: (row) => (
-        <div className="flex flex-col gap-0.5">
           <Badge type={row.isActive ? 'active' : 'inactive'} />
-          {row.isActive && row.lastActivityAt && (
-            <p className="text-[10px] text-text-muted">
-              Last active {new Date(row.lastActivityAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </p>
-          )}
-          {row.isActive && !row.lastActivityAt && (
-            <p className="text-[10px] text-text-muted italic">No activity yet</p>
-          )}
-          {!row.isActive && row.deactivatedAt && (
-            <p className="text-[10px] text-text-muted">
-              Since {new Date(row.deactivatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </p>
-          )}
+          {activeNote(row) && <p className="text-xs text-text-muted mt-1 whitespace-nowrap">{activeNote(row)}</p>}
         </div>
       ),
     },
-    {
-      key: 'actions',
-      label: '',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <RouterLink
-            to={`/super-admin/facilities/${row.id}`}
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2.5 py-1.5"
-          >
-            View Stock <ArrowRight size={13} strokeWidth={2.2} />
-          </RouterLink>
-          {user?.role !== 'observer' && (<>
-            {!row.facilitySupervisorName && row.isActive && (
-              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}>
-                <UserPlus size={12} /> Create Supervisor
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => openRename(row)}>
-              <Pencil size={12} /> Rename
-            </Button>
-            {row.isActive ? (
-              <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}>
-                <UserX size={12} /> Deactivate
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg"
-                onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-                <UserCheck size={12} /> Activate
-              </Button>
-            )}
-          </>)}
-        </div>
-      ),
-    },
+    ...(readOnly ? [] : [{ key: 'actions', label: '', align: 'right', render: actions }]),
   ]
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-
+    <div>
       <PageHeader
-        breadcrumb="Super Admin › Facility Management"
-        title="Facility Management"
-        subtitle={!isLoading ? `${facilities.length} ${facilities.length === 1 ? 'facility' : 'facilities'} registered across all districts` : 'Loading facilities…'}
-        actions={user?.role !== 'observer' && (
-          <Button onClick={() => { setOpen(true); setFormError('') }}>
-            <Plus size={15} strokeWidth={2.5} /> Add Facility
-          </Button>
+        breadcrumb="Super Admin › Network"
+        title="Facilities"
+        subtitle={isLoading ? undefined : `${plural(facilities.length, 'facility', 'facilities')} across all districts`}
+        actions={!readOnly && (
+          <Button onClick={() => { setOpen(true); setFormError('') }}><Plus size={16} strokeWidth={1.75} /> Add facility</Button>
         )}
       />
 
-      {/* Search + Filter */}
-      {!isLoading && !isError && facilities.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search by name or district…"
-          />
-
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'all',      label: 'All',      count: facilities.length,         activeClass: 'bg-primary text-white border-primary',    icon: null         },
-              { key: 'critical', label: 'Critical',  count: statusCounts.critical,    activeClass: 'bg-danger text-white border-danger',      icon: AlertCircle  },
-              { key: 'low',      label: 'Low',       count: statusCounts.low,         activeClass: 'bg-warning text-white border-warning',    icon: AlertTriangle},
-              { key: 'adequate', label: 'Normal',     count: statusCounts.adequate,   activeClass: 'bg-success text-white border-success',    icon: CheckCircle2 },
-              { key: 'no_data',  label: 'No Data',   count: statusCounts.no_data,    activeClass: 'bg-surface-chip text-text-muted border-surface-border', icon: null         },
-            ].map(({ key, label, count, activeClass, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setStatusFilter(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                  statusFilter === key
-                    ? activeClass
-                    : 'bg-white border-surface-border text-text-muted hover:text-text hover:border-slate-300'
-                }`}
-              >
-                {Icon && <Icon size={11} />}
-                {label}
-                <span className="opacity-75">({count})</span>
-              </button>
-            ))}
+      {isError ? (
+        <ErrorState title="Couldn’t load facilities" error={error} onRetry={refetch} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <SearchInput value={searchQuery} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search facility or district…" />
+            <FilterChips
+              label="Stock status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={STATUS_FILTERS.map((o) => ({ ...o, count: o.value === 'all' ? facilities.length : statusCounts[o.value] }))}
+            />
           </div>
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />)}
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load facilities. Please try refreshing.
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <div className="flex flex-col gap-3">
           <Table
             columns={columns}
             rows={paginated}
-            emptyMessage={searchQuery ? `No facilities match "${searchQuery}".` : 'No facilities registered yet.'}
+            loading={isLoading}
+            emptyMessage={searchQuery ? `No facilities match “${searchQuery}”.` : 'No facilities in this view.'}
             mobileCard={(row) => (
-              <div className="px-4 py-3 hover:bg-surface-alt">
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-bold text-sm text-text hover:text-primary transition-colors flex items-center gap-1.5 min-w-0">
-                    <Building2 size={13} className="text-text-muted/70 flex-shrink-0" />
-                    <span className="truncate">{row.name}</span>
-                  </RouterLink>
-                  <Badge type={row.isActive ? 'active' : 'inactive'} />
+              <div className="px-4 py-3.5 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`min-w-0 ${row.isActive ? '' : 'opacity-60'}`}>
+                    <RouterLink to={`/super-admin/facilities/${row.id}`} className="font-medium text-text truncate block hover:text-primary">{row.name}</RouterLink>
+                    <p className="text-xs text-text-muted truncate">
+                      {[districtMap[row.districtId], row.ucName, row.facilitySupervisorName ?? 'Unstaffed'].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <StatusBadge status={statusOf(row)} />
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-text-muted mt-1 pl-5">
-                  <span>District: {districtMap[row.districtId] ?? '—'}</span>
-                  <span>UC: {row.ucName ?? '—'}</span>
-                  <span>Supervisor: {row.facilitySupervisorName ?? <em>Unstaffed</em>}</span>
-                </div>
-                <div className="flex gap-1.5 flex-wrap mt-2 pl-5">
-                  <RouterLink to={`/super-admin/facilities/${row.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2 py-1">
-                    View Stock <ArrowRight size={11} />
-                  </RouterLink>
-                  {user?.role !== 'observer' && (<>
-                    {!row.facilitySupervisorName && row.isActive && (
-                      <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5" onClick={() => { setCreateSupTarget(row); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}>
-                        <UserPlus size={12} /> Create Supervisor
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => openRename(row)}><Pencil size={12} /> Rename</Button>
-                    {row.isActive ? (
-                      <Button variant="ghost-danger" size="sm" onClick={() => openDeactivate(row)}><UserX size={12} /> Deactivate</Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}><UserCheck size={12} /> Activate</Button>
-                    )}
-                  </>)}
-                </div>
+                {!row.isActive && <div><Badge type="inactive" /></div>}
+                {actions(row)}
               </div>
             )}
           />
-
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
 
       {/* Create modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Create Facility">
+      <Modal open={open} onClose={() => setOpen(false)} title="Add facility">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(form.name)) { setFormError('Names cannot contain < or > characters.'); return } createMutation.mutate() }}>
-          <Input id="fac-name" label="Facility Name" placeholder="e.g. South Health Clinic"
+          <Input id="fac-name" label="Facility name" placeholder="e.g. South Health Clinic"
             value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormError('') }} required />
           <Select id="fac-district" label="District" options={districtOptions}
             placeholder="Select a district…"
             value={form.districtId} onChange={(e) => { setForm({ ...form, districtId: e.target.value, ucId: '' }); setFormError('') }} required />
-          <Select id="fac-uc" label="Union Council" options={filteredUCOptions}
+          <Select id="fac-uc" label="Union council" options={filteredUCOptions}
             placeholder={form.districtId ? 'Select a UC…' : 'Select district first…'}
             value={form.ucId} onChange={(e) => { setForm({ ...form, ucId: e.target.value }); setFormError('') }} required />
-          {formError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{formError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {formError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{formError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending || !form.ucId}>
               {createMutation.isPending ? 'Creating…' : 'Create'}
@@ -387,12 +288,12 @@ export default function SuperAdminFacilityManagement() {
       </Modal>
 
       {/* Rename modal */}
-      <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename — ${renaming?.name ?? ''}`}>
+      <Modal open={!!renaming} onClose={() => setRenaming(null)} title={`Rename ${renaming?.name ?? ''}`}>
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
-          <Input id="rename-facility" label="Facility Name"
+          <Input id="rename-facility" label="Facility name"
             value={renameValue} onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }} required />
-          {renameError && <p className="text-xs text-danger">{renameError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {renameError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{renameError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
             <Button type="submit" disabled={renameMutation.isPending}>{renameMutation.isPending ? 'Saving…' : 'Save'}</Button>
           </div>
@@ -403,8 +304,8 @@ export default function SuperAdminFacilityManagement() {
         open={!!deactivateTarget}
         onClose={() => setDeactivateTarget(null)}
         onConfirm={() => deactivateMutation.mutate(deactivateTarget.id)}
-        title="Deactivate Facility"
-        message={<p className="text-sm text-text">Deactivate <span className="font-bold">{deactivateTarget?.name}</span>? Supervisors and staff will not be able to log stock until reactivated.</p>}
+        title="Deactivate facility?"
+        message={<p className="text-sm text-text">Deactivate <span className="font-medium">{deactivateTarget?.name}</span>? Supervisors and staff will not be able to log stock until reactivated.</p>}
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
         error={deactivateError}
@@ -414,7 +315,7 @@ export default function SuperAdminFacilityManagement() {
       <Modal
         open={!!createSupTarget}
         onClose={() => { setCreateSupTarget(null); setCreateSupForm(EMPTY_FAC_SUP_FORM); setCreateSupError('') }}
-        title={`Create Facility Supervisor — ${createSupTarget?.name ?? ''}`}
+        title={`Add supervisor for ${createSupTarget?.name ?? ''}`}
       >
         <form
           className="flex flex-col gap-4"
@@ -428,26 +329,26 @@ export default function SuperAdminFacilityManagement() {
           }}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input id="fsup-fn" label="First Name" placeholder="Jane"
+            <Input id="fsup-fn" label="First name" placeholder="Jane"
               value={createSupForm.firstName} onChange={(e) => setCreateSupForm({ ...createSupForm, firstName: e.target.value })} required />
-            <Input id="fsup-ln" label="Last Name" placeholder="Doe"
+            <Input id="fsup-ln" label="Last name" placeholder="Doe"
               value={createSupForm.lastName} onChange={(e) => setCreateSupForm({ ...createSupForm, lastName: e.target.value })} required />
           </div>
-          <Input id="fsup-zmid" label="ZMID (Organization ID)" placeholder="e.g. Z-1001"
+          <Input id="fsup-zmid" label="ZMID (organisation ID)" placeholder="e.g. Z-1001"
             value={createSupForm.zmid} onChange={(e) => setCreateSupForm({ ...createSupForm, zmid: e.target.value })} required />
           <Input id="fsup-email" label="Email" type="email" placeholder="supervisor@akuh.org"
             value={createSupForm.email} onChange={(e) => { setCreateSupForm({ ...createSupForm, email: e.target.value }); setCreateSupError('') }} required />
-          <Input id="fsup-pw" label="Password (min 8 chars)" type="password" minLength={8}
+          <Input id="fsup-pw" label="Password (at least 8 characters)" type="password" minLength={8}
             value={createSupForm.password} onChange={(e) => setCreateSupForm({ ...createSupForm, password: e.target.value })} required />
           <Input id="fsup-phone" label="Phone (optional)" placeholder="e.g. 03001234567"
             value={createSupForm.phone} onChange={(e) => setCreateSupForm({ ...createSupForm, phone: e.target.value })} />
           <Input id="fsup-cnic" label="CNIC (optional)" placeholder="e.g. 12345-1234567-1"
             value={createSupForm.cnic} onChange={(e) => setCreateSupForm({ ...createSupForm, cnic: e.target.value })} />
-          {createSupError && <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">{createSupError}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          {createSupError && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{createSupError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => { setCreateSupTarget(null); setCreateSupForm(EMPTY_FAC_SUP_FORM) }}>Cancel</Button>
             <Button type="submit" disabled={createSupMutation.isPending}>
-              {createSupMutation.isPending ? 'Creating…' : 'Create Supervisor'}
+              {createSupMutation.isPending ? 'Creating…' : 'Create supervisor'}
             </Button>
           </div>
         </form>

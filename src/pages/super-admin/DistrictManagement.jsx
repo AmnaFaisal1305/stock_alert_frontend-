@@ -1,9 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import {
-  Plus, Pencil, Map as MapIcon,
-  ChevronDown, Building2, User, Loader2, MapPin,
-} from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Plus, Pencil, ChevronDown, Building2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getDistricts, getDistrict, getDashboard,
@@ -19,156 +16,36 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Toast from '../../components/ui/Toast'
-import StatusBadge from '../../components/shared/StatusBadge'
 import PageHeader from '../../components/shared/PageHeader'
-import { facilityStatus, districtStatus, statusConfig, FILTERS } from '../../lib/status'
+import Card from '../../components/shared/Card'
+import FilterChips from '../../components/shared/FilterChips'
+import EmptyState from '../../components/shared/EmptyState'
+import ErrorState from '../../components/shared/ErrorState'
+import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import { facilityStatus, districtStatus, FILTERS } from '../../lib/status'
+import { formatDate } from '../../lib/format'
+import { groupByTownUc, FacilityHierarchy } from './DistrictDetail'
+
+const FILTER_STATUS = { Critical: 'critical', Low: 'low', Normal: 'adequate' }
+const ROW_GRID = 'sm:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.7fr)_auto]'
 
 // ── Inline expanded panel — Town → UC → Facility hierarchy ──────────────────
 function DistrictExpandedPanel({ districtId }) {
-  const { data: districtData, isLoading, isError } = useQuery({
+  const { data: districtData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['district', districtId],
     queryFn: () => getDistrict(districtId),
   })
 
-  if (isLoading) {
-    return (
-      <div className="border-t border-primary/10 bg-surface-alt px-8 py-5 flex items-center gap-2 text-text-muted text-sm">
-        <Loader2 size={14} className="animate-spin flex-shrink-0" />
-        Loading hierarchy…
-      </div>
-    )
-  }
+  if (isLoading) return <div className="border-t border-surface-border"><SkeletonRows rows={3} /></div>
+  if (isError) return <div className="border-t border-surface-border p-4"><ErrorState title="Couldn’t load district details" error={error} onRetry={refetch} /></div>
 
-  if (isError) {
-    return (
-      <div className="border-t border-primary/10 bg-surface-alt px-8 py-4 text-xs font-semibold text-danger">
-        Failed to load district details.
-      </div>
-    )
-  }
-
-  // district.facilities now includes ucId/ucName/townId/townName (Round 23) — no second call needed
   const facilities = districtData?.district?.facilities ?? []
-
-  const townMap = new Map()
-  for (const f of facilities) {
-    const townKey = f.townId ?? '__none__'
-    if (!townMap.has(townKey)) townMap.set(townKey, { id: townKey, name: f.townName ?? '—', ucs: new Map() })
-    const town = townMap.get(townKey)
-    const ucKey = f.ucId ?? '__none__'
-    if (!town.ucs.has(ucKey)) town.ucs.set(ucKey, { id: ucKey, name: f.ucName ?? '—', facilities: [] })
-    town.ucs.get(ucKey).facilities.push(f)
-  }
-
-  const towns = Array.from(townMap.values())
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((town) => ({
-      ...town,
-      ucs: Array.from(town.ucs.values())
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((uc) => ({ ...uc, facilities: [...uc.facilities].sort((a, b) => a.name.localeCompare(b.name)) })),
-    }))
-
   if (facilities.length === 0) {
-    return (
-      <div className="border-t border-primary/10 bg-surface-alt/80 px-8 py-5 flex items-center gap-3 text-text-muted">
-        <Building2 size={16} className="opacity-30 flex-shrink-0" />
-        <p className="text-sm font-medium">No facilities registered under this district.</p>
-      </div>
-    )
+    return <EmptyState className="border-t border-surface-border" icon={Building2} title="No facilities in this district yet" />
   }
-
   return (
-    <div className="border-t border-primary/10 bg-surface-alt/80 px-8 py-6 flex flex-col gap-7">
-      {towns.map((town) => (
-        <div key={town.id} className="flex flex-col gap-3">
-
-          {/* ── Town row ── */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-primary text-white uppercase tracking-widest flex-shrink-0">
-              Town
-            </span>
-            <MapPin size={12} className="text-primary flex-shrink-0" />
-            <span className="text-sm font-bold text-text">{town.name}</span>
-          </div>
-
-          {/* ── UCs under this town ── */}
-          <div className="flex flex-col gap-3 pl-5">
-            {town.ucs.map((uc) => (
-              <div key={uc.id} className="bg-surface rounded-xl border border-surface-border overflow-hidden shadow-sm">
-
-                {/* UC header bar */}
-                <div className="flex items-center gap-2.5 px-4 py-2.5 bg-surface-alt border-b border-surface-border">
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-surface-chip text-text-muted uppercase tracking-widest flex-shrink-0">
-                    UC
-                  </span>
-                  <span className="text-xs font-bold text-text">{uc.name}</span>
-                  <span className="ml-auto text-[10px] font-semibold text-text-muted">
-                    {uc.facilities.length} {uc.facilities.length === 1 ? 'facility' : 'facilities'}
-                  </span>
-                </div>
-
-                {/* Facility cards inside the UC box */}
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {uc.facilities.map((f) => {
-                    const fStatus = facilityStatus(f.statusCounts)
-                    const cfg     = statusConfig(fStatus)
-                    const sc      = f.statusCounts ?? {}
-                    const hasAny  = sc.critical > 0 || sc.low > 0 || sc.adequate > 0 || sc.no_data > 0
-
-                    return (
-                      <Link
-                        key={f.id}
-                        to={`/super-admin/facilities/${f.id}`}
-                        className={`group bg-surface-alt rounded-lg border border-surface-border border-l-4 ${cfg.borderL} p-3.5 flex flex-col gap-2.5 hover:bg-surface hover:shadow-md transition-all duration-200`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className={`p-1.5 rounded-md flex-shrink-0 ${cfg.bg}`}>
-                              <Building2 size={13} className={cfg.text} strokeWidth={2.2} />
-                            </div>
-                            <p className="font-bold text-sm text-text truncate group-hover:text-primary transition-colors" title={f.name}>
-                              {f.name}
-                            </p>
-                          </div>
-                          <StatusBadge status={fStatus} />
-                        </div>
-
-                        <p className={`text-xs truncate pl-0.5 ${f.facilitySupervisorName ? 'text-text-muted font-medium' : 'text-text-muted italic'}`}>
-                          {f.facilitySupervisorName ?? 'Unstaffed'}
-                        </p>
-
-                        <div className="flex flex-wrap gap-1 pt-2 border-t border-surface-border">
-                          {sc.critical > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger-bg text-danger border border-danger/10 tabular-nums">
-                              {sc.critical} Critical
-                            </span>
-                          )}
-                          {sc.low > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning-bg text-warning-dark border border-warning/10 tabular-nums">
-                              {sc.low} Low
-                            </span>
-                          )}
-                          {sc.adequate > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success-bg text-success-dark border border-success/10 tabular-nums">
-                              {sc.adequate} Normal
-                            </span>
-                          )}
-                          {!hasAny && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-alt text-text-muted border border-surface-border">
-                              No Data
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="border-t border-surface-border bg-surface-alt px-4 sm:px-5 py-5">
+      <FacilityHierarchy towns={groupByTownUc(facilities)} />
     </div>
   )
 }
@@ -200,7 +77,7 @@ export default function DistrictManagement() {
   const statusFilterIndex = Math.max(0, FILTERS.findIndex((f) => f.label === activeFilterLabel))
   function setStatusFilter(label) { setSearchParams(label === 'All' ? {} : { filter: label }); setPage(1) }
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['districts'],
     queryFn: getDistricts,
   })
@@ -301,225 +178,118 @@ export default function DistrictManagement() {
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
-  return (
-    <div className="animate-in fade-in duration-200">
+  const isObserver = user?.role === 'observer'
+  const rowActions = (row) => !isObserver && (
+    <>
+      <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
+        <Pencil size={14} strokeWidth={1.75} /> Rename
+      </Button>
+      {row.isActive ? (
+        <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
+      )}
+    </>
+  )
 
+  return (
+    <div>
       <PageHeader
-        breadcrumb="Super Admin › Districts"
-        title="District Management"
-        subtitle={!isLoading
-          ? `${districts.length} ${districts.length === 1 ? 'district' : 'districts'} registered under system`
-          : 'Loading districts list…'}
-        actions={user?.role !== 'observer' && (
+        breadcrumb="Super Admin › Network"
+        title="Districts"
+        subtitle={isLoading ? undefined : `${districts.length} ${districts.length === 1 ? 'district' : 'districts'} in the system`}
+        actions={!isObserver && (
           <Button onClick={() => setOpen(true)}>
-            <Plus size={15} strokeWidth={2.5} /> Add District
+            <Plus size={16} strokeWidth={1.75} /> Add district
           </Button>
         )}
       />
 
-      <div className="flex flex-col gap-6">
+      {isError ? (
+        <ErrorState title="Couldn’t load districts" error={error} onRetry={refetch} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {districts.length > 0 && (
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                placeholder="Search district by name…"
+              />
+              <FilterChips
+                label="District status"
+                value={FILTERS[statusFilterIndex].label}
+                onChange={setStatusFilter}
+                options={FILTERS.map((f, i) => ({ value: f.label, label: f.label, status: FILTER_STATUS[f.label], count: filterCounts[i] }))}
+              />
+            </div>
+          )}
 
-      {/* ── Search + Status filters ──────────────────────────────────── */}
-      {!isLoading && !isError && districts.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search district by name…"
-          />
-          <div className="flex items-center gap-1.5 bg-surface border border-surface-border rounded-xl p-1 shadow-sm">
-            {FILTERS.map((f, i) => {
-              const active = statusFilterIndex === i
-              const colorClass =
-                f.label === 'Critical' ? (active ? 'bg-danger text-white' : 'text-danger hover:bg-danger/5') :
-                f.label === 'Low'      ? (active ? 'bg-warning text-white' : 'text-warning-dark hover:bg-warning/5') :
-                f.label === 'Normal'       ? (active ? 'bg-success text-white' : 'text-success-dark hover:bg-success/5') :
-                (active ? 'bg-primary text-white' : 'text-text-muted hover:bg-surface-alt')
-              const badgeClass =
-                f.label === 'Critical' ? (active ? 'bg-surface/20 text-white' : 'bg-danger/10 text-danger') :
-                f.label === 'Low'      ? (active ? 'bg-surface/20 text-white' : 'bg-warning/10 text-warning-dark') :
-                f.label === 'Normal'       ? (active ? 'bg-surface/20 text-white' : 'bg-success/10 text-success-dark') :
-                (active ? 'bg-surface/20 text-white' : 'bg-surface-chip text-text-muted')
-              return (
-                <button
-                  key={f.label}
-                  onClick={() => setStatusFilter(f.label)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ${colorClass}`}
-                >
-                  {f.label}
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tabular-nums ${badgeClass}`}>
-                    {filterCounts[i]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Loading skeleton ─────────────────────────────────────────── */}
-      {isLoading && (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 bg-surface-alt border border-surface-border rounded-xl animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {isError && (
-        <div className="bg-danger-bg border border-danger/10 text-xs font-semibold text-danger rounded-xl px-4 py-3">
-          Failed to load districts. Please try refreshing.
-        </div>
-      )}
-
-      {/* ── Districts table ──────────────────────────────────────────── */}
-      {!isLoading && !isError && (
-        <div className="flex flex-col gap-3">
-          <div className="bg-surface rounded-2xl border border-surface-border overflow-hidden shadow-sm">
-
-            {/* Column headers — desktop only */}
-            <div className="hidden sm:grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-3.5 bg-surface-alt border-b border-surface-border gap-6 items-center">
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Name</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">District Supervisor</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Supervisor Email</span>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-right pr-10">Actions</span>
+          <Card padding={false}>
+            <div className={`hidden sm:grid ${ROW_GRID} gap-6 px-5 py-3 border-b border-surface-border text-xs font-medium text-text-muted`}>
+              <span>District</span>
+              <span>Supervisor</span>
+              <span>Supervisor email</span>
+              <span className="sr-only">Actions</span>
             </div>
 
-            {paginated.length === 0 && (
-              <div className="px-6 py-10 text-center text-sm text-text-muted">
+            {isLoading ? (
+              <SkeletonRows rows={4} />
+            ) : paginated.length === 0 ? (
+              <p className="px-6 py-12 text-center text-sm text-text-muted">
                 {searchQuery || statusFilterIndex !== 0
-                  ? `No districts match${searchQuery ? ` "${searchQuery}"` : ''}${statusFilterIndex !== 0 ? ` with status "${activeFilterLabel}"` : ''}.`
+                  ? `No districts match${searchQuery ? ` “${searchQuery}”` : ''}${statusFilterIndex !== 0 ? ` with status “${activeFilterLabel}”` : ''}.`
                   : 'No districts registered yet.'}
-              </div>
-            )}
-
-            {/* Data rows */}
-            {paginated.map((row) => {
-              const isExpanded = expandedId === row.id
-              return (
-                <div key={row.id} className="border-b border-surface-border last:border-b-0">
-
-                  {/* ── Mobile card ── */}
-                  <div className={['sm:hidden px-4 py-3 flex flex-col gap-2 transition-colors duration-150', isExpanded ? 'bg-primary/[0.04]' : ''].join(' ')}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-text text-sm truncate">{row.name}</p>
-                            <Badge type={row.isActive ? 'active' : 'inactive'} />
-                          </div>
-                          <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                            {row.province ?? 'Sindh'} · {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-0.5 text-xs text-text-muted pl-5">
-                      <span>Supervisor: <span className={row.supervisorName ? 'font-semibold text-text' : 'italic'}>{row.supervisorName ?? '—'}</span></span>
-                      <span className="truncate">Email: <span className={row.supervisorEmail ? 'text-text' : 'italic'}>{row.supervisorEmail ?? '—'}</span></span>
-                    </div>
-                    <div className="flex items-center gap-1 flex-wrap pl-5 pt-0.5">
-                      <button onClick={() => toggleExpand(row.id)} className={['inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150', isExpanded ? 'bg-primary text-white' : 'text-primary hover:bg-primary/5'].join(' ')}>
-                        <ChevronDown size={13} strokeWidth={2.5} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                        {isExpanded ? 'Collapse' : 'View Details'}
-                      </button>
-                      {user?.role !== 'observer' && (<>
-                        <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
-                          <Pencil size={12} /> Rename
-                        </Button>
-                        {row.isActive ? (
-                          <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>Deactivate</Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>Activate</Button>
-                        )}
-                      </>)}
-                    </div>
-                  </div>
-
-                  {/* ── Desktop row ── */}
-                  <div className={[
-                    'hidden sm:grid grid-cols-[2.5fr_1.4fr_2fr_300px] px-6 py-4 gap-6 items-center transition-colors duration-150',
-                    isExpanded ? 'bg-primary/[0.04]' : 'hover:bg-surface-alt/60',
-                  ].join(' ')}>
-
-                    {/* District name + active badge + date */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <MapIcon size={14} className="text-text-muted/60 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-text text-sm truncate">{row.name}</p>
-                          <Badge type={row.isActive ? 'active' : 'inactive'} />
-                        </div>
-                        <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                          {row.province ?? 'Sindh'} · {new Date(row.createdAt).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
+              </p>
+            ) : (
+              <ul className="divide-y divide-surface-border">
+                {paginated.map((row) => {
+                  const isExpanded = expandedId === row.id
+                  const panelId = `district-panel-${row.id}`
+                  return (
+                    <li key={row.id}>
+                      <div className={`px-4 sm:px-5 py-3.5 grid gap-2 ${ROW_GRID} sm:gap-6 sm:items-center`}>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(row.id)}
+                          aria-expanded={isExpanded}
+                          aria-controls={panelId}
+                          className="flex items-start gap-2 text-left min-w-0 group"
+                        >
+                          <ChevronDown size={16} strokeWidth={1.75} className={`mt-0.5 flex-shrink-0 text-text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-text group-hover:text-primary truncate">{row.name}</span>
+                              <Badge type={row.isActive ? 'active' : 'inactive'} />
+                            </span>
+                            <span className="block text-xs text-text-muted mt-0.5">{row.province ?? 'Sindh'} · added {formatDate(row.createdAt)}</span>
+                          </span>
+                        </button>
+                        <p className="text-sm text-text truncate pl-6 sm:pl-0">
+                          <span className="sm:hidden text-text-muted">Supervisor: </span>
+                          {row.supervisorName ?? <span className="text-text-muted">—</span>}
                         </p>
+                        <p className="text-sm text-text truncate pl-6 sm:pl-0">{row.supervisorEmail ?? <span className="text-text-muted">—</span>}</p>
+                        <div className="flex items-center gap-1 sm:justify-end pl-4 sm:pl-0">{rowActions(row)}</div>
                       </div>
-                    </div>
-
-                    <span className={`text-sm truncate ${row.supervisorName ? 'text-text font-medium' : 'text-text-muted italic'}`}>
-                      {row.supervisorName ?? '—'}
-                    </span>
-
-                    <span className={`text-sm truncate ${row.supervisorEmail ? 'text-text' : 'text-text-muted italic'}`}>
-                      {row.supervisorEmail ?? '—'}
-                    </span>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => toggleExpand(row.id)}
-                        className={[
-                          'inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150',
-                          isExpanded
-                            ? 'bg-primary text-white'
-                            : 'text-primary hover:bg-primary/5',
-                        ].join(' ')}
-                      >
-                        <ChevronDown
-                          size={13}
-                          strokeWidth={2.5}
-                          className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                        />
-                        {isExpanded ? 'Collapse' : 'View Details'}
-                      </button>
-
-                      {user?.role !== 'observer' && (<>
-                        <Button variant="ghost" size="sm" onClick={() => { setRenaming(row); setRenameValue(row.name); setRenameError('') }}>
-                          <Pencil size={12} /> Rename
-                        </Button>
-                        {row.isActive ? (
-                          <Button variant="ghost-danger" size="sm" onClick={() => { setDeactivateTarget(row); setDeactivateError('') }}>
-                            Deactivate
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="text-success-dark hover:bg-success-bg" onClick={() => activateMutation.mutate(row.id)} disabled={activateMutation.isPending}>
-                            Activate
-                          </Button>
-                        )}
-                      </>)}
-                    </div>
-                  </div>
-
-                  {/* Inline expanded facilities panel */}
-                  {isExpanded && <DistrictExpandedPanel districtId={row.id} />}
-                </div>
-              )
-            })}
-          </div>
+                      {isExpanded && <div id={panelId}><DistrictExpandedPanel districtId={row.id} /></div>}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </Card>
 
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
 
       {/* ── Create modal ─────────────────────────────────────────────── */}
-      <Modal open={open} onClose={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }} title="Create District">
+      <Modal open={open} onClose={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }} title="Add district">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(name)) { setFormError('Names cannot contain < or > characters.'); return } mutation.mutate() }}>
           <Input
             id="district-name"
-            label="District Name"
+            label="District name"
             placeholder="e.g. South District"
             value={name}
             onChange={(e) => { setName(e.target.value); setFormError('') }}
@@ -533,14 +303,12 @@ export default function DistrictManagement() {
             onChange={(e) => { setProvince(e.target.value); setFormError('') }}
           />
           {formError && (
-            <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">
-              {formError}
-            </p>
+            <p role="alert" className="text-sm text-danger-dark">{formError}</p>
           )}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => { setOpen(false); setName(''); setProvince(''); setFormError('') }}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Creating…' : 'Create'}
+              {mutation.isPending ? 'Creating…' : 'Create district'}
             </Button>
           </div>
         </form>
@@ -551,17 +319,15 @@ export default function DistrictManagement() {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (/[<>]/.test(renameValue)) { setRenameError('Names cannot contain < or > characters.'); return } renameMutation.mutate() }}>
           <Input
             id="rename-district"
-            label="District Name"
+            label="District name"
             value={renameValue}
             onChange={(e) => { setRenameValue(e.target.value); setRenameError('') }}
             required
           />
           {renameError && (
-            <p className="text-xs text-danger bg-danger-bg border border-danger/10 px-3 py-2 rounded-lg">
-              {renameError}
-            </p>
+            <p role="alert" className="text-sm text-danger-dark">{renameError}</p>
           )}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
             <Button type="submit" disabled={renameMutation.isPending}>
               {renameMutation.isPending ? 'Saving…' : 'Save'}
@@ -574,15 +340,14 @@ export default function DistrictManagement() {
         open={!!deactivateTarget}
         onClose={() => setDeactivateTarget(null)}
         onConfirm={() => deactivateMutation.mutate(deactivateTarget.id)}
-        title="Deactivate District"
-        message={<p className="text-sm text-text">Deactivate <span className="font-bold">{deactivateTarget?.name}</span>? Facility supervisors and staff under this district will be blocked until reactivated.</p>}
+        title="Deactivate district?"
+        message={`Deactivate ${deactivateTarget?.name ?? 'this district'}? Facility supervisors and staff under it will be blocked until it is activated again.`}
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
         error={deactivateError}
       />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </div>
     </div>
   )
 }
