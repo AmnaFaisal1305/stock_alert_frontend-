@@ -1,6 +1,8 @@
 # Backend Requests — Frontend → Backend
 
-Updated 2026-10-18 · Frontend branch `feature/ui-enhancements` (merged with `main`)
+Updated 2026-10-18 · Frontend branch `main`
+
+**Our answers to your `FRONTEND_PENDING.md` are at the end of this file.**
 
 One list of everything the frontend needs from the backend. It replaces the earlier `BACKEND_REQUESTS.md` (items 1–4, all answered in Round 35), `BACKEND_FIXES.md` (all 7 answered in Round 34) and `BACKEND_CHANGES.md`.
 
@@ -90,6 +92,31 @@ One list of everything the frontend needs from the backend. It replaces the earl
 - **Screen:** super admin › Users, if multi-select is added.
 - **Proposed contract:** `PUT /api/users/bulk-status` `{ ids: [uuid], active: boolean }` → `{ updated: [id], failed: [{ id, error }] }`, one audit row per user.
 - **Fallback:** one request per user.
+
+---
+
+## Answers to `FRONTEND_PENDING.md` (2026-10-18)
+
+### A. Your questions
+- **A1 EPI Form B shape: confirmed, keep it.** We address rows by `key`, read column B as `b` on each row, and render whatever rows the catalog returns (no fixed list of 14).
+- **A2 New-tab 401: no repro yet.** A new tab restores the login through `GET /api/auth/session`. If it happens again we'll send the network-tab details you asked for.
+- **A3 Breaking rounds: all built.** Round 25 (assign / day-end ledger), 26 (approvals with `decisionReason`, thresholds), 27 (stock requests: raise → sent → received → approve / cancel / decline; the old receive form is gone) and 32 (`partially_fulfilled`, including closing short). You can remove the compatibility paths. Caveat: no full write flow has been run end to end against production yet.
+
+### B. Fixes you listed
+| # | Status |
+|---|---|
+| B1 Push paths, unsubscribe before logout | Done. `503` shows "push not configured"; logout removes the subscription first. Delivery to a real device (including iPhone home-screen) **not tested yet**. |
+| B2 Drop `rejectionReason` | Done. Only `decisionReason` / `decidedAt` are used. |
+| B3 Audit Log server filters | Done (Round 35): filters, `before` cursor, `counts=true` tab badges. |
+| B4 `facilityName` / `ucName` | `facilityName` is in the sidebar scope line; `ucName` not shown yet (frontend follow-up). |
+| B5 `statusCounts` unit | Done. Facility status is still derived with `facilityStatus()`. |
+| B6 Form B rules | Done: rows by `key`, `b` read-only and printed as returned, digits only up to 9 characters, current and previous month only. |
+| B7 `503` retryable, CSRF `403` | Done. Only `401` logs out; a CSRF `403` refreshes `/session` and retries once. |
+| B8 Route guards | **Not done yet.** Next on the frontend list. |
+
+### C and D
+- Offline queue: a new `clientRef` per submit, dates limited to 3 days back, replay stops on `401` and resumes after re-login. Excel/PDF exports are built in the browser. Units are vials.
+- No demo logins or demo data are hard-coded; the go-live wipe needs no frontend change.
 
 ---
 
