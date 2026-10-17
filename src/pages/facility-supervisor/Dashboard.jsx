@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, AlertTriangle, ArrowRight, Syringe } from 'lucide-react'
-import { getDashboard, getAuditLog, getVaccines } from '../../lib/api'
+import { getDashboard, getVaccines } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
-import Card, { CardHeader } from '../../components/shared/Card'
+import Card from '../../components/shared/Card'
 import StatCard from '../../components/shared/StatCard'
 import StatusBadge from '../../components/shared/StatusBadge'
 import Table from '../../components/shared/Table'
@@ -65,35 +65,6 @@ function StockAlert({ critical, low, canAct }) {
   )
 }
 
-function RecentUsage({ logs, nameById }) {
-  const entries = logs.filter((l) => l.actorRole === 'facility_worker' && l.details?.entryType === 'used')
-  return (
-    <Card padding={false} className="self-start 2xl:sticky 2xl:top-0">
-      <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-surface-border">
-        <CardHeader
-          title="Recent usage"
-          description="Doses recorded by workers"
-          action={<Link to="/facility/audit-log" className="text-sm text-primary font-medium hover:underline">Full log</Link>}
-        />
-      </div>
-      {entries.length === 0 ? (
-        <EmptyState title="No usage recorded yet" message="Worker dose usage will show here as it’s recorded." />
-      ) : (
-        <ul className="divide-y divide-surface-border">
-          {entries.map((e, i) => (
-            <li key={e.id ?? i} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text truncate">{e.actorName ?? '—'}</p>
-                <p className="text-xs text-text-muted truncate">{nameById[e.details?.vaccineId] ?? '—'} · {timeAgo(e.createdAt)}</p>
-              </div>
-              <p className="text-sm tabular-nums text-text flex-shrink-0">−{e.details?.quantity ?? '—'} <span className="text-xs text-text-muted">doses</span></p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  )
-}
 
 export default function FacilityDashboard() {
   const { user } = useAuth()
@@ -107,7 +78,6 @@ export default function FacilityDashboard() {
     staleTime: 10_000,
   })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
-  const { data: auditData } = useQuery({ queryKey: ['audit-log', 'usage', 10], queryFn: () => getAuditLog({ limit: 10, feed: 'usage' }) })
 
   const { rows, counts, nameById, facilityName, districtName, critical, low } = useMemo(() => {
     const rows = (data?.facilities ?? [])
@@ -203,36 +173,33 @@ export default function FacilityDashboard() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
-            <section aria-labelledby="stock-heading" className="min-w-0">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <h2 id="stock-heading" className="text-base font-semibold text-text">
-                  {filter ? `${statusConfig(filter).label} vaccines` : 'Vaccine stock'}
-                  <span className="ml-2 text-sm font-normal text-text-muted">{plural(visible.length, 'vaccine')}</span>
-                </h2>
-                {filter && <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>Show all</Button>}
-              </div>
-              <Table
-                columns={columns}
-                rows={visible}
-                rowKey={(r) => r.vaccineId}
-                emptyMessage="No vaccines in this status."
-                mobileCard={(r) => (
-                  <div className="px-4 py-3.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(r.vaccineName)}</p>
-                      <p className="text-sm tabular-nums text-text flex-shrink-0">{r.quantity ?? '—'} <span className="text-xs text-text-muted">doses</span></p>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 mt-1.5">
-                      <StatusBadge status={r.status} />
-                      <p className="text-xs text-text-muted">{r.recordedAt ? `Recorded ${timeAgo(r.recordedAt)}` : 'Never recorded'}</p>
-                    </div>
+          <section aria-labelledby="stock-heading">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 id="stock-heading" className="text-base font-semibold text-text">
+                {filter ? `${statusConfig(filter).label} vaccines` : 'Vaccine stock'}
+                <span className="ml-2 text-sm font-normal text-text-muted">{plural(visible.length, 'vaccine')}</span>
+              </h2>
+              {filter && <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>Show all</Button>}
+            </div>
+            <Table
+              columns={columns}
+              rows={visible}
+              rowKey={(r) => r.vaccineId}
+              emptyMessage="No vaccines in this status."
+              mobileCard={(r) => (
+                <div className="px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(r.vaccineName)}</p>
+                    <p className="text-sm tabular-nums text-text flex-shrink-0">{r.quantity ?? '—'} <span className="text-xs text-text-muted">doses</span></p>
                   </div>
-                )}
-              />
-            </section>
-            <RecentUsage logs={auditData?.auditLog ?? []} nameById={nameById} />
-          </div>
+                  <div className="flex items-center justify-between gap-3 mt-1.5">
+                    <StatusBadge status={r.status} />
+                    <p className="text-xs text-text-muted">{r.recordedAt ? `Recorded ${timeAgo(r.recordedAt)}` : 'Never recorded'}</p>
+                  </div>
+                </div>
+              )}
+            />
+          </section>
         </>
       )}
     </div>
