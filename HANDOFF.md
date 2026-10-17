@@ -23,6 +23,9 @@ Branch `feature/ui-enhancements` (not merged). Plan: `docs/PLAN_UI_ENHANCEMENTS.
 - **Stock Register shows negative balances** for facilities whose stock arrives via stock requests: it only counts `STOCK_ENTRY`/`ADJUST_STOCK`/`STOCK_DAY_END`, not `STOCK_REQUEST_RECEIVED`/`STOCK_ASSIGN`. Pre-existing; unchanged by this session.
 - Not tested: any confirm/submit against the live backend (dialogs opened and dismissed only); super-admin write actions (admin password in the old notes is wrong; checked as observer); mobile Safari.
 - Dev server must be restarted after `tailwind.config.js` changes or new colour classes don't appear.
+- Audit Log: a "Stock request cancelled" row shows its vaccines only if the matching `STOCK_REQUEST_CREATE` row is on the same 15-row page (`buildContext` now sees one page). Clicking "Request #" still shows the full chain.
+- `.impeccable/design.json` is stale until `/impeccable document` is run; impeccable critiques will flag category colours and KPI tiles until then. `design-system-font-size 18px` is suppressed for `TopBar.jsx` only (emoji bell).
+- Browser-checked in session 14 (open → Go back, no writes): Assign Vials, Day End, raise request, record received (with calendar), UC record sent, head approve, Form B save; grids for admin (as observer), UC users, workers; shell for all roles incl. worker at 390px.
 
 ---
 
