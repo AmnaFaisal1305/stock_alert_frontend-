@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, LabelList,
+  ResponsiveContainer, LabelList, Cell,
 } from 'recharts'
 import { FileSpreadsheet, FileText, BarChart2 } from 'lucide-react'
 import { getAnalytics } from '../../lib/api'
@@ -84,6 +84,18 @@ function ChartTooltip({ active, payload, label, nameKey }) {
   )
 }
 
+function WastageTooltip({ active, payload, label, nameKey }) {
+  if (!active || !payload?.length) return null
+  const title = nameKey ? (payload[0]?.payload?.[nameKey] ?? label) : label
+  const rate = payload[0]?.value ?? 0
+  return (
+    <div className="bg-surface border border-surface-border rounded-control shadow-float px-3.5 py-2.5 text-xs min-w-[160px]">
+      <p className="font-semibold text-text mb-1.5 leading-tight break-words">{title}</p>
+      <p className="text-text-muted">Waste rate: <span className="font-medium text-text">{rate}%</span></p>
+    </div>
+  )
+}
+
 function SeriesLegend({ items }) {
   return (
     <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted">
@@ -111,10 +123,9 @@ function EmptyChart({ message = 'No data for this period' }) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'movement',  label: 'Movement'          },
-  { id: 'remaining', label: 'Remaining stock'   },
-  { id: 'requests',  label: 'Requests'          },
-  { id: 'approvals', label: 'Pending approvals' },
+  { id: 'stockSummary', label: 'Stock Summary'  },
+  { id: 'requests',     label: 'Stock Requests' },
+  { id: 'approvals',    label: 'Approvals'      },
 ]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -123,7 +134,7 @@ export default function Analytics() {
   const t = useChartTheme()
   const [from, setFrom]             = useState(defaultFrom)
   const [to, setTo]                 = useState(() => localDateStr())
-  const [activeTab, setTab]         = useState('movement')
+  const [activeTab, setTab]         = useState('stockSummary')
   const [exporting, setExporting]   = useState(null)
   const [exportError, setExportError] = useState('')
 
@@ -137,10 +148,9 @@ export default function Analytics() {
   const requests         = data?.requests        ?? []
   const pendingApprovals = data?.pendingApprovals ?? []
 
-  // Non-status series take the forest/neutral ramp; request statuses take status hues.
   const C = {
     received:   t.series[0],
-    used:       t.series[1],
+    dosesGiven: t.series[1],
     wasted:     t.series[3],
     remaining:  t.series[0],
     correction: t.series[0],
@@ -177,8 +187,8 @@ export default function Analytics() {
 
   const totals = useMemo(() => ({
     received:  vaccineMovement.reduce((s, v) => s + v.opening + v.received, 0),
-    usedDoses: vaccineMovement.reduce((s, v) => s + v.usedDoses, 0),
-    wasted:    vaccineMovement.reduce((s, v) => s + v.wasted,    0),
+    dosesGiven: vaccineMovement.reduce((s, v) => s + v.usedDoses, 0),
+    wasted:    vaccineMovement.reduce((s, v) => s + v.wasted, 0),
   }), [vaccineMovement])
 
   const wastageRate = totals.received > 0
@@ -190,28 +200,73 @@ export default function Analytics() {
     : wastageRate < 7 ? 'low'
     : 'critical'
 
-  const movementChartData = useMemo(() =>
-    vaccineMovement.map((v) => ({
-      name:     abbrev(v.vaccineName),
-      fullName: v.vaccineName,
-      Received: v.opening + v.received,
-      Used:     v.usedDoses,
-      Wasted:   v.wasted,
-    }))
-  , [vaccineMovement])
-
-  // ── Remaining stock rollup ────────────────────────────────────────────────
+  // ── Remaining stock rollup (extended: store + workers) ────────────────────
   const remainingByVaccine = useMemo(() => {
     const acc = {}
     for (const r of remaining) {
       const name = displayVaccineName(r.vaccineName)
-      if (!acc[name]) acc[name] = { name, doses: 0 }
-      acc[name].doses += r.totalDoses
+      if (!acc[name]) acc[name] = { name, doses: 0, inStore: 0, withWorkers: 0 }
+      acc[name].doses       += r.totalDoses ?? 0
+      acc[name].inStore     += r.storeVials ?? 0
+      acc[name].withWorkers += r.heldVials  ?? 0
     }
     return Object.values(acc)
       .sort((a, b) => b.doses - a.doses)
       .map((v) => ({ ...v, shortName: abbrev(v.name, 18), fullName: v.name }))
   }, [remaining])
+
+  const remainingMap = useMemo(() => {
+    const m = {}
+    for (const r of remainingByVaccine) m[r.name] = r
+    return m
+  }, [remainingByVaccine])
+
+  // ── Stock Summary combined rows (movement + remaining joined per vaccine) ──
+  const stockSummaryRows = useMemo(() =>
+    vaccineMovement.map((v) => {
+      const rem   = remainingMap[v.vaccineName] ?? { doses: 0, inStore: 0, withWorkers: 0 }
+      const total = v.opening + v.received
+      const wasteRate = total > 0 ? +((v.wasted / total) * 100).toFixed(1) : 0
+      return {
+        vaccineName:  v.vaccineName,
+        received:     total,
+        dosesGiven:   v.usedDoses,
+        wasted:       v.wasted,
+        wasteRate,
+        adjustments:  v.adjustmentIncrease - v.adjustmentDecrease,
+        inStore:      rem.inStore,
+        withWorkers:  rem.withWorkers,
+        stockLeft:    rem.doses,
+      }
+    })
+  , [vaccineMovement, remainingMap])
+
+  // ── Chart data ────────────────────────────────────────────────────────────
+  const stockFlowChartData = useMemo(() =>
+    vaccineMovement.map((v) => ({
+      name:          abbrev(v.vaccineName),
+      fullName:      v.vaccineName,
+      Received:      v.opening + v.received,
+      'Doses Given': v.usedDoses,
+      Wasted:        v.wasted,
+    }))
+  , [vaccineMovement])
+
+  const wastageRateData = useMemo(() =>
+    vaccineMovement
+      .map((v) => {
+        const total = v.opening + v.received
+        const rate  = total > 0 ? +((v.wasted / total) * 100).toFixed(1) : 0
+        return { name: abbrev(v.vaccineName, 18), fullName: v.vaccineName, rate }
+      })
+      .sort((a, b) => b.rate - a.rate)
+  , [vaccineMovement])
+
+  function wastageBarColor(rate) {
+    if (rate >= 7) return t.status('critical')
+    if (rate >= 3) return t.status('low')
+    return t.status('adequate')
+  }
 
   // ── Requests rollup ───────────────────────────────────────────────────────
   const requestsByMonth = useMemo(() => {
@@ -272,11 +327,10 @@ export default function Analytics() {
 
   // ── Tab data counts ───────────────────────────────────────────────────────
   const tabCounts = useMemo(() => ({
-    movement:  vaccineMovement.length,
-    remaining: remainingByVaccine.length,
-    requests:  requestsByMonth.length,
-    approvals: pendingApprovals.length,
-  }), [vaccineMovement, remainingByVaccine, requestsByMonth, pendingApprovals])
+    stockSummary: vaccineMovement.length,
+    requests:     requestsByMonth.length,
+    approvals:    pendingApprovals.length,
+  }), [vaccineMovement, requestsByMonth, pendingApprovals])
 
   // ── Export ────────────────────────────────────────────────────────────────
   async function runExport(kind) {
@@ -299,26 +353,27 @@ export default function Analytics() {
   })?.label ?? null
 
   // ── Column definitions ────────────────────────────────────────────────────
-  const movementColumns = [
-    { key: 'vaccineName', label: 'Vaccine', render: (r) => <span className="font-medium">{r.vaccineName}</span> },
-    { key: 'opening', label: 'Opening', align: 'right', render: (r) => r.opening || muted('—') },
-    { key: 'received', label: 'Received (vials)', align: 'right', render: (r) => r.received },
-    { key: 'usedDoses', label: 'Used (doses)', align: 'right', render: (r) => r.usedDoses },
-    { key: 'wasted', label: 'Wasted (vials)', align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
-    { key: 'adj', label: 'Adjustment (net)', align: 'right',
+  const stockSummaryColumns = [
+    { key: 'vaccineName',  label: 'Vaccine',               render: (r) => <span className="font-medium">{r.vaccineName}</span> },
+    { key: 'received',     label: 'Received (vials)',       align: 'right', render: (r) => r.received || muted('—') },
+    { key: 'dosesGiven',   label: 'Doses Given',           align: 'right', render: (r) => r.dosesGiven || muted('—') },
+    { key: 'wasted',       label: 'Wasted (vials)',        align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
+    { key: 'wasteRate',    label: 'Waste %',               align: 'right',
       render: (r) => {
-        const net = r.adjustmentIncrease - r.adjustmentDecrease
-        if (net === 0) return muted('—')
-        return <span className={`font-medium ${net > 0 ? 'text-success-dark' : 'text-danger-dark'}`}>{net > 0 ? `+${net}` : `−${Math.abs(net)}`}</span>
-      } },
-  ]
-
-  const remainingColumns = [
-    { key: 'facilityName', label: 'Facility', render: (r) => <span className="font-medium">{r.facilityName}</span> },
-    { key: 'vaccineName', label: 'Vaccine', render: (r) => displayVaccineName(r.vaccineName) },
-    { key: 'storeVials', label: 'Store (vials)', align: 'right', render: (r) => r.storeVials },
-    { key: 'heldVials', label: 'Held (vials)', align: 'right', render: (r) => r.heldVials },
-    { key: 'totalDoses', label: 'Total (doses)', align: 'right', render: (r) => <span className="font-medium">{r.totalDoses}</span> },
+        if (r.wasteRate === 0) return muted('0%')
+        const cls = r.wasteRate >= 7 ? 'text-danger font-medium' : r.wasteRate >= 3 ? 'text-warning-dark font-medium' : 'text-success-dark font-medium'
+        return <span className={cls}>{r.wasteRate}%</span>
+      }
+    },
+    { key: 'adjustments',  label: 'Adjustments',           align: 'right',
+      render: (r) => {
+        if (r.adjustments === 0) return muted('—')
+        return <span className={`font-medium ${r.adjustments > 0 ? 'text-success-dark' : 'text-danger-dark'}`}>{r.adjustments > 0 ? `+${r.adjustments}` : `−${Math.abs(r.adjustments)}`}</span>
+      }
+    },
+    { key: 'inStore',      label: 'In Store (vials)',      align: 'right', render: (r) => r.inStore      || muted('—') },
+    { key: 'withWorkers',  label: 'With Workers (vials)',  align: 'right', render: (r) => r.withWorkers  || muted('—') },
+    { key: 'stockLeft',    label: 'Stock Left (doses)',    align: 'right', render: (r) => <span className="font-medium">{r.stockLeft || 0}</span> },
   ]
 
   const requestColumns = [
@@ -336,7 +391,7 @@ export default function Analytics() {
     { key: 'count', label: 'Pending', align: 'right', render: (r) => toned(r.count, 'text-warning-dark') },
   ]
 
-  const grid = <CartesianGrid vertical={false} stroke={t.grid} />
+  const grid   = <CartesianGrid vertical={false} stroke={t.grid} />
   const cursor = { fill: t.grid, fillOpacity: 0.4 }
   const loaded = !isLoading && !isError
 
@@ -386,48 +441,67 @@ export default function Analytics() {
 
       {isLoading && <Card padding={false}><SkeletonRows rows={6} /></Card>}
 
-      {isError && <ErrorState title="Couldn’t load analytics" error={error} onRetry={refetch} />}
+      {isError && <ErrorState title="Couldn't load analytics" error={error} onRetry={refetch} />}
 
       {loaded && (
         <>
-          {/* ── Movement ── */}
-          {activeTab === 'movement' && (
+          {/* ── Stock Summary ── */}
+          {activeTab === 'stockSummary' && (
             <div className="flex flex-col gap-5">
+              {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <StatCard label="Stock in" value={totals.received} subtitle="Opening + received vials" />
-                <StatCard label="Used" value={totals.usedDoses} subtitle="Doses administered" />
+                <StatCard label="Received" value={totals.received} subtitle="Vials received (incl. opening)" />
+                <StatCard label="Doses Given" value={totals.dosesGiven} subtitle="Doses administered" />
                 <StatCard label="Wasted" value={totals.wasted} subtitle="Vials discarded" />
-                <StatCard label="Wastage rate" value={`${wastageRate}%`} tone={wastageTone} subtitle="Of vials received" />
+                <StatCard label="Waste %" value={`${wastageRate}%`} tone={wastageTone} subtitle="Of all vials received" />
               </div>
 
+              {/* Chart 1 — Wastage Rate by Vaccine */}
               <ChartCard
-                title="Stock flow by vaccine"
-                subtitle="Received vials, used doses and wasted vials"
-                legend={[{ label: 'Received', color: C.received }, { label: 'Used', color: C.used }, { label: 'Wasted', color: C.wasted }]}
+                title="Wastage Rate by Vaccine"
+                subtitle="Wasted vials as a % of total received — green < 3%, amber 3–7%, red ≥ 7%"
               >
-                {movementChartData.length === 0 ? <EmptyChart /> : (
-                  <ResponsiveContainer width="100%" height={295}>
-                    <BarChart data={movementChartData} margin={{ top: 6, right: 12, left: 0, bottom: 56 }} barGap={2} barCategoryGap="28%">
-                      {grid}
-                      <XAxis dataKey="name" tick={t.tick} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} interval={0} />
-                      <YAxis tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} width={38} />
-                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
-                      <Bar dataKey="Received" fill={C.received} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
-                      <Bar dataKey="Used"     fill={C.used}     radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
-                      <Bar dataKey="Wasted"   fill={C.wasted}   radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                {wastageRateData.length === 0 ? <EmptyChart /> : (
+                  <ResponsiveContainer width="100%" height={Math.max(160, wastageRateData.length * 44)}>
+                    <BarChart layout="vertical" data={wastageRateData} margin={{ top: 4, right: 60, left: 4, bottom: 4 }}>
+                      <CartesianGrid horizontal={false} stroke={t.grid} />
+                      <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                      <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
+                      <ReTooltip content={<WastageTooltip nameKey="fullName" />} cursor={cursor} />
+                      <Bar dataKey="rate" name="Waste %" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
+                        {wastageRateData.map((d, i) => (
+                          <Cell key={i} fill={wastageBarColor(d.rate)} />
+                        ))}
+                        <LabelList dataKey="rate" position="right" formatter={(v) => `${v}%`} style={{ fontSize: 11, fill: t.tickStrong }} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </ChartCard>
 
-              <Table columns={movementColumns} rows={vaccineMovement} rowKey={(r) => r.vaccineName} emptyMessage="No movement recorded in this date range." />
-            </div>
-          )}
+              {/* Chart 2 — Stock Flow by Vaccine */}
+              <ChartCard
+                title="Stock Flow by Vaccine"
+                subtitle="Vials received, doses given and vials wasted per vaccine"
+                legend={[{ label: 'Received', color: C.received }, { label: 'Doses Given', color: C.dosesGiven }, { label: 'Wasted', color: C.wasted }]}
+              >
+                {stockFlowChartData.length === 0 ? <EmptyChart /> : (
+                  <ResponsiveContainer width="100%" height={295}>
+                    <BarChart data={stockFlowChartData} margin={{ top: 6, right: 12, left: 0, bottom: 56 }} barGap={2} barCategoryGap="28%">
+                      {grid}
+                      <XAxis dataKey="name" tick={t.tick} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} interval={0} />
+                      <YAxis tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} width={38} />
+                      <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
+                      <Bar dataKey="Received"     fill={C.received}   radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Doses Given"  fill={C.dosesGiven} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Wasted"       fill={C.wasted}     radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
 
-          {/* ── Remaining stock ── */}
-          {activeTab === 'remaining' && (
-            <div className="flex flex-col gap-5">
-              <ChartCard title="Remaining doses by vaccine" subtitle="Total doses available across all facilities">
+              {/* Chart 3 — Current Stock Left by Vaccine */}
+              <ChartCard title="Current Stock by Vaccine" subtitle="Total doses remaining across all facilities">
                 {remainingByVaccine.length === 0 ? <EmptyChart message="No stock data available" /> : (
                   <ResponsiveContainer width="100%" height={Math.max(200, remainingByVaccine.length * 46)}>
                     <BarChart layout="vertical" data={remainingByVaccine.map((v) => ({ ...v, name: v.shortName }))} margin={{ top: 4, right: 56, left: 4, bottom: 4 }}>
@@ -435,7 +509,7 @@ export default function Analytics() {
                       <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} />
                       <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
                       <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
-                      <Bar dataKey="doses" name="Doses" fill={C.remaining} radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
+                      <Bar dataKey="doses" name="Doses left" fill={C.remaining} radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
                         <LabelList dataKey="doses" position="right" style={{ fontSize: 11, fill: t.tickStrong }} formatter={fmtNum} />
                       </Bar>
                     </BarChart>
@@ -443,11 +517,17 @@ export default function Analytics() {
                 )}
               </ChartCard>
 
-              <Table columns={remainingColumns} rows={remaining} rowKey={(r) => `${r.facilityName}-${r.vaccineName}`} emptyMessage="No stock data available." />
+              {/* Combined table */}
+              <Table
+                columns={stockSummaryColumns}
+                rows={stockSummaryRows}
+                rowKey={(r) => r.vaccineName}
+                emptyMessage="No vaccine data recorded in this date range."
+              />
             </div>
           )}
 
-          {/* ── Requests ── */}
+          {/* ── Stock Requests ── */}
           {activeTab === 'requests' && (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -494,7 +574,7 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* ── Pending approvals ── */}
+          {/* ── Approvals ── */}
           {activeTab === 'approvals' && (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
