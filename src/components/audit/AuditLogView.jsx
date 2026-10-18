@@ -84,9 +84,6 @@ const CATEGORY_STYLE = {
 }
 const CATEGORY_OPTIONS = [
   { value: '', label: 'All' },
-  { value: 'Stock movement', label: 'Stock movement' },
-  { value: 'Request', label: 'Request' },
-  { value: 'Approval', label: 'Approval' },
   { value: 'Day end', label: 'Day end' },
   { value: 'Forms', label: 'Forms' },
   { value: 'Session', label: 'Session' },
@@ -635,14 +632,9 @@ export default function AuditLogView() {
             className="self-start"
           />
 
-          {/* Rich-view: category chips + hide-session toggle */}
+          {/* Rich-view: hide-session toggle */}
           {isRichView && (
             <div className="flex flex-wrap items-center gap-3">
-              <FilterChips
-                options={CATEGORY_OPTIONS}
-                value={url.category}
-                onChange={(v) => set({ category: v })}
-              />
               <button
                 type="button"
                 onClick={() => set({ hideSession: url.hideSession === '1' ? '0' : '1' })}
