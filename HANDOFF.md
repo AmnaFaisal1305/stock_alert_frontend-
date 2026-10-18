@@ -10,7 +10,7 @@
 - **Backend docs received 2026-10-19** (`docs/FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`; gitignored copies). Rounds 36–37 reconciled and adopted, see below.
 - **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
-- **Backend:** latest round adopted is **Round 37**. `BACKEND_REQUESTS.md` #1–#11 are answered; the one open request is **#12, Stock Register**, which asks the backend to either confirm the supervisor can see the Head's approve rows or build `STOCK_REGISTER_BACKEND.md`. `BACKEND_OFFLINE_PUSH.md` is fully answered.
+- **Backend:** latest round adopted is **Round 37**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (it absorbed `STOCK_REGISTER_BACKEND.md` and `BACKEND_OFFLINE_PUSH.md`; done items removed). Open: #1 Stock Register (`GET /api/stock-register`), #2 offline back-dating window and session expiry.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
 ### Rounds 36–37 adopted (2026-10-19)
@@ -37,7 +37,7 @@
 
 ### Offline, push, logo and login (2026-10-18)
 - **App shell offline on every URL:** `sw.js` has a `NavigationRoute` to the cached `index.html` (it only worked at `/` before). Skipped in dev, where nothing is precached.
-- **Offline queue** (`lib/offlineQueue.js`): entries carry `userId` and each user only sees and replays their own (nothing is cleared at logout). Any `4xx` except 401/408/429 is a final refusal and marks the entry failed with the server's message, so one bad entry no longer blocks the rest. A `409` is **not** resent with a new `clientRef` any more (could double-count; see `BACKEND_OFFLINE_PUSH.md` Q1).
+- **Offline queue** (`lib/offlineQueue.js`): entries carry `userId` and each user only sees and replays their own (nothing is cleared at logout). Any `4xx` except 401/408/429 is a final refusal and marks the entry failed with the server's message, so one bad entry no longer blocks the rest. A `409` is **not** resent with a new `clientRef` any more (Round 36: it means the ref was used at another facility).
 - **"Online" but no signal:** Assign Vials and Day End queue the entry when the request gets no response at all (`isNetworkError`), not only when `navigator.onLine` is false. The same `clientRef` makes the replay safe.
 - **Failed entries are visible:** the top bar shows "N not sent"; the dialog lists each with the server's reason and a Discard button.
 - **PWA icons:** 192/512 PNG (`public/images/icon-*.png`, rendered from `icon.svg`) in the manifest, an `apple-touch-icon`, and as the push notification icon and badge.
@@ -47,7 +47,7 @@
 
 ### Recently built (2026-10-19, Amna)
 - **Stock Register overhaul:** entry types consolidated to three labels (Received / Record / Stock Correction); new Balance column (per-vaccine running balance, red when negative); new Stock Correction column (signed +N / −N, green/red) for `ADJUST_STOCK` rows only; `ADJUST_STOCK` rows no longer bleed into the Received/Used columns. FilterChips and CSV export updated to match.
-- **`STOCK_REGISTER_BACKEND.md`:** new file specifying the dedicated `GET /api/stock-register` endpoint the backend needs to build so the balance is authoritative and includes stock-request receipts.
+- **Stock Register endpoint spec:** now `BACKEND_REQUESTS.md` #1.
 
 ### Recently built (2026-10-18)
 - **Shell:** ☰ menu button toggles the sidebar rail on desktop (remembered) and the drawer on phones; emoji bell; notification panel with type icons, Today/Earlier groups and click-through.
@@ -65,7 +65,7 @@
 | Issue | Where | Notes |
 |---|---|---|
 | Per-facility vaccine Save / Reset untested | Super admin › Vaccines (facility view) | Endpoint exists (Round 36) and the dialog matches it; not saved yet because it writes to production and notifies the Head |
-| Stock Register balance excludes request receipts | Facility supervisor › Stock Register | Still built from the old `STOCK_ENTRY`/`ADJUST_STOCK` + `STOCK_DAY_END` rows; the first two are no longer written. **Checked live:** the supervisor's audit log returns no `STOCK_REQUEST_APPROVE` / `APPROVAL_APPROVE` rows (the Head's actions), so Round 36's suggestion can't work for this screen, and the approve rows carry no batch fields. Evidence and the ask are in `BACKEND_REQUESTS.md` #12. |
+| Stock Register balance excludes request receipts | Facility supervisor › Stock Register | Still built from the old `STOCK_ENTRY`/`ADJUST_STOCK` + `STOCK_DAY_END` rows; the first two are no longer written. **Checked live:** the supervisor's audit log returns no `STOCK_REQUEST_APPROVE` / `APPROVAL_APPROVE` rows (the Head's actions), so Round 36's suggestion can't work for this screen, and the approve rows carry no batch fields. Evidence and the ask are in `BACKEND_REQUESTS.md` #1. |
 | Offline only works if the app is already open | Auth, Assign Vials, Day End | A cold start offline lands on login (the session restore needs the network), and the forms' vaccine / worker / holdings lists live in memory only, so a reload offline leaves them empty. Fixing it needs a persisted query cache (new dependency) and a stored session; decide whether the pilot needs it. |
 | Push delivery to a real device unverified | Notifications | Backend side is answered and "Send test" exists. Needs a real phone (Android, and iPhone with the app on the home screen). |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
@@ -101,8 +101,8 @@
 
 ## Next steps
 
-1. **Commit the Rounds 36–37 work**, then send `BACKEND_REQUESTS.md` (#12) and `STOCK_REGISTER_BACKEND.md` to the backend developer.
-2. **Stock Register:** once #12 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
+1. **Send `BACKEND_REQUESTS.md`** to the backend developer (Stock Register endpoint, offline window questions).
+2. **Stock Register:** once #1 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
 3. **Writes to verify with consent:** a Super admin create through the new picker, a facility override Save/Reset, and "Send test" on a real phone.
 4. **Optional, not built:** `bulk-status` (needs multi-select on Super admin › Users; only worth it if the client asks).
 5. **Decide on offline cold start** (see Open issues): a persisted query cache plus a stored session, or accept "works only if the app is already open" for the pilot.
