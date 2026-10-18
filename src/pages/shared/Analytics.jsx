@@ -163,11 +163,11 @@ export default function Analytics() {
   const [expandedReq,    setExpandedReq]    = useState(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['analytics', from, to],
-    queryFn: () => getAnalytics({ from, to }),
+    queryKey: ['analytics', from, to, reqDistrict, reqUc, reqFacilityId],
+    queryFn: () => getAnalytics({ from, to, districtId: reqDistrict, ucId: reqUc, facilityId: reqFacilityId }),
   })
 
-  // Cascade queries for requests tab filters
+  // Location cascade: narrows every section via the analytics query
   const { data: reqDistrictsData } = useQuery({
     queryKey: ['districts'],
     queryFn:  getDistricts,
@@ -402,7 +402,6 @@ export default function Analytics() {
     : requestsByMonth
 
   function clearReqFilters() {
-    setReqDistrict(null); setReqUc(null); setReqFacilityId(null); setReqFacilityName('')
     setReqMonth(null); setDetailStatus(null); setExpandedReq(null)
   }
 
@@ -510,6 +509,48 @@ export default function Analytics() {
           <div className="flex items-end gap-3 flex-wrap">
             <DatePicker id="analytics-from" label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
             <DatePicker id="analytics-to"   label="To"   value={to}   onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <div className="flex items-end gap-3 flex-wrap">
+            <Select
+              id="req-district"
+              label="District"
+              value={reqDistrict ?? ''}
+              placeholder="All districts"
+              options={reqDistrictOptions}
+              onChange={(e) => {
+                setReqDistrict(e.target.value || null)
+                setReqUc(null); setReqFacilityId(null); setReqFacilityName('')
+                setDetailStatus(null); setExpandedReq(null)
+              }}
+            />
+            <Select
+              id="req-uc"
+              label="UC"
+              value={reqUc ?? ''}
+              placeholder="All UCs"
+              options={reqUcOptions}
+              disabled={!reqDistrict}
+              onChange={(e) => {
+                setReqUc(e.target.value || null)
+                setReqFacilityId(null); setReqFacilityName('')
+                setDetailStatus(null); setExpandedReq(null)
+              }}
+            />
+            <Select
+              id="req-facility"
+              label="Facility"
+              value={reqFacilityId ?? ''}
+              placeholder="All facilities"
+              options={reqFacilityOptions}
+              disabled={!reqUc}
+              onChange={(e) => {
+                const v = e.target.value
+                const f = (reqFacilitiesData?.facilities ?? []).find((x) => x.id === v)
+                setReqFacilityId(v || null)
+                setReqFacilityName(f?.name ?? '')
+                setDetailStatus(null); setExpandedReq(null)
+              }}
+            />
           </div>
           <FilterChips
             label="Quick period"
@@ -631,57 +672,18 @@ export default function Analytics() {
           {/* ── Stock Requests ── */}
           {activeTab === 'requests' && (
             <div className="flex flex-col gap-5">
-              {/* Cascade + month filter bar */}
+              {/* Month filter bar */}
               <Card>
                 <div className="flex flex-wrap items-end gap-3">
-                  <Select
-                    id="req-district"
-                    label="District"
-                    value={reqDistrict ?? ''}
-                    placeholder="All districts"
-                    options={reqDistrictOptions}
-                    onChange={(v) => {
-                      setReqDistrict(v || null)
-                      setReqUc(null); setReqFacilityId(null); setReqFacilityName('')
-                      setDetailStatus(null); setExpandedReq(null)
-                    }}
-                  />
-                  <Select
-                    id="req-uc"
-                    label="UC"
-                    value={reqUc ?? ''}
-                    placeholder="All UCs"
-                    options={reqUcOptions}
-                    disabled={!reqDistrict}
-                    onChange={(v) => {
-                      setReqUc(v || null)
-                      setReqFacilityId(null); setReqFacilityName('')
-                      setDetailStatus(null); setExpandedReq(null)
-                    }}
-                  />
-                  <Select
-                    id="req-facility"
-                    label="Facility"
-                    value={reqFacilityId ?? ''}
-                    placeholder="All facilities"
-                    options={reqFacilityOptions}
-                    disabled={!reqUc}
-                    onChange={(v) => {
-                      const f = (reqFacilitiesData?.facilities ?? []).find((x) => x.id === v)
-                      setReqFacilityId(v || null)
-                      setReqFacilityName(f?.name ?? '')
-                      setDetailStatus(null); setExpandedReq(null)
-                    }}
-                  />
                   <Select
                     id="req-month"
                     label="Month"
                     value={reqMonth ?? ''}
                     placeholder="All months"
                     options={reqMonthOptions}
-                    onChange={(v) => { setReqMonth(v || null); setDetailStatus(null); setExpandedReq(null) }}
+                    onChange={(e) => { setReqMonth(e.target.value || null); setDetailStatus(null); setExpandedReq(null) }}
                   />
-                  {(reqDistrict || reqMonth) && (
+                  {reqMonth && (
                     <button
                       onClick={clearReqFilters}
                       className="flex items-center gap-1 text-xs text-text-muted hover:text-text pb-1 self-end"
@@ -690,10 +692,6 @@ export default function Analytics() {
                     </button>
                   )}
                 </div>
-                {reqFacilityId && (
-                  // shortcut: facility filter only applies to detail panel (client-side by facilityName); chart + totals show all facilities until backend adds ?facilityId= to /api/analytics
-                  <p className="mt-3 text-xs text-text-muted">Facility filter applies to request details only. Chart and totals show all facilities.</p>
-                )}
               </Card>
 
               {/* Chart + totals by status */}

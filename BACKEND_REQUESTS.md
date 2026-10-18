@@ -1,8 +1,8 @@
 # Backend Requests — Frontend → Backend
 
-Updated 2026-10-18 · Frontend branch `main`
+Updated 2026-10-19 · Frontend branch `main`
 
-**Our answers to your `FRONTEND_PENDING.md` are at the end of this file. Everything in its section B is done.**
+**Round 36 answered #1–#11 and the frontend has adopted Rounds 36–37** (see the Status column). **One new request: #12, the Stock Register.** Our answers to your `FRONTEND_PENDING.md` are at the end of this file.
 
 One list of everything the frontend needs from the backend. It replaces the earlier `BACKEND_REQUESTS.md` (items 1–4, all answered in Round 35), `BACKEND_FIXES.md` (all 7 answered in Round 34) and `BACKEND_CHANGES.md`.
 
@@ -10,17 +10,18 @@ One list of everything the frontend needs from the backend. It replaces the earl
 
 | # | Request | Screen | Priority | Status |
 |---|---|---|---|---|
-| 1 | `PUT /api/facilities/:facilityId/vaccines/:vaccineId`: per-facility vaccine values | Super admin › Vaccines (facility view) | High | Blocking |
-| 2 | `GET /api/users`: facility head and worker in supervisor scopes | District and UC › Users | Medium | Fallback |
-| 3 | `GET /api/analytics`: `districtId` / `ucId` / `facilityId` filters | Analytics (all roles) | Medium | Fallback |
-| 4 | Previous-period counts for KPI trend deltas | Dashboards | Medium | Fallback |
-| 5 | Stock expiring soon | Facility / UC / district dashboards | Medium | Fallback |
-| 6 | `lastLoginAt` / `lastActivityAt` on users | All user lists | Low | Fallback |
-| 7 | Several values for audit-log `action` | Stock Register | Low | Fallback |
-| 8 | Free-text `q` on audit-log | Audit Log | Low | Fallback |
-| 9 | `GET /api/stock-requests`: `month` filter | Analytics › Stock Requests drill-down | Low | Fallback |
-| 10 | `GET /api/union-councils`: `districtId` filter | Super admin › Vaccines cascade | Low | Fallback |
-| 11 | Bulk activate / deactivate users (optional) | Super admin › Users | Low | Fallback |
+| 1 | `PUT /api/facilities/:facilityId/vaccines/:vaccineId`: per-facility vaccine values | Super admin › Vaccines (facility view) | High | **Done (R36), adopted.** Thresholds only; doses/vial shown read-only |
+| 2 | `GET /api/users`: facility head and worker in supervisor scopes | District and UC › Users | Medium | **Done (R36).** No frontend change needed |
+| 3 | `GET /api/analytics`: `districtId` / `ucId` / `facilityId` filters | Analytics (all roles) | Medium | **Done (R36), adopted.** Filter now applies to every tab |
+| 4 | Previous-period counts for KPI trend deltas | Dashboards | Medium | **Done (R36, `compareTo` only), adopted** on the facility dashboard (its tiles count vaccine lines) |
+| 5 | Stock expiring soon | Facility / UC / district dashboards | Medium | **Declined (R36):** no per-batch stock. Card stays hidden |
+| 6 | `lastLoginAt` / `lastActivityAt` on users | All user lists | Low | **Done (R36), adopted:** "Last login" on Super admin and District/UC Users |
+| 7 | Several values for audit-log `action` | Stock Register | Low | **Done (R36).** Not adopted yet: see #12 |
+| 8 | Free-text `q` on audit-log | Audit Log | Low | **Done (R36).** Not adopted yet |
+| 9 | `GET /api/stock-requests`: `month` filter | Analytics › Stock Requests drill-down | Low | **Done (R36).** Not adopted yet |
+| 10 | `GET /api/union-councils`: `districtId` filter | Super admin › Vaccines cascade | Low | **Done (R36), adopted** in the Super admin › Users picker |
+| 11 | Bulk activate / deactivate users (optional) | Super admin › Users | Low | **Done (R36).** Not adopted yet (no multi-select) |
+| 12 | Stock Register: a source that includes stock received through requests | Facility supervisor › Stock Register | High | **New.** Fallback |
 
 ---
 
@@ -97,6 +98,16 @@ One list of everything the frontend needs from the backend. It replaces the earl
 - **Proposed contract:** `PUT /api/users/bulk-status` `{ ids: [uuid], active: boolean }` → `{ updated: [id], failed: [{ id, error }] }`, one audit row per user.
 - **Fallback:** one request per user.
 
+## 12. Stock Register: include stock received through requests
+- **Screen:** Facility supervisor › Stock Register (per-vaccine running balance).
+- **Problem today:** the register is built from the audit log, and its balance misses stock that came in through requests, so a facility stocked that way shows a negative balance. Round 36 suggests `action=STOCK_REQUEST_APPROVE,STOCK_ASSIGN,STOCK_DAY_END,APPROVAL_APPROVE`, but:
+  - `api-reference.md` (audit log, "For a `facility_supervisor`'s view specifically") says **the Head's approve rows are not in the supervisor's view**. `STOCK_REQUEST_APPROVE` and `APPROVAL_APPROVE` are both the Head's actions. Is that line still true?
+  - The `details` shape of `STOCK_REQUEST_APPROVE` isn't documented (we need per vaccine: approved vials, batch, expiry, manufacturer).
+- **Proposed contract, either:**
+  - (a) confirm the supervisor sees those rows and document the `STOCK_REQUEST_APPROVE` details; or
+  - (b) build `GET /api/stock-register` as specified in `STOCK_REGISTER_BACKEND.md` (server-side balance that matches the dashboard), which we still prefer.
+- **Fallback:** the current register (old `STOCK_ENTRY`/`ADJUST_STOCK` rows plus `STOCK_DAY_END`), with the known gap.
+
 ---
 
 ## Answers to `FRONTEND_PENDING.md` (2026-10-18)
@@ -117,6 +128,13 @@ One list of everything the frontend needs from the backend. It replaces the earl
 | B6 Form B rules | Done: rows by `key`, `b` read-only and printed as returned, digits only up to 9 characters, current and previous month only, changed cells only. |
 | B7 `503` retryable, CSRF `403` | Done. Only `401` logs out; a CSRF `403` refreshes `/session` and retries once. |
 | B8 Route guards | Done. Another role's URL redirects to the user's own dashboard. |
+
+### B0 / B (Round 36–37, adopted 2026-10-19)
+- **Round 37:** District and Facility Supervisor screens are read-only lists (Workers has no Add / Reset / Deactivate). Super admin › Users creates workers, supervisors and heads with a District → UC → Facility picker. Deactivate is hidden on your own row.
+- **B1:** per-facility dialog sends the four thresholds only; Reset sends four `null`s.
+- **B2:** Stock Register not switched, see #12.
+- **B5:** the queue resends on no response, `408`, `429`, `5xx` with the same `clientRef`. A `409` is marked failed with "reference already used at another facility", not auto-resent with a new ref.
+- **B6:** a tapped push opens the signed-in role's screen from `type` / `entityType`; the notification panel has "Send test" (`POST /api/push/test`).
 
 ### C and D
 - Offline queue: a new `clientRef` per submit, dates limited to 3 days back, replay stops on `401` and resumes after re-login. Excel/PDF exports are built in the browser. Units are vials.

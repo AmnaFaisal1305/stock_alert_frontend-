@@ -17,7 +17,7 @@ import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import Button, { buttonClasses } from '../../components/ui/Button'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
-import { timeAgo, plural } from '../../lib/format'
+import { timeAgo, plural, localDateStr } from '../../lib/format'
 
 const STATUS_ICON = { critical: AlertTriangle, low: TrendingDown, adequate: CheckCircle2, no_data: CircleDashed }
 
@@ -27,6 +27,13 @@ const KPI_ORDER = [
   { status: 'adequate', label: 'Normal',       context: () => 'At or above threshold' },
   { status: 'no_data',  label: 'Not updated',  context: (n) => (n ? 'No stock recorded yet' : 'All vaccines reporting') },
 ]
+
+// Change in vaccine lines since summary.previous; neutral wording, status colour stays for status.
+function deltaText(now, before) {
+  if (before == null) return null
+  const d = now - before
+  return d === 0 ? 'same as last week' : `${d > 0 ? '+' : '−'}${Math.abs(d)} vs last week`
+}
 
 // Isolated so its 5s tick doesn't re-render the page.
 function RefreshedAgo({ at }) {
@@ -81,6 +88,14 @@ export default function FacilityDashboard() {
     refetchInterval: 15_000,
     staleTime: 10_000,
   })
+  // statusCounts counts facility × vaccine lines, the same unit as these KPI tiles.
+  const compareTo = localDateStr(-7)
+  const { data: compareData } = useQuery({
+    queryKey: ['dashboard', 'compare', compareTo],
+    queryFn: () => getDashboard({ compareTo }),
+    staleTime: 10 * 60_000,
+  })
+  const previous = compareData?.summary?.previous?.statusCounts
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const requestsQ = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000 })
   const approvalsQ = useQuery({ queryKey: ['approvals', 'pending'], queryFn: () => getApprovals('pending') })
@@ -195,7 +210,7 @@ export default function FacilityDashboard() {
                 accent={status}
                 value={counts[status]}
                 tone={counts[status] > 0 && status !== 'no_data' ? status : undefined}
-                subtitle={context(counts[status])}
+                subtitle={[context(counts[status]), previous && deltaText(counts[status], previous[status] ?? 0)].filter(Boolean).join(' · ')}
                 onClick={() => setFilter((f) => (f === status ? null : status))}
                 active={filter === status}
               />

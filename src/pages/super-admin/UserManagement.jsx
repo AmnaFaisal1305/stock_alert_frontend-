@@ -13,7 +13,7 @@ import ErrorState from '../../components/shared/ErrorState'
 import EntityCard from '../../components/shared/EntityCard'
 import RoleTag from '../../components/shared/RoleTag'
 import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
-import { plural } from '../../lib/format'
+import { plural, timeAgo } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
 import { useUrlFilters } from '../../hooks/useUrlState'
 import ExportButton from '../../components/ui/ExportButton'
@@ -37,7 +37,7 @@ export default function UserManagement() {
   const [reassignTarget, setReassignTarget] = useState(null)
   const [reassignUcIds, setReassignUcIds] = useState([])
   const [reassignError, setReassignError] = useState('')
-  const [form, setForm] = useState({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' })
+  const [form, setForm] = useState({ role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '', pickDistrictId: '', pickUcId: '' })
   const [newPassword, setNewPassword] = useState('')
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState(null)
@@ -61,8 +61,19 @@ export default function UserManagement() {
 
   const { data: userData, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts, staleTime: 0 })
-  const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, staleTime: 0 })
   const { data: ucData }       = useQuery({ queryKey: ['ucs'], queryFn: () => getUnionCouncils(), staleTime: 0 })
+  // Facility roles pick District → UC → Facility; only facilityId is sent.
+  const { data: pickUcData } = useQuery({
+    queryKey: ['ucs', form.pickDistrictId],
+    queryFn:  () => getUnionCouncils({ districtId: form.pickDistrictId }),
+    enabled:  !!form.pickDistrictId,
+  })
+  const { data: facilityData } = useQuery({
+    queryKey: ['facilities', form.pickUcId],
+    queryFn:  () => getFacilities({ ucId: form.pickUcId }),
+    enabled:  !!form.pickUcId,
+    staleTime: 0,
+  })
 
   const districtMap = Object.fromEntries((districtData?.districts ?? []).map((d) => [d.id, d.name]))
   const districtOptions = (districtData?.districts ?? [])
@@ -70,7 +81,13 @@ export default function UserManagement() {
     .map((d) => ({ value: d.id, label: d.supervisorName ? `${d.name} (staffed)` : d.name }))
   const facilityOptions = (facilityData?.facilities ?? [])
     .filter((f) => f.isActive)
-    .map((f) => ({ value: f.id, label: f.facilitySupervisorName ? `${f.name} (staffed)` : f.name }))
+    .map((f) => ({ value: f.id, label: form.role === 'facility_supervisor' && f.facilitySupervisorName ? `${f.name} (staffed)` : f.name }))
+  const pickUcOptions = (pickUcData?.unionCouncils ?? [])
+    .filter((uc) => uc.isActive)
+    .map((uc) => ({ value: uc.id, label: uc.townName ? `${uc.name} (${uc.townName})` : uc.name }))
+  const pickDistrictOptions = (districtData?.districts ?? [])
+    .filter((d) => d.isActive)
+    .map((d) => ({ value: d.id, label: d.name }))
   const ucOptions = (ucData?.unionCouncils ?? [])
     .filter((uc) => uc.isActive)
     .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
@@ -85,7 +102,7 @@ export default function UserManagement() {
     observer:            'Observer',
   }
 
-  const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '' }
+  const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '', pickDistrictId: '', pickUcId: '' }
 
   const createMutation = useMutation({
     mutationFn: () => {
@@ -233,7 +250,8 @@ export default function UserManagement() {
       actions={[
         row.role === 'uc_supervisor' && { icon: MapPin, label: 'Reassign UCs', onClick: () => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') } },
         { icon: KeyRound, label: 'Reset password', onClick: () => { setResetTarget(row); setFormError('') } },
-        row.isActive
+        row.id === authUser?.id ? null
+        : row.isActive
           ? { icon: UserX, label: 'Deactivate', danger: true, onClick: () => setDeactivateTarget(row) }
           : { icon: UserCheck, label: 'Activate', onClick: () => activateMutation.mutate(row.id), disabled: activateMutation.isPending },
       ]}
@@ -253,6 +271,7 @@ export default function UserManagement() {
           { label: 'Role', value: <RoleTag role={row.role} /> },
           { label: row.role === 'uc_supervisor' ? 'Union councils' : isFacilityRole(row.role) ? 'Facility' : 'District', value: a.primary ?? a.empty },
           a.sub && { label: 'District', value: a.sub },
+          { label: 'Last login', value: row.lastLoginAt ? timeAgo(row.lastLoginAt) : 'Never' },
         ]}
         footnote={row.zmid ? `ZMID ${row.zmid}` : null}
         actions={actions(row)}
@@ -283,6 +302,7 @@ export default function UserManagement() {
         ) : <span className="text-text-muted">{a.empty}</span>
       },
     },
+    { key: 'lastLogin', label: 'Last login', render: (row) => <span className="text-text-muted whitespace-nowrap">{row.lastLoginAt ? timeAgo(row.lastLoginAt) : 'Never'}</span> },
     { key: 'isActive', label: 'Status', render: (row) => <Badge type={row.isActive ? 'active' : 'inactive'} /> },
     ...(readOnly ? [] : [{ key: 'actions', label: '', align: 'right', render: actions }]),
   ]
@@ -321,6 +341,7 @@ export default function UserManagement() {
                 { label: 'Assignment', value: (u) => assignment(u).primary ?? assignment(u).empty },
                 { label: 'District', value: (u) => assignment(u).sub ?? (isFacilityRole(u.role) ? '' : u.districtName) },
                 { label: 'ZMID', value: (u) => u.zmid },
+                { label: 'Last login', value: (u) => u.lastLoginAt ?? '' },
                 { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
               ]}
             />
@@ -373,7 +394,7 @@ export default function UserManagement() {
             label="Role"
             options={ROLE_FILTERS.filter((f) => f.value).map((f) => ({ value: f.value, label: f.label }))}
             value={form.role}
-            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, districtId: '', facilityId: '', ucIds: [] }))}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, districtId: '', facilityId: '', ucIds: [], pickDistrictId: '', pickUcId: '' }))}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -429,9 +450,19 @@ export default function UserManagement() {
 
           {/* Facility picker — for facility_supervisor, facility_worker, facility_head */}
           {(form.role === 'facility_supervisor' || form.role === 'facility_worker' || form.role === 'facility_head') && (
-            <Select id="sup-facility" label="Facility" options={facilityOptions}
-              placeholder="Select a facility…"
-              value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />
+            <>
+              <Select id="sup-pick-district" label="District" options={pickDistrictOptions}
+                placeholder="Select a district…"
+                value={form.pickDistrictId} onChange={(e) => setForm({ ...form, pickDistrictId: e.target.value, pickUcId: '', facilityId: '' })} required />
+              <Select id="sup-pick-uc" label="Union council" options={pickUcOptions}
+                placeholder={form.pickDistrictId ? 'Select a union council…' : 'Select a district first'}
+                disabled={!form.pickDistrictId}
+                value={form.pickUcId} onChange={(e) => setForm({ ...form, pickUcId: e.target.value, facilityId: '' })} required />
+              <Select id="sup-facility" label="Facility" options={facilityOptions}
+                placeholder={form.pickUcId ? 'Select a facility…' : 'Select a union council first'}
+                disabled={!form.pickUcId}
+                value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required />
+            </>
           )}
 
           <Input id="sup-phone" label="Phone (optional)" placeholder="e.g. 03001234567"

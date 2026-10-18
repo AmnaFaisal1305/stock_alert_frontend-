@@ -14,15 +14,22 @@ The general list of backend requests is `BACKEND_REQUESTS.md`. This file covers 
 - An entry is also queued when the request gets no response at all (weak signal), not only when the browser reports offline. The replay reuses the same `clientRef`.
 - Each queued entry belongs to the user who made it; another user on the same phone never replays it.
 
-**Status:** all four questions and the request below need an answer or a decision from you.
+**Status (2026-10-19): all answered in Round 36 (`FRONTEND_HANDOFF.md`) and adopted.** In short:
+- Q1 `409` = the `clientRef` was used at another facility. We mark it failed with that message rather than resending under a new ref.
+- Q2 all refusals are `400`.
+- Q3 `url` is the app root, so we route from `type`.
+- Q4 dead subscriptions are deleted.
+- R1 is built, as "Send test" in the notification panel.
 
-| # | Item | Priority |
-|---|---|---|
-| Q1 | What `409` means on `assign` / `day-end` | High |
-| Q2 | `400` or `422` for refused entries, and the body shape | High |
-| Q3 | Exact push payload and `url` values | High |
-| Q4 | Dead push subscriptions | Medium |
-| R1 | `POST /api/push/test` | Medium |
+Nothing open here; real-device delivery is still untested.
+
+| # | Item | Priority | Status |
+|---|---|---|---|
+| Q1 | What `409` means on `assign` / `day-end` | High | Answered |
+| Q2 | `400` or `422` for refused entries, and the body shape | High | Answered |
+| Q3 | Exact push payload and `url` values | High | Answered |
+| Q4 | Dead push subscriptions | Medium | Answered |
+| R1 | `POST /api/push/test` | Medium | Built, adopted |
 
 ---
 

@@ -249,7 +249,8 @@ Key constraints:
 - `GET /api/audit-log` — `?limit=` capped at 500 (omit it for the whole log); filters `actorRole, actorId, action, facilityId, entityId, from, to`, cursor `before`, `counts=true`
 - `GET /api/dashboard` returns `{ facilities: [...], summary: { statusCounts, byFacility, ... } }`
 - `statusCounts` counts facility × vaccine lines, never facilities; derive facility status with `facilityStatus()`
-- Vaccines are one global catalog (real names like "BCG") with optional per-facility overrides (`thresholdOverridden` on `GET /api/facilities/:id`); the override write endpoint is `BACKEND_REQUESTS.md` #1
+- Vaccines are one global catalog (real names like "BCG") with optional per-facility threshold overrides (`thresholdOverridden` on `GET /api/facilities/:id`), written by `PUT /api/facilities/:facilityId/vaccines/:vaccineId` (super admin, the four thresholds only; `null`s reset). `dosesPerVial` is global only
+- User create / activate / deactivate / reset are `super_admin` only (Round 37); other roles' user screens are read-only lists
 
 Use the `agent-browser` skill for browser automation tasks in this project.
 

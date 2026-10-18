@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'rea
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
+import { linkFor } from './lib/navigation'
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
 const LoginPage             = lazy(() => import('./pages/login/LoginPage'))
@@ -104,7 +105,13 @@ function LoginRoute() {
 
 function RoleRedirect() {
   const { user } = useAuth()
-  const dest = user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login'
+  const { search } = useLocation()
+  // A tapped push opens /?notif=<type>&entityType=…; the backend's url is only the app root.
+  const params = new URLSearchParams(search)
+  const pushed = user && params.get('notif')
+    ? linkFor(user.role, { type: params.get('notif'), entityType: params.get('entityType') })
+    : null
+  const dest = pushed ?? (user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login')
   return <Navigate to={dest} replace />
 }
 

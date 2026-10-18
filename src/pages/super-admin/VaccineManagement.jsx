@@ -72,10 +72,13 @@ function FacilityVaccineForm({ facilityName, onSubmit, onReset, isPending, isRes
   return (
     <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); onSubmit(form) }}>
       <p className="text-xs text-text-muted">
-        Overrides the global values for <span className="font-semibold text-text">{facilityName}</span> only.
+        Overrides the global thresholds for <span className="font-semibold text-text">{facilityName}</span> only.
       </p>
-      <Input id="fdpv" label="Doses per Vial *" type="number" min="1" step="1"
-        value={form.dosesPerVial} onChange={(e) => set('dosesPerVial', e.target.value)} required />
+      {/* Doses per vial is global: every ledger row stores vials × dosesPerVial (Round 36). */}
+      <p className="text-sm text-text">
+        <span className="tabular-nums font-medium">{form.dosesPerVial ?? '—'}</span> doses per vial
+        <span className="text-text-muted"> · set in the global catalog</span>
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input id="fcritDoses" label="Critical Doses" type="number" min="0" step="1"
           value={form.criticalDoses} onChange={(e) => set('criticalDoses', e.target.value)} />
@@ -257,7 +260,7 @@ export default function VaccineManagement() {
 
   const facilityResetMutation = useMutation({
     mutationFn: ({ vaccineId }) => updateFacilityVaccine(selectedFacilityId, vaccineId, {
-      dosesPerVial: null, criticalDoses: null, lowDoses: null, criticalVials: null, lowVials: null,
+      criticalDoses: null, lowDoses: null, criticalVials: null, lowVials: null,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facility', selectedFacilityId] })
@@ -480,7 +483,7 @@ export default function VaccineManagement() {
           <FacilityVaccineForm
             facilityName={selectedFacilityName}
             initial={{
-              dosesPerVial:  String(facilityEditing.dosesPerVial  ?? ''),
+              dosesPerVial:  facilityEditing.dosesPerVial,
               criticalDoses: String(facilityEditing.criticalDoses ?? ''),
               lowDoses:      String(facilityEditing.lowDoses      ?? ''),
               criticalVials: String(facilityEditing.criticalVials ?? ''),
@@ -489,7 +492,6 @@ export default function VaccineManagement() {
             onSubmit={(form) => facilityEditMutation.mutate({
               vaccineId: facilityEditing.vaccineId,
               payload: {
-                ...(form.dosesPerVial  !== '' ? { dosesPerVial:  parseInt(form.dosesPerVial, 10)  } : {}),
                 ...(form.criticalDoses !== '' ? { criticalDoses: parseInt(form.criticalDoses, 10) } : {}),
                 ...(form.lowDoses      !== '' ? { lowDoses:      parseInt(form.lowDoses, 10)      } : {}),
                 ...(form.criticalVials !== '' ? { criticalVials: parseInt(form.criticalVials, 10) } : {}),

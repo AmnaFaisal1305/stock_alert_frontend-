@@ -80,9 +80,10 @@ export async function replayQueue() {
       remove(item.id)
       drained++
     } catch (err) {
-      // shortcut: a 409 is marked failed, not resent with a new clientRef (it could double-count
-      // if 409 means "already recorded"); revisit once the backend confirms its meaning
-      if (isPermanent(err?.status)) markError(item.id, err.message)
+      // 409 = this clientRef was used at another facility (e.g. the supervisor changed facility).
+      // Nothing was recorded here, but we don't auto-book it at the new facility: let them re-enter it.
+      if (err?.status === 409) markError(item.id, 'This entry’s reference was already used at another facility. Discard it and enter it again.')
+      else if (isPermanent(err?.status)) markError(item.id, err.message)
       else break // 401 / 5xx / network: keep this entry and the rest
     }
   }

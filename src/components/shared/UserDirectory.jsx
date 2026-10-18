@@ -12,13 +12,14 @@ import RoleTag from './RoleTag'
 import ViewToggle from '../ui/ViewToggle'
 import ExportButton from '../ui/ExportButton'
 import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
-import { plural } from '../../lib/format'
+import { plural, timeAgo } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
 import { useUrlState } from '../../hooks/useUrlState'
 
 const dash = <span className="text-text-muted">—</span>
 // UC supervisors carry ucNames (several UCs); facility staff carry one ucName.
 const ucOf = (u) => u.ucName ?? (u.ucNames?.length ? u.ucNames.join(', ') : null)
+const lastLogin = (u) => (u.lastLoginAt ? timeAgo(u.lastLoginAt) : 'Never')
 
 const columns = [
   {
@@ -33,6 +34,7 @@ const columns = [
   { key: 'role', label: 'Role', render: (u) => <RoleTag role={u.role} /> },
   { key: 'facility', label: 'Facility', render: (u) => u.facilityName ?? dash },
   { key: 'uc', label: 'Union council', render: (u) => ucOf(u) ?? dash },
+  { key: 'lastLogin', label: 'Last login', render: (u) => <span className="text-text-muted whitespace-nowrap">{lastLogin(u)}</span> },
   { key: 'status', label: 'Status', render: (u) => <Badge type={u.isActive ? 'active' : 'inactive'} /> },
 ]
 
@@ -47,6 +49,7 @@ const gridCard = (u) => (
       { label: 'Role', value: <RoleTag role={u.role} /> },
       { label: 'Facility', value: u.facilityName },
       { label: 'Union council', value: ucOf(u) },
+      { label: 'Last login', value: lastLogin(u) },
     ]}
   />
 )
@@ -91,6 +94,7 @@ export default function UserDirectory({ breadcrumb, scope }) {
                   { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
                   { label: 'Facility', value: (u) => u.facilityName },
                   { label: 'Union council', value: ucOf },
+                  { label: 'Last login', value: (u) => u.lastLoginAt ?? '' },
                   { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
                 ]}
               />

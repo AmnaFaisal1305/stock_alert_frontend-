@@ -137,6 +137,13 @@ export function navFor(role) {
   return NAV[role] ?? { section: 'Navigation', groups: [] }
 }
 
+// Where a notification (feed item or push) leads: the role's page for its entity, else the role's first page.
+export function linkFor(role, n) {
+  const items = navFor(role).groups.flatMap((g) => g.items)
+  const label = n.entityType === 'approval' ? 'Approvals' : n.entityType === 'stock_request' || n.type?.startsWith('stock_request') ? 'Stock Requests' : null
+  return (label && items.find((i) => i.label === label)?.to) ?? items[0]?.to
+}
+
 // What the signed-in user is responsible for (PRODUCT.md "Scope is always visible").
 // facilityName is on the session user since Round 35; the district is the fallback for
 // sessions stored before that.

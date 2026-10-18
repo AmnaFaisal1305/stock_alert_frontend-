@@ -19,13 +19,13 @@ self.addEventListener('push', (event) => {
   if (!event.data) return
   let payload
   try { payload = event.data.json() } catch { payload = { title: 'Stock Alert', body: event.data.text() } }
-  const { title = 'Stock Alert', body = '', url = '/', entityType, entityId } = payload
+  const { title = 'Stock Alert', body = '', url = '/', type, entityType, entityId } = payload
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon: '/images/icon-192.png',
       badge: '/images/icon-192.png',
-      data: { url, entityType, entityId },
+      data: { url, type, entityType, entityId },
     }),
   )
 })
@@ -33,7 +33,11 @@ self.addEventListener('push', (event) => {
 // Notification click — focus existing tab or open url
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = event.notification.data?.url ?? '/'
+  // `url` is the app root for every type; the app maps type → the signed-in role's screen.
+  const { url, type, entityType } = event.notification.data ?? {}
+  const target = type
+    ? `/?${new URLSearchParams({ notif: type, ...(entityType ? { entityType } : {}) })}`
+    : (url ?? '/')
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((c) => c.url.includes(self.location.origin))

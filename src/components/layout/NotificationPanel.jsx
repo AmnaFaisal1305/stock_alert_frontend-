@@ -2,10 +2,10 @@ import { Bell, X, Check, BellPlus, AlertTriangle, ClipboardCheck, ClipboardX, Cl
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getNotifications, markNotificationRead, markAllRead } from '../../lib/api'
+import { getNotifications, markNotificationRead, markAllRead, sendTestPush } from '../../lib/api'
 import { isPushSupported, enablePush } from '../../lib/push'
 import { useAuth } from '../../context/AuthContext'
-import { navFor } from '../../lib/navigation'
+import { linkFor } from '../../lib/navigation'
 import { ACCENT } from '../shared/StatCard'
 import { timeAgo, localDateStr, toLocalDateStr } from '../../lib/format'
 
@@ -22,13 +22,6 @@ function typeVisual(type = '') {
   return { icon: Bell, accent: 5 }
 }
 
-// Where a notification leads: the role's page for its entity, else the role's first page.
-function linkFor(role, n) {
-  const items = navFor(role).groups.flatMap((g) => g.items)
-  const label = n.entityType === 'approval' ? 'Approvals' : n.entityType === 'stock_request' || n.type?.startsWith('stock_request') ? 'Stock Requests' : null
-  return (label && items.find((i) => i.label === label)?.to) ?? items[0]?.to
-}
-
 const isUnread = (n) => !n.readAt && !n.isRead
 
 export default function NotificationPanel({ onClose }) {
@@ -42,6 +35,18 @@ export default function NotificationPanel({ onClose }) {
     return 'idle'
   })
   const [pushBusy, setPushBusy] = useState(false)
+  const [testMsg, setTestMsg] = useState('')
+
+  const testMutation = useMutation({
+    mutationFn: sendTestPush,
+    onSuccess: (r) => setTestMsg(r?.sent ? `Sent to ${r.sent} device${r.sent === 1 ? '' : 's'}. Check your phone.` : 'No device accepted it.'),
+    onError: (err) => setTestMsg(
+      err.status === 404 ? 'This account has no device subscribed.'
+      : err.status === 429 ? 'Limit reached: 3 test pushes per hour.'
+      : err.status === 503 ? 'Push isn’t configured on this server.'
+      : err.message,
+    ),
+  })
 
   async function handleEnablePush() {
     setPushBusy(true)
@@ -162,6 +167,18 @@ export default function NotificationPanel({ onClose }) {
             className="text-xs font-medium text-primary hover:underline flex-shrink-0 disabled:opacity-50"
           >
             {pushBusy ? 'Enabling…' : 'Enable'}
+          </button>
+        </div>
+      )}
+      {pushState === 'subscribed' && (
+        <div className="border-t border-surface-border px-4 py-2 flex items-center justify-between gap-3 bg-surface-alt">
+          <p className="text-[11px] text-text-muted min-w-0" role="status">{testMsg || 'Push alerts are on for this device'}</p>
+          <button
+            onClick={() => { setTestMsg(''); testMutation.mutate() }}
+            disabled={testMutation.isPending}
+            className="text-xs font-medium text-primary hover:underline flex-shrink-0 disabled:opacity-50"
+          >
+            {testMutation.isPending ? 'Sending…' : 'Send test'}
           </button>
         </div>
       )}

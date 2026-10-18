@@ -109,6 +109,11 @@ export async function unsubscribePush(endpoint) {
   return request('DELETE', '/api/push/subscriptions', { endpoint })
 }
 
+// Sends to the caller's own devices only; 3 per hour.
+export async function sendTestPush() {
+  return request('POST', '/api/push/test', {})
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export async function getUsers(params) {
@@ -357,8 +362,8 @@ export async function getAuditLog(params = {}) {
 
 // ── Analytics (Sprint 6) ──────────────────────────────────────────────────────
 
-export async function getAnalytics({ from, to } = {}) {
-  return request('GET', `/api/analytics${buildQs({ from, to })}`)
+export async function getAnalytics(params) {
+  return request('GET', `/api/analytics${buildQs(params)}`)
 }
 
 // ── EPI Form B monthly sheet (Round 33) ───────────────────────────────────────
