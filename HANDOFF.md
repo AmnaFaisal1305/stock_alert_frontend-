@@ -27,6 +27,53 @@
     - **The original bug, reproduced and fixed:** in a Chrome profile that blocks third-party cookies, a direct cross-site login to the backend returned 200 and the next `/session` returned **401**. The same profile, signing in through the app and opening a new tab, stayed signed in (`/session` 200, Stock Register loaded).
   - **How to repeat the blocked-cookie check:** Chrome's `--block-third-party-cookies` flag did nothing here. A custom profile whose `Default/Preferences` has `{"profile":{"cookie_controls_mode":1,"block_third_party_cookies":true}}` (agent-browser `--profile <dir>`) does.
 
+### Audit Log — facility head rich view + polish (2026-10-19, sessions 18–19)
+
+**Session 18** extended the rich audit log (previously supervisor-only) to cover `facility_head` entries on every screen that shows them, and fixed several display issues.
+
+**What changed:**
+
+| File | Change |
+|---|---|
+| `src/lib/auditLog.js` | Added `sheetMonthLabel(d)` (handles `{month:10,year:2026}` and `{month:"2026-10"}`); added `deriveApproveStatus(d)` (exported); extended `buildContext` with `approvalRequestByEntityId`, `latestApproveByEntityId`, `closingByEntityId`; rewrote `buildSummary` for STOCK_REQUEST_APPROVE (follow-up detection, per-vaccine shortfall), APPROVAL_APPROVE (threshold diff with "lowers alert sensitivity"), APPROVAL_REJECT/DECLINE (requester join + reason), SHEET_SAVED (dual format); added `open_shortfall`, `resolved_shortfall`, `threshold_lowered` to `computeFlags`; added `qty` field to `formatAuditEntry`; suppressed spurious "Now: Awaiting both" badge on partial approvals |
+| `src/components/audit/AuditLogView.jsx` | `isHeadTab` boolean + `isRichView` extended to cover `facility_head` tabs; UC supervisor gains a "Facility Heads" tab; `richColumns` hides Worker and Store impact on head tab, adds Qty (fulfilled/requested, amber when short); `hasExpandedContent` gated on 3 new head actions; `ExpandedPanel` adds per-vaccine breakdown table, threshold diff grid, decision reason; `attentionItems` adds `open_shortfall` and `threshold_lowered` for head; partial-data notice at 150-entry cap; 8 new head CSV columns |
+| `src/components/audit/AuditLogWidget.jsx` | `showHeadAlerts` prop: when true, queries head entries and shows open-shortfall strip above the supervisor feed |
+| `src/pages/facility-supervisor/Dashboard.jsx` | Passes `showHeadAlerts={!isSupervisor}` to the widget |
+| `src/lib/auditLog.test.js` | 20 new tests (16 head-specific + 3 `deriveApproveStatus` + 1 storeImpact/qty). 31 total, all passing |
+
+**Also removed in session 18** (cleanup on the supervisor tab):
+- All category filter chips (Stock movement, Request, Approval, then All / Day end / Forms / Session) — only the "Show session events" toggle remains on the rich view
+- The "ID [uuid]" line from every expanded row panel
+- Expand chevron on rows with no expandable content — added `canExpand` prop to `Table` (also requires `src/components/shared/Table.jsx`)
+
+**Session 19** removed the day-group grey header rows and fixed "Unknown worker":
+
+| File | Change |
+|---|---|
+| `src/components/audit/AuditLogView.jsx` | Deleted the `dayGroups` useMemo entirely (supervisor and head branches); removed `groups=` prop from `<Table>`; changed `userData` query `enabled` from `config.scope === 'worker'` → `config.scope === 'worker' \|\| isRichView` so the head tab fetches users |
+| `src/lib/auditLog.js` | Fixed `wn()` in `buildSummary` to return `null` (not `'Unknown worker'`) when lookup fails, so the `d.workerEmail` fallback in STOCK_ASSIGN/STOCK_DAY_END summaries now fires; fixed `formatAuditEntry` to fall back to `d.workerEmail?.split('@')[0]` before null |
+| `src/lib/auditLog.test.js` | Updated the "unknown worker" test to reflect null (renders "—") instead of the string "Unknown worker" |
+
+**Day-group removal rationale:** the header date was derived from `createdAt` UTC midnight split, which can differ from the date in each row (which uses local time). The mismatch was confusing, and a flat list is cleaner.
+
+**Unknown worker root causes:**
+1. On the head tab, `config.scope` is `undefined` → `enabled: false` → users never fetched → every workerId "Unknown worker". Fixed by `|| isRichView`.
+2. On the supervisor tab, deactivated workers are absent from `GET /api/users`. `wn()` was returning the string `'Unknown worker'` (truthy) which silently blocked the `workerEmail` fallback in summaries. Fixed by returning `null`.
+
+**Rich view trigger (updated):** `isRichView = isHeadTab || activeTab.params?.actorRole === 'facility_supervisor'`. Covers: Facility Head "My actions", Facility Supervisor "My actions", and the corresponding tabs on every higher-level role's audit log. UC supervisor now also has a "Facility Heads" tab.
+
+**Head-specific flags:**
+
+| Flag | Rule |
+|---|---|
+| `open_shortfall` | `STOCK_REQUEST_APPROVE` with `partially_fulfilled` items, no closing event (CLOSE_SHORT / CANCEL / DECLINE), and this is the latest APPROVE for that entityId. Age > 24 h → warning, > 72 h → danger |
+| `resolved_shortfall` | Same as above but a later completed APPROVE exists for the same entityId |
+| `threshold_lowered` | `APPROVAL_APPROVE` with `threshold_change` where any of lowDoses/lowVials/criticalDoses/criticalVials decreased |
+
+**Qty column (head tab only):** `fulfilledVials / requestedVials` (cumulative). Amber when short, green when complete. `receivedVials` (this-event delta) appears only in the expanded row breakdown table.
+
+---
+
 ### Audit Log — rich facility supervisor view (2026-10-18, session 17)
 
 Every tab whose `actorRole` is `facility_supervisor` now shows an enriched view with category chips, one-sentence summaries, worker name, store impact, flags, day grouping, expandable rows, a request thread modal, an attention strip, category filter chips, and a hide-session toggle. The enrichment is entirely client-side; no new API calls.

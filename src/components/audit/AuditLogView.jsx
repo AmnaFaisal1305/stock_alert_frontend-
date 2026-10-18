@@ -3,7 +3,7 @@
 // on the server (Round 35): tab badges come from countsByActorRole, pages from nextCursor.
 // Rich view (category chip, summary, worker, store impact, flags, day groups, thread modal)
 // activates on any tab whose actorRole is 'facility_supervisor'.
-import { useState, useMemo } from 'react'
+import { Fragment, useState, useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { X, AlertTriangle } from 'lucide-react'
 import { getAuditLog, getVaccines, getUsers, getFacilities } from '../../lib/api'
@@ -50,7 +50,7 @@ const ROLE_CONFIG = {
     tabs: [{ value: 'all', label: 'All', params: {} }, ...['uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r])],
     scope: 'facility', where: 'facility',
   },
-  uc_supervisor: { tabs: [ROLE_TAB.facility_supervisor, ROLE_TAB.facility_worker], where: 'facility' },
+  uc_supervisor: { tabs: [ROLE_TAB.facility_head, ROLE_TAB.facility_supervisor, ROLE_TAB.facility_worker], where: 'facility' },
   facility_head: {
     tabs: ['uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r]),
     defaultTab: 'facility_supervisor',
@@ -134,7 +134,10 @@ function hasExpandedContent(row) {
     d.note || d.reason ||
     (d.occurredOn && d.occurredOn !== row.createdAt?.split('T')[0]) ||
     d.payload?.thresholds ||
-    d.payload?.storeVials != null
+    d.payload?.storeVials != null ||
+    (row.action === 'STOCK_REQUEST_APPROVE' && d.items?.length > 0) ||
+    (row.action === 'APPROVAL_APPROVE' && d.type === 'threshold_change' && (d.previous || d.new)) ||
+    ((row.action === 'APPROVAL_REJECT' || row.action === 'APPROVAL_DECLINE') && d.decisionReason)
   )
 }
 
@@ -146,7 +149,7 @@ function ExpandedPanel({ row }) {
       {d.batchNo      && <span><span className="font-medium text-text">Batch</span> {d.batchNo}</span>}
       {d.manufacturer && <span><span className="font-medium text-text">Manufacturer</span> {d.manufacturer}</span>}
       {d.expiryDate   && <span><span className="font-medium text-text">Expiry</span> {d.expiryDate}</span>}
-      {(d.note || d.reason) && (
+      {(d.note || d.reason) && row.action !== 'STOCK_REQUEST_APPROVE' && (
         <span className="sm:col-span-2">
           <span className="font-medium text-text">{d.note ? 'Note' : 'Reason'}</span> "{d.note ?? d.reason}"
         </span>
@@ -168,6 +171,66 @@ function ExpandedPanel({ row }) {
       )}
       {d.payload?.storeVials != null && (
         <span><span className="font-medium text-text">Requested store vials</span> {d.payload.storeVials}</span>
+      )}
+
+      {/* Head: STOCK_REQUEST_APPROVE per-vaccine breakdown */}
+      {row.action === 'STOCK_REQUEST_APPROVE' && d.items?.length > 0 && (
+        <div className="sm:col-span-2 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-text-muted">
+                <th className="text-left pb-1 pr-4">Vaccine</th>
+                <th className="text-right pb-1 pr-4">Requested</th>
+                <th className="text-right pb-1 pr-4">Fulfilled</th>
+                <th className="text-right pb-1">This event</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.items.map((it, i) => (
+                <tr key={it.vaccineId ?? i} className="border-t border-surface-border">
+                  <td className="pr-4 py-1 font-medium text-text">{it.vaccineName ?? it.vaccineId}</td>
+                  <td className="pr-4 py-1 text-right tabular-nums">{it.requestedVials ?? '—'}</td>
+                  <td className={`pr-4 py-1 text-right tabular-nums ${(it.fulfilledVials ?? 0) < (it.requestedVials ?? 0) ? 'text-warning-dark' : 'text-success-dark'}`}>
+                    {it.fulfilledVials ?? '—'}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">{it.receivedVials ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {d.note && <p className="mt-2"><span className="font-medium text-text">Note</span> "{d.note}"</p>}
+        </div>
+      )}
+
+      {/* Head: APPROVAL_APPROVE threshold diff */}
+      {row.action === 'APPROVAL_APPROVE' && d.type === 'threshold_change' && (d.previous || d.new) && (
+        <div className="sm:col-span-2">
+          <span className="font-medium text-text block mb-1">Threshold change</span>
+          <div className="grid grid-cols-3 gap-x-4 text-xs">
+            <span className="text-text-muted font-medium">Field</span>
+            <span className="text-text-muted font-medium text-right">Before</span>
+            <span className="text-text-muted font-medium text-right">After</span>
+            {['lowDoses', 'lowVials', 'criticalDoses', 'criticalVials'].map((k) => {
+              const pv = d.previous?.[k]; const nv = d.new?.[k]
+              if (pv == null && nv == null) return null
+              const changed = pv !== nv
+              return (
+                <Fragment key={k}>
+                  <span className={changed ? 'font-medium text-text' : 'text-text-muted'}>{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  <span className="text-right tabular-nums">{pv ?? '—'}</span>
+                  <span className={`text-right tabular-nums ${changed ? (nv < pv ? 'text-warning-dark' : 'text-success-dark') : ''}`}>{nv ?? '—'}</span>
+                </Fragment>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Head: APPROVAL_REJECT / APPROVAL_DECLINE decision reason */}
+      {(row.action === 'APPROVAL_REJECT' || row.action === 'APPROVAL_DECLINE') && d.decisionReason && (
+        <span className="sm:col-span-2">
+          <span className="font-medium text-text">Reason</span> "{d.decisionReason}"
+        </span>
       )}
     </div>
   )
@@ -263,8 +326,8 @@ export default function AuditLogView() {
   }
 
   const activeTab = config.tabs.find((t) => t.value === tab) ?? config.tabs[0]
-  // Rich view: any tab that shows facility supervisor entries
-  const isRichView = activeTab.params?.actorRole === 'facility_supervisor'
+  const isHeadTab = activeTab.params?.actorRole === 'facility_head'
+  const isRichView = isHeadTab || activeTab.params?.actorRole === 'facility_supervisor'
 
   const scopeOn = config.scope && (config.scope === 'worker' ? tab === 'workers' : tab === 'all')
   const scopeId = scopeOn ? filters.scope : ''
@@ -281,7 +344,7 @@ export default function AuditLogView() {
     placeholderData: keepPreviousData,
   })
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
-  const { data: userData } = useQuery({ queryKey: ['users'], queryFn: getUsers, enabled: config.scope === 'worker' })
+  const { data: userData } = useQuery({ queryKey: ['users'], queryFn: getUsers, enabled: config.scope === 'worker' || isRichView })
   const { data: facilityData } = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, enabled: config.scope === 'facility', staleTime: 30_000 })
 
   // Full-set fetch for flags + attention strip + thread modal (rich view only)
@@ -349,30 +412,6 @@ export default function AuditLogView() {
 
   const hiddenCount = isRichView && url.hideSession === '1' ? parsedRows.filter((l) => l.action === 'LOGOUT').length : 0
 
-  // Day groups for the rich table
-  const dayGroups = useMemo(() => {
-    if (!isRichView) return null
-    const grouped = {}
-    const order = []
-    for (const row of visibleRows) {
-      const date = row.createdAt.split('T')[0]
-      if (!grouped[date]) { grouped[date] = []; order.push(date) }
-      grouped[date].push(row)
-    }
-    return order.map((date) => {
-      const g = grouped[date]
-      const label = formatDate(date + 'T12:00:00', { withYear: false })
-      const totalAssigned = g.filter((r) => r.action === 'STOCK_ASSIGN').reduce((s, r) => s + (r.$f?.storeImpact?.value ?? 0), 0)
-      const reqCount = g.filter((r) => r.action === 'STOCK_REQUEST_CREATE').length
-      const recCount = g.filter((r) => r.action === 'STOCK_REQUEST_RECEIVED').length
-      const parts = []
-      if (totalAssigned) parts.push(`${totalAssigned} vials assigned`)
-      if (reqCount) parts.push(plural(reqCount, 'request'))
-      if (recCount) parts.push(`${recCount} received`)
-      return { label, summary: parts.join(' · '), rows: g }
-    })
-  }, [isRichView, visibleRows])
-
   // Expandable row state
   const toggleExpand = (row) => {
     const key = row.id ?? `${row.createdAt}-${row.action}`
@@ -399,8 +438,12 @@ export default function AuditLogView() {
       counts.pending_stale      > 0 && { count: counts.pending_stale,      label: 'pending approvals',                   category: 'Approval' },
       counts.awaiting_received  > 0 && { count: counts.awaiting_received,  label: 'received but awaiting both approvals', category: 'Request' },
       counts.post_dayend_assign > 0 && { count: counts.post_dayend_assign, label: 'possible post-day-end assignments',   category: 'Stock movement' },
+      ...(isHeadTab ? [
+        counts.open_shortfall    > 0 && { count: counts.open_shortfall,    label: 'open shortfalls',    category: 'Request' },
+        counts.threshold_lowered > 0 && { count: counts.threshold_lowered, label: 'lowered thresholds', category: 'Approval' },
+      ] : []),
     ].filter(Boolean)
-  }, [isRichView, allCtx, allPagesQ.data])
+  }, [isRichView, isHeadTab, allCtx, allPagesQ.data])
 
   // ─── Columns ─────────────────────────────────────────────────────────────
 
@@ -466,14 +509,14 @@ export default function AuditLogView() {
         )
       },
     },
-    {
+    ...(!isHeadTab ? [{
       key: 'worker', label: 'Vaccinator',
       render: (l) => {
         const w = l.$f?.workerName
         return w ? <span className="text-text-muted whitespace-nowrap">{w}</span> : <span className="text-text-muted">—</span>
       },
-    },
-    {
+    }] : []),
+    ...(!isHeadTab ? [{
       key: 'impact', label: 'Store impact', align: 'right',
       render: (l) => {
         const imp = l.$f?.storeImpact
@@ -484,7 +527,20 @@ export default function AuditLogView() {
           </span>
         )
       },
-    },
+    }] : []),
+    ...(isHeadTab ? [{
+      key: 'qty', label: 'Qty', align: 'right',
+      render: (l) => {
+        const q = l.$f?.qty
+        if (!q) return <span className="text-text-muted">—</span>
+        const short = q.done < q.total
+        return (
+          <span className={`tabular-nums font-medium whitespace-nowrap ${short ? 'text-warning-dark' : 'text-success-dark'}`}>
+            {q.done}/{q.total}
+          </span>
+        )
+      },
+    }] : []),
     {
       key: 'status', label: 'Status',
       render: (l) => {
@@ -524,7 +580,7 @@ export default function AuditLogView() {
         )
       },
     },
-  ], [showWho, config.where, setThreadId])
+  ], [showWho, config.where, setThreadId, isHeadTab])
 
   const standardColumns = [
     {
@@ -577,6 +633,14 @@ export default function AuditLogView() {
     { label: 'Event status',   value: (l) => l.$f?.statusLabel ?? '' },
     { label: 'Current status', value: (l) => l.status ?? '' },
     { label: 'Note',           value: (l) => l.details?.note ?? l.details?.reason ?? '' },
+    { label: 'Requested vials',     value: (l) => l._item?.requestedVials ?? '' },
+    { label: 'Fulfilled vials',     value: (l) => l._item?.fulfilledVials  ?? '' },
+    { label: 'Received this event', value: (l) => l._item?.receivedVials   ?? '' },
+    { label: 'Decision reason',     value: (l) => l.details?.decisionReason ?? '' },
+    { label: 'Prev low doses',      value: (l) => l.details?.previous?.lowDoses ?? '' },
+    { label: 'Prev critical doses', value: (l) => l.details?.previous?.criticalDoses ?? '' },
+    { label: 'New low doses',       value: (l) => l.details?.new?.lowDoses ?? '' },
+    { label: 'New critical doses',  value: (l) => l.details?.new?.criticalDoses ?? '' },
   ]
 
   const standardExportColumns = [
@@ -659,6 +723,11 @@ export default function AuditLogView() {
               onFilter={(category) => set({ category })}
             />
           )}
+          {isRichView && allPagesQ.data?.length >= 150 && (
+            <p className="text-xs text-text-muted px-1">
+              Flags and summaries computed from the last 150 entries. Older events may not be reflected.
+            </p>
+          )}
 
           <div className="flex flex-wrap items-end gap-3">
             <SearchInput
@@ -713,7 +782,6 @@ export default function AuditLogView() {
           <Table
             columns={columns}
             rows={isRichView ? visibleRows : parsedRows}
-            groups={dayGroups ?? undefined}
             loading={logQ.isLoading}
             rowKey={(l) => l.id ?? `${l.createdAt}-${l.action}-${l.actorId}`}
             emptyMessage={hasFilters || url.category ? 'No entries match these filters.' : 'No activity recorded yet.'}

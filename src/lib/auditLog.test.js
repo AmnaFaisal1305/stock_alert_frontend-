@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildContext, formatAuditEntry } from './auditLog'
+import { buildContext, formatAuditEntry, deriveApproveStatus } from './auditLog'
 
 const eid = 'req-0000-0001'
 const vacId = 'vac-001'
@@ -105,13 +105,13 @@ describe('formatAuditEntry', () => {
     expect(f.flags.some((fl) => fl.type === 'backdated')).toBe(true)
   })
 
-  it('unknown vaccinator id: falls back to "Unknown vaccinator", not raw UUID', () => {
+  it('unknown worker id with no email: workerName is null (renders "—"), not raw UUID', () => {
     const e = entry('STOCK_ASSIGN', {
       workerId: 'usr-unknown', items: [{ vaccineId: vacId, vaccineName: vacName, vials: 1 }],
     })
     const f = formatAuditEntry(e, baseCtx())
-    expect(f.workerName).toBe('Unknown vaccinator')
-    expect(f.summary).toContain('Unknown vaccinator')
+    expect(f.workerName).toBeNull()
+    expect(f.summary).not.toContain('Unknown worker')
   })
 
   it('STOCK_REQUEST_CANCEL: Round 40 rows use their own items, no CREATE needed', () => {
@@ -168,5 +168,211 @@ describe('formatAuditEntry', () => {
     }, { entityId: 'abcd1234-5678-90ef' })
     const f = formatAuditEntry(e, baseCtx())
     expect(f.ref).toBe('abcd1234')
+  })
+})
+
+// ─── Head-specific tests ───────────────────────────────────────────────────────
+
+const OLD = '2020-01-01T00:00:00.000Z' // always >72h old
+
+describe('STOCK_REQUEST_APPROVE (head)', () => {
+  it('partial single-vaccine: summary "Approved 8 of 10 BCG vials · short by 2"', () => {
+    const e = entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 8, receivedVials: 8 }],
+    }, { entityId: eid })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toBe('Approved 8 of 10 BCG vials · short by 2')
+  })
+
+  it('multi-vaccine some short: summary lists short vaccines', () => {
+    const e = entry('STOCK_REQUEST_APPROVE', {
+      items: [
+        { vaccineId: vacId, vaccineName: 'BCG', requestedVials: 10, fulfilledVials: 10, receivedVials: 10 },
+        { vaccineId: 'vac-002', vaccineName: 'OPV', requestedVials: 8, fulfilledVials: 5, receivedVials: 5 },
+        { vaccineId: 'vac-003', vaccineName: 'PCV', requestedVials: 6, fulfilledVials: 4, receivedVials: 4 },
+      ],
+    }, { entityId: eid })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toContain('short on 2 vaccines')
+    expect(f.summary).toContain('OPV 5/8')
+    expect(f.summary).toContain('PCV 4/6')
+  })
+
+  it('follow-up: summary starts with "Shortfall closed"', () => {
+    const earlier = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 5, receivedVials: 5 }],
+    }, { entityId: eid, id: 'log-1' }), createdAt: '2026-10-14T08:00:00.000Z' }
+    const later = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 9, receivedVials: 4 }],
+    }, { entityId: eid, id: 'log-2' }), createdAt: '2026-10-15T08:00:00.000Z' }
+    const ctx = buildContext([earlier, later], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(later, ctx)
+    expect(f.summary).toMatch(/^Shortfall closed/)
+    expect(f.summary).toContain('+4')
+    expect(f.summary).toContain('9 of 9')
+    expect(f.summary).toContain('Completed')
+  })
+
+  it('follow-up: qty.done = fulfilledVials (9), not receivedVials (4)', () => {
+    const earlier = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 5, receivedVials: 5 }],
+    }, { entityId: eid, id: 'log-1' }), createdAt: '2026-10-14T08:00:00.000Z' }
+    const later = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 9, receivedVials: 4 }],
+    }, { entityId: eid, id: 'log-2' }), createdAt: '2026-10-15T08:00:00.000Z' }
+    const ctx = buildContext([earlier, later], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(later, ctx)
+    expect(f.qty).toEqual({ done: 9, total: 9 })
+  })
+
+  it('no items (older entry): summary "Request approved"', () => {
+    const e = entry('STOCK_REQUEST_APPROVE', {}, { entityId: eid })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toBe('Request approved')
+  })
+
+  it('storeImpact is null, qty field is populated, awaiting_both suppresses showCurrentStatus', () => {
+    const e = entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 8, receivedVials: 8 }],
+    }, { entityId: eid, status: 'awaiting_both' })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.storeImpact).toBeNull()
+    expect(f.qty).toEqual({ done: 8, total: 10 })
+    expect(f.showCurrentStatus).toBe(false)
+  })
+})
+
+describe('APPROVAL_APPROVE threshold_change (head)', () => {
+  it('critical thresholds lowered: summary has diff + "lowers alert sensitivity", thresholdOverridden excluded', () => {
+    const e = entry('APPROVAL_APPROVE', {
+      vaccineId: vacId, vaccineName: vacName, type: 'threshold_change',
+      previous: { lowDoses: 40, lowVials: 4, criticalDoses: 20, criticalVials: 2, thresholdOverridden: false },
+      new:      { lowDoses: 40, lowVials: 4, criticalDoses: 10, criticalVials: 1, thresholdOverridden: true },
+    })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toContain('BCG')
+    expect(f.summary).toContain('10')
+    expect(f.summary).not.toContain('thresholdOverridden')
+    expect(f.summary).toContain('lowers alert sensitivity')
+  })
+
+  it('no values changed: fallback summary', () => {
+    const e = entry('APPROVAL_APPROVE', {
+      vaccineId: vacId, vaccineName: vacName, type: 'threshold_change',
+      previous: {}, new: {},
+    })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toBe('Approved threshold change for BCG')
+  })
+})
+
+describe('APPROVAL_REJECT (head)', () => {
+  it('with APPROVAL_REQUEST in context: includes requester and storeVials', () => {
+    const req = { ...entry('APPROVAL_REQUEST', {
+      vaccineId: vacId, vaccineName: vacName, type: 'stock_correction',
+      payload: { storeVials: 5 },
+    }, { entityId: eid }), id: 'log-req', actorName: 'Amna Faisal' }
+    const rej = entry('APPROVAL_REJECT', {
+      vaccineId: vacId, vaccineName: vacName, type: 'stock_correction',
+      decisionReason: 'Count seems wrong',
+    }, { entityId: eid, id: 'log-rej' })
+    const ctx = buildContext([req, rej], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(rej, ctx)
+    expect(f.summary).toContain('Amna Faisal')
+    expect(f.summary).toContain('5 vials')
+    expect(f.summary).toContain('Count seems wrong')
+  })
+
+  it('without APPROVAL_REQUEST in context: no requester, still shows reason', () => {
+    const e = entry('APPROVAL_REJECT', {
+      vaccineId: vacId, vaccineName: vacName, type: 'stock_correction',
+      decisionReason: 'Count seems wrong',
+    }, { entityId: eid })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).not.toContain('requested by')
+    expect(f.summary).toContain('Count seems wrong')
+  })
+})
+
+describe('SHEET_SAVED (head)', () => {
+  it('old format {month:10,year:2026} → "Form B saved · Oct 2026"', () => {
+    const e = entry('SHEET_SAVED', { month: 10, year: 2026 })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toBe('Form B saved · Oct 2026')
+  })
+
+  it('new format {month:"2026-10"} → "Form B saved · Oct 2026"', () => {
+    const e = entry('SHEET_SAVED', { month: '2026-10' })
+    const f = formatAuditEntry(e, baseCtx())
+    expect(f.summary).toBe('Form B saved · Oct 2026')
+  })
+})
+
+describe('open_shortfall / resolved_shortfall flags', () => {
+  it('>24h partial with no closers: open_shortfall warning', () => {
+    const e = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 7, receivedVials: 7 }],
+    }, { entityId: eid }), createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString() }
+    const ctx = buildContext([e], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(e, ctx)
+    const fl = f.flags.find((x) => x.type === 'open_shortfall')
+    expect(fl).toBeDefined()
+    expect(fl.tone).toBe('warning')
+  })
+
+  it('>72h partial with no closers: open_shortfall danger', () => {
+    const e = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 7, receivedVials: 7 }],
+    }, { entityId: eid }), createdAt: OLD }
+    const ctx = buildContext([e], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(e, ctx)
+    const fl = f.flags.find((x) => x.type === 'open_shortfall')
+    expect(fl).toBeDefined()
+    expect(fl.tone).toBe('danger')
+  })
+
+  it('CLOSE_SHORT for same entityId: open_shortfall NOT flagged', () => {
+    const approve = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 7, receivedVials: 7 }],
+    }, { entityId: eid }), createdAt: OLD }
+    const closer = { ...entry('STOCK_REQUEST_CLOSE_SHORT', {}, { entityId: eid }), id: 'log-close' }
+    const ctx = buildContext([approve, closer], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(approve, ctx)
+    expect(f.flags.some((x) => x.type === 'open_shortfall')).toBe(false)
+  })
+
+  it('STOCK_REQUEST_CANCEL for same entityId: open_shortfall NOT flagged', () => {
+    const approve = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10, fulfilledVials: 7, receivedVials: 7 }],
+    }, { entityId: eid }), createdAt: OLD }
+    const cancel = { ...entry('STOCK_REQUEST_CANCEL', {}, { entityId: eid }), id: 'log-cancel' }
+    const ctx = buildContext([approve, cancel], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(approve, ctx)
+    expect(f.flags.some((x) => x.type === 'open_shortfall')).toBe(false)
+  })
+
+  it('later completed APPROVE in context: resolved_shortfall flag', () => {
+    const partial = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 5, receivedVials: 5 }],
+    }, { entityId: eid, id: 'log-1' }), createdAt: '2026-10-14T08:00:00.000Z' }
+    const complete = { ...entry('STOCK_REQUEST_APPROVE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 9, fulfilledVials: 9, receivedVials: 4 }],
+    }, { entityId: eid, id: 'log-2' }), createdAt: '2026-10-15T08:00:00.000Z' }
+    const ctx = buildContext([partial, complete], [{ id: vacId, name: vacName }], [])
+    const f = formatAuditEntry(partial, ctx)
+    expect(f.flags.some((x) => x.type === 'resolved_shortfall')).toBe(true)
+    expect(f.flags.some((x) => x.type === 'open_shortfall')).toBe(false)
+  })
+})
+
+describe('deriveApproveStatus', () => {
+  it('all fulfilled → completed', () => {
+    expect(deriveApproveStatus({ items: [{ requestedVials: 5, fulfilledVials: 5 }] })).toBe('completed')
+  })
+  it('partial → partially_fulfilled', () => {
+    expect(deriveApproveStatus({ items: [{ requestedVials: 5, fulfilledVials: 3 }] })).toBe('partially_fulfilled')
+  })
+  it('no items → falls back to d.status', () => {
+    expect(deriveApproveStatus({ status: 'completed' })).toBe('completed')
   })
 })

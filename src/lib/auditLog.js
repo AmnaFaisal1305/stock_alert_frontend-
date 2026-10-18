@@ -3,6 +3,29 @@ import { ROLE_LABELS } from './navigation'
 import { approvalTypeLabel } from './status'
 import { toLocalDateStr } from './format'
 
+// Returns "Oct 2026" from {month:10,year:2026} or {month:"2026-10"}; null if unrecognisable.
+function sheetMonthLabel(d) {
+  if (d.month && d.year) {
+    return new Date(d.year, d.month - 1).toLocaleString('en-GB', { month: 'short', year: 'numeric' })
+  }
+  if (typeof d.month === 'string' && /^\d{4}-\d{2}$/.test(d.month)) {
+    const [y, m] = d.month.split('-')
+    return new Date(+y, +m - 1).toLocaleString('en-GB', { month: 'short', year: 'numeric' })
+  }
+  return null
+}
+
+// Derives the event-time status for STOCK_REQUEST_APPROVE from items.
+// Falls back to d.status when items are absent (older entries).
+export function deriveApproveStatus(d) {
+  if (!d) return null
+  if (d.items?.length) {
+    const allFulfilled = d.items.every((it) => (it.fulfilledVials ?? 0) >= (it.requestedVials ?? 0))
+    return allFulfilled ? 'completed' : 'partially_fulfilled'
+  }
+  return d.status ?? null
+}
+
 export const ACTION_LABELS = {
   LOGOUT:                    'Logged out',
   SHEET_SAVED:               'Form B saved',
@@ -72,12 +95,22 @@ export function buildContext(logs, vaccines = [], users = []) {
   // workerId:date → true for every STOCK_DAY_END (post_dayend_assign flag).
   const entriesByEntityId = {}
   const dayEndsByWorkerDate = new Set()
+  const approvalRequestByEntityId = {}
+  const latestApproveByEntityId = {}
+  const closingByEntityId = new Set()
   for (const log of logs) {
     if (log.entityId) (entriesByEntityId[log.entityId] ??= []).push(log)
     if (log.action === 'STOCK_DAY_END' && log.details?.workerId && log.details?.occurredOn)
       dayEndsByWorkerDate.add(`${log.details.workerId}:${log.details.occurredOn}`)
+    if (log.action === 'APPROVAL_REQUEST' && log.entityId) approvalRequestByEntityId[log.entityId] = log
+    if (log.action === 'STOCK_REQUEST_APPROVE' && log.entityId) {
+      const prev = latestApproveByEntityId[log.entityId]
+      if (!prev || new Date(log.createdAt) > new Date(prev.createdAt)) latestApproveByEntityId[log.entityId] = log
+    }
+    if (['STOCK_REQUEST_CLOSE_SHORT', 'STOCK_REQUEST_CANCEL', 'STOCK_REQUEST_DECLINE'].includes(log.action) && log.entityId)
+      closingByEntityId.add(log.entityId)
   }
-  return { vaccineNameById, userNameById, createByEntityId, entriesByEntityId, dayEndsByWorkerDate }
+  return { vaccineNameById, userNameById, createByEntityId, entriesByEntityId, dayEndsByWorkerDate, approvalRequestByEntityId, latestApproveByEntityId, closingByEntityId }
 }
 
 const STOCK_REQUEST_ACTIONS = new Set([
@@ -105,8 +138,10 @@ export function parseEntry(entry, ctx) {
   const quote = (s) => (s ? `“${s}”` : null)
 
   switch (entry.action) {
-    case 'SHEET_SAVED':
-      return { ...out, detail: d.month && d.year ? `For ${new Date(d.year, d.month - 1).toLocaleString('en-GB', { month: 'short' })} ${d.year}` : null }
+    case 'SHEET_SAVED': {
+      const label = sheetMonthLabel(d)
+      return { ...out, detail: label ? `For ${label}` : null }
+    }
 
     case 'STOCK_ENTRY':
       return { ...out, vaccine: one(d), vials: d.vials ?? d.quantity ?? null, dir: d.entryType === 'used' || d.entryType === 'wasted' ? 'out' : 'in', detail: d.entryType ?? null }
@@ -268,8 +303,8 @@ function buildSummary(entry, ctx) {
   const d = entry.details
   if (!d) return null
   const vn = (id) => (id ? ctx.vaccineNameById?.[id] ?? null : null)
-  const wn = (id) => (id ? ctx.userNameById?.[id] ?? 'Unknown vaccinator' : null)
-  const vaccineName = (it) => it.vaccineName || (vn(it.vaccineId) ?? 'Unknown vaccine')
+  const wn = (id) => (id ? ctx.userNameById?.[id] ?? null : null)
+  const vaccineName = (it) => (it.vaccineName ?? vn(it.vaccineId) ?? 'Unknown vaccine')
   const ds = (iso) => new Date(iso + 'T00:00:00').toLocaleString('en-GB', { day: 'numeric', month: 'short' })
   // Closing rows written from Round 40 carry their items; older ones use the create row if loaded.
   const requestItems = () => (d.items?.length ? d.items : ctx.createByEntityId?.[entry.entityId]?.items)
@@ -325,8 +360,31 @@ function buildSummary(entry, ctx) {
       return total != null ? `Request for ${total} vials declined` : 'Request declined'
     }
     case 'STOCK_REQUEST_APPROVE': {
-      const total = d.items?.reduce((s, it) => s + (it.fulfilledVials ?? it.requestedVials ?? 0), 0)
-      return total != null ? `Request approved — ${total} vials` : 'Request approved'
+      if (!d.items?.length) return d.note ? `Request approved · "${d.note}"` : 'Request approved'
+      const received = d.items.reduce((s, it) => s + (it.receivedVials ?? 0), 0)
+      const fulfilled = d.items.reduce((s, it) => s + (it.fulfilledVials ?? it.requestedVials ?? 0), 0)
+      const requested = d.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+      const siblings = ctx.entriesByEntityId?.[entry.entityId] ?? []
+      const isFollowUp = siblings.some((e) =>
+        e.action === 'STOCK_REQUEST_APPROVE' && e.id !== entry.id && new Date(e.createdAt) < new Date(entry.createdAt)
+      )
+      const note = d.note ? ` · "${d.note}"` : ''
+      const evStatus = deriveApproveStatus(d)
+      if (isFollowUp) {
+        const deltaVax = d.items.length === 1 ? ` ${vaccineName(d.items[0])}` : ''
+        return `Shortfall closed: +${received}${deltaVax} received, now ${fulfilled} of ${requested} · ${evStatus === 'completed' ? 'Completed' : 'Partially fulfilled'}${note}`
+      }
+      if (d.items.length === 1) {
+        const it = d.items[0]
+        const short = (it.requestedVials ?? 0) - (it.fulfilledVials ?? it.requestedVials ?? 0)
+        const base = `Approved ${fulfilled} of ${requested} ${vaccineName(it)} vials`
+        return short > 0 ? `${base} · short by ${short}${note}` : `${base}${note}`
+      }
+      const shorts = d.items.filter((it) => (it.fulfilledVials ?? it.requestedVials ?? 0) < (it.requestedVials ?? 0))
+      const shortStr = shorts.length
+        ? ` · short on ${shorts.length} vaccine${shorts.length > 1 ? 's' : ''}: ${shorts.map((it) => `${vaccineName(it)} ${it.fulfilledVials ?? 0}/${it.requestedVials ?? 0}`).join(', ')}`
+        : ''
+      return `Approved ${fulfilled} of ${requested} vials${shortStr}${note}`
     }
     case 'STOCK_REQUEST_SENT': {
       const total = d.items?.reduce((s, it) => s + (it.sentVials ?? 0), 0) ?? 0
@@ -355,15 +413,35 @@ function buildSummary(entry, ctx) {
       return `Requested approval for ${vaccine}`
     }
     case 'APPROVAL_APPROVE': {
-      const vaccine = d.vaccineName || vn(d.vaccineId)
-      const typeStr = d.type ? approvalTypeLabel(d.type).toLowerCase() : 'request'
-      return vaccine ? `Approved ${typeStr} for ${vaccine}` : `Approved ${typeStr}`
+      const vaccine = d.vaccineName ?? vn(d.vaccineId)
+      if (d.type === 'threshold_change') {
+        const KEYS = ['lowDoses', 'lowVials', 'criticalDoses', 'criticalVials']
+        const prev = d.previous ?? {}; const next = d.new ?? {}
+        const changed = KEYS.filter((k) => prev[k] != null && next[k] != null && prev[k] !== next[k])
+        if (!changed.length) return vaccine ? `Approved threshold change for ${vaccine}` : 'Approved threshold change'
+        const parts = changed.map((k) => `${k.replace(/([A-Z])/g, ' $1').toLowerCase()} ${prev[k]} → ${next[k]}`)
+        const lowered = changed.some((k) => next[k] < prev[k])
+        const suffix = lowered ? ' (lowers alert sensitivity)' : ''
+        const unchanged = KEYS.filter((k) => !changed.includes(k) && (prev[k] != null || next[k] != null))
+        const unStr = unchanged.length ? ' (other values unchanged)' : ''
+        return `Approved threshold change for ${vaccine} · ${parts.join(', ')}${unStr}${suffix}`
+      }
+      const req = ctx.approvalRequestByEntityId?.[entry.entityId]
+      const requester = req?.actorName ? ` (requested by ${req.actorName})` : ''
+      return vaccine ? `Approved stock correction for ${vaccine}${requester}` : `Approved stock correction${requester}`
     }
     case 'APPROVAL_REJECT':
     case 'APPROVAL_DECLINE': {
-      const vaccine = d.vaccineName || vn(d.vaccineId)
-      const typeStr = d.type ? approvalTypeLabel(d.type).toLowerCase() : 'request'
-      return vaccine ? `Rejected ${typeStr} for ${vaccine}` : `Rejected ${typeStr}`
+      const vaccine = d.vaccineName ?? vn(d.vaccineId)
+      const req = ctx.approvalRequestByEntityId?.[entry.entityId]
+      const storeVials = req?.details?.payload?.storeVials
+      const requester = req?.actorName
+      const vaxStr = vaccine ? ` for ${vaccine}` : ''
+      const toStr = storeVials != null ? ` to ${storeVials} vials` : ''
+      const byStr = requester ? ` (requested by ${requester})` : ''
+      const reason = d.decisionReason ? ` · Reason: "${d.decisionReason}"` : ''
+      const typeStr = d.type === 'stock_correction' ? 'stock correction' : (d.type?.replace(/_/g, ' ') ?? 'request')
+      return `Rejected ${typeStr}${vaxStr}${toStr}${byStr}${reason}`
     }
     case 'APPROVAL_CANCEL': {
       const vaccine = d.vaccineName || vn(d.vaccineId)
@@ -378,11 +456,8 @@ function buildSummary(entry, ctx) {
       return `Day end${workerStr}: ${sum('assignedVials')} assigned = ${sum('usedVials')} used + ${sum('wastedVials')} wasted + ${sum('returnedVials')} returned`
     }
     case 'SHEET_SAVED': {
-      if (d.month && d.year) {
-        const month = new Date(d.year, d.month - 1).toLocaleString('en-GB', { month: 'short', year: 'numeric' })
-        return `Form B saved · ${month}`
-      }
-      return 'Form B saved'
+      const month = sheetMonthLabel(d)
+      return month ? `Form B saved · ${month}` : 'Form B saved'
     }
     default:
       return null
@@ -446,6 +521,30 @@ export function computeFlags(entry, ctx) {
     }
   }
 
+  // Head-specific: open / resolved shortfall on STOCK_REQUEST_APPROVE
+  if (entry.action === 'STOCK_REQUEST_APPROVE' && entry.entityId) {
+    const evStatus = deriveApproveStatus(d)
+    if (evStatus === 'partially_fulfilled') {
+      const isClosed = ctx.closingByEntityId?.has(entry.entityId)
+      const latestApprove = ctx.latestApproveByEntityId?.[entry.entityId]
+      const latestStatus = latestApprove ? deriveApproveStatus(latestApprove.details) : evStatus
+      if (isClosed || latestStatus === 'completed') {
+        flags.push({ type: 'resolved_shortfall', label: 'Resolved', tone: 'success' })
+      } else if (!latestApprove || latestApprove.id === entry.id) {
+        if (ageMs > H72) flags.push({ type: 'open_shortfall', label: `Open ${Math.floor(ageMs / H24)}d`, tone: 'danger' })
+        else if (ageMs > H24) flags.push({ type: 'open_shortfall', label: 'Open over 24h', tone: 'warning' })
+      }
+    }
+  }
+
+  // Head-specific: threshold lowered
+  if (entry.action === 'APPROVAL_APPROVE' && d.type === 'threshold_change') {
+    const KEYS = ['lowDoses', 'lowVials', 'criticalDoses', 'criticalVials']
+    const prev = d.previous ?? {}; const next = d.new ?? {}
+    if (KEYS.some((k) => prev[k] != null && next[k] != null && next[k] < prev[k]))
+      flags.push({ type: 'threshold_lowered', label: 'Threshold lowered', tone: 'neutral' })
+  }
+
   return flags
 }
 
@@ -484,10 +583,31 @@ export function formatAuditEntry(entry, ctx) {
     }
   }
 
+  // For STOCK_REQUEST_APPROVE: override statusLabel/tone from derived event status.
+  if (entry.action === 'STOCK_REQUEST_APPROVE') {
+    const evStatus = deriveApproveStatus(d)
+    if (evStatus === 'completed') {
+      statusLabel = 'Completed'; statusTone = 'success'
+    } else if (evStatus === 'partially_fulfilled') {
+      const days = Math.floor((Date.now() - new Date(entry.createdAt).getTime()) / 86_400_000)
+      const isClosed = ctx.closingByEntityId?.has(entry.entityId)
+      const latestApprove = ctx.latestApproveByEntityId?.[entry.entityId]
+      const latestStatus = latestApprove ? deriveApproveStatus(latestApprove.details) : evStatus
+      if (isClosed || latestStatus === 'completed') {
+        statusLabel = 'Resolved'; statusTone = 'success'
+      } else {
+        statusLabel = days >= 1 ? `Open ${days}d` : 'Open'
+        statusTone = days >= 3 ? 'danger' : 'warning'
+      }
+    }
+  }
+
   // Show the entity's current status as a secondary badge only when it isn't
   // the natural result of this action (avoids redundant "Raised · Awaiting both").
   const natural = NATURAL_STATUS[entry.action]
-  const showCurrentStatus = !!(natural && entry.status && !natural.includes(entry.status))
+  // Suppress "Now: Awaiting both" on partial approvals — it is the expected state, not an anomaly.
+  const awaitingPartialOk = entry.action === 'STOCK_REQUEST_APPROVE' && entry.status === 'awaiting_both'
+  const showCurrentStatus = !awaitingPartialOk && !!(natural && entry.status && !natural.includes(entry.status))
 
   // backdatedFor: non-null when occurredOn differs from the local createdAt date
   let backdatedFor = null
@@ -498,12 +618,19 @@ export function formatAuditEntry(entry, ctx) {
     }
   }
 
+  const qty = entry.action === 'STOCK_REQUEST_APPROVE' && d.items?.length
+    ? {
+        done: d.items.reduce((s, it) => s + (it.fulfilledVials ?? it.requestedVials ?? 0), 0),
+        total: d.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0),
+      }
+    : null
+
   return {
     category,
     actionLabel: actionLabel(entry.action),
     summary: buildSummary(entry, ctx),
     vaccineLabel: p.vaccine,
-    workerName: d.workerId ? (ctx.userNameById?.[d.workerId] ?? 'Unknown vaccinator') : null,
+    workerName: d.workerId ? (ctx.userNameById?.[d.workerId] ?? d.workerEmail?.split('@')[0] ?? null) : null,
     storeImpact,
     statusLabel,
     statusTone,
@@ -512,6 +639,7 @@ export function formatAuditEntry(entry, ctx) {
     ref: entry.entityId ? entry.entityId.slice(0, 8) : null,
     flags: computeFlags(entry, ctx),
     backdatedFor,
+    qty,
     parsed: p,
   }
 }

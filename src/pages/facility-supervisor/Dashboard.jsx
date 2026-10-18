@@ -245,7 +245,7 @@ export default function FacilityDashboard() {
             />
           </section>
 
-          <AuditLogWidget auditLogPath={isSupervisor ? '/facility/audit-log' : '/head/audit-log'} />
+          <AuditLogWidget auditLogPath={isSupervisor ? '/facility/audit-log' : '/head/audit-log'} showHeadAlerts={!isSupervisor} />
         </>
       )}
     </div>
