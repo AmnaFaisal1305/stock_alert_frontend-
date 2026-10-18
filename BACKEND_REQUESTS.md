@@ -10,6 +10,7 @@ All new parameters should be optional and additive, and combined with the caller
 |---|---|---|---|
 | 1 | Stock Register source that includes stock received through requests | Facility supervisor › Stock Register | **High** (balance is wrong today) |
 | 2 | Offline use: back-dating window and session expiry | Assign Vials, Day End (offline) | Medium (questions) |
+| 3 | A missing CSRF header returns `403 "Internal server error"` | Every write | Low (worked around) |
 
 ---
 
@@ -110,3 +111,12 @@ Show the facility supervisor the `STOCK_REQUEST_APPROVE` and `APPROVAL_APPROVE` 
   - We keep the queue across the sign-in either way, so nothing is lost; it's only an extra step.
 
 **Fallback:** both rules stay as they are. The app shows the reason on any refused entry and keeps it until the supervisor discards it.
+
+---
+
+## 3. A missing CSRF header returns a generic 403
+
+**Seen 2026-10-19:** `POST /api/auth/logout` with a valid session cookie but no `x-csrf-token` header answers `403 {"error":"Internal server error"}`. A wrong token answers with a CSRF message.
+- **Why it matters:** the client refreshes `/session` and retries once when a 403 is about CSRF, and it recognises that from the message. After an offline cold start there is no token in memory, so the first queued entry replayed would hit this generic 403 and be treated as a final refusal.
+- **What we did:** the client now also refreshes and retries on any 403 to a write sent without a token, so nothing is blocked.
+- **Ask:** return a CSRF-specific body for a missing header too (e.g. `{ "error": "Missing CSRF token" }`). `Internal server error` with a 403 also hides real server errors in logs.

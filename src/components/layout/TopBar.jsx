@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import ConfirmDialog from '../ui/ConfirmDialog'
-import { subscribe, pendingCount, failedCount, failedItems, discardFailed, getLastSynced } from '../../lib/offlineQueue'
+import { subscribe, pendingCount, failedCount, expiringCount, failedItems, discardFailed, getLastSynced } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
 import { scopeLabel, ROLE_LABELS } from '../../lib/navigation'
 
@@ -21,7 +21,8 @@ function useQueueState() {
   const pending    = useSyncExternalStore(subscribe, pendingCount, () => 0)
   const failed     = useSyncExternalStore(subscribe, failedCount, () => 0)
   const lastSynced = useSyncExternalStore(subscribe, getLastSynced, () => null)
-  return { pending, failed, lastSynced }
+  const expiring   = useSyncExternalStore(subscribe, expiringCount, () => 0)
+  return { pending, failed, lastSynced, expiring }
 }
 
 const KIND_LABEL = { assign: 'Assign vials', dayend: 'Day end' }
@@ -68,15 +69,19 @@ const iconBtn = 'w-9 h-9 rounded-control grid place-items-center text-text-muted
 
 function SyncStatus() {
   const isOnline = useOnline()
-  const { pending, failed, lastSynced } = useQueueState()
+  const { pending, failed, lastSynced, expiring } = useQueueState()
   const time = (d) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   let status = null
   if (!isOnline) {
     status = (
-      <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-warning-bg text-warning-dark text-xs font-medium" role="status">
+      <span
+        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-warning-bg text-warning-dark text-xs font-medium"
+        role="status"
+        title={expiring > 0 ? 'Entries dated more than 3 days ago are refused. Connect to send them.' : undefined}
+      >
         <WifiOff size={13} strokeWidth={2} aria-hidden="true" />
-        Offline{pending > 0 && ` · ${pending} pending`}
+        Offline{pending > 0 && ` · ${pending} pending`}{expiring > 0 && ` · ${expiring} expire soon`}
       </span>
     )
   } else if (pending > 0) {

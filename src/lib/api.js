@@ -44,9 +44,10 @@ async function request(method, path, body, { skipAuthRedirect = false, _csrfRetr
       err = { error: res.statusText }
     }
 
-    // Another tab logged in → new CSRF token issued. Refresh and retry once.
-    if (res.status === 403 && !_csrfRetried &&
-        typeof err.error === 'string' && err.error.toLowerCase().includes('csrf')) {
+    // Another tab logged in → new CSRF token issued, or the app started offline with no token
+    // (the server answers a missing header with a generic 403). Refresh and retry once.
+    const csrfProblem = !_csrfToken || (typeof err.error === 'string' && err.error.toLowerCase().includes('csrf'))
+    if (res.status === 403 && method !== 'GET' && !_csrfRetried && csrfProblem) {
       try {
         const session = await request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
         if (session?.csrfToken) setCsrfToken(session.csrfToken)

@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { Minus, Plus, PackagePlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
-import { enqueue, isNetworkError } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError, subscribe, pendingCount, withQueued } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
@@ -80,6 +80,7 @@ export default function AssignVials() {
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: usersData,   isLoading: loadingUsers }   = useQuery({ queryKey: ['users'],    queryFn: getUsers })
   const { data: holdingsData }                            = useQuery({ queryKey: ['holdings'], queryFn: getHoldings })
+  useSyncExternalStore(subscribe, pendingCount) // re-render when an entry is queued or sent
 
   const mutation = useMutation({
     mutationFn: assignVials,
@@ -105,7 +106,7 @@ export default function AssignVials() {
   const vaccines = vaccineData?.vaccines ?? []
   const workers  = (usersData?.users ?? []).filter(u => u.role === 'facility_worker' && u.isActive)
   const storeMap = new Map(
-    (holdingsData?.holdings ?? [])
+    withQueued(holdingsData?.holdings ?? [], user?.facilityId)
       .filter(h => h.facilityId === user?.facilityId && !h.workerId)
       .map(h => [h.vaccineId, h.remaining])
   )

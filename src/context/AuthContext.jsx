@@ -18,6 +18,22 @@ const ROLE_DEFAULTS = {
 
 const SESSION_KEY = 'sst_user'
 const CSRF_KEY    = 'sst_csrf'
+// Profile only (the session cookie is HttpOnly): lets a cold start with no signal reopen the app.
+const OFFLINE_USER_KEY = 'sst_offline_user'
+
+function rememberUser(u) {
+  try { localStorage.setItem(OFFLINE_USER_KEY, JSON.stringify(u)) } catch {}
+}
+function forgetUser() {
+  try { localStorage.removeItem(OFFLINE_USER_KEY) } catch {}
+}
+// A sign-out made with no signal never reached the server, so the cookie still works; finish it
+// on the next start instead of silently restoring that session.
+const LOGOUT_PENDING_KEY = 'sst_logout_pending'
+
+function rememberedUser() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_USER_KEY)) } catch { return null }
+}
 
 function loadSession() {
   try {
@@ -44,16 +60,34 @@ export function AuthProvider({ children }) {
   // On PWA relaunch: sessionStorage is empty but the cookie may still be valid
   useEffect(() => {
     if (!bootstrapping) return
+    if (localStorage.getItem(LOGOUT_PENDING_KEY)) {
+      api.logout()
+        .then(() => localStorage.removeItem(LOGOUT_PENDING_KEY))
+        .catch((err) => { if (err?.status === 401) localStorage.removeItem(LOGOUT_PENDING_KEY) }) // still offline: retry next start
+        .finally(() => setBootstrapping(false))
+      return
+    }
     api.getSession()
       .then(({ user: u, csrfToken }) => {
         api.setCsrfToken(csrfToken)
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(u))
         sessionStorage.setItem(CSRF_KEY, csrfToken)
         localStorage.setItem('sst_auth_signal', '1')
+        rememberUser(u)
         setUser(u)
       })
-      .catch(() => {
-        // no valid session — stay on login
+      .catch((err) => {
+        // No signal (or the server is down): reopen as the last signed-in user. The queue replays
+        // later; the first write online refreshes the CSRF token (api.js retries a CSRF 403).
+        const offline = !err?.status || err.status >= 500
+        const u = offline ? rememberedUser() : null
+        if (u) {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(u)) // offlineQueue reads the user id here
+          setUser(u)
+        } else if (!offline) {
+          forgetUser() // 401: the session really ended; drop the saved lists too
+          queryClient.clear()
+        }
       })
       .finally(() => setBootstrapping(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -98,6 +132,7 @@ export function AuthProvider({ children }) {
       api.setCsrfToken(null)
       // Clear the auth signal so the next login re-fires the storage event in other tabs
       localStorage.removeItem('sst_auth_signal')
+      forgetUser()
       setUser(null)
       navigate('/login', { replace: true })
     }
@@ -114,6 +149,8 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('sst_notif_card')
     sessionStorage.removeItem('sst_install_card')
     localStorage.setItem('sst_auth_signal', '1')
+    localStorage.removeItem(LOGOUT_PENDING_KEY)
+    rememberUser(userData)
     setUser(userData)
   }, [queryClient])
 
@@ -121,14 +158,16 @@ export function AuthProvider({ children }) {
     await disablePushForLogout()
     try {
       await api.logout()
-    } catch {
-      // ignore — clear local state regardless
+    } catch (err) {
+      // clear local state regardless; with no signal, end the server session on the next start
+      if (!err?.status || err.status >= 500) localStorage.setItem(LOGOUT_PENDING_KEY, '1')
     }
     queryClient.clear()
     api.setCsrfToken(null)
     sessionStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(CSRF_KEY)
     localStorage.removeItem('sst_auth_signal')
+    forgetUser()
     localStorage.setItem('sst_logout_ts', Date.now().toString())
     setUser(null)
     navigate('/login', { replace: true })

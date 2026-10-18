@@ -13,6 +13,23 @@
 - **Backend:** latest round adopted is **Round 37**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (it absorbed `STOCK_REGISTER_BACKEND.md` and `BACKEND_OFFLINE_PUSH.md`; done items removed). Open: #1 Stock Register (`GET /api/stock-register`), #2 offline back-dating window and session expiry.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
+### Offline cold start (2026-10-19)
+Facility supervisors can open the app with no signal and record Assign Vials and Day End. Requests and approvals stay online-only.
+- **Login:** `AuthContext` keeps the signed-in profile in `localStorage` (`sst_offline_user`, the profile only; the cookie is HttpOnly). If `/session` gets no response or a `5xx`, the app reopens as that user without a CSRF token.
+- **Signing out with no signal:** sets `sst_logout_pending`, and the next start ends the server session before showing the login page. Before this, the still-valid cookie signed the user straight back in.
+- **CSRF after an offline start:** `api.js` refreshes `/session` and retries once on a 403 to a write sent without a token, because the server answers a missing header with a generic 403 (`BACKEND_REQUESTS.md` #3). This is what lets the queue send after an offline start.
+- **Saved lists:** `main.jsx` saves `vaccines`, `users`, `holdings` and `dashboard` to `localStorage` (`sst_query_cache`) using TanStack's own `dehydrate` / `hydrate`, so no new package. It keeps a query's data even after a failed refetch. Login, logout and a real `401` clear it.
+- **Queued entries count in the holdings:** `lib/queuedHoldings.js` `applyQueued()` (self-check: `node scripts/check-offline-holdings.mjs`), so an offline Day End shows the vials an offline Assign handed out. Holdings come back as worker rows only; no store row is invented.
+- **Expiry warning:** the top bar's offline chip says "N expire soon" for pending entries dated 2 or more days back (the server refuses more than 3).
+- **Font:** the Figtree font is precached, so the cold start keeps the brand font.
+- **Checked on the production build** (preview on port 5173):
+  - A cold start offline as the supervisor shows the worker list.
+  - A 1-vial assign was queued, and Day End showed 11 held instead of 10. The entry was discarded before going online.
+  - Signing out offline, then reopening online, gives the login page and the server session returns 401.
+  - Replaying with no token against a mocked 403 then 200 sent the entry.
+  - An online switch from supervisor to Head leaked no data.
+- **Not checked:** a real phone, and a real replay to production.
+
 ### Rounds 36–37 adopted (2026-10-19)
 - **Round 37 (breaking, live): user management is Super Admin only.** Facility Supervisor › Workers is a read-only list; District/UC Users were already read-only. Super admin › Users creates workers / supervisors / heads with a District → UC → Facility picker (`union-councils?districtId=`). Deactivate is hidden on your own row. **Client note:** a facility can no longer add its own vaccinators.
 - **Per-facility vaccine dialog:** sends the four thresholds only; doses/vial shown read-only (global). Reset sends four `null`s.
@@ -66,7 +83,7 @@
 |---|---|---|
 | Per-facility vaccine Save / Reset untested | Super admin › Vaccines (facility view) | Endpoint exists (Round 36) and the dialog matches it; not saved yet because it writes to production and notifies the Head |
 | Stock Register balance excludes request receipts | Facility supervisor › Stock Register | Still built from the old `STOCK_ENTRY`/`ADJUST_STOCK` + `STOCK_DAY_END` rows; the first two are no longer written. **Checked live:** the supervisor's audit log returns no `STOCK_REQUEST_APPROVE` / `APPROVAL_APPROVE` rows (the Head's actions), so Round 36's suggestion can't work for this screen, and the approve rows carry no batch fields. Evidence and the ask are in `BACKEND_REQUESTS.md` #1. |
-| Offline only works if the app is already open | Auth, Assign Vials, Day End | A cold start offline lands on login (the session restore needs the network), and the forms' vaccine / worker / holdings lists live in memory only, so a reload offline leaves them empty. Fixing it needs a persisted query cache (new dependency) and a stored session; decide whether the pilot needs it. |
+| Offline: back-dating and session expiry | Assign Vials, Day End | The server refuses entries dated more than 3 days back, and a session idle for 8 h needs a sign-in before the queue sends. Asked in `BACKEND_REQUESTS.md` #2. |
 | Push delivery to a real device unverified | Notifications | Backend side is answered and "Send test" exists. Needs a real phone (Android, and iPhone with the app on the home screen). |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
 | Audit Log: cancelled-request rows may lack vaccines | Audit Log | With server paging, the matching "request raised" row is often on another page. "Request #" still shows the full chain. |
@@ -93,7 +110,9 @@
 - **Login limit:** 10 per 15 minutes per IP. Reuse browser sessions while testing.
 - **Recharts can't read CSS variables;** take hex values from `useChartTheme()`.
 - **Dates:** never `toISOString()` for "today" (UTC is a day behind in Pakistan until 05:00); use `localDateStr()` / `toLocalDateStr()`.
-- **`npm run preview` (port 4173) can't sign in:** the backend CORS allowlist rejects it. Use it only to check the service worker and offline shell, and stop it afterwards.
+- **`npm run preview` (port 4173) can't sign in:** the backend CORS allowlist rejects it. To test the production build signed in, run `npx vite preview --port 5173 --strictPort` instead (stop the dev server first; `TaskStop` can leave the preview's child process on the port).
+- **After a rebuild the service worker keeps serving the old bundle** until it updates. When testing, unregister it and clear caches (`navigator.serviceWorker.getRegistrations()` → `unregister()`, `caches.delete`) before trusting a result.
+- **agent-browser `set offline on`** blocks the network but leaves `navigator.onLine` true after a reload. That tests the "online but no signal" path; a real phone in airplane mode reports offline.
 - **Favicons are cached hard:** hard-refresh (Ctrl+Shift+R) or use a fresh tab to see a changed one.
 - **Several URL filter keys in one event:** use one `useUrlFilters` `set({...})` call; two calls in the same tick overwrite each other.
 
@@ -105,6 +124,6 @@
 2. **Stock Register:** once #1 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
 3. **Writes to verify with consent:** a Super admin create through the new picker, a facility override Save/Reset, and "Send test" on a real phone.
 4. **Optional, not built:** `bulk-status` (needs multi-select on Super admin › Users; only worth it if the client asks).
-5. **Decide on offline cold start** (see Open issues): a persisted query cache plus a stored session, or accept "works only if the app is already open" for the pilot.
+5. **Test offline on a real phone:** install the PWA, open it in airplane mode, assign and day-end, then reconnect. Use an account and facility you own, because the replay writes to production.
 6. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's Stock Register and request tabs, route-guard redirects, and the "N not sent" dialog. Use a test account you own for one full write flow (request → sent → received → approved).
 7. **Housekeeping:** decide on the `xlsx` advisories, and refresh the impeccable files (`/impeccable document`, `/impeccable init`).

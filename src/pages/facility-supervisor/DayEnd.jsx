@@ -1,8 +1,8 @@
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useSyncExternalStore } from 'react'
 import { ClipboardList, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, recordDayEnd } from '../../lib/api'
-import { enqueue, isNetworkError } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError, subscribe, pendingCount, withQueued } from '../../lib/offlineQueue'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -40,6 +40,7 @@ export default function DayEnd() {
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: usersData,   isLoading: loadingUsers }   = useQuery({ queryKey: ['users'],    queryFn: getUsers })
   const { data: holdingsData }                            = useQuery({ queryKey: ['holdings'], queryFn: getHoldings })
+  const queued = useSyncExternalStore(subscribe, pendingCount) // re-render when an entry is queued or sent
 
   const mutation = useMutation({
     mutationFn: recordDayEnd,
@@ -69,11 +70,11 @@ export default function DayEnd() {
   const holdingsByVaccine = useMemo(() => {
     if (!workerId || !holdingsData) return {}
     return Object.fromEntries(
-      (holdingsData.holdings ?? [])
+      withQueued(holdingsData.holdings ?? [], null)
         .filter(h => h.workerId === workerId)
         .map(h => [h.vaccineId, h])
     )
-  }, [workerId, holdingsData])
+  }, [workerId, holdingsData, queued])
 
   const assignedVaccines = vaccines.filter(v => holdingsByVaccine[v.id] != null)
 

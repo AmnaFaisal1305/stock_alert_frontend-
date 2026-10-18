@@ -1,5 +1,7 @@
 // shortcut: localStorage is fine at pilot scale (Q27); upgrade to IndexedDB if volume grows
 import { assignVials, recordDayEnd } from './api'
+import { applyQueued } from './queuedHoldings'
+import { localDateStr } from './format'
 
 const QUEUE_KEY      = 'sst_offline_queue'
 const LAST_SYNC_KEY  = 'sst_last_synced'
@@ -45,11 +47,16 @@ export const isNetworkError = (err) => !err?.status
 
 export const pendingCount = () => getQueue().filter((i) => i.status === 'pending').length
 export const failedCount  = () => getQueue().filter((i) => i.status === 'error').length
+// The server refuses occurredOn older than 3 days, so these must sync within about a day.
+export const expiringCount = () => getQueue().filter((i) => i.status === 'pending' && i.payload?.occurredOn && i.payload.occurredOn <= localDateStr(-2)).length
 export const failedItems  = () => getQueue().filter((i) => i.status === 'error')
 
 export function discardFailed() {
   save(allItems().filter((i) => !(isMine(i) && i.status === 'error')))
 }
+
+export const withQueued = (holdings, facilityId) =>
+  applyQueued(holdings, getQueue().filter((i) => i.status === 'pending'), facilityId)
 
 export function getLastSynced() {
   return localStorage.getItem(LAST_SYNC_KEY)
