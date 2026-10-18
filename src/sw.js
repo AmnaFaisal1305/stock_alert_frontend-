@@ -1,7 +1,15 @@
-import { precacheAndRoute } from 'workbox-precaching'
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
+import { registerRoute, NavigationRoute } from 'workbox-routing'
 
 // Precache the app shell (Workbox injects the manifest at build time)
-precacheAndRoute(self.__WB_MANIFEST)
+const manifest = self.__WB_MANIFEST
+precacheAndRoute(manifest)
+
+// Any page URL (reload on /facility/day-end, a pushed link) gets the cached shell offline.
+// The dev server precaches nothing, so skip it there rather than throw.
+if (manifest.some((e) => e.url === 'index.html')) {
+  registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//] }))
+}
 
 // API routes with credentials:include cannot be cached cross-origin by the Cache API.
 // NetworkFirst was a no-op that added CORS risk in strict environments — removed.
@@ -15,8 +23,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/images/icon-192.png',
+      badge: '/images/icon-192.png',
       data: { url, entityType, entityId },
     }),
   )

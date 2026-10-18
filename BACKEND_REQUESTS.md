@@ -24,6 +24,10 @@ One list of everything the frontend needs from the backend. It replaces the earl
 
 ---
 
+**Offline queue and push questions are in `BACKEND_OFFLINE_PUSH.md`.**
+
+---
+
 ## 1. Per-facility vaccine values
 - **Screen:** Super admin › Vaccines. A District → UC → Facility filter shows one facility's vaccines (from `GET /api/facilities/:id`, which already exists). Each row has an edit dialog for all five values, and "Reset to Global" in that dialog.
 - **Problem today:** the endpoint does not exist, so Save and Reset to Global fail.

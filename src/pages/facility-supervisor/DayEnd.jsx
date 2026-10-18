@@ -2,7 +2,7 @@ import { useRef, useState, useMemo } from 'react'
 import { ClipboardList, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, recordDayEnd } from '../../lib/api'
-import { enqueue } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError } from '../../lib/offlineQueue'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -49,8 +49,12 @@ export default function DayEnd() {
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
     },
-    onError(err) {
-      if (err.status === 400 && err.body?.vaccineId) {
+    onError(err, payload) {
+      if (isNetworkError(err)) {
+        // "online" but no signal: the reply never came, so queue it; the same clientRef makes a replay safe
+        enqueue('dayend', payload)
+        setSavedOffline(true)
+      } else if (err.status === 400 && err.body?.vaccineId) {
         setRowErrors(prev => ({ ...prev, [err.body.vaccineId]: `Sum must equal ${err.body.remaining} remaining vials` }))
       } else {
         setGlobalError(err.message ?? 'Submission failed. Please try again.')

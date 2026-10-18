@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Minus, Plus, PackagePlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
-import { enqueue } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
@@ -89,8 +89,12 @@ export default function AssignVials() {
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
     },
-    onError(err) {
-      if (err.status === 400 && err.body?.vaccineId) {
+    onError(err, payload) {
+      if (isNetworkError(err)) {
+        // "online" but no signal: the reply never came, so queue it; the same clientRef makes a replay safe
+        enqueue('assign', payload)
+        setSavedOffline(true)
+      } else if (err.status === 400 && err.body?.vaccineId) {
         setRowErrors(prev => ({ ...prev, [err.body.vaccineId]: `Only ${err.body.available} vials available` }))
       } else {
         setGlobalError(err.message ?? 'Submission failed. Please try again.')

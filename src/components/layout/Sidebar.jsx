@@ -1,6 +1,6 @@
 import { memo, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { PackageCheck, LogOut, X, ArrowRight } from 'lucide-react'
+import { LogOut, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { navFor, scopeLabel, GuideIcon } from '../../lib/navigation'
 
@@ -59,9 +59,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed }) {
       >
         {/* Brand */}
         <div className={`flex items-center gap-2.5 px-3.5 pt-4 pb-4 border-b border-white/[0.08] ${isCollapsed ? 'justify-center' : ''}`}>
-          <span className="w-[38px] h-[38px] rounded-control bg-primary-light grid place-items-center flex-shrink-0">
-            <PackageCheck size={19} strokeWidth={1.75} aria-hidden="true" />
-          </span>
+          <img src="/images/logo-circle-192.png" alt="" width="38" height="38" className="w-[38px] h-[38px] rounded-full ring-1 ring-white/20 flex-shrink-0" />
           {!isCollapsed && (
             <p className="text-sm font-medium leading-tight flex-1 min-w-0 text-balance">Stock Management &amp; Alert System</p>
           )}

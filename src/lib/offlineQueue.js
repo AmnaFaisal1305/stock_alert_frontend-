@@ -15,38 +15,62 @@ export function subscribe(fn) {
   return () => listeners.delete(fn)
 }
 
-export function getQueue() {
+function currentUserId() {
+  try { return JSON.parse(sessionStorage.getItem('sst_user'))?.id ?? null } catch { return null }
+}
+
+function allItems() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]') } catch { return [] }
 }
 
-function save(q) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
+// Entries stay on the device after logout; each user only sees and replays their own.
+// Entries queued before userId was recorded belong to whoever is signed in.
+const isMine = (item) => !item.userId || item.userId === currentUserId()
+
+export function getQueue() {
+  return allItems().filter(isMine)
+}
+
+function save(items) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(items))
   notify()
 }
 
 export function enqueue(kind, payload) {
-  const q = getQueue()
-  q.push({ id: payload.clientRef, kind, payload, status: 'pending' })
-  save(q)
+  save([...allItems(), { id: payload.clientRef, kind, payload, userId: currentUserId(), status: 'pending' }])
+}
+
+// fetch rejected before any response (no signal, DNS, CORS): the server never answered
+export const isNetworkError = (err) => !err?.status
+
+export const pendingCount = () => getQueue().filter((i) => i.status === 'pending').length
+export const failedCount  = () => getQueue().filter((i) => i.status === 'error').length
+export const failedItems  = () => getQueue().filter((i) => i.status === 'error')
+
+export function discardFailed() {
+  save(allItems().filter((i) => !(isMine(i) && i.status === 'error')))
 }
 
 export function getLastSynced() {
   return localStorage.getItem(LAST_SYNC_KEY)
 }
 
-function markError(id) {
-  const q = getQueue().map((item) => item.id === id ? { ...item, status: 'error' } : item)
-  save(q)
+function markError(id, reason) {
+  save(allItems().map((item) => item.id === id ? { ...item, status: 'error', reason } : item))
 }
 
 function remove(id) {
-  save(getQueue().filter((item) => item.id !== id))
+  save(allItems().filter((item) => item.id !== id))
   localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString())
 }
 
+// A 4xx means the server read the entry and refused it, so retrying cannot help.
+// 401 (login expired), 408 and 429 are temporary: keep the entry and stop.
+const isPermanent = (status) => status >= 400 && status < 500 && ![401, 408, 429].includes(status)
+
 // Returns { drained: number, kept: number }
 export async function replayQueue() {
-  const q = getQueue().filter((item) => item.status !== 'error')
+  const q = getQueue().filter((item) => item.status === 'pending')
   let drained = 0
 
   for (const item of q) {
@@ -56,24 +80,10 @@ export async function replayQueue() {
       remove(item.id)
       drained++
     } catch (err) {
-      const status = err?.status
-      if (status === 400) {
-        markError(item.id)
-      } else if (status === 409) {
-        // regenerate clientRef and retry once
-        const newRef = crypto.randomUUID()
-        const updated = { ...item.payload, clientRef: newRef }
-        try {
-          await fn(updated)
-          remove(item.id)
-          drained++
-        } catch {
-          markError(item.id)
-        }
-      } else {
-        // 401 / 5xx / network: stop replaying, keep item
-        break
-      }
+      // shortcut: a 409 is marked failed, not resent with a new clientRef (it could double-count
+      // if 409 means "already recorded"); revisit once the backend confirms its meaning
+      if (isPermanent(err?.status)) markError(item.id, err.message)
+      else break // 401 / 5xx / network: keep this entry and the rest
     }
   }
 

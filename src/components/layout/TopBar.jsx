@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
-import { WifiOff, Sun, Moon, Menu, RefreshCw } from 'lucide-react'
+import { WifiOff, Sun, Moon, Menu, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
-import { subscribe, getQueue, getLastSynced } from '../../lib/offlineQueue'
+import ConfirmDialog from '../ui/ConfirmDialog'
+import { subscribe, pendingCount, failedCount, failedItems, discardFailed, getLastSynced } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
 import { scopeLabel, ROLE_LABELS } from '../../lib/navigation'
 
@@ -17,38 +18,79 @@ function useOnline() {
 }
 
 function useQueueState() {
-  const pending    = useSyncExternalStore(subscribe, () => getQueue().filter(i => i.status === 'pending').length, () => 0)
+  const pending    = useSyncExternalStore(subscribe, pendingCount, () => 0)
+  const failed     = useSyncExternalStore(subscribe, failedCount, () => 0)
   const lastSynced = useSyncExternalStore(subscribe, getLastSynced, () => null)
-  return { pending, lastSynced }
+  return { pending, failed, lastSynced }
+}
+
+const KIND_LABEL = { assign: 'Assign vials', dayend: 'Day end' }
+
+// Entries the server refused on replay. They will never go through, so say so and let the user clear them.
+function FailedEntries({ count }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-danger-bg text-danger-dark text-xs font-medium"
+      >
+        <AlertTriangle size={13} strokeWidth={2} aria-hidden="true" />
+        {count} not sent
+      </button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={() => { discardFailed(); setOpen(false) }}
+        title="Entries that were not sent"
+        confirmLabel="Discard"
+        message={
+          <div className="flex flex-col gap-3 text-sm text-text">
+            <p>The server refused {count === 1 ? 'this entry' : 'these entries'}, so {count === 1 ? 'it was' : 'they were'} not recorded. Discard {count === 1 ? 'it' : 'them'}, then enter {count === 1 ? 'it' : 'them'} again.</p>
+            <ul className="flex flex-col gap-1.5">
+              {failedItems().map((i) => (
+                <li key={i.id} className="rounded-control bg-surface-chip px-3 py-2">
+                  <span className="font-medium">{KIND_LABEL[i.kind] ?? i.kind}</span>
+                  {i.payload?.occurredOn && <span className="text-text-muted"> · {i.payload.occurredOn}</span>}
+                  <span className="block text-xs text-text-muted">{i.reason ?? 'Refused by the server'}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        }
+      />
+    </>
+  )
 }
 
 const iconBtn = 'w-9 h-9 rounded-control grid place-items-center text-text-muted hover:bg-surface-chip hover:text-text transition-colors'
 
 function SyncStatus() {
   const isOnline = useOnline()
-  const { pending, lastSynced } = useQueueState()
+  const { pending, failed, lastSynced } = useQueueState()
   const time = (d) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  let status = null
   if (!isOnline) {
-    return (
+    status = (
       <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-warning-bg text-warning-dark text-xs font-medium" role="status">
         <WifiOff size={13} strokeWidth={2} aria-hidden="true" />
         Offline{pending > 0 && ` · ${pending} pending`}
       </span>
     )
-  }
-  if (pending > 0) {
-    return (
+  } else if (pending > 0) {
+    status = (
       <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-info-bg text-info-dark text-xs font-medium" role="status">
         <RefreshCw size={13} strokeWidth={2} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
         Syncing {pending}
       </span>
     )
+  } else if (lastSynced) {
+    status = <span className="hidden sm:inline text-xs text-text-muted" title={new Date(lastSynced).toLocaleString()}>Synced {time(lastSynced)}</span>
   }
-  if (lastSynced) {
-    return <span className="hidden sm:inline text-xs text-text-muted" title={new Date(lastSynced).toLocaleString()}>Synced {time(lastSynced)}</span>
-  }
-  return null
+
+  return <>{failed > 0 && <FailedEntries count={failed} />}{status}</>
 }
 
 // Rings the bell for a moment whenever the unread count goes up.
