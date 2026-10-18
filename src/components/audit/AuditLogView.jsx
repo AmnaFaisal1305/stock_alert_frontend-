@@ -33,7 +33,7 @@ const ROLE_TAB = {
   uc_supervisor:       roleTab('uc_supervisor', 'UC supervisors'),
   facility_head:       roleTab('facility_head', 'Facility heads'),
   facility_supervisor: roleTab('facility_supervisor', 'Facility supervisors'),
-  facility_worker:     roleTab('facility_worker', 'Workers'),
+  facility_worker:     roleTab('facility_worker', 'Facility worker'),
 }
 const ADMIN_TABS = ['super_admin', 'district_supervisor', 'uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r])
 
