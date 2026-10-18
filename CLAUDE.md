@@ -15,11 +15,11 @@ Understand the existing project before changing it. Make the **smallest complete
 ```bash
 npm run dev      # start dev server (port 5173, or 5174 if in use)
 npm run build    # production build — run this to catch import errors
-npm test         # vitest unit tests (src/lib/auditLog.test.js: the Audit Log summaries and flags)
+npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, query strings, push with no service worker)
 npm run preview  # preview the production build locally
 ```
 
-No linter is configured, and the only tests cover `lib/auditLog.js`. After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched the Audit Log helpers), then check the affected screen(s) in the browser with `npm run dev`.
+No linter is configured, and the only tests cover three `src/lib` files (`auditLog.js`, `api.js` query strings, `push.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
 
 The dev server calls the live backend. `.env.local` (or `.env`) must set `VITE_API_URL=https://smart-stock-alert-be.vercel.app`; without it, calls go to the dev server's own origin and every `/api` request is a 404. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. In **Vercel Production the variable is unset**: `vercel.json` proxies `/api/*` to the backend so the session cookie is first-party (fixes the new-tab 401), and `api.js` defaults `BASE_URL` to `''`. **Never commit `.env` — it is gitignored and contains dev credentials.**
 

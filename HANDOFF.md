@@ -13,7 +13,18 @@
 - **Vaccine names:** the backend confirmed the DB stores real names ("BCG", "OPV (Polio)"), so `vaccineNames.js` and all 56 `displayVaccineName()` calls are gone. The English groups in `AssignVials.jsx` are the live ones and stay.
 - **Checked live** as Sadia and the observer: `total` is 95; `kind=used,wasted` gives 56 rows, all used or wasted; `kind=bogus` is `400`; the Record chip shows 56 entries and All returns to 95.
   - **Not checked:** the "of N" paging on real data (95 rows is one page; it was checked with a faked `total`), and a new Round 40 cancel row (this needs a write).
-- **Proxy:** the backend kept `SameSite=None` on purpose and trusts one proxy hop. The IP check passed (the rewrite passes the real client IP), the backend **approved going live**, and `ip` is gone from `/api/health` again. Going live is on our side: see the Open issues row.
+- **Two bugs found while verifying the proxy, both fixed (2026-10-18; neither was caused by the proxy or the naming pass):**
+  - **Sign out did nothing without a service worker.** `AuthContext.logout` awaited `disablePushForLogout()`, which awaited `navigator.serviceWorker.ready`. With no registered worker that promise never resolves (a `try/catch` can't catch a hang), so the logout request was never sent. Seen on production in a Chrome profile with no worker (`getRegistration()` undefined, `ready` pending after 3 s); it likely affects browsers that block service workers, some private windows, and a first visit before the worker activates. `lib/push.js` now races `ready` against `READY_TIMEOUT_MS` (2 s): logout goes on, and `enablePush` returns `'unsupported'` instead of hanging.
+  - **TanStack's context leaked into URLs.** `getUsers`, `getFacilities` and `getDashboard` take an optional `params` and are passed straight to `useQuery`, so about 15 calls went out as `/api/dashboard?client=[object Object]&queryKey=…&signal=…`. The backend ignored it. `buildQs` in `api.js` now keeps primitives only, so every current and future call site is covered.
+  - **Tests:** `api.test.js` and `push.test.js` (7 tests; they fail without the fixes). `npm test` runs 22.
+- **Proxy: live on https://smart-stock-alert.vercel.app (2026-10-18), and the new-tab 401 is fixed.**
+  - **How it works:** `vercel.json` proxies `/api/*` to the backend; `api.js` defaults `BASE_URL` to `''`; `VITE_API_URL` is **unset in Vercel Production** (it stays in `.env.local` for dev). The backend kept `SameSite=None` on purpose, trusts one proxy hop, and approved going live; the client IP passes through (home Wi-Fi 103.93.219.67 and mobile data 154.81.250.171 matched direct and proxied).
+  - **Rollback:** Instant Rollback in Vercel to the previous deployment, then re-add `VITE_API_URL=https://smart-stock-alert-be.vercel.app` and redeploy.
+  - **Verified on production** (as Sadia, read-only):
+    - The new bundle has no backend host, and every call is a relative `/api/...`. `/api/health` returns 200 through the app's domain.
+    - Both cookies (`sst.token`, `__Host-sst.csrf`) are host-only on the app's domain; the logout POST with the CSRF header returned 204 and the session then answered 401.
+    - **The original bug, reproduced and fixed:** in a Chrome profile that blocks third-party cookies, a direct cross-site login to the backend returned 200 and the next `/session` returned **401**. The same profile, signing in through the app and opening a new tab, stayed signed in (`/session` 200, Stock Register loaded).
+  - **How to repeat the blocked-cookie check:** Chrome's `--block-third-party-cookies` flag did nothing here. A custom profile whose `Default/Preferences` has `{"profile":{"cookie_controls_mode":1,"block_third_party_cookies":true}}` (agent-browser `--profile <dir>`) does.
 
 ### Audit Log — rich facility supervisor view (2026-10-18, session 17)
 
@@ -78,7 +89,7 @@ All flags are skipped when the required entries are not in the loaded set (no gu
 - **Checked in the browser** (read-only), as the facility supervisor and the observer: dashboards, Approvals history (Withdrawn), Assign Vials, Audit Log, Users role chips, Facilities.
   - **Not checked:** dark mode, the Head / UC / district / worker screens.
 
-- **Branch:** `main` holds everything and is pushed. No open branches except a temporary `proxy-check` for the IP test, if it still exists.
+- **Branch:** `main` holds everything and is pushed (last push `875dc46`, 2026-10-18). The temporary `proxy-check` branch is deleted.
 - **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`):
   - Everything they list through Round 40 is built.
   - The local copies in `docs/` were deleted once adopted; ask the backend developer for current ones when the next round arrives.
@@ -219,9 +230,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 | Issue | Where | Notes |
 |---|---|---|
-| New-tab 401 | Auth | **Cause found:** the session cookie is cross-site (`vercel.app` is a public suffix), so browsers that block third-party cookies drop it. No frontend race. Fix = same-site proxy. The backend answered the cookie, CORS and CSRF questions (Round 40); **the IP check passed (2026-10-18):** `/api/health` returned the same `ip` direct and through a preview of the rewrite, on home Wi-Fi (103.93.219.67) and mobile data (154.81.250.171), so the login limit stays per user. The backend approved going live. **Go-live (in this order):** (1) push the `vercel.json` rewrite and `api.js` `VITE_API_URL ?? ''` (still direct while the Vercel variable is set); (2) delete `VITE_API_URL` for Production in Vercel (`.env.production` is gitignored, so Vercel uses its dashboard value); (3) redeploy Production, because Vite bakes env at build time; (4) verify: `/api/health` through the app's own domain, sign in, open a new tab (still signed in), and repeat with third-party cookies blocked. **Rollback:** Instant Rollback in Vercel, then re-add the variable. Everyone signs in once more after the switch. |
 | Audit Log: old closing rows lack their own items | Audit Log | Only rows written before Round 40 lack `details.items`; they resolve through the create row when it is on the same page. This fades out with time and needs no action. |
-| Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
+| Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. The production URL is **https://smart-stock-alert.vercel.app** (public, no Vercel login). |
 
 ### Not yet tested
 - After the merge with Amna: the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
@@ -253,7 +263,7 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 **Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
-1. **Take the proxy live** (see the Open issues row for the order and the rollback), then delete the `proxy-check` branch and tell the backend developer it is live. When their next round arrives, drop the docs into `docs/`, adopt them, then delete them again.
+1. **Tell the backend developer the proxy is live.** When their next round arrives, drop the docs into `docs/`, adopt them, then delete them again.
 2. **Watch for the first new closing row** (a cancel, decline or close-short written after Round 40) in the Audit Log; it should show its vaccines without the create row on the page.
 3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone:
    - Push: use "Send test".

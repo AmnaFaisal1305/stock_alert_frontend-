@@ -11,12 +11,23 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
 }
 
-// Returns 'ok' | 'denied' | 'not_configured' | throws on network error
+// serviceWorker.ready never resolves when no worker is registered (blocked, some private windows,
+// a first visit before activation), which would hang whatever awaits it. Resolves to null instead.
+export const READY_TIMEOUT_MS = 2000
+function workerReady() {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((resolve) => setTimeout(() => resolve(null), READY_TIMEOUT_MS)),
+  ])
+}
+
+// Returns 'ok' | 'denied' | 'not_configured' | 'unsupported' | throws on network error
 export async function enablePush() {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
 
-  const reg = await navigator.serviceWorker.ready
+  const reg = await workerReady()
+  if (!reg) return 'unsupported'
 
   let publicKey
   try {
@@ -43,7 +54,8 @@ export async function enablePush() {
 // Best-effort — call before logout; never throws
 export async function disablePushForLogout() {
   try {
-    const reg = await navigator.serviceWorker.ready
+    const reg = await workerReady()
+    if (!reg) return
     const sub = await reg.pushManager.getSubscription()
     if (!sub) return
     await unsubscribePush(sub.endpoint).catch(() => {})

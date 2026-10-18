@@ -67,8 +67,10 @@ async function request(method, path, body, { skipAuthRedirect = false, _csrfRetr
   return res.json()
 }
 
+// Only primitives belong in a query string. TanStack Query passes its context ({ client, queryKey,
+// signal }) when an api function is used directly as `queryFn`, and that must not leak into the URL.
 function buildQs(params) {
-  const entries = Object.entries(params ?? {}).filter(([, v]) => v != null && v !== '')
+  const entries = Object.entries(params ?? {}).filter(([, v]) => v != null && v !== '' && typeof v !== 'object' && typeof v !== 'function')
   if (!entries.length) return ''
   return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
 }
