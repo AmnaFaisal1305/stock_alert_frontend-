@@ -271,7 +271,7 @@ Gently rounded and consistent. Cards and panels use an 18px radius. Controls (bu
 - **Sidebar** (250px, Sidebar Forest):
   - **Brand block:** a 38px Raised Forest tile with a 10px radius and a white line icon, beside a two-line "Stock Management & Alert System" wordmark (14px, 500, white). A hairline (white/8%) separates it from the nav.
   - **Scope line:** under the brand, in label style, the role section and current scope (for example "FACILITY · RHC Latifabad").
-  - **Primary CTA:** one per role, linking to its most-used page (facility supervisor: Assign Vials; head: Approvals; UC supervisor: Stock Requests; worker: Record Usage). A light button: paper fill, Sidebar Forest text, 10px radius, full width. Admin, district and observer have none.
+  - **Primary CTA:** one per role, linking to its most-used page (facility supervisor: Assign Vials; head: Approvals; UC supervisor: Stock Requests). A light button: paper fill, Sidebar Forest text, 10px radius, full width. Admin, district, observer and the view-only worker have none.
   - **Items:** 14px at 400 weight. A lucide icon at 18px with a 1.75 stroke and 70% opacity. Idle text is white at 75%; active is white at 100% on a white/10% fill with a 10px radius. Each item has a distinct icon.
   - **Grouping:** Label-style section headings group items by task. Sign Out sits at the bottom.
 - **Top bar:** a hairline bottom border on the canvas.

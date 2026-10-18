@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, KeyRound, MapPin, UserX, UserCheck } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor } from '../../lib/api'
+import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor, bulkUserStatus } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
@@ -43,6 +43,8 @@ export default function UserManagement() {
   const [toast, setToast] = useState(null)
   const [created, setCreated] = useState(null)
   const [view, setView] = useViewMode('admin-users')
+  const [selected, setSelected] = useState([])
+  const [bulkDeactivateOpen, setBulkDeactivateOpen] = useState(false)
 
   // Filters live in the URL (?q=&role=); the page number stays local.
   const [{ q: searchQuery, role: roleParam }, setFilters] = useUrlFilters({ q: '', role: '' })
@@ -188,6 +190,31 @@ export default function UserManagement() {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   })
 
+  // Chunks of 25 (the backend's limit); one toast for the whole run.
+  const bulkMutation = useMutation({
+    mutationFn: async (active) => {
+      let updated = 0
+      const failed = []
+      for (let i = 0; i < selected.length; i += 25) {
+        const r = await bulkUserStatus(selected.slice(i, i + 25), active)
+        updated += Array.isArray(r?.updated) ? r.updated.length : (r?.updated ?? 0)
+        failed.push(...(r?.failed ?? []))
+      }
+      return { updated, failed, active }
+    },
+    onSuccess: ({ updated, failed, active }) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      setSelected([])
+      setBulkDeactivateOpen(false)
+      setToast({
+        message: `${plural(updated, 'account')} ${active ? 'activated' : 'deactivated'}.${failed.length ? ` ${failed.length} failed: ${failed[0].error}` : ''}`,
+        type: failed.length ? 'error' : 'success',
+      })
+    },
+    onError: (err) => { setBulkDeactivateOpen(false); setToast({ message: err.message, type: 'error' }) },
+  })
+
   const resetMutation = useMutation({
     mutationFn: () => resetPassword(resetTarget.id, newPassword),
     onSuccess: () => {
@@ -220,6 +247,12 @@ export default function UserManagement() {
   const itemsPerPage = view === 'grid' ? 12 : 10
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  // Selection is per page and list view only; it resets whenever what's shown changes.
+  useEffect(() => { setSelected([]) }, [searchQuery, roleParam, currentPage, view])
+  const selectable = paginatedUsers.filter((u) => u.id !== authUser?.id)
+  const allOnPage = selectable.length > 0 && selectable.every((u) => selected.includes(u.id))
+  const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
 
   const activeRole = ROLE_FILTERS[roleFilter].value
   const assignmentColLabel =
@@ -279,7 +312,21 @@ export default function UserManagement() {
     )
   }
 
+  const selectColumn = {
+    key: 'select',
+    label: (
+      <input type="checkbox" aria-label="Select all on this page" className="accent-primary w-4 h-4 align-middle"
+        checked={allOnPage} disabled={!selectable.length}
+        onChange={() => setSelected(allOnPage ? [] : selectable.map((u) => u.id))} />
+    ),
+    render: (row) => row.id === authUser?.id ? null : (
+      <input type="checkbox" aria-label={`Select ${row.name ?? row.email}`} className="accent-primary w-4 h-4 align-middle"
+        checked={selected.includes(row.id)} onChange={() => toggle(row.id)} />
+    ),
+  }
+
   const columns = [
+    ...(readOnly ? [] : [selectColumn]),
     {
       key: 'name', label: 'Name',
       render: (row) => (
@@ -352,6 +399,14 @@ export default function UserManagement() {
             onChange={(v) => { setFilters({ role: ROLE_FILTERS[Number(v)].value ?? '' }); setCurrentPage(1) }}
             options={ROLE_FILTERS.map((f, i) => ({ value: String(i), label: f.label, count: roleCounts[i] }))}
           />
+          {selected.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-card border border-surface-border bg-surface px-4 py-2.5" role="region" aria-label="Bulk actions">
+              <p className="text-sm text-text font-medium tabular-nums">{selected.length} selected</p>
+              <Button size="sm" variant="secondary" disabled={bulkMutation.isPending} onClick={() => bulkMutation.mutate(true)}>Activate</Button>
+              <Button size="sm" variant="ghost-danger" disabled={bulkMutation.isPending} onClick={() => setBulkDeactivateOpen(true)}>Deactivate</Button>
+              <Button size="sm" variant="ghost" disabled={bulkMutation.isPending} onClick={() => setSelected([])}>Clear</Button>
+            </div>
+          )}
           <Table
             columns={columns}
             rows={paginatedUsers}
@@ -502,6 +557,16 @@ export default function UserManagement() {
         message={<p className="text-sm text-text">Deactivate <span className="font-medium">{deactivateTarget?.email}</span>? Their session ends immediately. You can reactivate this account later.</p>}
         confirmLabel="Deactivate"
         isPending={deactivateMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={bulkDeactivateOpen}
+        onClose={() => setBulkDeactivateOpen(false)}
+        onConfirm={() => bulkMutation.mutate(false)}
+        title={`Deactivate ${plural(selected.length, 'account')}?`}
+        message={<p className="text-sm text-text">Their sessions end immediately. You can reactivate them later.</p>}
+        confirmLabel="Deactivate"
+        isPending={bulkMutation.isPending}
       />
 
       {/* Reassign UCs Modal */}

@@ -13,6 +13,36 @@
 - **Backend:** latest round adopted is **Round 37**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (it absorbed `STOCK_REGISTER_BACKEND.md` and `BACKEND_OFFLINE_PUSH.md`; done items removed). Open: #1 Stock Register (`GET /api/stock-register`), #2 offline back-dating window and session expiry.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
+### Verified against production, bulk status, housekeeping (2026-10-19)
+All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call. The test data was left in place, as agreed.
+- **User create through the District → UC → Facility picker:** created "Test Vaccinator" (`test.vaccinator@example.com`, ZMID `ZM-TEST-01`, a non-deliverable address) at RHC Latifabad. Now active.
+- **Per-facility override:** BCG low vials 6 → 7 saved (`thresholdOverridden: true`, plus an `EDIT_FACILITY_VACCINE` row), then Reset to Global (back to 6, `new: null`). Rota's "Custom" tag is its own approved override.
+- **Bulk activate/deactivate (new, Super admin › Users, list view):**
+  - Checkbox column with select-all for the page; the caller's own row has none.
+  - An action bar for Activate / Deactivate / Clear, with Deactivate confirmed in a dialog.
+  - `bulkUserStatus()` sends 25 ids per call.
+  - Tested on the test vaccinator: deactivated, then activated.
+- **Full stock request, 1 BCG vial:** raised (Sadia), sent (Asif), received (batch `TEST-BATCH-1`, expiry 2027-10-15), approved (Zubair).
+  - The request is `completed`, and BCG went from 260 to 270 doses.
+  - The audit chain is CREATE → SENT → RECEIVED → APPROVE, and each next actor got the notification.
+- **Real offline replay:**
+  - With no CSRF token in memory and the network blocked, a 1-vial assign to Rukhsana was queued.
+  - On reconnect it synced through the generic-403 → refresh → retry path.
+  - Her BCG went from 10 to 11, with exactly one `STOCK_ASSIGN` row for its `clientRef`.
+  - A true offline cold start (app closed) was verified earlier on the production build.
+- **Dependencies:**
+  - `xlsx` now comes from SheetJS's own build (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`), with the same API. A two-sheet workbook round-trips.
+  - `react-router` is patched to 7.18.4.
+  - `npm audit --omit=dev` shows 0 vulnerabilities. The remaining advisories are dev-only build tools that need breaking upgrades.
+  - **Gotcha:** `npm audit fix --omit=dev` deleted the dev dependencies from `node_modules`; run `npm install` afterwards.
+- **Design tooling (impeccable `doctor`):**
+  - `.impeccable/design.json` refreshed: category palette, KPI icon tile, filter chip, the bell exception and the rules taken from `DESIGN.md`.
+  - `PRODUCT.md` rewritten in the current schema: 7 roles, EPI positioning, operating context and evidence; the retired `## Register` removed.
+  - `DESIGN.md`: the worker has no sidebar CTA.
+- **Phone checklist:** `docs/phone-test-checklist.md` (gitignored), for push and offline on Android and iPhone.
+  - The production build (`e3049c1`) deployed per GitHub.
+  - Every `*.vercel.app` URL for this project sits behind Vercel login. `stock-alert-frontend.vercel.app` is someone else's app. Use the public domain the backend has as `FRONTEND_URL`.
+
 ### Offline cold start (2026-10-19)
 Facility supervisors can open the app with no signal and record Assign Vials and Day End. Requests and approvals stay online-only.
 - **Login:** `AuthContext` keeps the signed-in profile in `localStorage` (`sst_offline_user`, the profile only; the cookie is HttpOnly). If `/session` gets no response or a `5xx`, the app reopens as that user without a CSRF token.
@@ -87,18 +117,14 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 | Push delivery to a real device unverified | Notifications | Backend side is answered and "Send test" exists. Needs a real phone (Android, and iPhone with the app on the home screen). |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
 | Audit Log: cancelled-request rows may lack vaccines | Audit Log | With server paging, the matching "request raised" row is often on another page. "Request #" still shows the full chain. |
-| `.impeccable/design.json` is stale | Design tooling | Run `/impeccable document` so critiques know about the category palette and KPI tiles. `design-system-font-size 18px` is ignored for `TopBar.jsx` only (emoji bell). |
-| `PRODUCT.md` uses the legacy impeccable schema | Design tooling | Run `/impeccable init` to refresh. |
-| `xlsx` (SheetJS) npm advisories | Analytics Excel export | Long-standing prototype-pollution / ReDoS advisories; consider SheetJS's own CDN build or CSV only. |
+| Real-phone push and offline unverified | PWA | Run `docs/phone-test-checklist.md` on Android and an iPhone (home-screen app). Needs the public production URL. |
 
 ### Not yet tested
 - After the merge with Amna: her Stock Register and the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
 - The redesigned login: layout checked in light, dark and phone width, but no sign-in was submitted and Google's button was not seen (no `VITE_GOOGLE_CLIENT_ID` in dev).
-- Any submit against the live backend (dialogs were opened and dismissed only: the demo inboxes belong to real people).
-- Super admin write actions (the admin password in older notes is wrong; admin pages were checked as the read-only observer).
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels all downloads; CSV content was checked in-page).
 - Push delivery to a real device, including an iPhone with the app added to the home screen (backend has never tested it either; production does return a push key). Subscribing from a test browser would save a fake subscription to the production database.
-- The offline queue on a real phone with a flaky connection, and the auto-replay on the `online` event (checked only with a simulated `navigator.onLine` and a mocked `fetch`).
+- The offline queue on a real phone with a flaky connection (replay to production is verified on desktop).
 
 ---
 
@@ -122,8 +148,6 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 1. **Send `BACKEND_REQUESTS.md`** to the backend developer (Stock Register endpoint, offline window questions).
 2. **Stock Register:** once #1 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
-3. **Writes to verify with consent:** a Super admin create through the new picker, a facility override Save/Reset, and "Send test" on a real phone.
-4. **Optional, not built:** `bulk-status` (needs multi-select on Super admin › Users; only worth it if the client asks).
-5. **Test offline on a real phone:** install the PWA, open it in airplane mode, assign and day-end, then reconnect. Use an account and facility you own, because the replay writes to production.
-6. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's Stock Register and request tabs, route-guard redirects, and the "N not sent" dialog. Use a test account you own for one full write flow (request → sent → received → approved).
-7. **Housekeeping:** decide on the `xlsx` advisories, and refresh the impeccable files (`/impeccable document`, `/impeccable init`).
+3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone: push ("Send test") and offline (airplane-mode cold start, Assign + Day End, reconnect).
+4. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's Stock Register and request tabs, route-guard redirects, and the "N not sent" dialog. (One full write flow is already verified on the demo accounts.)
+5. **Dev-only advisories** (postcss, nanoid … in build tools): only with a planned Vite/tooling upgrade, as the fix is breaking.

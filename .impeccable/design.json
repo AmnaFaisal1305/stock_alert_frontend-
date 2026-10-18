@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-17T20:03:25.000Z",
+  "generatedAt": "2026-10-18T13:29:32.000Z",
   "title": "Design System: Smart Stock Alert",
   "extensions": {
     "colorMeta": {
@@ -108,6 +108,96 @@
           "#E1EEE4",
           "#F2F8F3"
         ]
+      },
+      "status-info": {
+        "role": "tertiary",
+        "displayName": "Info Blue",
+        "canonical": "#2F5B99",
+        "tonalRamp": [
+          "#203651",
+          "#274772",
+          "#2C5389",
+          "#2F5B99",
+          "#6D8CB8",
+          "#A1B5D1",
+          "#D5DEEB",
+          "#F0F4F8"
+        ]
+      },
+      "category-teal": {
+        "role": "secondary",
+        "displayName": "Category Teal",
+        "canonical": "#1F7A7A",
+        "tonalRamp": [
+          "#194443",
+          "#1C5D5C",
+          "#1E6E6E",
+          "#1F7A7A",
+          "#62A2A2",
+          "#9AC3C3",
+          "#D2E4E4",
+          "#EFF6F6"
+        ]
+      },
+      "category-indigo": {
+        "role": "secondary",
+        "displayName": "Category Indigo",
+        "canonical": "#4F57B0",
+        "tonalRamp": [
+          "#2F345B",
+          "#3D4482",
+          "#484F9E",
+          "#4F57B0",
+          "#8489C8",
+          "#B0B3DB",
+          "#DCDDEF",
+          "#F3F3F9"
+        ]
+      },
+      "category-plum": {
+        "role": "secondary",
+        "displayName": "Category Plum",
+        "canonical": "#8B4C9C",
+        "tonalRamp": [
+          "#4A2F52",
+          "#673C74",
+          "#7D468C",
+          "#8B4C9C",
+          "#AE82BA",
+          "#CBAED2",
+          "#E8DBEB",
+          "#F7F2F8"
+        ]
+      },
+      "category-sky": {
+        "role": "secondary",
+        "displayName": "Category Sky",
+        "canonical": "#2F7FB8",
+        "tonalRamp": [
+          "#20465F",
+          "#276087",
+          "#2C73A5",
+          "#2F7FB8",
+          "#6DA5CD",
+          "#A1C5DF",
+          "#D5E5F1",
+          "#F0F6FA"
+        ]
+      },
+      "category-slate": {
+        "role": "secondary",
+        "displayName": "Category Slate",
+        "canonical": "#56636F",
+        "tonalRamp": [
+          "#323A3E",
+          "#424C54",
+          "#4E5A64",
+          "#56636F",
+          "#89929A",
+          "#B3B9BE",
+          "#DDE0E2",
+          "#F3F4F5"
+        ]
       }
     },
     "typographyMeta": {
@@ -117,7 +207,7 @@
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Page titles on work screens; section titles."
+        "purpose": "Page titles on work screens (forms, lists, registers, logs)."
       },
       "title": {
         "displayName": "Title",
@@ -133,7 +223,7 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Eyebrows, table headers, nav section headings."
+        "purpose": "Sidebar section headings and the role pill only; never a kicker above a heading."
       }
     },
     "shadows": [
@@ -220,12 +310,28 @@
       "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;background:rgb(var(--crit-bg));color:rgb(var(--crit-text));border-radius:999px;padding:3px 10px;font:600 12px 'Figtree Variable',Figtree,system-ui,sans-serif}.ds-pill i{width:6px;height:6px;border-radius:50%;background:rgb(var(--crit))}"
     },
     {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "White pill with hairline border; active takes the Chip Stone fill and 600 weight. Optional count in Pencil Grey.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip on\">All <small>24</small></button><button class=\"ds-chip\">Critical <small>3</small></button><button class=\"ds-chip\">Low <small>5</small></button></div>",
+      "css": ".ds-chips{display:flex;gap:8px;flex-wrap:wrap}.ds-chip{background:rgb(var(--card));color:rgb(var(--ink));border:1px solid rgb(var(--line));border-radius:999px;padding:6px 14px;font:400 13px 'Figtree Variable',Figtree,system-ui,sans-serif;cursor:pointer;transition:background .15s}.ds-chip:hover{background:rgb(var(--bg))}.ds-chip.on{background:rgb(var(--chip));font-weight:600}.ds-chip small{color:rgb(var(--mut));margin-left:4px;font-variant-numeric:tabular-nums}.ds-chip:focus-visible{outline:none;box-shadow:0 0 0 2px rgb(var(--card)),0 0 0 4px rgb(var(--pri))}"
+    },
+    {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "Flat white card with hairline border; no shadow.",
-      "html": "<div class=\"ds-card\"><div class=\"ds-eyebrow\">Critical</div><div class=\"ds-num\">3</div><div class=\"ds-sub\">Vaccines below threshold</div></div>",
-      "css": ".ds-card{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:18px;padding:20px;font-family:'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-eyebrow{font:600 11px/1.3 inherit;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--mut))}.ds-num{font-weight:300;font-size:32px;line-height:1;margin:10px 0 6px;font-variant-numeric:tabular-nums;color:rgb(var(--crit-text))}.ds-sub{font-size:12.5px;color:rgb(var(--mut))}"
+      "description": "Flat white card with hairline border; no shadow. KPI labels use the Caption style, never an uppercase kicker.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-cap\">Critical</div><div class=\"ds-num\">3</div><div class=\"ds-sub\">Vaccines below threshold</div></div>",
+      "css": ".ds-card{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:18px;padding:20px;font-family:'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-cap{font:500 12px/1.3 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--mut))}.ds-num{font-weight:300;font-size:32px;line-height:1;margin:10px 0 6px;font-variant-numeric:tabular-nums;color:rgb(var(--crit-text))}.ds-sub{font-size:12.5px;color:rgb(var(--mut))}"
+    },
+    {
+      "name": "KPI Figure with icon tile",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Caption, numeric value and one context line, with a 36px icon tile top-right. Status KPIs use the status wash and text; others a category wash and text (StatCard icon + accent).",
+      "html": "<div class=\"ds-kpi\"><div><div class=\"ds-kpi-cap\">Facilities</div><div class=\"ds-kpi-num\">24</div><div class=\"ds-kpi-sub\">3 not updated yet</div></div><span class=\"ds-kpi-tile\" aria-hidden=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\"/><path d=\"M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\"/><path d=\"M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2\"/><path d=\"M10 6h4M10 10h4M10 14h4M10 18h4\"/></svg></span></div>",
+      "css": ".ds-kpi{display:flex;justify-content:space-between;gap:12px;background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:18px;padding:20px;font-family:'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--ink))}.ds-kpi-cap{font:500 12px/1.3 'Figtree Variable',Figtree,system-ui,sans-serif;color:rgb(var(--mut))}.ds-kpi-num{font-weight:300;font-size:32px;line-height:1;margin:10px 0 6px;font-variant-numeric:tabular-nums}.ds-kpi-sub{font-size:12.5px;color:rgb(var(--mut))}.ds-kpi-tile{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgb(var(--cat-1-bg));color:rgb(var(--cat-1))}"
     },
     {
       "name": "Segmented Tabs",
@@ -238,63 +344,74 @@
   ],
   "narrative": {
     "northStar": "The Ward Ledger",
-    "overview": "The interface is a calm, exact record book kept on a busy ward. Warm paper surfaces, ink-dark numbers and a single forest green carry the identity. Colour is reserved for stock status, so when red or amber appears it is the most important thing on screen. The system is quiet until something needs attention. It never decorates to fill space.",
+    "overview": "The interface is a calm, exact record book kept on a busy ward. Warm paper surfaces, ink-dark numbers and a single forest green carry the identity. Red, amber and green are reserved for stock status, so when red or amber appears it is the most important thing on screen. A small categorical palette (teal, indigo, plum, sky, slate) keeps charts, KPI icons and tags from feeling dry without competing with status. It never decorates to fill space.\n\nDensity is moderate. Admin and supervisor screens are tables and lists that people scan under time pressure. The facility-worker screens are phone-first, one-handed, with large targets. Every number is set in tabular figures so columns align and change is visible. Hierarchy comes from type weight, spacing and position, not from boxes, icons or tints.\n\nLight and dark themes share one token set: CSS variable channel triplets in `src/index.css`, mapped in `tailwind.config.js`. Dark mode follows the OS, and the user can override it.",
     "keyCharacteristics": [
       "Warm paper canvas, white hairline cards, forest-green sidebar and primary actions.",
-      "Status colour (red / amber / green / grey) is the only saturated colour, and it is always paired with a text label.",
+      "Status colour (red / amber / green / grey) always means status and is always paired with a text label; categorical hues never mean status.",
       "Flat surfaces; shadows only on things that float.",
       "One card radius, one control radius, pills for status and filters.",
       "Numbers are the product: large, light, tabular."
     ],
     "rules": [
       {
-        "name": "The Status-Only Colour Rule",
-        "body": "Saturated colour means stock or workflow status, and nothing else.",
+        "name": "The Status Colour Rule",
+        "body": "Red, amber and green mean stock or workflow status, and nothing else. Anything that needs colour but is not a status takes a category hue. A KPI or chart that does encode status uses the status colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Category Colour Rule",
+        "body": "Category hues identify a kind of thing (a series, a role, a KPI's subject). Use at most one per element, as text or icon on its own wash; never as large fills, card backgrounds or edge stripes.",
         "section": "colors"
       },
       {
         "name": "The Label-Always Rule",
-        "body": "No status is communicated by hue alone.",
+        "body": "No status is communicated by hue alone. Every coloured dot, pill or bar carries its word (\"Critical\", \"Low\", \"Normal\", \"Not updated\").",
         "section": "colors"
       },
       {
         "name": "The One Vocabulary Rule",
-        "body": "Status colours come from src/lib/status.js; pages never pick them.",
+        "body": "Stock statuses come from `statusConfig()` and workflow statuses (pending, approved, rejected…) from the shared request-status config in `src/lib/status.js`. Pages never pick status colours themselves.",
         "section": "colors"
       },
       {
         "name": "The Tabular Rule",
-        "body": "Every quantity, count or date uses tabular-nums.",
+        "body": "Every quantity, count, date or currency uses `tabular-nums`.",
         "section": "typography"
       },
       {
         "name": "The Two-Weight Rule",
-        "body": "At most 400 and 600 at body size; no bold.",
+        "body": "A screen uses at most two weights at body size: 400 for content and 600 for emphasis. Bold (700+) is not used.",
         "section": "typography"
       },
       {
+        "name": "The Scope-Visible Rule",
+        "body": "The current scope (facility, UC, district) is always visible in the shell or the page header. Users never have to infer where they are.",
+        "section": "layout"
+      },
+      {
         "name": "The Flat-By-Default Rule",
-        "body": "A surface gets a hairline border or a shadow, never both.",
+        "body": "A surface gets either a hairline border or a shadow, never both. Resting cards use the border; floating layers use the shadow.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do route every colour through the tokens; never use hex values or Tailwind palette colours in pages.",
-      "Do use statusConfig() and StatusBadge for stock status, and the shared request-status config for workflow status.",
-      "Do use the shared components instead of hand-rolling them.",
-      "Do keep one primary action per region and put page actions in the PageHeader actions slot.",
+      "Do route every colour through the tokens (`bg-surface`, `text-text-muted`, `bg-danger-bg`…); never use hex values or Tailwind palette colours in pages.",
+      "Do use `statusConfig()` and `StatusBadge` for stock status, and the shared request-status config for workflow status.",
+      "Do use the shared components (`Card`, `Tabs`, `FilterChips`, `Table`, `EmptyState`, `ErrorState`, `Modal`) instead of hand-rolling them.",
+      "Do keep one primary action per region and put page actions in the `PageHeader` actions slot.",
       "Do pair every status colour with its text label.",
-      "Do use tabular-nums for every number."
+      "Do use `tabular-nums` for every number."
     ],
     "donts": [
-      "Don't use coloured left-border stripes on cards or rows.",
-      "Don't put an icon tile in the corner of every KPI card.",
-      "Don't use ring gauges or donuts as decoration.",
+      "Don't use coloured left-border stripes (`border-l-4`) on cards or rows; show status with a pill or dot.",
+      "Don't use red, amber or green for anything that is not a status.",
+      "Don't use ring gauges or donuts as decoration; use a chart only when it shows a comparison or trend.",
       "Don't stack border, shadow and radius on resting cards.",
-      "Don't mix radii for the same kind of container.",
-      "Don't use emoji or glyph characters as icons.",
-      "Don't use gradients, glassmorphism or backdrop-blur surfaces.",
-      "Don't use bold (700+) or oversized greetings on work screens."
+      "Don't mix radii (`rounded-xl`, `rounded-2xl`, `rounded-[18px]`) for the same kind of container.",
+      "Don't use emoji or glyph characters as icons; use lucide-react at 16–18px with a 1.75 stroke. The one exception is the top-bar 🔔 notification bell, which matches the reference mockups.",
+      "Don't use gradients, glassmorphism or `backdrop-blur` surfaces.",
+      "Don't use bold (700+) or oversized greetings on work screens.",
+      "Don't put uppercase eyebrow kickers above section headings (\"VACCINE STOCK STATUS\"); name the section with a Title heading."
     ]
   }
 }

@@ -137,6 +137,11 @@ export async function resetPassword(id, password) {
   return request('PUT', `/api/users/${id}/reset-password`, { password })
 }
 
+// Super admin only; the backend takes up to 25 ids per call and refuses the caller's own id.
+export async function bulkUserStatus(ids, active) {
+  return request('PUT', '/api/users/bulk-status', { ids, active })
+}
+
 export async function assignUcSupervisor(userId, ucIds) {
   return request('PUT', `/api/users/${userId}/uc-assignments`, { ucIds })
 }

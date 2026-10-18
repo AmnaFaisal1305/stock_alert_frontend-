@@ -1,46 +1,90 @@
 # Product
 
-## Register
+<!-- impeccable:product-schema 1 -->
 
-product
+## Platform
+
+web
 
 ## Users
 
-Internal staff at Aga Khan University Hospital (AKUH) and its network, across four cascading roles:
+Internal staff of Aga Khan University Hospital (AKUH) and its network, working in a strict location cascade: District → Union Council (UC) → Facility. There are seven roles:
 
-- **Super Admin** (AKUH) — onboards districts and district supervisors, unscoped visibility across the whole system.
-- **District Supervisor** — runs one district: onboards facilities and facility supervisors within it.
-- **Facility Supervisor** — runs one facility day-to-day: records stock received, manages the facility's vaccine catalog and thresholds, creates Facility Worker accounts, reviews their workers' activity.
-- **Facility Worker** — field-level role, often on a phone in a clinic. Logs into a single, minimal screen to record doses used and check current stock. No other visibility.
+- **Super Admin** (AKUH): the only role that creates and manages accounts. Also manages districts, UCs, facilities and the vaccine catalog, including per-facility thresholds.
+- **Observer:** read-only view of everything the Super Admin sees.
+- **District Supervisor:** oversees one district and manages its facilities.
+- **UC Supervisor:** records what is sent for stock requests from the facilities in their UCs.
+- **Facility Supervisor:** runs one facility day to day:
+  - raises and receives stock requests;
+  - assigns vials to vaccinators each morning;
+  - records each vaccinator's day end (used, returned, wasted);
+  - proposes stock corrections and threshold changes.
+- **Facility Head:** signs off the facility's stock. Approves deliveries, corrections and threshold changes. Nothing changes the facility's stock without their approval.
+- **Facility Worker (vaccinator):** view-only; sees the vials they currently hold.
 
-Each role's context is a busy clinical/operational setting, not a desk-bound admin session — decisions here (is a vaccine about to run out?) have real downstream consequences for patient care.
+Their context is a busy clinic or field setting, not a desk. Field-entry screens are used on a phone, often one-handed, sometimes with no signal. Decisions here (is a vaccine about to run out?) have real consequences for patient care.
 
 ## Product Purpose
 
-Smart Stock Alert tracks vaccine stock levels across districts and facilities so that low-stock situations are caught before they become stockouts. Each role sees only the slice of the system it's responsible for (unscoped → one district → one facility), records stock movements (received vs. used) against a running balance, and gets a clear red/amber/green read on status per vaccine. Success looks like: a Facility Supervisor or Worker can tell in seconds whether a vaccine needs reordering, and every stock movement and account/threshold change is attributable via the audit log.
+Smart Stock Alert tracks vaccine stock across districts, UCs and facilities so that low stock is caught before it becomes a stock-out.
+- **Scope:** each role sees only its slice of the cascade.
+- **Movements:** stock moves through a recorded chain (request → sent → received → Head approval; morning assignment → day end), against a running balance in vials and doses.
+- **Status:** every facility × vaccine gets a clear red / amber / green read.
 
-## Brand Personality
+Success means a supervisor can tell in seconds whether a vaccine needs restocking, and every stock movement, approval and account change is attributable in the audit log.
 
-Clinical, trustworthy, efficient. This is hospital-grade software, not a consumer product — it should read as precise and dependable rather than playful or decorative. Every number and status needs to feel authoritative; this is the kind of tool where a user's trust in the data directly affects whether they act on it (reorder now vs. wait).
+## Positioning
 
-## Visual Language
+Built around Pakistan's EPI (Expanded Programme on Immunization) workflow, for AKUH's work in Karachi's super high-risk union councils:
+- Stock is counted in vials and doses against cold-chain thresholds.
+- The monthly EPI Form B is produced from the same records.
+- Every stock movement needs the Facility Head's sign-off.
 
-The interface uses the **Clinical Material** design language: warm paper surfaces, a forest-green sidebar, the Figtree Variable webfont, thin large greeting headers (via the `PageHeader` component), and full dark mode (manual toggle + OS auto). Source of truth for the visual language is `DESIGN.md` at the project root; the HTML mockups in `docs/design_refrences/` are references only.
+A generic inventory tool has none of these: the EPI vocabulary and Form B, the UC-level handover between sender and receiver, and the Head approval on each movement.
 
-The design token system lives in `src/index.css` (CSS variable channel triplets) and `tailwind.config.js` (token map). Every color in the UI routes through these tokens — never hardcoded hex or Tailwind slate/zinc/white classes.
+## Operating Context
 
-## Anti-references
+- **Monthly cycle:** the EPI Form B per facility. Supervisor, Head and UC Supervisor fill their columns for the current or previous month.
+- **Daily cycle:** the morning vial handout to each vaccinator and the end-of-day record of used, returned and wasted vials.
+- **Restocking:** the facility raises a request; the UC Supervisor records what was sent and the facility what was received; the two must agree; then the Head approves. A short delivery stays open for further rounds.
+- **Offline:** Assign Vials and Day End work offline, including opening the app with no signal. Entries queue on the phone and sync when the signal returns. Requests and approvals need a connection.
+- **Notifications:** in-app and push notifications for critical stock and every handoff, and email for actions someone must take.
 
-Not a consumer or marketing-style app — no gradient-heavy hero treatments, no playful illustration, no "delight" flourishes that don't serve the workflow. This is a work tool used under time pressure, not a product being sold. Motion, color, and copy should always serve faster comprehension of stock status, never decoration for its own sake.
+## Capabilities and Constraints
 
-## Design Principles
+- **Accounts:** only the Super Admin creates, activates, deactivates or resets accounts. Self-service password reset by email exists for everyone.
+- **Units and thresholds:** stock is entered in vials. Doses are shown for usage and balances. Doses per vial is global per vaccine. Thresholds are global with optional per-facility overrides.
+- **No per-batch stock:** batch, expiry and manufacturer are recorded on receipt for reference only. So there is no expiring-stock view.
+- **Back-dating:** offline entries can be dated up to 3 days back.
+- **Exports:** CSV, plus Excel and PDF for Analytics, built in the browser.
+- **Open (backend):** a dedicated Stock Register endpoint, so the register balance includes stock received through requests (`BACKEND_REQUESTS.md`).
 
-1. **Status at a glance.** Red/amber/green stock status is the single most important thing on any screen — it must be scannable in under a second, never require reading a number to interpret.
-2. **Scope is always visible, never assumed.** Every role operates inside a strict cascade (system → district → facility → worker); the current facility/district context should be visible on-screen, not just implied by what's absent from the nav.
-3. **Field-entry screens minimize friction.** The Facility Worker's screen is used on a phone, often one-handed, in a clinical setting — fewer fields, fewer taps, immediate confirmation, forgiving of interruption.
-4. **Precision over decoration.** Numbers, statuses, and confirmations are the product. Visual polish should sharpen clarity (contrast, hierarchy, spacing) rather than add ornament.
-5. **Errors are informative, not just blocking.** When a constraint is hit (insufficient stock, duplicate vaccine name, wrong scope), the message should tell the user exactly what's true right now (e.g. "Only 12 left") so they can act, not just that something failed.
+## Brand Commitments
+
+- **Personality:** clinical, trustworthy, efficient. Hospital-grade software, not a consumer product: precise and dependable rather than playful or decorative. Every number and status must feel authoritative, because users act on it (restock now vs. wait).
+- **Partner identity:** the partner-logo card on the login screen (`public/images/login-hero.jpeg`) is the real asset; reuse it, never redraw it.
+- **Visual system:** `DESIGN.md` ("The Ward Ledger") is the visual source of truth.
+- **Anti-references:** not a consumer or marketing app. No gradient-heavy hero treatments, no playful illustration, no "delight" flourishes that don't serve the workflow. It is a work tool used under time pressure, so motion, colour and copy serve faster comprehension of stock status, never decoration.
+
+## Evidence on Hand
+
+- **Partner logos:** the login card at `public/images/login-hero.jpeg`.
+- **Data:** production holds **demo data only** until go-live. At go-live the demo districts are wiped and replaced with the real locations, accounts and opening balances.
+- **Absences:** no real usage figures, outcomes, testimonials or case studies exist yet. Never invent them.
+
+## Product Principles
+
+1. **Status at a glance.** Red / amber / green stock status is the most important thing on any screen. It must be readable in under a second, never by reading a number.
+2. **Scope is always visible.** Every role works inside the cascade (system → district → UC → facility); the current scope is shown on screen, not implied by what's missing.
+3. **Field-entry screens minimize friction.** Assign Vials and Day End are used on a phone, one-handed, in a clinic, sometimes offline. Fewer fields, fewer taps, immediate confirmation, forgiving of interruption and lost signal.
+4. **Every movement is accountable.** Stock changes only through the recorded chain with the Head's sign-off. Each step is attributable, and nothing is silently overwritten.
+5. **Errors are informative.** When a rule is hit (insufficient stock, figures that differ, wrong scope, an entry too old to sync), say exactly what's true now ("Only 12 left") so the user can act.
 
 ## Accessibility & Inclusion
 
-Standard WCAG AA baseline: sufficient color contrast on all text and status indicators, full keyboard operability, and screen-reader-friendly labeling. Status colors (red/amber/green) should not rely on hue alone given the clinical/field-use context — pair with text labels (already the pattern in use) or icons, not color alone.
+WCAG AA baseline:
+- sufficient contrast on all text and status indicators;
+- full keyboard operability;
+- screen-reader labels.
+
+Status colour is never the only signal: red / amber / green is always paired with a text label or icon, given the field-use context.
