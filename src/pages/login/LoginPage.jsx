@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PackageCheck, AlertCircle } from 'lucide-react'
+import { ShieldCheck, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import * as api from '../../lib/api'
 import Input from '../../components/ui/Input'
@@ -12,34 +12,41 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 function BrandMark() {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="w-[38px] h-[38px] rounded-control bg-primary-light text-text-inverse grid place-items-center flex-shrink-0">
-        <PackageCheck size={19} strokeWidth={1.75} aria-hidden="true" />
-      </span>
+    <div className="flex items-center gap-3">
+      <img src="/images/logo-circle-192.png" alt="" width="44" height="44" className="w-11 h-11 rounded-full flex-shrink-0" />
       <p className="text-sm font-medium leading-tight text-text">Stock Management &amp;<br />Alert System</p>
     </div>
   )
 }
 
+// Partner logos on top, the message in the middle, a contact line at the bottom (docs/design_refrences/login.html).
 function ProjectPanel() {
   return (
-    <div className="h-full bg-epi-dark text-text-inverse flex flex-col justify-center px-14 xl:px-20 py-16">
-      <div className="max-w-[440px] flex flex-col gap-8">
-        <div className="bg-surface rounded-card px-8 py-6">
-          <img
-            src="/images/login-hero.jpeg"
-            alt="Partner logos: AKUH, EPI Sindh, UNICEF, WHO"
-            className="w-full max-w-[300px] mx-auto object-contain"
-          />
-        </div>
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-text-inverse/70">Digital intervention</p>
-          <h2 className="text-[30px] font-light leading-[1.2] tracking-tight text-balance">
-            Enhancing service quality and experience in Karachi super high risk union councils
-          </h2>
-          <p className="text-sm text-text-inverse/70">Partnering for strengthening immunization systems</p>
-        </div>
+    <div className="h-full min-h-screen bg-epi-dark text-text-inverse flex flex-col justify-between gap-12 px-12 xl:px-20 py-10">
+      <div className="self-start w-full max-w-[640px] bg-white rounded-card px-7 py-5">
+        <img
+          src="/images/login-hero.jpeg"
+          alt="Partner logos"
+          width="766"
+          height="128"
+          className="w-full h-auto block"
+        />
       </div>
+
+      <div className="max-w-[640px] flex flex-col gap-5">
+        <p className="inline-flex items-center gap-2.5 text-base font-semibold text-text-inverse/80">
+          <span aria-hidden="true" className="w-7 h-0.5 rounded-full bg-primary-light" />
+          Digital intervention
+        </p>
+        <h2 className="text-4xl font-light leading-[1.15] tracking-tight text-balance">
+          Enhancing service quality and experience in Karachi’s super high-risk union councils
+        </h2>
+        <p className="text-base leading-relaxed text-text-inverse/70 max-w-[42ch] pl-4 border-l-2 border-white/25">
+          Partnering for strengthening immunization systems.
+        </p>
+      </div>
+
+      <p className="text-xs text-text-inverse/50">Need access? Contact your administrator.</p>
     </div>
   )
 }
@@ -56,17 +63,20 @@ export function FormAlert({ children }) {
 // Form column with the brand mark; `aside` replaces the default project panel (desktop only).
 export function AuthShell({ title, subtitle, aside, children }) {
   return (
-    <div className="min-h-screen flex bg-surface">
-      <main className="flex flex-col w-full lg:w-[560px] xl:w-[600px] flex-shrink-0 px-5 sm:px-10 lg:px-14 py-8 sm:py-10">
+    <div className="min-h-screen grid lg:grid-cols-[minmax(380px,5fr)_7fr] bg-surface">
+      <main className="flex flex-col min-h-screen px-6 sm:px-12 lg:px-[clamp(24px,6vw,88px)] py-10">
         <BrandMark />
-        <div className="flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto lg:mx-0 py-12">
-          <h1 className="text-[30px] font-light tracking-tight leading-[1.1] text-text">{title}</h1>
-          {subtitle && <p className="text-sm text-text-muted mt-2">{subtitle}</p>}
+        <div className="flex-1 flex flex-col justify-center w-full max-w-[440px] mx-auto py-12">
+          <h1 className="text-4xl font-light tracking-tight leading-[1.1] text-text">{title}</h1>
+          {subtitle && <p className="text-sm text-text-muted mt-2.5">{subtitle}</p>}
           <div className="mt-8">{children}</div>
         </div>
-        <p className="text-xs text-text-muted">Official system of the Aga Khan University Hospital network</p>
+        <p className="flex items-center gap-2 text-xs text-text-muted">
+          <ShieldCheck size={15} strokeWidth={1.75} className="flex-shrink-0" aria-hidden="true" />
+          Official system of the Aga Khan University Hospital network
+        </p>
       </main>
-      <aside className="hidden lg:block flex-1 relative overflow-hidden">{aside ?? <ProjectPanel />}</aside>
+      <aside className="hidden lg:block relative overflow-hidden">{aside ?? <ProjectPanel />}</aside>
     </div>
   )
 }
