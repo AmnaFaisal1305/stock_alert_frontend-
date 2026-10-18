@@ -6,7 +6,8 @@
 
 ## Where things stand
 
-- **Branch:** `main` holds everything; `feature/ui-enhancements` (with Amna's per-facility thresholds, Analytics overhaul, district Network page) is merged and pushed.
+- **Branch:** `main` holds everything and is pushed (`bb2aac4`: route guards, offline / push fixes, logo, login redesign, merged with Amna's Stock Register and stock-request tab work). `feature/ui-enhancements` is merged and can be ignored.
+- **Backend update pending (read this first next session):** the backend developer reports their changes are done, but the new doc / round number has **not been received or reviewed here**. Everything below about the backend (Round 35, the open `BACKEND_REQUESTS.md` items, `BACKEND_OFFLINE_PUSH.md` Q1–Q4 / R1, `STOCK_REGISTER_BACKEND.md`) may be out of date until it is reconciled; see Next steps.
 - **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
 - **Backend:** latest round adopted is **Round 35** (audit-log server filters and paging, `facilityName` on the session user, approval `decisionReason`/`decidedAt`, `statusCounts` unit). Everything still needed from the backend is in the root **`BACKEND_REQUESTS.md`** (11 items; #1 is blocking). The offline-queue and push questions are in **`BACKEND_OFFLINE_PUSH.md`**, and the dedicated Stock Register endpoint is specified in **`STOCK_REGISTER_BACKEND.md`**.
@@ -18,7 +19,7 @@
 - **Form B** saves only the cells that differ from the saved sheet; cells typed back to their original value drop out of the save and the review.
 - Removed the dead `createStockEntry` (old `POST /api/stock-entries`).
 
-### Offline and push fixes (2026-10-18)
+### Offline, push, logo and login (2026-10-18)
 - **App shell offline on every URL:** `sw.js` has a `NavigationRoute` to the cached `index.html` (it only worked at `/` before). Skipped in dev, where nothing is precached.
 - **Offline queue** (`lib/offlineQueue.js`): entries carry `userId` and each user only sees and replays their own (nothing is cleared at logout). Any `4xx` except 401/408/429 is a final refusal and marks the entry failed with the server's message, so one bad entry no longer blocks the rest. A `409` is **not** resent with a new `clientRef` any more (could double-count; see `BACKEND_OFFLINE_PUSH.md` Q1).
 - **"Online" but no signal:** Assign Vials and Day End queue the entry when the request gets no response at all (`isNetworkError`), not only when `navigator.onLine` is false. The same `clientRef` makes the replay safe.
@@ -27,7 +28,8 @@
 - **Login redesign** (`pages/login/LoginPage.jsx`, shared by Forgot and Reset password): follows `docs/design_refrences/login.html` (5/7 split, brand mark, 36px title, shield footer line; right panel with a partner-logo card showing `login-hero.jpeg`, "Digital intervention" message and the contact line). `DESIGN.md` wins over the mockup, so: Figtree instead of Fraunces / Plus Jakarta, 10 / 18px radii, no radial gradients, type sizes from the ramp. Not built: the "Keep me signed in" checkbox (no backend behaviour behind it) and the mockup's "Continue as …" chip (Google's own button is used when `VITE_GOOGLE_CLIENT_ID` is set). The logo card is always white because the JPEG has a white background.
 - **Logo:** the browser favicon and the sidebar brand use the circular `public/images/logo-circle-192.png` (transparent corners, cut from `icon-192.png`; a 512 copy sits beside it). The old `icon-image.jpeg` is unused.
 - Verified: production build loads the shell offline on `/`, `/login` and deep URLs; queue outcomes (201, 422, 409, 500, network error, other user's entries) with a mocked `fetch`; Assign Vials end to end with the network failing (queued once, "Saved offline"). Nothing was sent to production.
-### Recently built (2026-10-19)
+
+### Recently built (2026-10-19, Amna)
 - **Stock Register overhaul:** entry types consolidated to three labels (Received / Record / Stock Correction); new Balance column (per-vaccine running balance, red when negative); new Stock Correction column (signed +N / −N, green/red) for `ADJUST_STOCK` rows only; `ADJUST_STOCK` rows no longer bleed into the Received/Used columns. FilterChips and CSV export updated to match.
 - **`STOCK_REGISTER_BACKEND.md`:** new file specifying the dedicated `GET /api/stock-register` endpoint the backend needs to build so the balance is authoritative and includes stock-request receipts.
 
@@ -58,6 +60,8 @@
 | `xlsx` (SheetJS) npm advisories | Analytics Excel export | Long-standing prototype-pollution / ReDoS advisories; consider SheetJS's own CDN build or CSV only. |
 
 ### Not yet tested
+- After the merge with Amna: her Stock Register and the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
+- The redesigned login: layout checked in light, dark and phone width, but no sign-in was submitted and Google's button was not seen (no `VITE_GOOGLE_CLIENT_ID` in dev).
 - Any submit against the live backend (dialogs were opened and dismissed only: the demo inboxes belong to real people).
 - Super admin write actions (the admin password in older notes is wrong; admin pages were checked as the read-only observer).
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels all downloads; CSV content was checked in-page).
@@ -74,12 +78,21 @@
 - **Login limit:** 10 per 15 minutes per IP. Reuse browser sessions while testing.
 - **Recharts can't read CSS variables;** take hex values from `useChartTheme()`.
 - **Dates:** never `toISOString()` for "today" (UTC is a day behind in Pakistan until 05:00); use `localDateStr()` / `toLocalDateStr()`.
+- **`npm run preview` (port 4173) can't sign in:** the backend CORS allowlist rejects it. Use it only to check the service worker and offline shell, and stop it afterwards.
+- **Favicons are cached hard:** hard-refresh (Ctrl+Shift+R) or use a fresh tab to see a changed one.
 - **Several URL filter keys in one event:** use one `useUrlFilters` `set({...})` call; two calls in the same tick overwrite each other.
 
 ---
 
 ## Next steps
 
-1. Send `BACKEND_REQUESTS.md`, `BACKEND_OFFLINE_PUSH.md` and `STOCK_REGISTER_BACKEND.md` to the backend developer.
-2. Once `GET /api/stock-register` lands: add `getStockRegister()` to `api.js`, swap `StockRegister.jsx` off the three audit-log calls, remove the client-side balance computation.
-3. QA the merged app in production across all 7 roles, light and dark, with a test account you own for one full write flow (request → sent → received → approved).
+1. **Get the backend update** (new round / doc from the backend developer) and reconcile: mark done what shipped in `BACKEND_REQUESTS.md` (#1–#11), `BACKEND_OFFLINE_PUSH.md` (Q1–Q4, R1) and `STOCK_REGISTER_BACKEND.md`, and update the "Backend" line above. Send those three files to the backend developer if they have not seen them.
+2. **Adopt what shipped**, each only if the backend confirms it:
+   - `PUT /api/facilities/:facilityId/vaccines/:vaccineId` (#1): re-test the per-facility Save / Reset (needs a super admin login).
+   - `GET /api/stock-register`: add `getStockRegister()` to `api.js`, swap `StockRegister.jsx` off the three audit-log calls, remove the client-side balance computation.
+   - Analytics location filters (#3): pass `districtId` / `ucId` / `facilityId` from `getAnalytics`.
+   - `409` meaning (Q1) and `4xx` statuses (Q2): decide whether `offlineQueue.js` may retry any of them.
+   - Push payload and `url` values (Q3), dead subscriptions (Q4), test push (R1): check the service worker reads the real fields, then test on a real phone (Android and an iPhone with the app on the home screen).
+3. **Decide on offline cold start** (see Open issues): a persisted query cache plus a stored session, or accept "works only if the app is already open" for the pilot.
+4. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's Stock Register and request tabs, route-guard redirects, and the "N not sent" dialog. Use a test account you own for one full write flow (request → sent → received → approved).
+5. **Housekeeping:** delete the unused `public/images/icon-image.jpeg`, decide on the `xlsx` advisories, and refresh the impeccable files (`/impeccable document`, `/impeccable init`).
