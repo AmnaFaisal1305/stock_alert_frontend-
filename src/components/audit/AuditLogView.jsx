@@ -127,6 +127,17 @@ function Details({ entry, p, onRequest, compact = false }) {
   )
 }
 
+function hasExpandedContent(row) {
+  const d = row.details ?? {}
+  return !!(
+    d.batchNo || d.manufacturer || d.expiryDate ||
+    d.note || d.reason ||
+    (d.occurredOn && d.occurredOn !== row.createdAt?.split('T')[0]) ||
+    d.payload?.thresholds ||
+    d.payload?.storeVials != null
+  )
+}
+
 // Expanded row detail panel (rich view only)
 function ExpandedPanel({ row }) {
   const d = row.details ?? {}
@@ -706,9 +717,10 @@ export default function AuditLogView() {
             loading={logQ.isLoading}
             rowKey={(l) => l.id ?? `${l.createdAt}-${l.action}-${l.actorId}`}
             emptyMessage={hasFilters || url.category ? 'No entries match these filters.' : 'No activity recorded yet.'}
-            onRowClick={isRichView ? toggleExpand : undefined}
+            onRowClick={isRichView ? (l) => hasExpandedContent(l) && toggleExpand(l) : undefined}
             expandedRow={isRichView ? (l) => <ExpandedPanel row={l} /> : undefined}
             isExpanded={isRichView ? isRowExpanded : undefined}
+            canExpand={isRichView ? hasExpandedContent : undefined}
             mobileCard={isRichView
               ? (l) => (
                   <div className="px-4 py-3.5 flex flex-col gap-1.5">

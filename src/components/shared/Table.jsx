@@ -10,7 +10,7 @@ import { SkeletonRows } from './SkeletonCard'
 export default function Table({
   columns, rows, emptyMessage = 'No records found.', rowClassName, rowKey, mobileCard,
   loading = false, onRowClick, view = 'list', gridCard,
-  groups, expandedRow, isExpanded,
+  groups, expandedRow, isExpanded, canExpand,
 }) {
   const getKey = (row, i) => (rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i))
   const alignCls = (col) => (col.align === 'right' ? 'text-right' : 'text-left')
@@ -68,11 +68,12 @@ export default function Table({
               {cell(col, row)}
             </td>
           ))}
-          {expandedRow && (
+          {expandedRow && (!canExpand || canExpand(row)) && (
             <td className="px-3 py-3.5 align-middle text-text-muted w-8">
               <ChevronDown size={14} strokeWidth={2} className={`transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`} />
             </td>
           )}
+          {expandedRow && canExpand && !canExpand(row) && <td className="w-8" />}
         </tr>
         {expanded && expandedRow && (
           <tr>
