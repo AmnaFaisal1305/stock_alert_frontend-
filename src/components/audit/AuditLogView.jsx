@@ -189,7 +189,7 @@ export default function AuditLogView() {
         return text ? <span className="text-text-muted">{text}</span> : <span className="text-text-muted">—</span>
       },
     }] : []),
-    ...(['district_supervisor', 'facility_worker'].includes(activeTab.value) ? [] : [
+    ...(['district_supervisor', 'facility_worker', 'workers'].includes(activeTab.value) ? [] : [
       { key: 'vaccine', label: 'Vaccine', render: (l) => l.$p.vaccine ?? <span className="text-text-muted">—</span> },
       { key: 'vials', label: 'Vials', align: 'right', render: (l) => <Vials p={l.$p} /> },
       { key: 'details', label: 'Details', render: (l) => <Details entry={l} p={l.$p} onRequest={onRequest} /> },
