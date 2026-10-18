@@ -100,13 +100,14 @@ One list of everything the frontend needs from the backend. It replaces the earl
 
 ## 12. Stock Register: include stock received through requests
 - **Screen:** Facility supervisor › Stock Register (per-vaccine running balance).
-- **Problem today:** the register is built from the audit log, and its balance misses stock that came in through requests, so a facility stocked that way shows a negative balance. Round 36 suggests `action=STOCK_REQUEST_APPROVE,STOCK_ASSIGN,STOCK_DAY_END,APPROVAL_APPROVE`, but:
-  - `api-reference.md` (audit log, "For a `facility_supervisor`'s view specifically") says **the Head's approve rows are not in the supervisor's view**. `STOCK_REQUEST_APPROVE` and `APPROVAL_APPROVE` are both the Head's actions. Is that line still true?
-  - The `details` shape of `STOCK_REQUEST_APPROVE` isn't documented (we need per vaccine: approved vials, batch, expiry, manufacturer).
+- **Problem today:** the register is built from the audit log, and its balance misses stock that came in through requests. **We checked Round 36's suggestion against production (2026-10-19, RHC Latifabad, read-only):**
+  - `GET /api/audit-log?action=STOCK_REQUEST_APPROVE,APPROVAL_APPROVE,STOCK_ASSIGN,STOCK_DAY_END` as the **facility supervisor** returns 7 `STOCK_ASSIGN` and 2 `STOCK_DAY_END` rows, and **no** `STOCK_REQUEST_APPROVE` or `APPROVAL_APPROVE` rows. That is despite the facility having 1 `completed` and 1 `partially_fulfilled` request and 1 approved approval. This matches `api-reference.md` ("the Head's approve/reject rows are not in their view").
+  - The same call as the **Head** returns them. `STOCK_REQUEST_APPROVE.details` is `{ status, note, items: [{ vaccineId, vaccineName, requestedVials, receivedVials, fulfilledVials }] }`, with **no** `batchNo` / `expiryDate` / `manufacturer`.
 - **Proposed contract, either:**
-  - (a) confirm the supervisor sees those rows and document the `STOCK_REQUEST_APPROVE` details; or
-  - (b) build `GET /api/stock-register` as specified in `STOCK_REGISTER_BACKEND.md` (server-side balance that matches the dashboard), which we still prefer.
-- **Fallback:** the current register (old `STOCK_ENTRY`/`ADJUST_STOCK` rows plus `STOCK_DAY_END`), with the known gap.
+  - (a) show the supervisor the `STOCK_REQUEST_APPROVE` and `APPROVAL_APPROVE` (`stock_correction`) rows for their own facility, and add each item's batch fields to `STOCK_REQUEST_APPROVE.details`; or
+  - (b) build `GET /api/stock-register` as in `STOCK_REGISTER_BACKEND.md`, which we still prefer: the balance would then match the dashboard by construction.
+  - Please also confirm: is `receivedVials` on the approve row that round's stock in, with `fulfilledVials` cumulative across rounds?
+- **Fallback:** the current register (old `STOCK_ENTRY` / `ADJUST_STOCK` rows plus `STOCK_DAY_END`), with the known gap.
 
 ---
 

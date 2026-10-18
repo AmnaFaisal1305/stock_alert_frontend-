@@ -120,7 +120,7 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 - **Component files:** PascalCase — `LoginPage.jsx`, `StatCard.jsx`
 - **Hook files:** camelCase, `use` prefix — `useDebounce.js`
 - **Lib files:** camelCase — `api.js`, `status.js`
-- **Image files:** kebab-case, no spaces — `icon-image.jpeg`, `login-hero.jpeg`
+- **Image files:** kebab-case, no spaces — `logo-circle-192.png`, `login-hero.jpeg`
 - **CSS:** Tailwind utility classes only; no CSS modules, no styled-components
 
 ### Coding conventions

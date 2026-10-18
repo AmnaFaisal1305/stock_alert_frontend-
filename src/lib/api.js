@@ -320,8 +320,9 @@ export async function markAllRead() {
 
 // ── Stock requests ────────────────────────────────────────────────────────────
 
-export async function getStockRequests(status) {
-  return request('GET', `/api/stock-requests${buildQs(status ? { status } : {})}`)
+// filters: month (YYYY-MM, Pakistan month of createdAt), combinable with status.
+export async function getStockRequests(status, filters = {}) {
+  return request('GET', `/api/stock-requests${buildQs({ status, ...filters })}`)
 }
 
 export async function getStockRequest(id) {

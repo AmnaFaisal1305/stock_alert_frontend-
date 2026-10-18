@@ -12,9 +12,11 @@ import Button from '../ui/Button'
 import Tabs from '../ui/Tabs'
 import ExportButton from '../ui/ExportButton'
 import { useUrlFilters } from '../../hooks/useUrlState'
+import { useDebounce } from '../../hooks/useDebounce'
 import PageHeader from '../shared/PageHeader'
 import Table from '../shared/Table'
 import Pagination from '../shared/Pagination'
+import SearchInput from '../shared/SearchInput'
 import StatusBadge from '../shared/StatusBadge'
 import ErrorState from '../shared/ErrorState'
 import { ROLE_LABELS } from '../../lib/navigation'
@@ -100,10 +102,12 @@ function Details({ entry, p, onRequest, compact = false }) {
 export default function AuditLogView() {
   const { user } = useAuth()
   const config = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.super_admin
-  // Tab and filters live in the URL (?tab=&action=&from=&to=&request=&scope=); paging stays local.
-  const [url, setUrl] = useUrlFilters({ tab: config.defaultTab ?? config.tabs[0].value, action: '', from: '', to: '', request: '', scope: '' })
+  // Tab and filters live in the URL (?tab=&q=&action=&from=&to=&request=&scope=); paging stays local.
+  const [url, setUrl] = useUrlFilters({ tab: config.defaultTab ?? config.tabs[0].value, q: '', action: '', from: '', to: '', request: '', scope: '' })
   const tab = url.tab
   const filters = { action: url.action, from: url.from, to: url.to, entityId: url.request, scope: url.scope }
+  // Server-side search (Round 36): actor, facility, vaccine, name or email; counted in `total`.
+  const q = useDebounce(url.q).trim()
   const [page, setPage] = useState(1)
   // cursors[i] is the `before` value that loads page i + 1; only pages already reached are known.
   const [cursors, setCursors] = useState([null])
@@ -118,7 +122,7 @@ export default function AuditLogView() {
   const scopeId = scopeOn ? filters.scope : ''
   const params = {
     ...activeTab.params,
-    action: filters.action, from: filters.from, to: filters.to, entityId: filters.entityId,
+    q, action: filters.action, from: filters.from, to: filters.to, entityId: filters.entityId,
     ...(scopeId ? (config.scope === 'worker' ? { actorId: scopeId } : { facilityId: scopeId }) : {}),
   }
   const before = cursors[page - 1]
@@ -160,7 +164,7 @@ export default function AuditLogView() {
     setPage(p)
   }
   const pageRows = logs ?? []
-  const hasFilters = !!(filters.action || filters.from || filters.to || filters.entityId || filters.scope)
+  const hasFilters = !!(url.q || filters.action || filters.from || filters.to || filters.entityId || filters.scope)
   const showWho = !activeTab.hideWho
   const onRequest = (id) => set({ entityId: id, action: '' })
 
@@ -238,6 +242,12 @@ export default function AuditLogView() {
           />
 
           <div className="flex flex-wrap items-end gap-3">
+            <SearchInput
+              value={url.q}
+              onChange={(e) => set({ q: e.target.value })}
+              placeholder="Search name, facility, vaccine…"
+              className="sm:w-64"
+            />
             {scopeOn && (
               <div className="w-full sm:w-56">
                 <Select
@@ -266,7 +276,7 @@ export default function AuditLogView() {
                 </button>
               </span>
             )}
-            {hasFilters && <Button variant="ghost" onClick={() => set({ action: '', from: '', to: '', entityId: '', scope: '' })}>Clear</Button>}
+            {hasFilters && <Button variant="ghost" onClick={() => set({ q: '', action: '', from: '', to: '', entityId: '', scope: '' })}>Clear</Button>}
             <p className="ml-auto text-sm text-text-muted tabular-nums pb-2">{logs ? plural(total, 'entry', 'entries') : ''}</p>
             <ExportButton name="audit-log" columns={exportColumns} getRows={exportRows} disabled={!total} />
           </div>

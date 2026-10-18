@@ -167,10 +167,13 @@ export default function Analytics() {
     queryFn: () => getAnalytics({ from, to, districtId: reqDistrict, ucId: reqUc, facilityId: reqFacilityId }),
   })
 
-  // Location cascade: narrows every section via the analytics query
+  // Location cascade: narrows every section via the analytics query. Only roles above a UC can
+  // list districts/UCs (others get 403), and their scope is already one UC or facility.
+  const canFilterLocation = ['super_admin', 'observer', 'district_supervisor'].includes(user?.role)
   const { data: reqDistrictsData } = useQuery({
     queryKey: ['districts'],
     queryFn:  getDistricts,
+    enabled:  canFilterLocation,
   })
   const { data: reqUcsData } = useQuery({
     queryKey: ['ucs', reqDistrict],
@@ -185,8 +188,8 @@ export default function Analytics() {
 
   const detailApiParam = DETAIL_API_PARAM[detailStatus] ?? null
   const { data: detailData, isLoading: detailLoading } = useQuery({
-    queryKey: ['stock-requests-detail', detailApiParam],
-    queryFn:  () => getStockRequests(detailApiParam),
+    queryKey: ['stock-requests-detail', detailApiParam, reqMonth],
+    queryFn:  () => getStockRequests(detailApiParam, { month: reqMonth }),
     enabled:  !!detailStatus,
   })
 
@@ -391,10 +394,9 @@ export default function Analytics() {
     let list = detailData?.stockRequests ?? []
     if (detailStatus === 'open')    list = list.filter((r) => OPEN_STAGES.has(r.stage))
     if (detailStatus === 'partial') list = list.filter((r) => r.stage === 'partially_fulfilled')
-    if (reqMonth)       list = list.filter((r) => r.createdAt?.startsWith(reqMonth))
     if (reqFacilityName) list = list.filter((r) => r.facilityName === reqFacilityName)
     return list
-  }, [detailData, detailStatus, reqMonth, reqFacilityName])
+  }, [detailData, detailStatus, reqFacilityName])
 
   // Table rows filtered by selected month
   const displayedRequestsByMonth = reqMonth
@@ -510,7 +512,7 @@ export default function Analytics() {
             <DatePicker id="analytics-from" label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
             <DatePicker id="analytics-to"   label="To"   value={to}   onChange={(e) => setTo(e.target.value)} />
           </div>
-          <div className="flex items-end gap-3 flex-wrap">
+          {canFilterLocation && <div className="flex items-end gap-3 flex-wrap">
             <Select
               id="req-district"
               label="District"
@@ -551,7 +553,7 @@ export default function Analytics() {
                 setDetailStatus(null); setExpandedReq(null)
               }}
             />
-          </div>
+          </div>}
           <FilterChips
             label="Quick period"
             value={activePreset}
