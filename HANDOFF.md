@@ -1,14 +1,16 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-18 (Rounds 36–38 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
+**Current state as of 2026-10-19 (Rounds 36–39 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
 
 ---
 
 ## Where things stand
 
-- **Branch:** `main` holds everything and is pushed (`f209e03`). No open branches.
-- **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`): Rounds 36–39 adopted, see below. The local copies were deleted once adopted; ask the backend developer for current ones.
-- **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
+- **Branch:** `main` holds everything and is pushed. The last feature commit is `d0cf06c` (Rounds 38–39). No open branches.
+- **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`):
+  - Everything they list through Round 39 is built.
+  - The local copies in `docs/` were deleted once adopted; ask the backend developer for current ones when the next round arrives.
+  - `docs/` now holds only `test-accounts.md`, `phone-test-checklist.md`, `design_refrences/` and `screenshots/`.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
 - **Backend:** latest round adopted is **Round 39**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (done items removed), and nothing is open in it.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
@@ -18,6 +20,7 @@
 - **Checked live by curl:**
   - A signed-in logout with no header, and one with a wrong header, both returned `403 {"error":"Invalid or missing CSRF token","code":"CSRF_INVALID"}`.
   - The test session was then logged out properly.
+- **Checked in the app:** signed in as Sadia, set a wrong token with `setCsrfToken('wrong')`, then called `logout()`. The calls were logout `403`, then `/session` `200`, then a successful retry, and the server session then answered `401`.
 - **Not re-run:** the offline replay with no token in memory. It uses this same path and depends only on the `code` now.
 
 ### Round 38 adopted (2026-10-18)
@@ -42,7 +45,8 @@
   - As the Head: the sidebar link, the "Facility Head › Records" breadcrumb, and `/facility/stock-register` redirecting home.
   - Phone width in light mode.
   - The Assign Vials calendar allows 11–18 Oct.
-  - **Not checked:** the "expire soon" chip with a real 5-day-old queued entry.
+  - **Not checked:** the "expire soon" chip with a real 5-day-old queued entry; dark mode on the register.
+- **Known quirk:** going back a page can lower the page count ("of 4" becomes "of 3"), because only the pages already reached are counted. Without a `total` from the API, this is accepted.
 
 ### Verified against production, bulk status, housekeeping (2026-10-19)
 All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call.
@@ -63,7 +67,7 @@ All on the RHC Latifabad demo accounts, and each result was confirmed by a read-
   - The audit chain is CREATE → SENT → RECEIVED → APPROVE, and each next actor got the notification.
 - **Real offline replay:**
   - With no CSRF token in memory and the network blocked, a 1-vial assign to Rukhsana was queued.
-  - On reconnect it synced through the generic-403 → refresh → retry path.
+  - On reconnect it synced through the CSRF 403 → refresh → retry path, which since Round 39 is keyed on `CSRF_INVALID`.
   - Her BCG went from 10 to 11, with exactly one `STOCK_ASSIGN` row for its `clientRef`.
   - A true offline cold start (app closed) was verified earlier on the production build.
 - **Dependencies:**
@@ -128,10 +132,6 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 - **Logo:** the browser favicon and the sidebar brand use the circular `public/images/logo-circle-192.png` (transparent corners, cut from `icon-192.png`; a 512 copy sits beside it).
 - Verified: production build loads the shell offline on `/`, `/login` and deep URLs; queue outcomes (201, 422, 409, 500, network error, other user's entries) with a mocked `fetch`; Assign Vials end to end with the network failing (queued once, "Saved offline"). Nothing was sent to production.
 
-### Recently built (2026-10-19, Amna)
-- **Stock Register overhaul:** entry types consolidated to three labels (Received / Record / Stock Correction); new Balance column (per-vaccine running balance, red when negative); new Stock Correction column (signed +N / −N, green/red) for `ADJUST_STOCK` rows only; `ADJUST_STOCK` rows no longer bleed into the Received/Used columns. FilterChips and CSV export updated to match.
-- **Stock Register endpoint spec:** now `BACKEND_REQUESTS.md` #1.
-
 ### Recently built (2026-10-18)
 - **Shell:** ☰ menu button toggles the sidebar rail on desktop (remembered) and the drawer on phones; emoji bell; notification panel with type icons, Today/Earlier groups and click-through.
 - **Every entity list:** Grid/List toggle (Grid default, remembered per page), icon row actions filtered by role, CSV export, filters kept in the URL.
@@ -152,7 +152,7 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 | Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
 
 ### Not yet tested
-- After the merge with Amna: the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser. (Her Stock Register was rewritten for Round 38 and is checked.)
+- After the merge with Amna: the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
 - The redesigned login: layout checked in light, dark and phone width, but no sign-in was submitted and Google's button was not seen (no `VITE_GOOGLE_CLIENT_ID` in dev).
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels all downloads; CSV content was checked in-page).
 - Push delivery to a real device, and the offline flow on a real phone with a flaky connection (see the Open issues row; the offline replay to production is verified on desktop).
@@ -167,7 +167,9 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 - **Login limit:** 10 per 15 minutes per IP. Reuse browser sessions while testing.
 - **Recharts can't read CSS variables;** take hex values from `useChartTheme()`.
 - **Dates:** never `toISOString()` for "today" (UTC is a day behind in Pakistan until 05:00); use `localDateStr()` / `toLocalDateStr()`.
-- **`npm run preview` (port 4173) can't sign in:** the backend CORS allowlist rejects it. To test the production build signed in, run `npx vite preview --port 5173 --strictPort` instead (stop the dev server first; `TaskStop` can leave the preview's child process on the port).
+- **`npm run preview` (port 4173) can't sign in:** the backend CORS allowlist rejects it. To test the production build signed in, run `npx vite preview --port 5173 --strictPort` instead (stop the dev server first).
+- **`TaskStop` can leave Vite's child `node` process on port 5173** (dev or preview). The next `--strictPort` start then fails. Free the port first with `Get-NetTCPConnection -LocalPort 5173 -State Listen` → `Stop-Process`.
+- **Calling `api.js` from the browser in dev:** `await import('/src/lib/api.js')` gives the same module the app uses, for example `setCsrfToken('wrong')` to test the CSRF retry.
 - **After a rebuild the service worker keeps serving the old bundle** until it updates. When testing, unregister it and clear caches (`navigator.serviceWorker.getRegistrations()` → `unregister()`, `caches.delete`) before trusting a result.
 - **agent-browser `set offline on`** blocks the network but leaves `navigator.onLine` true after a reload. That tests the "online but no signal" path; a real phone in airplane mode reports offline.
 - **Favicons are cached hard:** hard-refresh (Ctrl+Shift+R) or use a fresh tab to see a changed one.
@@ -179,8 +181,11 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 **Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
-1. **Tell the backend developer** that Rounds 38–39 are adopted; `BACKEND_REQUESTS.md` has nothing open.
-2. **Stock Register:** if the client misses filtering by entry type, ask the backend for a `kind` param.
-3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone: push ("Send test") and offline (airplane-mode cold start, Assign + Day End, reconnect).
+1. **Tell the backend developer** that Rounds 38–39 are adopted; `BACKEND_REQUESTS.md` has nothing open. When their next round arrives, drop the docs into `docs/`, adopt them, then delete them again.
+2. **Stock Register:** if the client misses filtering by entry type, ask the backend for a `kind` param. If the shrinking page count bothers anyone, ask for a `total`.
+3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone:
+   - Push: use "Send test".
+   - Offline: an airplane-mode cold start, then Assign + Day End, then reconnect. This also covers the no-token replay through `CSRF_INVALID`, which has not been re-run since Round 39.
+   - Watch for the "expire soon" chip on an entry dated 5 or more days back.
 4. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's request tabs, route-guard redirects, and the "N not sent" dialog. (One full write flow is already verified on the demo accounts.)
 5. **Dev-only advisories** (postcss, nanoid … in build tools): only with a planned Vite/tooling upgrade, as the fix is breaking.
