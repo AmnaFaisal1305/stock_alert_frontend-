@@ -639,7 +639,7 @@ export default function AuditLogView() {
           {isRichView && (
             <div className="flex flex-wrap items-center gap-3">
               <FilterChips
-                items={CATEGORY_OPTIONS}
+                options={CATEGORY_OPTIONS}
                 value={url.category}
                 onChange={(v) => set({ category: v })}
               />
