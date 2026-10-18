@@ -156,7 +156,7 @@ export default function LoginPage() {
           id="email"
           label="Email"
           type="email"
-          placeholder="you@domain.com"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-11"
@@ -169,6 +169,7 @@ export default function LoginPage() {
             id="password"
             label="Password"
             type="password"
+            placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="h-11"
