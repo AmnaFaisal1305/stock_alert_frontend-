@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL
+// Unset in production: vercel.json proxies /api/* to the backend, so calls stay same-origin and the
+// session cookie is first-party. Local dev sets it in .env.local to call the backend directly.
+const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
 let _csrfToken = null
 // Guard: dispatch sst:session-expired at most once per session; reset on fresh login

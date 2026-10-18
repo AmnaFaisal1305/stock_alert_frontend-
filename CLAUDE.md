@@ -20,7 +20,7 @@ npm run preview  # preview the production build locally
 
 No test suite or linter is configured. After any change, run `npm run build` to verify there are no broken imports, then check the affected screen(s) in the browser with `npm run dev`.
 
-The dev server calls the live backend. `.env` sets `VITE_API_URL=https://smart-stock-alert-be.vercel.app`. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. **Never commit `.env` — it is gitignored and contains dev credentials.**
+The dev server calls the live backend. `.env.local` (or `.env`) must set `VITE_API_URL=https://smart-stock-alert-be.vercel.app`; without it, calls go to the dev server's own origin and every `/api` request is a 404. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. In **Vercel Production the variable is unset**: `vercel.json` proxies `/api/*` to the backend so the session cookie is first-party (fixes the new-tab 401), and `api.js` defaults `BASE_URL` to `''`. **Never commit `.env` — it is gitignored and contains dev credentials.**
 
 ---
 
