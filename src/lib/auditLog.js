@@ -2,6 +2,7 @@
 import { displayVaccineName } from './vaccineNames'
 import { ROLE_LABELS } from './navigation'
 import { approvalTypeLabel } from './status'
+import { toLocalDateStr } from './format'
 
 export const ACTION_LABELS = {
   LOGOUT:                    'Logged out',
@@ -67,7 +68,16 @@ export function buildContext(logs, vaccines = [], users = []) {
     if (log.action === 'STOCK_REQUEST_CREATE' && log.entityId) createByEntityId[log.entityId] = d
   }
   const userNameById = Object.fromEntries(users.map((u) => [u.id, (u.name ?? u.email ?? '').trim().replace(/\s+/g, ' ')]))
-  return { vaccineNameById, userNameById, createByEntityId }
+  // Used by computeFlags: entityId → all entries for that request (awaiting_received flag);
+  // workerId:date → true for every STOCK_DAY_END (post_dayend_assign flag).
+  const entriesByEntityId = {}
+  const dayEndsByWorkerDate = new Set()
+  for (const log of logs) {
+    if (log.entityId) (entriesByEntityId[log.entityId] ??= []).push(log)
+    if (log.action === 'STOCK_DAY_END' && log.details?.workerId && log.details?.occurredOn)
+      dayEndsByWorkerDate.add(`${log.details.workerId}:${log.details.occurredOn}`)
+  }
+  return { vaccineNameById, userNameById, createByEntityId, entriesByEntityId, dayEndsByWorkerDate }
 }
 
 const STOCK_REQUEST_ACTIONS = new Set([
@@ -210,4 +220,298 @@ export function actionOptionsFor(role) {
   if (['facility_supervisor', 'facility_head', 'facility_worker'].includes(role)) actions = FACILITY_ACTIONS
   else if (role === 'district_supervisor' || role === 'uc_supervisor') actions = actions.filter((a) => !ADMIN_ONLY.has(a))
   return actions.filter((a) => !LEGACY.has(a)).map((a) => ({ value: a, label: actionLabel(a) })).sort((a, b) => a.label.localeCompare(b.label))
+}
+
+// ─── Rich formatting for facility supervisor audit entries ────────────────────
+
+export function getCategory(action) {
+  if (action === 'LOGOUT') return 'Session'
+  if (action === 'SHEET_SAVED') return 'Forms'
+  if (action === 'STOCK_DAY_END') return 'Day end'
+  if (action === 'STOCK_REQUEST_RECEIVED' || action === 'STOCK_ASSIGN' || action === 'STOCK_RECEIVE') return 'Stock movement'
+  if (action?.startsWith('STOCK_REQUEST')) return 'Request'
+  if (action?.startsWith('APPROVAL')) return 'Approval'
+  return null
+}
+
+// Natural statuses: the expected entity status immediately after an action.
+// "Now: X" is only shown when the current status differs from these.
+const NATURAL_STATUS = {
+  STOCK_REQUEST_CREATE:   ['awaiting_both', 'awaiting_sent', 'awaiting_received'],
+  STOCK_REQUEST_CANCEL:   ['cancelled'],
+  STOCK_REQUEST_DECLINE:  ['declined'],
+  STOCK_REQUEST_APPROVE:  ['completed', 'partially_fulfilled'],
+  STOCK_REQUEST_RECEIVED: ['ready_for_approval', 'figures_differ', 'completed', 'partially_fulfilled'],
+  STOCK_REQUEST_CLOSE_SHORT: ['partially_fulfilled'],
+  APPROVAL_REQUEST:  ['pending'],
+  APPROVAL_APPROVE:  ['approved'],
+  APPROVAL_REJECT:   ['rejected'],
+  APPROVAL_DECLINE:  ['rejected'],
+  APPROVAL_CANCEL:   ['cancelled'],
+}
+
+// Event label and tone derived from the action, not the current entity status.
+const EVENT_STATUS_LABEL = {
+  STOCK_REQUEST_CREATE:      { label: 'Raised',       tone: 'neutral' },
+  STOCK_REQUEST_SENT:        { label: 'Sent',         tone: 'neutral' },
+  STOCK_REQUEST_RECEIVED:    { label: 'Received',     tone: 'success' },
+  STOCK_REQUEST_CANCEL:      { label: 'Cancelled',    tone: 'danger'  },
+  STOCK_REQUEST_DECLINE:     { label: 'Declined',     tone: 'danger'  },
+  STOCK_REQUEST_APPROVE:     { label: 'Approved',     tone: 'success' },
+  STOCK_REQUEST_CLOSE_SHORT: { label: 'Closed short', tone: 'warning' },
+  APPROVAL_APPROVE:          { label: 'Approved',     tone: 'success' },
+  APPROVAL_REJECT:           { label: 'Rejected',     tone: 'danger'  },
+  APPROVAL_DECLINE:          { label: 'Rejected',     tone: 'danger'  },
+  APPROVAL_CANCEL:           { label: 'Withdrawn',    tone: 'neutral' },
+}
+
+function buildSummary(entry, ctx) {
+  const d = entry.details
+  if (!d) return null
+  const vn = (id) => (id ? ctx.vaccineNameById?.[id] ?? null : null)
+  const wn = (id) => (id ? ctx.userNameById?.[id] ?? 'Unknown worker' : null)
+  const vaccineName = (it) => (it.vaccineName ? displayVaccineName(it.vaccineName) : vn(it.vaccineId) ?? 'Unknown vaccine')
+  const ds = (iso) => new Date(iso + 'T00:00:00').toLocaleString('en-GB', { day: 'numeric', month: 'short' })
+
+  switch (entry.action) {
+    case 'STOCK_ASSIGN': {
+      const total = d.items?.reduce((s, it) => s + (it.vials ?? 0), 0) ?? d.vials ?? 0
+      const vacStr = d.items?.length === 1
+        ? ` of ${vaccineName(d.items[0])}`
+        : d.items?.length > 1 ? ` (${d.items.map((it) => `${vaccineName(it)} ${it.vials ?? 0}`).join(', ')})` : ''
+      const worker = wn(d.workerId) ?? (d.workerEmail ? d.workerEmail.split('@')[0] : null)
+      const workerStr = worker ? ` to ${worker}` : ''
+      const dateStr = d.occurredOn ? ` for ${ds(d.occurredOn)}` : ''
+      return `Assigned ${total} vials${vacStr}${workerStr}${dateStr}`
+    }
+    case 'STOCK_REQUEST_CREATE': {
+      if (!d.items?.length) return d.note ? `Requested stock — "${d.note}"` : 'Requested stock'
+      const total = d.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+      if (d.items.length === 1) return `Requested ${total} vials of ${vaccineName(d.items[0])}`
+      const bd = d.items.map((it) => `${vaccineName(it)} ${it.requestedVials ?? 0}`).join(', ')
+      return `Requested ${total} vials (${bd})`
+    }
+    case 'STOCK_REQUEST_RECEIVED': {
+      const received = d.items?.reduce((s, it) => s + (it.receivedVials ?? 0), 0) ?? 0
+      const create = ctx.createByEntityId?.[entry.entityId]
+      if (create?.items?.length && d.items?.length) {
+        const requested = create.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+        const shorts = []
+        for (const cit of create.items) {
+          const rit = d.items.find((i) => i.vaccineId === cit.vaccineId)
+          const diff = (cit.requestedVials ?? 0) - (rit?.receivedVials ?? 0)
+          if (diff > 0) {
+            const nm = cit.vaccineName ? displayVaccineName(cit.vaccineName) : vn(cit.vaccineId) ?? 'vaccine'
+            shorts.push(`${nm} short by ${diff}`)
+          }
+        }
+        const base = `Received ${received} of ${requested} vials`
+        return shorts.length ? `${base} · ${shorts.join(', ')}` : base
+      }
+      return `Received ${received} vials`
+    }
+    case 'STOCK_REQUEST_CANCEL': {
+      const create = ctx.createByEntityId?.[entry.entityId]
+      if (create?.items?.length) {
+        const total = create.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+        if (create.items.length === 1) return `Cancelled request for ${total} vials of ${vaccineName(create.items[0])}`
+        return `Cancelled request for ${total} vials`
+      }
+      return 'Cancelled stock request'
+    }
+    case 'STOCK_REQUEST_DECLINE': {
+      const create = ctx.createByEntityId?.[entry.entityId]
+      const total = create?.items?.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+      return total != null ? `Request for ${total} vials declined` : 'Request declined'
+    }
+    case 'STOCK_REQUEST_APPROVE': {
+      const total = d.items?.reduce((s, it) => s + (it.fulfilledVials ?? it.requestedVials ?? 0), 0)
+      return total != null ? `Request approved — ${total} vials` : 'Request approved'
+    }
+    case 'STOCK_REQUEST_SENT': {
+      const total = d.items?.reduce((s, it) => s + (it.sentVials ?? 0), 0) ?? 0
+      return `Stock sent — ${total} vials`
+    }
+    case 'STOCK_REQUEST_CLOSE_SHORT': {
+      const create = ctx.createByEntityId?.[entry.entityId]
+      const requested = create?.items?.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
+      const sent = d.items?.reduce((s, it) => s + (it.receivedVials ?? it.sentVials ?? 0), 0)
+      if (requested != null && sent != null) return `Closed short — received ${sent} of ${requested} vials`
+      return 'Request closed short'
+    }
+    case 'APPROVAL_REQUEST': {
+      const vaccine = d.vaccineName ? displayVaccineName(d.vaccineName) : vn(d.vaccineId) ?? 'vaccine'
+      if (d.type === 'threshold_change') {
+        const t = d.payload?.thresholds ?? {}
+        const parts = []
+        if (t.lowDoses != null || t.lowVials != null) parts.push(`Low ${t.lowDoses ?? '?'} doses / ${t.lowVials ?? '?'} vials`)
+        if (t.criticalDoses != null || t.criticalVials != null) parts.push(`Critical ${t.criticalDoses ?? '?'} doses / ${t.criticalVials ?? '?'} vials`)
+        return `Asked to change ${vaccine} thresholds${parts.length ? `: ${parts.join(', ')}` : ''}`
+      }
+      if (d.type === 'stock_correction') {
+        const sv = d.payload?.storeVials
+        const reason = d.note ? ` · Reason: "${d.note}"` : ''
+        return sv != null ? `Asked to correct ${vaccine} store to ${sv} vials${reason}` : `Asked to correct ${vaccine} store${reason}`
+      }
+      return `Requested approval for ${vaccine}`
+    }
+    case 'APPROVAL_APPROVE': {
+      const vaccine = d.vaccineName ? displayVaccineName(d.vaccineName) : vn(d.vaccineId)
+      const typeStr = d.type ? d.type.replace(/_/g, ' ') : 'request'
+      return vaccine ? `Approved ${typeStr} for ${vaccine}` : `Approved ${typeStr}`
+    }
+    case 'APPROVAL_REJECT':
+    case 'APPROVAL_DECLINE': {
+      const vaccine = d.vaccineName ? displayVaccineName(d.vaccineName) : vn(d.vaccineId)
+      const typeStr = d.type ? d.type.replace(/_/g, ' ') : 'request'
+      return vaccine ? `Rejected ${typeStr} for ${vaccine}` : `Rejected ${typeStr}`
+    }
+    case 'APPROVAL_CANCEL': {
+      const vaccine = d.vaccineName ? displayVaccineName(d.vaccineName) : vn(d.vaccineId)
+      return vaccine ? `Withdrew ${d.type?.replace(/_/g, ' ') ?? 'approval request'} for ${vaccine}` : 'Withdrew approval request'
+    }
+    case 'STOCK_DAY_END': {
+      if (!d.items?.length) return 'Day end closed'
+      const sum = (k) => d.items.reduce((s, it) => s + (it[k] ?? 0), 0)
+      const worker = wn(d.workerId) ?? (d.workerEmail ? d.workerEmail.split('@')[0] : null)
+      const workerStr = worker ? ` for ${worker}` : ''
+      return `Day end${workerStr}: ${sum('assignedVials')} assigned = ${sum('usedVials')} used + ${sum('wastedVials')} wasted + ${sum('returnedVials')} returned`
+    }
+    case 'SHEET_SAVED': {
+      if (d.month && d.year) {
+        const month = new Date(d.year, d.month - 1).toLocaleString('en-GB', { month: 'short', year: 'numeric' })
+        return `Form B saved · ${month}`
+      }
+      return 'Form B saved'
+    }
+    default:
+      return null
+  }
+}
+
+export function computeFlags(entry, ctx) {
+  const d = entry.details
+  if (!d) return []
+  const flags = []
+  const ageMs = Date.now() - new Date(entry.createdAt).getTime()
+  const H24 = 86_400_000
+  const H72 = 3 * H24
+
+  if (entry.action === 'STOCK_REQUEST_RECEIVED') {
+    // Short delivery: per-vaccine comparison against CREATE entry
+    const create = ctx.createByEntityId?.[entry.entityId]
+    if (create?.items?.length && d.items?.length) {
+      for (const cit of create.items) {
+        const rit = d.items.find((i) => i.vaccineId === cit.vaccineId)
+        const diff = (cit.requestedVials ?? 0) - (rit?.receivedVials ?? 0)
+        if (diff > 0) {
+          const nm = cit.vaccineName ? displayVaccineName(cit.vaccineName) : ctx.vaccineNameById?.[cit.vaccineId] ?? 'vaccine'
+          flags.push({ type: 'short_delivery', label: `${nm} short by ${diff}`, tone: 'warning' })
+        }
+      }
+    }
+    // Expiry on or before the received date
+    if (d.expiryDate && d.expiryDate <= entry.createdAt.split('T')[0]) {
+      flags.push({ type: 'expiry_soon', label: `Expires ${d.expiryDate}`, tone: 'danger' })
+    }
+  }
+
+  // Pending approval older than 24h
+  if (entry.action === 'APPROVAL_REQUEST' && entry.status === 'pending') {
+    if (ageMs > H72) flags.push({ type: 'pending_stale', label: 'Pending over 3 days', tone: 'danger' })
+    else if (ageMs > H24) flags.push({ type: 'pending_stale', label: 'Pending over 24h', tone: 'warning' })
+  }
+
+  // Request received but still awaiting_both for >24h
+  if (entry.status === 'awaiting_both' && entry.entityId && ageMs > H24) {
+    const siblings = ctx.entriesByEntityId?.[entry.entityId] ?? []
+    if (siblings.some((e) => e.action === 'STOCK_REQUEST_RECEIVED')) {
+      flags.push({ type: 'awaiting_received', label: 'Received but still awaiting both approvals', tone: 'warning' })
+    }
+  }
+
+  // Backdated: occurredOn differs from the local calendar date of createdAt
+  if (d.occurredOn) {
+    const localCreated = toLocalDateStr(new Date(entry.createdAt))
+    if (d.occurredOn !== localCreated) {
+      const dt = new Date(d.occurredOn + 'T00:00:00').toLocaleString('en-GB', { day: 'numeric', month: 'short' })
+      flags.push({ type: 'backdated', label: `Recorded for ${dt}`, tone: 'neutral' })
+    }
+  }
+
+  // Possible assignment after day end for the same worker on the same date
+  if (entry.action === 'STOCK_ASSIGN' && d.workerId && d.occurredOn) {
+    if (ctx.dayEndsByWorkerDate?.has(`${d.workerId}:${d.occurredOn}`)) {
+      flags.push({ type: 'post_dayend_assign', label: 'Possible: assigned after day end', tone: 'neutral' })
+    }
+  }
+
+  return flags
+}
+
+// → { category, actionLabel, summary, vaccineLabel, workerName, storeImpact,
+//     statusLabel, statusTone, currentStatus, showCurrentStatus, ref, flags, backdatedFor, parsed }
+export function formatAuditEntry(entry, ctx) {
+  const p = parseEntry(entry, ctx)
+  const d = entry.details ?? {}
+  const category = getCategory(entry.action)
+
+  // storeImpact: only for true physical movements into/out of the store
+  let storeImpact = null
+  const vialsVal = typeof p.vials === 'number' ? p.vials : null
+  if ((entry.action === 'STOCK_REQUEST_RECEIVED' || entry.action === 'STOCK_RECEIVE') && vialsVal) {
+    storeImpact = { sign: '+', value: vialsVal }
+  } else if (entry.action === 'STOCK_ASSIGN' && vialsVal) {
+    storeImpact = { sign: '-', value: vialsVal }
+  }
+
+  // statusLabel and tone from action
+  let statusLabel = null
+  let statusTone = 'neutral'
+  const es = EVENT_STATUS_LABEL[entry.action]
+  if (es) {
+    statusLabel = es.label
+    statusTone = es.tone
+  } else if (entry.action === 'APPROVAL_REQUEST') {
+    const ageMs = Date.now() - new Date(entry.createdAt).getTime()
+    if (entry.status === 'pending') {
+      const days = Math.floor(ageMs / 86_400_000)
+      const hrs  = Math.floor(ageMs / 3_600_000)
+      statusLabel = days >= 1 ? `Pending ${days}d` : hrs > 0 ? `Pending ${hrs}h` : 'Pending'
+      statusTone  = ageMs > 3 * 86_400_000 ? 'danger' : ageMs > 86_400_000 ? 'warning' : 'neutral'
+    } else {
+      statusLabel = 'Requested'
+    }
+  }
+
+  // Show the entity's current status as a secondary badge only when it isn't
+  // the natural result of this action (avoids redundant "Raised · Awaiting both").
+  const natural = NATURAL_STATUS[entry.action]
+  const showCurrentStatus = !!(natural && entry.status && !natural.includes(entry.status))
+
+  // backdatedFor: non-null when occurredOn differs from the local createdAt date
+  let backdatedFor = null
+  if (d.occurredOn) {
+    const localCreated = toLocalDateStr(new Date(entry.createdAt))
+    if (d.occurredOn !== localCreated) {
+      backdatedFor = new Date(d.occurredOn + 'T00:00:00').toLocaleString('en-GB', { day: 'numeric', month: 'short' })
+    }
+  }
+
+  return {
+    category,
+    actionLabel: actionLabel(entry.action),
+    summary: buildSummary(entry, ctx),
+    vaccineLabel: p.vaccine,
+    workerName: d.workerId ? (ctx.userNameById?.[d.workerId] ?? 'Unknown worker') : null,
+    storeImpact,
+    statusLabel,
+    statusTone,
+    currentStatus: entry.status ?? null,
+    showCurrentStatus,
+    ref: entry.entityId ? entry.entityId.slice(0, 8) : null,
+    flags: computeFlags(entry, ctx),
+    backdatedFor,
+    parsed: p,
+  }
 }
