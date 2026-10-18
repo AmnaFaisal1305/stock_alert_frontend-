@@ -6,7 +6,7 @@
 
 ## Where things stand
 
-- **Branch:** `main` holds everything. `a830f41` (Rounds 36–37) is pushed; the follow-up below is committed on top. `feature/ui-enhancements` is merged and can be ignored.
+- **Branch:** `main` holds everything and is pushed (`f209e03`). No open branches.
 - **Backend docs received 2026-10-19** (`docs/FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`; gitignored copies). Rounds 36–37 reconciled and adopted, see below.
 - **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
@@ -14,7 +14,12 @@
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
 ### Verified against production, bulk status, housekeeping (2026-10-19)
-All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call. The test data was left in place, as agreed.
+All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call.
+
+**Test data left in production (on purpose; production is wiped at go-live):**
+- the user `test.vaccinator@example.com` (active) at RHC Latifabad;
+- one completed 1-vial BCG stock request (note "Frontend QA test (1 vial)"), so BCG at RHC Latifabad is 270 doses;
+- Rukhsana Brohi holds 11 BCG vials (one extra from the offline replay).
 - **User create through the District → UC → Facility picker:** created "Test Vaccinator" (`test.vaccinator@example.com`, ZMID `ZM-TEST-01`, a non-deliverable address) at RHC Latifabad. Now active.
 - **Per-facility override:** BCG low vials 6 → 7 saved (`thresholdOverridden: true`, plus an `EDIT_FACILITY_VACCINE` row), then Reset to Global (back to 6, `new: null`). Rota's "Custom" tag is its own approved override.
 - **Bulk activate/deactivate (new, Super admin › Users, list view):**
@@ -58,7 +63,7 @@ Facility supervisors can open the app with no signal and record Assign Vials and
   - Signing out offline, then reopening online, gives the login page and the server session returns 401.
   - Replaying with no token against a mocked 403 then 200 sent the entry.
   - An online switch from supervisor to Head leaked no data.
-- **Not checked:** a real phone, and a real replay to production.
+- **Not checked on a real phone.** The replay to production was later verified on desktop (see above).
 
 ### Rounds 36–37 adopted (2026-10-19)
 - **Round 37 (breaking, live): user management is Super Admin only.** Facility Supervisor › Workers is a read-only list; District/UC Users were already read-only. Super admin › Users creates workers / supervisors / heads with a District → UC → Facility picker (`union-councils?districtId=`). Deactivate is hidden on your own row. **Client note:** a facility can no longer add its own vaccinators.
@@ -74,7 +79,7 @@ Facility supervisors can open the app with no signal and record Assign Vials and
   - **Analytics location filter:** shown only to super admin, observer and district supervisor; the other roles get `403` on the district/UC lists and are already scoped to one UC or facility.
   - **Housekeeping:** deleted the unused `icon-image.jpeg`.
   - **Checked in the browser:** search 53 → 2 entries for "BCG" as the Head; the drill-down request carries `month=2026-10`; the filter is hidden for the Head and lists only Hyderabad for the district supervisor.
-- **Checked in the browser:** super admin (own row has no Deactivate, last login, cascade filled step by step without submitting, facility vaccine dialog opened without saving, analytics `districtId`: Received 1355 → 406 for Thatta); facility supervisor (read-only Workers, KPI delta text); push deep links for supervisor, Head and UC; offline 409/503 with a mocked `fetch`. **Not done:** a real create, Save/Reset of a facility override, Send test (all write to production).
+- **Checked in the browser:** super admin (own row has no Deactivate, last login, the cascade, the facility vaccine dialog, analytics `districtId`: Received 1355 → 406 for Thatta); facility supervisor (read-only Workers, KPI delta text); push deep links for supervisor, Head and UC; offline 409/503 with a mocked `fetch`. The writes were run afterwards (see the section above); "Send test" has not been run.
 
 ### Built after the review (2026-10-18)
 - **Route guards:** `AuthLayout` in `App.jsx` maps each URL prefix to its roles (`PREFIX_ROLES`); another role's URL redirects to the user's own dashboard. Observer keeps `/super-admin/*`. Checked in the browser for every role except super admin.
@@ -111,20 +116,17 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 | Issue | Where | Notes |
 |---|---|---|
-| Per-facility vaccine Save / Reset untested | Super admin › Vaccines (facility view) | Endpoint exists (Round 36) and the dialog matches it; not saved yet because it writes to production and notifies the Head |
 | Stock Register balance excludes request receipts | Facility supervisor › Stock Register | Still built from the old `STOCK_ENTRY`/`ADJUST_STOCK` + `STOCK_DAY_END` rows; the first two are no longer written. **Checked live:** the supervisor's audit log returns no `STOCK_REQUEST_APPROVE` / `APPROVAL_APPROVE` rows (the Head's actions), so Round 36's suggestion can't work for this screen, and the approve rows carry no batch fields. Evidence and the ask are in `BACKEND_REQUESTS.md` #1. |
 | Offline: back-dating and session expiry | Assign Vials, Day End | The server refuses entries dated more than 3 days back, and a session idle for 8 h needs a sign-in before the queue sends. Asked in `BACKEND_REQUESTS.md` #2. |
-| Push delivery to a real device unverified | Notifications | Backend side is answered and "Send test" exists. Needs a real phone (Android, and iPhone with the app on the home screen). |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
 | Audit Log: cancelled-request rows may lack vaccines | Audit Log | With server paging, the matching "request raised" row is often on another page. "Request #" still shows the full chain. |
-| Real-phone push and offline unverified | PWA | Run `docs/phone-test-checklist.md` on Android and an iPhone (home-screen app). Needs the public production URL. |
+| Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
 
 ### Not yet tested
 - After the merge with Amna: her Stock Register and the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
 - The redesigned login: layout checked in light, dark and phone width, but no sign-in was submitted and Google's button was not seen (no `VITE_GOOGLE_CLIENT_ID` in dev).
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels all downloads; CSV content was checked in-page).
-- Push delivery to a real device, including an iPhone with the app added to the home screen (backend has never tested it either; production does return a push key). Subscribing from a test browser would save a fake subscription to the production database.
-- The offline queue on a real phone with a flaky connection (replay to production is verified on desktop).
+- Push delivery to a real device, and the offline flow on a real phone with a flaky connection (see the Open issues row; the offline replay to production is verified on desktop).
 
 ---
 
@@ -145,6 +147,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 ---
 
 ## Next steps
+
+**Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
 1. **Send `BACKEND_REQUESTS.md`** to the backend developer (Stock Register endpoint, offline window questions).
 2. **Stock Register:** once #1 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
