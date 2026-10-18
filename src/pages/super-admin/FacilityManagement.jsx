@@ -164,8 +164,8 @@ export default function SuperAdminFacilityManagement() {
     onError: (err) => setCreateSupError(
       err.status === 409 && err.body?.error?.includes('ZMID')
         ? 'This ZMID is already assigned to another account.'
-        : err.status === 409 && err.body?.error?.includes('active supervisor')
-        ? 'This facility already has an active supervisor.'
+        : err.status === 409 && /already has an active/i.test(err.body?.error ?? '')
+        ? `${err.body.error}.`
         : err.message
     ),
   })

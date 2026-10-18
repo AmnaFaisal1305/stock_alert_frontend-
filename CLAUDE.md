@@ -87,7 +87,6 @@ src/
     navigation.js      — NAV per role, ROLE_LABELS / ROLE_LABELS_PLURAL, scopeLabel(), role section routes
     stockRequests.js   — request stages, filters, pipeline helpers
     auditLog.js        — action labels, entry parser, filters for the shared Audit Log
-    vaccineNames.js    — displayVaccineName(): legacy "Vaccine 01–16" → display names; real names pass through
     csv.js             — CSV export (toCsv, downloadCsv)
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
@@ -222,7 +221,7 @@ Sub-panels (e.g. `DistrictExpandedPanel`) are co-located in the same file as the
 
 ### Stock Register
 
-`StockRegister.jsx` (routes `/facility/stock-register` and `/head/stock-register`) reads `GET /api/stock-register` via `getStockRegister()` (Round 38). The balance is the server's `balanceVials`, which matches the dashboard; never recompute it. The API answers in vials, and the screen shows doses (`vials × dosesPerVial`). Vaccine and date filters go to the API and live in the URL. Pages use `nextCursor` → `before` (no `total`, so the page count grows as pages are reached), and the CSV export loops every page. The query key sits under `['audit-log', 'register', …]` so the existing stock-mutation invalidations refresh it. Assign/return rows are not listed, and there is no `kind` filter on the server.
+`StockRegister.jsx` (routes `/facility/stock-register` and `/head/stock-register`) reads `GET /api/stock-register` via `getStockRegister()` (Round 38). The balance is the server's `balanceVials`, which matches the dashboard; never recompute it. The API answers in vials, and the screen shows doses (`vials × dosesPerVial`). Vaccine, date and entry-type filters go to the API (`kind`, Round 40) and live in the URL (`type`; "Record" sends `used,wasted`). Pages use `nextCursor` → `before`, the page count is `ceil(total / 100)` from the response's `total`, and the CSV export loops every page. The query key sits under `['audit-log', 'register', …]` so the existing stock-mutation invalidations refresh it. Assign/return rows are not listed.
 
 The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/action/date/scope go to the API, pages use `nextCursor` → `before`, tab badges come from `counts=true` (`countsByActorRole`).
 
@@ -246,7 +245,7 @@ Everything the frontend needs from the backend (new endpoints, filters, fixes) i
 Key constraints:
 - Stock moves through stock requests (raise → sent → received → head approval), `POST /api/stock-entries/assign` and `/day-end`; the old `POST /api/stock-entries` is gone. Received items need `batchNo`, `expiryDate`, `manufacturer` when vials > 0.
 - `/assign` and `/day-end` accept `occurredOn` up to 7 days back (Round 38); a `facility_supervisor`'s session survives 7 days idle (other roles 8 h)
-- `GET /api/stock-register` — `facility_supervisor` / `facility_head` only, own facility; `vaccineId, from, to, limit (≤ 500, default 100), before`
+- `GET /api/stock-register` — `facility_supervisor` / `facility_head` only, own facility; `vaccineId, kind (received|used|wasted|correction, comma list), from, to, limit (≤ 500, default 100), before`; the response has `{ entries, nextCursor, total }`
 - `GET /api/audit-log` — `?limit=` capped at 500 (omit it for the whole log); filters `actorRole, actorId, action, facilityId, entityId, from, to`, cursor `before`, `counts=true`
 - `GET /api/dashboard` returns `{ facilities: [...], summary: { statusCounts, byFacility, ... } }`
 - `statusCounts` counts facility × vaccine lines, never facilities; derive facility status with `facilityStatus()`

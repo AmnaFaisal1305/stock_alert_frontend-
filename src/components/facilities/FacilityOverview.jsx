@@ -11,7 +11,6 @@ import Table from '../shared/Table'
 import { useViewMode } from '../../hooks/useViewMode'
 import { facilityStatusMap, countByStatus, worstFirst, facilityColumns, FacilityMobileCard, FacilityGridCard } from './facilityTable'
 import { statusConfig } from '../../lib/status'
-import { displayVaccineName } from '../../lib/vaccineNames'
 
 // Names the worst facilities; `action` is { to, label } for the role's next step.
 export function FacilityAlert({ critical, low, action }) {
@@ -42,7 +41,7 @@ export function StockMatrix({ rows, base, groupByDistrict = false }) {
     const vaccines = new Map()
     const facilities = new Map()
     rows.forEach((r) => {
-      if (!vaccines.has(r.vaccineId)) vaccines.set(r.vaccineId, displayVaccineName(r.vaccineName))
+      if (!vaccines.has(r.vaccineId)) vaccines.set(r.vaccineId, r.vaccineName)
       if (!facilities.has(r.facilityId)) facilities.set(r.facilityId, { id: r.facilityId, name: r.facilityName, district: r.districtName ?? '', cells: new Map() })
       facilities.get(r.facilityId).cells.set(r.vaccineId, r)
     })

@@ -1,5 +1,4 @@
 // Stock-request stage logic shared by the facility supervisor, UC supervisor and facility head pages.
-import { displayVaccineName } from './vaccineNames'
 
 export const TERMINAL        = new Set(['completed', 'partially_fulfilled', 'cancelled', 'declined'])
 export const OPEN_STAGES     = new Set(['awaiting_both', 'awaiting_sent', 'awaiting_received', 'figures_differ'])
@@ -28,7 +27,7 @@ export function pipelineStep(stage) {
 }
 
 export function vaccineSummary(items = []) {
-  const names = items.map((it) => displayVaccineName(it.vaccineName))
+  const names = items.map((it) => it.vaccineName)
   if (names.length <= 2) return names.join(', ')
   return `${names.slice(0, 2).join(', ')} +${names.length - 2} more`
 }

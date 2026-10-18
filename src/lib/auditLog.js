@@ -1,5 +1,4 @@
 // Audit-log vocabulary and parsing shared by every role's Audit Log (components/audit/AuditLogView).
-import { displayVaccineName } from './vaccineNames'
 import { ROLE_LABELS } from './navigation'
 import { approvalTypeLabel } from './status'
 
@@ -54,16 +53,17 @@ export const ACTION_LABELS = {
 export const actionLabel = (action) => ACTION_LABELS[action] ?? String(action ?? '—').replace(/_/g, ' ').toLowerCase()
 
 // Lookups the parser needs: vaccine names (from the list plus names embedded in log items),
-// user names, and each stock request's create entry (cancel entries don't repeat the items).
+// user names, and each stock request's create entry (cancel, decline and close-short rows written
+// before Round 40 don't repeat the items).
 export function buildContext(logs, vaccines = [], users = []) {
-  const vaccineNameById = Object.fromEntries(vaccines.map((v) => [v.id, displayVaccineName(v.name)]))
+  const vaccineNameById = Object.fromEntries(vaccines.map((v) => [v.id, v.name]))
   const createByEntityId = {}
   for (const log of logs) {
     const d = log.details
     for (const it of d?.items ?? []) {
-      if (it.vaccineId && it.vaccineName && !vaccineNameById[it.vaccineId]) vaccineNameById[it.vaccineId] = displayVaccineName(it.vaccineName)
+      if (it.vaccineId && it.vaccineName && !vaccineNameById[it.vaccineId]) vaccineNameById[it.vaccineId] = it.vaccineName
     }
-    if (d?.vaccineId && d?.vaccineName && !vaccineNameById[d.vaccineId]) vaccineNameById[d.vaccineId] = displayVaccineName(d.vaccineName)
+    if (d?.vaccineId && d?.vaccineName && !vaccineNameById[d.vaccineId]) vaccineNameById[d.vaccineId] = d.vaccineName
     if (log.action === 'STOCK_REQUEST_CREATE' && log.entityId) createByEntityId[log.entityId] = d
   }
   const userNameById = Object.fromEntries(users.map((u) => [u.id, (u.name ?? u.email ?? '').trim().replace(/\s+/g, ' ')]))
@@ -85,7 +85,7 @@ export function parseEntry(entry, ctx) {
   if (!d) return out
 
   const vn = (id) => (id ? ctx.vaccineNameById[id] ?? null : null)
-  const one = (src) => (src.vaccineName ? displayVaccineName(src.vaccineName) : vn(src.vaccineId))
+  const one = (src) => src.vaccineName || vn(src.vaccineId)
   const who = (id) => (id ? ctx.userNameById[id] ?? null : null)
   const fromItems = (items, key, dir) => {
     const list = items.map((it) => ({ name: one(it) ?? '—', vials: typeof key === 'function' ? key(it) : it[key] ?? 0 }))
@@ -114,11 +114,11 @@ export function parseEntry(entry, ctx) {
 
     case 'CREATE_VACCINE':
     case 'DELETE_VACCINE':
-      return { ...out, vaccine: d.name ? displayVaccineName(d.name) : vn(d.vaccineId), detail: d.dosesPerVial ? `${d.dosesPerVial} doses per vial` : null }
+      return { ...out, vaccine: d.name ? d.name : vn(d.vaccineId), detail: d.dosesPerVial ? `${d.dosesPerVial} doses per vial` : null }
 
     case 'EDIT_VACCINE': {
       const next = d.newName ?? d.name
-      return { ...out, vaccine: next ? displayVaccineName(next) : vn(d.vaccineId), detail: d.oldName ? `Was ${displayVaccineName(d.oldName)}` : null }
+      return { ...out, vaccine: next ? next : vn(d.vaccineId), detail: d.oldName ? `Was ${d.oldName}` : null }
     }
 
     case 'CREATE_USER':
@@ -145,17 +145,16 @@ export function parseEntry(entry, ctx) {
       return d.items?.length
         ? { ...out, ...fromItems(d.items, (it) => it.fulfilledVials ?? it.requestedVials ?? 0, null), detail: quote(d.note) }
         : { ...out, detail: quote(d.note) }
-    case 'STOCK_REQUEST_CANCEL': {
-      // Older cancel rows carry no items; fall back to the create row if it is on this page.
-      const items = d.items?.length ? d.items : ctx.createByEntityId[entry.entityId]?.items
-      const reason = d.reason || 'No reason given'
-      return items?.length ? { ...out, ...fromItems(items, 'requestedVials', null), detail: reason } : { ...out, detail: reason }
-    }
+    case 'STOCK_REQUEST_CANCEL':
     case 'STOCK_REQUEST_CLOSE_SHORT':
-    case 'STOCK_REQUEST_DECLINE':
-      return d.items?.length
-        ? { ...out, ...fromItems(d.items, (it) => it.requestedVials ?? it.sentVials ?? 0, null), detail: d.note ?? d.reason ?? null }
-        : { ...out, vials: d.itemCount ?? null, detail: d.note ?? d.reason ?? null }
+    case 'STOCK_REQUEST_DECLINE': {
+      // New rows carry their items; older ones fall back to the create row if it is on this page.
+      const items = d.items?.length ? d.items : ctx.createByEntityId[entry.entityId]?.items
+      const detail = d.note ?? d.reason ?? (entry.action === 'STOCK_REQUEST_CANCEL' ? 'No reason given' : null)
+      return items?.length
+        ? { ...out, ...fromItems(items, (it) => it.requestedVials ?? it.sentVials ?? 0, null), detail }
+        : { ...out, vials: d.itemCount ?? null, detail }
+    }
 
     case 'APPROVAL_REQUEST':
     case 'APPROVAL_APPROVE':

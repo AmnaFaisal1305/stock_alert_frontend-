@@ -14,7 +14,6 @@ import WorkerPicker from '../../components/shared/WorkerPicker'
 import { ACCENT } from '../../components/shared/StatCard'
 import ResultPanel from '../../components/shared/ResultPanel'
 import ReviewDialog from '../../components/ui/ReviewDialog'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { localDateStr, plural, formatDate } from '../../lib/format'
 
 const VACCINE_GROUPS = [
@@ -246,7 +245,7 @@ export default function AssignVials() {
                             }`}
                           >
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-text leading-tight">{displayVaccineName(v.name)}</p>
+                              <p className="text-sm font-medium text-text leading-tight">{v.name}</p>
                               {subtitle && <p className="text-xs text-text-muted mt-0.5 tabular-nums">{subtitle}</p>}
                               {err && <p className="text-xs text-danger-dark mt-0.5">{err}</p>}
                             </div>
@@ -304,12 +303,12 @@ export default function AssignVials() {
             { label: 'Vaccinator', value: selectedWorker?.name ?? selectedWorker?.email },
             { label: 'Date', value: formatDate(occurredOn) },
           ]}
-          items={review.items.map(it => ({ name: displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name), value: plural(it.vials, 'vial') }))}
+          items={review.items.map(it => ({ name: (vaccines.find(v => v.id === it.vaccineId)?.name), value: plural(it.vials, 'vial') }))}
           total={plural(review.items.reduce((s, it) => s + it.vials, 0), 'vial')}
           warnings={[
             ...review.items
               .filter(it => storeMap.has(it.vaccineId) && it.vials > storeMap.get(it.vaccineId))
-              .map(it => `${displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name)}: only ${storeMap.get(it.vaccineId)} vials in store.`),
+              .map(it => `${(vaccines.find(v => v.id === it.vaccineId)?.name)}: only ${storeMap.get(it.vaccineId)} vials in store.`),
             !navigator.onLine && 'You’re offline. This will be saved and sent when you reconnect.',
           ]}
           confirmLabel="Assign vials"

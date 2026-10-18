@@ -12,7 +12,6 @@ import EmptyState from '../../components/shared/EmptyState'
 import WorkerPicker from '../../components/shared/WorkerPicker'
 import ResultPanel from '../../components/shared/ResultPanel'
 import ReviewDialog from '../../components/ui/ReviewDialog'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { localDateStr, formatDate, plural } from '../../lib/format'
 
 const todayStr   = () => localDateStr()
@@ -228,7 +227,7 @@ export default function DayEnd() {
                       return (
                         <li key={v.id} className={`px-4 sm:px-5 py-3 ${err ? 'bg-danger-bg/40' : ''}`}>
                           <div className="grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_5rem_repeat(3,5.5rem)_6rem] gap-x-3 gap-y-2 items-center">
-                            <p className="col-span-2 sm:col-span-1 text-sm font-medium text-text">{displayVaccineName(v.name)}</p>
+                            <p className="col-span-2 sm:col-span-1 text-sm font-medium text-text">{v.name}</p>
                             <p className="text-right text-sm tabular-nums text-text">{h.remaining}<span className="text-xs text-text-muted ml-1">held</span></p>
                             {FIELDS.map(([field, label]) => (
                               <label key={field} className="flex flex-col gap-1">
@@ -291,7 +290,7 @@ export default function DayEnd() {
             { label: 'Date', value: formatDate(occurredOn) },
           ]}
           items={review.items.map(it => ({
-            name: displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name),
+            name: (vaccines.find(v => v.id === it.vaccineId)?.name),
             value: `${it.usedVials} used · ${it.returnedVials} returned · ${it.wastedVials} wasted`,
           }))}
           total={totals.map(([label, n]) => `${n} ${label.toLowerCase()}`).join(' · ')}

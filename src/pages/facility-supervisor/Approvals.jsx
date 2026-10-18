@@ -14,7 +14,6 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
 
@@ -34,7 +33,7 @@ function RequestItem({ a, onCancel, cancelling }) {
     <li className="px-4 sm:px-5 py-3.5 flex items-start gap-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-medium text-text">{displayVaccineName(a.vaccineName)}</p>
+          <p className="text-sm font-medium text-text">{a.vaccineName}</p>
           <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status)} />
         </div>
         <p className="text-xs text-text-muted mt-1">
@@ -83,7 +82,7 @@ export default function Approvals() {
   const vaccines = dashData
     ? [...new Map(dashData.facilities.map(r => [r.vaccineId, r])).values()]
     : []
-  const vaccineOptions = vaccines.map(r => ({ value: r.vaccineId, label: displayVaccineName(r.vaccineName) }))
+  const vaccineOptions = vaccines.map(r => ({ value: r.vaccineId, label: r.vaccineName }))
 
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
     queryKey: ['approvals', 'pending'],
@@ -353,7 +352,7 @@ export default function Approvals() {
         onClose={() => setWithdrawing(null)}
         onConfirm={() => cancelMutation.mutate(withdrawing.id)}
         title="Withdraw this request?"
-        message={withdrawing ? `${TYPE_LABEL[withdrawing.type] ?? 'Request'} for ${displayVaccineName(withdrawing.vaccineName)} will be withdrawn. The Facility Head won’t see it any more.` : ''}
+        message={withdrawing ? `${TYPE_LABEL[withdrawing.type] ?? 'Request'} for ${withdrawing.vaccineName} will be withdrawn. The Facility Head won’t see it any more.` : ''}
         confirmLabel="Withdraw"
         isPending={cancelMutation.isPending}
         error={cancelMutation.isError ? cancelMutation.error.message : null}

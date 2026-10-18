@@ -6,7 +6,6 @@ import Textarea from '../../components/ui/Textarea'
 import PageHeader from '../../components/shared/PageHeader'
 import RequestList from '../../components/stock-requests/RequestList'
 import { ReviewPanel, SummaryDialog } from '../../components/ui/ReviewDialog'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { plural } from '../../lib/format'
 
 const CAN_SEND    = new Set(['awaiting_both', 'awaiting_sent'])
@@ -48,12 +47,12 @@ function RecordSentForm({ req, onClose, onSent }) {
       <div className="rounded-control border border-surface-border p-4 sm:max-w-md">
         <h3 className="text-sm font-semibold text-text mb-3">Check what you’re sending to {req.facilityName ?? 'the facility'}</h3>
         <ReviewPanel
-          items={review.items.map((it) => ({ name: displayVaccineName(row(it.vaccineId).vaccineName), value: `${it.sentVials} of ${row(it.vaccineId).wanted}` }))}
+          items={review.items.map((it) => ({ name: row(it.vaccineId).vaccineName, value: `${it.sentVials} of ${row(it.vaccineId).wanted}` }))}
           total={plural(total, 'vial')}
           rows={review.note ? [{ label: 'Note', value: review.note }] : []}
           warnings={[
             total === 0 && 'Nothing is being sent. The facility will see 0 vials.',
-            total > 0 && short.length > 0 && `Less than asked for ${short.map((it) => displayVaccineName(row(it.vaccineId).vaccineName)).join(', ')}.`,
+            total > 0 && short.length > 0 && `Less than asked for ${short.map((it) => row(it.vaccineId).vaccineName).join(', ')}.`,
           ]}
           error={sentMutation.isError ? sentMutation.error.message || 'Failed to record sent. Please try again.' : null}
           onClose={() => setReview(null)}
@@ -72,7 +71,7 @@ function RecordSentForm({ req, onClose, onSent }) {
         {items.map((it, idx) => (
           <li key={it.vaccineId} className="flex items-center justify-between gap-3 py-2">
             <label htmlFor={`sent-${req.id}-${it.vaccineId}`} className="text-sm text-text flex-1 min-w-0">
-              {displayVaccineName(it.vaccineName)}
+              {it.vaccineName}
               <span className="text-text-muted tabular-nums"> · {it.wanted} asked</span>
             </label>
             {/* raw input: compact per-row cell, same exception as RaiseForm quantities */}
@@ -177,7 +176,7 @@ export default function UCStockRequests() {
           onClose={() => setSent(null)}
           title="Stock sent"
           message={`Recorded. ${sent.req.facilityName ?? 'The facility'} will confirm what arrives.`}
-          items={sent.payload.items.map((it) => ({ name: displayVaccineName(sent.req.items?.find((x) => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.sentVials, 'vial') }))}
+          items={sent.payload.items.map((it) => ({ name: (sent.req.items?.find((x) => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.sentVials, 'vial') }))}
           total={plural(sent.payload.items.reduce((s, it) => s + it.sentVials, 0), 'vial')}
         />
       )}

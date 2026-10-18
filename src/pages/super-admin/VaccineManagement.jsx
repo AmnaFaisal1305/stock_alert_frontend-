@@ -22,7 +22,6 @@ import EntityCard from '../../components/shared/EntityCard'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { useViewMode } from '../../hooks/useViewMode'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { plural } from '../../lib/format'
 import { useAuth } from '../../context/AuthContext'
 
@@ -210,7 +209,7 @@ export default function VaccineManagement() {
       invalidateGlobal(); setAddOpen(false); setAddError('')
       const val = (k) => (form[k] !== '' ? form[k] : `${DEFAULTS[k]} (default)`)
       setCreated([
-        { label: 'Name', value: displayVaccineName(form.name.trim()) },
+        { label: 'Name', value: form.name.trim() },
         { label: 'Doses per vial', value: form.dosesPerVial },
         { label: 'Critical', value: `${val('criticalDoses')} doses · ${val('criticalVials')} vials` },
         { label: 'Low', value: `${val('lowDoses')} doses · ${val('lowVials')} vials` },
@@ -280,7 +279,7 @@ export default function VaccineManagement() {
   const customTag = <span className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-medium bg-cat-3-bg text-cat-3 flex-shrink-0">Custom</span>
   const nameCell = (v) => (
     <span className="inline-flex items-center gap-2 min-w-0">
-      <span className="font-medium whitespace-nowrap truncate" dir="auto">{displayVaccineName(getVaccineName(v))}</span>
+      <span className="font-medium whitespace-nowrap truncate" dir="auto">{(getVaccineName(v))}</span>
       {v.thresholdOverridden && customTag}
     </span>
   )
@@ -312,7 +311,7 @@ export default function VaccineManagement() {
     <EntityCard
       icon={Syringe}
       accent={v.thresholdOverridden ? 3 : 1}
-      title={<span dir="auto">{displayVaccineName(getVaccineName(v))}</span>}
+      title={<span dir="auto">{(getVaccineName(v))}</span>}
       subtitle={`${plural(v.dosesPerVial ?? 0, 'dose')} per vial`}
       badge={v.thresholdOverridden && customTag}
       meta={[
@@ -331,8 +330,8 @@ export default function VaccineManagement() {
         breadcrumb="Super Admin › Manage"
         title="Vaccines"
         subtitle={isLoading ? undefined : scopeName
-          ? `Thresholds at ${scopeName} · edits override the global values here only`
-          : `${plural(vaccines.length, 'vaccine')} · global values apply to every facility unless overridden`}
+          ? `Thresholds at ${scopeName} · edits set custom thresholds here only`
+          : `${plural(vaccines.length, 'vaccine')} · default thresholds apply to every facility unless custom`}
         actions={canEdit && !selectedFacilityId && (
           <Button onClick={() => { setAddOpen(true); setAddError('') }}><Plus size={16} strokeWidth={1.75} /> Add vaccine</Button>
         )}
@@ -395,7 +394,7 @@ export default function VaccineManagement() {
               name={scopeName ? `vaccines-${scopeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : 'vaccines'}
               rows={vaccines}
               columns={[
-                { label: 'Vaccine', value: (v) => displayVaccineName(getVaccineName(v)) },
+                { label: 'Vaccine', value: (v) => (getVaccineName(v)) },
                 { label: 'Doses per vial', value: (v) => v.dosesPerVial },
                 { label: 'Critical doses', value: (v) => v.criticalDoses },
                 { label: 'Low doses', value: (v) => v.lowDoses },
@@ -425,8 +424,8 @@ export default function VaccineManagement() {
           {vaccines.length > 0 && (
             <p className="text-xs text-text-muted">
               {selectedFacilityId
-                ? 'Edits here override the global values for this facility only. “Custom” marks an override; use Reset to default in the edit dialog to remove it.'
-                : 'Changing thresholds or doses per vial applies to every facility without an override immediately. A vaccine with recorded stock history can’t be deleted.'}
+                ? 'Edits here set custom thresholds for this facility only. “Custom” marks them; use Reset to default in the edit dialog to remove them.'
+                : 'Changing thresholds or doses per vial applies to every facility without custom thresholds immediately. A vaccine with recorded stock history can’t be deleted.'}
             </p>
           )}
         </div>
@@ -443,7 +442,7 @@ export default function VaccineManagement() {
         />
       </Modal>
 
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit — ${displayVaccineName(editing?.name) ?? ''}`}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Edit — ${editing?.name ?? ''}`}>
         {editing && (
           <VaccineForm
             initial={{
@@ -467,7 +466,7 @@ export default function VaccineManagement() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteMutation.mutate()}
         title="Delete Vaccine"
-        message={<p className="text-sm text-text">Delete <span className="font-semibold" dir="rtl">{displayVaccineName(deleteTarget?.name)}</span> from the global catalog? This cannot be undone and will remove it from every facility's dashboard.</p>}
+        message={<p className="text-sm text-text">Delete <span className="font-semibold" dir="rtl">{deleteTarget?.name}</span> from the global catalog? This cannot be undone and will remove it from every facility's dashboard.</p>}
         confirmLabel="Delete"
         isPending={deleteMutation.isPending}
         error={deleteError}
@@ -477,7 +476,7 @@ export default function VaccineManagement() {
       <Modal
         open={!!facilityEditing}
         onClose={() => setFacilityEditing(null)}
-        title={`Edit — ${displayVaccineName(facilityEditing?.name ?? '')} @ ${selectedFacilityName}`}
+        title={`Edit — ${(facilityEditing?.name ?? '')} @ ${selectedFacilityName}`}
       >
         {facilityEditing && (
           <FacilityVaccineForm

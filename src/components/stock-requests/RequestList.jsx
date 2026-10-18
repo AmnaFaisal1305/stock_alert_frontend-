@@ -8,7 +8,6 @@ import EmptyState from '../shared/EmptyState'
 import ErrorState from '../shared/ErrorState'
 import { SkeletonRows } from '../shared/SkeletonCard'
 import { REQUEST_FILTERS, PIPELINE, pipelineStep, vaccineSummary, totalVials } from '../../lib/stockRequests'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 import { workflowStatusConfig } from '../../lib/status'
 import { useUrlState } from '../../hooks/useUrlState'
@@ -54,7 +53,7 @@ export function RequestItemsTable({ items = [] }) {
             const differs = it.sentVials != null && it.receivedVials != null && it.sentVials !== it.receivedVials
             return (
               <tr key={it.vaccineId}>
-                <td className="px-3.5 py-2 text-text">{displayVaccineName(it.vaccineName)}</td>
+                <td className="px-3.5 py-2 text-text">{it.vaccineName}</td>
                 <td className="px-3.5 py-2 text-right">{it.requestedVials}</td>
                 {showFulfilled && <td className="px-3.5 py-2 text-right">{it.fulfilledVials ?? 0}<span className="text-text-muted"> · {it.outstandingVials ?? 0} left</span></td>}
                 <td className="px-3.5 py-2 text-right">{it.sentVials ?? <span className="text-text-muted">—</span>}</td>

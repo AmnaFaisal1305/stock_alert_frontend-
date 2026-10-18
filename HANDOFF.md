@@ -1,13 +1,22 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-19 (Rounds 36–39 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
+**Current state as of 2026-10-19 (Rounds 36–40 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
 
 ---
 
 ## Where things stand
 
+### Round 40 adopted (2026-10-19)
+- **Stock Register:** the API takes `?kind=` (`received`, `used`, `wasted`, `correction`; `received` also matches `opening`) and returns `total`. The entry-type chips (All / Received / Record / Stock Correction) are always on, "Record" sends `kind=used,wasted`, and the page count is `ceil(total / 100)`, so it no longer shrinks going back. The count sits beside Export.
+- **Audit Log:** `STOCK_REQUEST_CANCEL`, `_DECLINE` and `_CLOSE_SHORT` rows written from Round 40 carry `details.items`. One merged case in `auditLog.js` reads them and falls back to the create row for older rows. All 6 existing closing rows resolve through the fallback.
+- **Wording:** the backend's 409 text now names the role ("…already has an active Facility Head"). `UserManagement` and `FacilityManagement` match `/already has an active/i` and show the server's text plus "Deactivate them first." The old `includes('active supervisor')` match had stopped working.
+- **Vaccine names:** the backend confirmed the DB stores real names ("BCG", "OPV (Polio)"), so `vaccineNames.js` and all 56 `displayVaccineName()` calls are gone. The English groups in `AssignVials.jsx` are the live ones and stay.
+- **Checked live** as Sadia and the observer: `total` is 95; `kind=used,wasted` gives 56 rows, all used or wasted; `kind=bogus` is `400`; the Record chip shows 56 entries and All returns to 95.
+  - **Not checked:** the "of N" paging on real data (95 rows is one page; it was checked with a faked `total`), and a new Round 40 cancel row (this needs a write).
+- **Proxy:** the backend kept `SameSite=None` on purpose and trusts one proxy hop. The IP check passed (the rewrite passes the real client IP), the backend **approved going live**, and `ip` is gone from `/api/health` again. Going live is on our side: see the Open issues row.
+
 ### Naming pass (2026-10-18)
-- **One label per backend value**, from the lib helpers. No backend or DB value changed. The table is in `BACKEND_REQUESTS.md` §4, and the rule is in `CLAUDE.md` › Avoid these patterns.
+- **One label per backend value**, from the lib helpers. No backend or DB value changed. The rule is in `CLAUDE.md` › Avoid these patterns.
   - `facility_worker` → **Vaccinator** (sidebar "Vaccinators", Audit tab, pickers, columns).
   - `no_data` → **Not updated**.
   - Bare "Supervisor" columns → Facility / UC / District Supervisor.
@@ -22,13 +31,13 @@
 - **Checked in the browser** (read-only), as the facility supervisor and the observer: dashboards, Approvals history (Withdrawn), Assign Vials, Audit Log, Users role chips, Facilities.
   - **Not checked:** dark mode, the Head / UC / district / worker screens.
 
-- **Branch:** `main` holds everything and is pushed. The last feature commit is `d0cf06c` (Rounds 38–39). No open branches.
+- **Branch:** `main` holds everything and is pushed. No open branches except a temporary `proxy-check` for the IP test, if it still exists.
 - **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`):
-  - Everything they list through Round 39 is built.
+  - Everything they list through Round 40 is built.
   - The local copies in `docs/` were deleted once adopted; ask the backend developer for current ones when the next round arrives.
   - `docs/` now holds only `test-accounts.md`, `phone-test-checklist.md`, `design_refrences/` and `screenshots/`.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
-- **Backend:** latest round adopted is **Round 39**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (done items removed), and nothing is open in it.
+- **Backend:** latest round adopted is **Round 40**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (done items removed), and nothing is open in it.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
 ### Round 39 adopted (2026-10-19)
@@ -163,9 +172,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 | Issue | Where | Notes |
 |---|---|---|
-| New-tab 401 | Auth | **Cause found:** the session cookie is cross-site (`vercel.app` is a public suffix), so browsers that block third-party cookies drop it. No frontend race. Fix = same-site proxy, waiting on `BACKEND_REQUESTS.md` §2 (no cookie `Domain`, trust proxy for the IP limit). Then: add `{ "source": "/api/(.*)", "destination": "https://smart-stock-alert-be.vercel.app/api/$1" }` **before** the SPA rewrite in `vercel.json`, and set `VITE_API_URL` to empty in the Vercel project env (`.env.production` is gitignored). Test on a preview first: sign in, new tab, `/session` 200, then again with third-party cookies blocked. |
-| Audit Log: cancelled-request rows may lack vaccines | Audit Log | Frontend reads `details.items` on `STOCK_REQUEST_CANCEL` when present (falls back to the create row on the page). Waiting on `BACKEND_REQUESTS.md` §3; older rows stay as they are. |
-| Stock Register page count / entry-type filter | Stock Register | Built: chips (All / Received / Record / Stock Correction → `kind`) and a fixed "of N" from `total`. Both appear only once the response has `total` (`BACKEND_REQUESTS.md` §1). Checked with a faked `total`. |
+| New-tab 401 | Auth | **Cause found:** the session cookie is cross-site (`vercel.app` is a public suffix), so browsers that block third-party cookies drop it. No frontend race. Fix = same-site proxy. The backend answered the cookie, CORS and CSRF questions (Round 40); **the IP check passed (2026-10-18):** `/api/health` returned the same `ip` direct and through a preview of the rewrite, on home Wi-Fi (103.93.219.67) and mobile data (154.81.250.171), so the login limit stays per user. The backend approved going live. **Go-live (in this order):** (1) push the `vercel.json` rewrite and `api.js` `VITE_API_URL ?? ''` (still direct while the Vercel variable is set); (2) delete `VITE_API_URL` for Production in Vercel (`.env.production` is gitignored, so Vercel uses its dashboard value); (3) redeploy Production, because Vite bakes env at build time; (4) verify: `/api/health` through the app's own domain, sign in, open a new tab (still signed in), and repeat with third-party cookies blocked. **Rollback:** Instant Rollback in Vercel, then re-add the variable. Everyone signs in once more after the switch. |
+| Audit Log: old closing rows lack their own items | Audit Log | Only rows written before Round 40 lack `details.items`; they resolve through the create row when it is on the same page. This fades out with time and needs no action. |
 | Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
 
 ### Not yet tested
@@ -198,8 +206,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 **Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
-1. **Send `BACKEND_REQUESTS.md` §1–§4 to the backend developer:** `kind` + `total`, cookie and proxy readiness, cancel-row items, wording and the two questions. When their round arrives, drop the docs into `docs/`, adopt them, then delete them again.
-2. **After §2 is confirmed:** deploy the same-site proxy (see the Open issues row), test on a preview, then on production. After the vaccine-name answer, delete whichever map is dead (`vaccineNames.js` or the English groups in `AssignVials.jsx`).
+1. **Take the proxy live** (see the Open issues row for the order and the rollback), then delete the `proxy-check` branch and tell the backend developer it is live. When their next round arrives, drop the docs into `docs/`, adopt them, then delete them again.
+2. **Watch for the first new closing row** (a cancel, decline or close-short written after Round 40) in the Audit Log; it should show its vaccines without the create row on the page.
 3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone:
    - Push: use "Send test".
    - Offline: an airplane-mode cold start, then Assign + Day End, then reconnect. This also covers the no-token replay through `CSRF_INVALID`, which has not been re-run since Round 39.

@@ -16,10 +16,9 @@ import PageHeader from '../../components/shared/PageHeader'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import RequestList from '../../components/stock-requests/RequestList'
 import { OPEN_STAGES } from '../../lib/stockRequests'
-import { displayVaccineName } from '../../lib/vaccineNames'
 
 const CAN_RECEIVE = new Set(['awaiting_both', 'awaiting_received'])
-const vaccineLabel = (vaccines, id) => displayVaccineName(vaccines.find(v => v.id === id)?.name ?? '—')
+const vaccineLabel = (vaccines, id) => (vaccines.find(v => v.id === id)?.name ?? '—')
 
 // ── Raise request ──────────────────────────────────────────────────────────────
 function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
@@ -57,7 +56,7 @@ function RaiseForm({ vaccines, onCancel, onSubmit, isPending }) {
       <ul className="divide-y divide-surface-border border-y border-surface-border">
         {vaccines.map(v => (
           <li key={v.id} className="flex items-center justify-between gap-3 py-2">
-            <label htmlFor={`req-${v.id}`} className="text-sm text-text flex-1">{displayVaccineName(v.name)}</label>
+            <label htmlFor={`req-${v.id}`} className="text-sm text-text flex-1">{v.name}</label>
             <input
               id={`req-${v.id}`}
               type="number"
@@ -104,7 +103,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
       const base  = { vaccineId: it.vaccineId, receivedVials: vials }
       if (vials > 0) {
         if (!it.batchNo.trim() || !it.expiryDate || !it.manufacturer.trim()) {
-          setError(`${displayVaccineName(it.vaccineName)}: batch number, expiry date and manufacturer are required when vials were received.`)
+          setError(`${it.vaccineName}: batch number, expiry date and manufacturer are required when vials were received.`)
           return null
         }
         return { ...base, batchNo: it.batchNo.trim(), expiryDate: it.expiryDate, manufacturer: it.manufacturer.trim() }
@@ -116,7 +115,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
   }
 
   if (review) {
-    const name = (id) => displayVaccineName(items.find(it => it.vaccineId === id)?.vaccineName)
+    const name = (id) => items.find(it => it.vaccineId === id)?.vaccineName
     const short = review.items.filter(it => {
       const sent = items.find(x => x.vaccineId === it.vaccineId)?.sentVials
       return sent != null && it.receivedVials !== sent
@@ -149,7 +148,7 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
         return (
           <fieldset key={it.vaccineId} className="flex flex-col gap-2">
             <legend className="text-sm font-medium text-text mb-1">
-              {displayVaccineName(it.vaccineName)}
+              {it.vaccineName}
               {it.sentVials != null && <span className="text-text-muted font-normal"> · {it.sentVials} sent</span>}
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -331,7 +330,7 @@ export default function RecordStock() {
           onClose={() => setReceived(null)}
           title="Stock received"
           message="Saved. The vials are added to your store once the Facility Head approves."
-          items={received.payload.items.map(it => ({ name: displayVaccineName(received.req.items?.find(x => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.receivedVials, 'vial') }))}
+          items={received.payload.items.map(it => ({ name: (received.req.items?.find(x => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.receivedVials, 'vial') }))}
           total={plural(received.payload.items.reduce((s, it) => s + it.receivedVials, 0), 'vial')}
         />
       )}

@@ -20,7 +20,6 @@ import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { statusConfig } from '../../lib/status'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
 
@@ -40,7 +39,7 @@ function threshold(v) {
 }
 
 const columns = [
-  { key: 'vaccine', label: 'Vaccine', render: (v) => <span className="font-medium whitespace-nowrap" dir="auto">{displayVaccineName(v.vaccineName)}</span> },
+  { key: 'vaccine', label: 'Vaccine', render: (v) => <span className="font-medium whitespace-nowrap" dir="auto">{v.vaccineName}</span> },
   { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v.status} /> },
   {
     key: 'stock', label: 'In stock', align: 'right',
@@ -72,7 +71,7 @@ const gridCard = (v) => {
     <EntityCard
       icon={Syringe}
       accent={v.status ?? 'no_data'}
-      title={<span dir="auto">{displayVaccineName(v.vaccineName)}</span>}
+      title={<span dir="auto">{v.vaccineName}</span>}
       badge={<StatusBadge status={v.status} />}
       meta={[
         { label: 'In stock', value: v.quantity == null ? '—' : `${v.quantity} doses` },
@@ -103,7 +102,7 @@ export default function FacilityDetail() {
 
   const q = searchQuery.trim().toLowerCase()
   const filteredVaccines = allVaccines.filter((v) =>
-    displayVaccineName(v.vaccineName).toLowerCase().includes(q) &&
+    v.vaccineName.toLowerCase().includes(q) &&
     (statusFilter === 'all' || v.status === statusFilter))
 
   const chipOptions = [
@@ -179,7 +178,7 @@ export default function FacilityDetail() {
                   mobileCard={(v) => (
                     <div className="px-4 py-3.5 flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(v.vaccineName)}</p>
+                        <p className="font-medium text-text truncate" dir="auto">{v.vaccineName}</p>
                         <p className="text-xs text-text-muted tabular-nums">
                           {v.quantity ?? '—'} doses · {v.recordedAt ? formatDate(v.recordedAt) : 'not updated yet'}
                         </p>

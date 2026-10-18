@@ -13,7 +13,6 @@ import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
 
@@ -52,7 +51,7 @@ function PendingItem({ a, onApprove, onReject, busy }) {
       <div className="flex flex-col sm:flex-row sm:items-start gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           <p className="text-sm font-medium text-text">
-            {displayVaccineName(a.vaccineName)} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
+            {a.vaccineName} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
           </p>
           <Change a={a} />
           <p className="text-xs text-text-muted">
@@ -101,7 +100,7 @@ function HistoryItem({ a }) {
     <li className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <p className="text-sm font-medium text-text">
-          {displayVaccineName(a.vaccineName)} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
+          {a.vaccineName} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
         </p>
         <Change a={a} />
         <p className="text-xs text-text-muted">
@@ -208,7 +207,7 @@ export default function FacilityHeadApprovals() {
           title={`Approve ${(TYPE_LABEL[confirming.type] ?? 'change').toLowerCase()}?`}
           intro="It is applied as soon as you approve."
           rows={[
-            { label: 'Vaccine', value: displayVaccineName(confirming.vaccineName) },
+            { label: 'Vaccine', value: confirming.vaccineName },
             { label: 'Requested by', value: confirming.requestedByName ?? 'Facility supervisor' },
             { label: 'Change', value: <Change a={confirming} /> },
             confirming.note && { label: 'Note', value: `“${confirming.note}”` },

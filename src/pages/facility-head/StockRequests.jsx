@@ -6,7 +6,6 @@ import Textarea from '../../components/ui/Textarea'
 import ReviewDialog from '../../components/ui/ReviewDialog'
 import PageHeader from '../../components/shared/PageHeader'
 import RequestList from '../../components/stock-requests/RequestList'
-import { displayVaccineName } from '../../lib/vaccineNames'
 
 // Facility head: final sign-off once sent and received figures agree.
 function ApproveAction({ req }) {
@@ -43,7 +42,7 @@ function ApproveAction({ req }) {
           <p className="font-medium">Sent and received figures differ, so this can’t be approved yet.</p>
           <ul className="mt-1 tabular-nums">
             {mismatches.map((m) => (
-              <li key={m.vaccineId}>{displayVaccineName(m.vaccineName)}: sent {m.sentVials}, received {m.receivedVials}</li>
+              <li key={m.vaccineId}>{m.vaccineName}: sent {m.sentVials}, received {m.receivedVials}</li>
             ))}
           </ul>
         </div>
@@ -73,7 +72,7 @@ function ApproveAction({ req }) {
         title="Approve this stock request?"
         intro="Approving signs off this stock request. It can’t be undone."
         items={(req.items ?? []).map((it) => ({
-          name: displayVaccineName(it.vaccineName),
+          name: it.vaccineName,
           value: `${it.receivedVials ?? 0} received of ${it.outstandingVials ?? it.requestedVials}`,
         }))}
         rows={short ? [{ label: 'Shortfall note', value: note.trim() }] : []}

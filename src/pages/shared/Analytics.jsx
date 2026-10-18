@@ -9,7 +9,6 @@ import {
   getAnalytics, getDistricts, getUnionCouncils, getFacilities, getStockRequests,
 } from '../../lib/api'
 import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { localDateStr, toLocalDateStr, formatDate } from '../../lib/format'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { approvalTypeLabel } from '../../lib/status'
@@ -220,7 +219,7 @@ export default function Analytics() {
     for (const row of movement) {
       if (!acc[row.vaccineId]) {
         acc[row.vaccineId] = {
-          vaccineName: displayVaccineName(row.vaccineName),
+          vaccineName: row.vaccineName,
           opening: 0, received: 0, used: 0, wasted: 0,
           adjustmentIncrease: 0, adjustmentDecrease: 0, usedDoses: 0,
         }
@@ -256,7 +255,7 @@ export default function Analytics() {
   const remainingByVaccine = useMemo(() => {
     const acc = {}
     for (const r of remaining) {
-      const name = displayVaccineName(r.vaccineName)
+      const name = r.vaccineName
       if (!acc[name]) acc[name] = { name, doses: 0, inStore: 0, withWorkers: 0 }
       acc[name].doses       += r.totalDoses ?? 0
       acc[name].inStore     += r.storeVials ?? 0

@@ -16,7 +16,6 @@ import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import Button, { buttonClasses } from '../../components/ui/Button'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { timeAgo, plural, localDateStr } from '../../lib/format'
 
 const STATUS_ICON = { critical: AlertTriangle, low: TrendingDown, adequate: CheckCircle2, no_data: CircleDashed }
@@ -51,7 +50,7 @@ function StockAlert({ critical, low, canAct }) {
   if (!critical.length && !low.length) return null
   const isCritical = critical.length > 0
   const list = isCritical ? critical : low
-  const names = list.slice(0, 3).map((r) => displayVaccineName(r.vaccineName)).join(', ') + (list.length > 3 ? ` and ${list.length - 3} more` : '')
+  const names = list.slice(0, 3).map((r) => r.vaccineName).join(', ') + (list.length > 3 ? ` and ${list.length - 3} more` : '')
   const first = list[0]
   const short = first.criticalDoses != null && first.quantity != null ? Math.max(0, first.criticalDoses - first.quantity) : 0
   const Icon = isCritical ? AlertCircle : AlertTriangle
@@ -127,7 +126,7 @@ export default function FacilityDashboard() {
     return {
       rows,
       counts,
-      nameById: Object.fromEntries(rows.map((r) => [r.vaccineId, displayVaccineName(r.vaccineName)])),
+      nameById: Object.fromEntries(rows.map((r) => [r.vaccineId, r.vaccineName])),
       facilityName: rows[0]?.facilityName,
       districtName: rows[0]?.districtName,
       critical: rows.filter((r) => r.status === 'critical'),
@@ -143,7 +142,7 @@ export default function FacilityDashboard() {
   const visible = filter ? rows.filter((r) => r.status === filter) : rows
 
   const columns = [
-    { key: 'vaccine', label: 'Vaccine', render: (r) => <span className="font-medium whitespace-nowrap" dir="auto">{displayVaccineName(r.vaccineName)}</span> },
+    { key: 'vaccine', label: 'Vaccine', render: (r) => <span className="font-medium whitespace-nowrap" dir="auto">{r.vaccineName}</span> },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
     {
       key: 'stock', label: 'In stock', align: 'right',
@@ -233,7 +232,7 @@ export default function FacilityDashboard() {
               mobileCard={(r) => (
                 <div className="px-4 py-3.5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(r.vaccineName)}</p>
+                    <p className="font-medium text-text truncate" dir="auto">{r.vaccineName}</p>
                     <p className="text-sm tabular-nums text-text flex-shrink-0">{r.quantity ?? '—'} <span className="text-xs text-text-muted">doses</span></p>
                   </div>
                   <div className="flex items-center justify-between gap-3 mt-1.5">

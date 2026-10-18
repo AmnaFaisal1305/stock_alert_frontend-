@@ -2,7 +2,6 @@
 // Pivots the dashboard/analytics `movement` rows into the two reports the client asked
 // for — Monthly and Vaccinator-wise — and writes them as .xlsx / .pdf.
 // Heavy libs (xlsx, jspdf) are dynamically imported so they stay out of the initial bundle.
-import { displayVaccineName } from './vaccineNames'
 
 // All movement figures are in vials except `usedDoses` (doses). See the backend API reference → /api/analytics.
 function sumInto(target, row) {
@@ -29,7 +28,7 @@ export function buildMonthlyRows(movement) {
   const acc = {}
   for (const r of movement) {
     const key = `${r.month}||${r.vaccineId}`
-    if (!acc[key]) acc[key] = { month: r.month, vaccine: displayVaccineName(r.vaccineName), ...emptyBucket() }
+    if (!acc[key]) acc[key] = { month: r.month, vaccine: r.vaccineName, ...emptyBucket() }
     sumInto(acc[key], r)
   }
   return Object.values(acc).sort(
@@ -44,7 +43,7 @@ export function buildVaccinatorRows(movement) {
   for (const r of movement) {
     if (!r.workerId) continue
     const key = `${r.workerId}||${r.vaccineId}`
-    if (!acc[key]) acc[key] = { vaccinator: r.workerName ?? '—', vaccine: displayVaccineName(r.vaccineName), ...emptyBucket() }
+    if (!acc[key]) acc[key] = { vaccinator: r.workerName ?? '—', vaccine: r.vaccineName, ...emptyBucket() }
     sumInto(acc[key], r)
   }
   return Object.values(acc).sort(

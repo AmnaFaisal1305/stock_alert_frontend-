@@ -8,7 +8,6 @@ import Card from '../../components/shared/Card'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { displayVaccineName } from '../../lib/vaccineNames'
 
 function HoldingRow({ r }) {
   const done = r.remaining === 0
@@ -16,7 +15,7 @@ function HoldingRow({ r }) {
     <li className="px-4 sm:px-5 py-3.5">
       <div className="flex items-baseline justify-between gap-4">
         <p className={`text-base font-medium min-w-0 truncate ${done ? 'text-text-muted' : 'text-text'}`} dir="auto">
-          {displayVaccineName(r.vaccineName)}
+          {r.vaccineName}
         </p>
         <p className={`tabular-nums flex-shrink-0 ${done ? 'text-text-muted text-sm' : 'text-text text-xl font-light'}`}>
           {r.remaining}<span className="text-xs text-text-muted ml-1">{r.remaining === 1 ? 'vial' : 'vials'}</span>

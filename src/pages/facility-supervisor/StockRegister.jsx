@@ -16,7 +16,6 @@ import FilterChips from '../../components/shared/FilterChips'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate, formatTime, plural } from '../../lib/format'
 
 const PER_PAGE = 100
@@ -41,7 +40,7 @@ function toRow(e) {
   return {
     id:           e.id,
     date:         e.occurredAt,
-    vaccineName:  displayVaccineName(e.vaccineName ?? ''),
+    vaccineName:  e.vaccineName ?? '',
     entryType:    ENTRY_TYPE[e.kind] ?? e.kind,
     workerName:   e.workerName,
     manufacturer: e.manufacturer,
@@ -81,19 +80,16 @@ export default function StockRegister() {
 
   const vaccineOptions = useMemo(() => [
     { value: '', label: 'All vaccines' },
-    ...(vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: displayVaccineName(v.name) })),
+    ...(vaccineData?.vaccines ?? []).map((v) => ({ value: v.id, label: v.name })),
   ], [vaccineData])
 
   const rows = useMemo(() => (regQ.data?.entries ?? []).map(toRow), [regQ.data])
 
-  // `total` and `kind` ship together (BACKEND_REQUESTS §1). Until then the page count grows
-  // as pages are reached and the entry-type chips stay hidden.
-  const total = regQ.data?.total
-  const serverCounts = total !== undefined
+  // Cursor pages only open in order, so a page past the furthest one reached stays locked.
+  const total = regQ.data?.total ?? 0
   const nextCursor = regQ.isPlaceholderData ? null : regQ.data?.nextCursor
-  const reached = cursors.length + (page === cursors.length && nextCursor ? 1 : 0)
-  const totalPages = serverCounts ? Math.ceil(total / PER_PAGE) : reached
-  const maxPage = Math.min(totalPages, reached)
+  const totalPages = Math.ceil(total / PER_PAGE)
+  const maxPage = Math.min(totalPages, cursors.length + (page === cursors.length && nextCursor ? 1 : 0))
   const goTo = (p) => {
     if (p > maxPage) return
     if (p === cursors.length + 1) setCursors((c) => [...c, nextCursor])
@@ -157,16 +153,14 @@ export default function StockRegister() {
         </div>
         {hasFilters && <Button variant="ghost" onClick={() => set({ vaccine: '', from: '', to: '', type: '' })}>Clear</Button>}
         <div className="ml-auto flex items-end gap-3">
-          {serverCounts && <p className="text-sm text-text-muted tabular-nums pb-2">{plural(total, 'entry', 'entries')}</p>}
+          <p className="text-sm text-text-muted tabular-nums pb-2">{plural(total, 'entry', 'entries')}</p>
           <ExportButton name="stock-register" columns={exportColumns} getRows={exportRows} disabled={rows.length === 0} />
         </div>
       </div>
 
-      {serverCounts && (
-        <div className="mb-4">
-          <FilterChips label="Entry type" options={TYPE_FILTERS} value={url.type} onChange={(type) => set({ type })} />
-        </div>
-      )}
+      <div className="mb-4">
+        <FilterChips label="Entry type" options={TYPE_FILTERS} value={url.type} onChange={(type) => set({ type })} />
+      </div>
 
       {regQ.isError ? (
         <ErrorState title="Couldn't load the register" error={regQ.error} onRetry={regQ.refetch} />

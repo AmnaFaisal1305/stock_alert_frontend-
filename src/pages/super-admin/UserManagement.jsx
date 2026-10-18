@@ -131,8 +131,8 @@ export default function UserManagement() {
     onError: (err) => setFormError(
       err.status === 409 && err.body?.error?.includes('ZMID')
         ? 'This ZMID is already assigned to another account.'
-        : err.status === 409 && err.body?.error?.includes('active supervisor')
-        ? 'This district/facility already has an active supervisor. Deactivate them first.'
+        : err.status === 409 && /already has an active/i.test(err.body?.error ?? '')
+        ? `${err.body.error}. Deactivate them first.`
         : err.body?.error?.includes('same district')
         ? 'All selected union councils must belong to the same district.'
         : err.message

@@ -11,7 +11,6 @@ import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
-import { displayVaccineName } from '../../lib/vaccineNames'
 
 const STATUS_ORDER = Object.keys(STATUS_RANK)
 
@@ -71,7 +70,7 @@ export default function WorkerStatusView() {
             <ul className="divide-y divide-surface-border">
               {visible.map((row) => (
                 <li key={row.vaccineId} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_7rem] items-center gap-x-3 gap-y-1.5 px-4 sm:px-5 py-3.5">
-                  <p className="min-w-0 truncate text-base font-medium text-text" dir="auto">{displayVaccineName(row.vaccineName)}</p>
+                  <p className="min-w-0 truncate text-base font-medium text-text" dir="auto">{row.vaccineName}</p>
                   <p className="sm:order-last text-right tabular-nums text-sm text-text">{quantityText(row)}</p>
                   <div className="col-span-2 sm:col-span-1"><StatusBadge status={row.status} /></div>
                 </li>
