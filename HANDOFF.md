@@ -1,6 +1,6 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-18.** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
+**Current state as of 2026-10-19.** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
 
 ---
 
@@ -8,6 +8,9 @@
 
 - **Branch:** `main` holds everything; `feature/ui-enhancements` (with Amna's per-facility thresholds, Analytics overhaul, district Network page) is merged and pushed.
 - **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
+- **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
+- **Backend:** latest round adopted is **Round 35** (audit-log server filters and paging, `facilityName` on the session user, approval `decisionReason`/`decidedAt`, `statusCounts` unit). Everything still needed from the backend is in the root **`BACKEND_REQUESTS.md`** (11 items; #1 is blocking). The offline-queue and push questions are in **`BACKEND_OFFLINE_PUSH.md`**, and the dedicated Stock Register endpoint is specified in **`STOCK_REGISTER_BACKEND.md`**.
+- **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
 
 ### Built after the review (2026-10-18)
 - **Route guards:** `AuthLayout` in `App.jsx` maps each URL prefix to its roles (`PREFIX_ROLES`); another role's URL redirects to the user's own dashboard. Observer keeps `/super-admin/*`. Checked in the browser for every role except super admin.
@@ -23,9 +26,9 @@
 - **PWA icons:** 192/512 PNG (`public/images/icon-*.png`, rendered from `icon.svg`) in the manifest, an `apple-touch-icon`, and as the push notification icon and badge.
 - **Logo:** the browser favicon and the sidebar brand use the circular `public/images/logo-circle-192.png` (transparent corners, cut from `icon-192.png`; a 512 copy sits beside it). The old `icon-image.jpeg` is unused.
 - Verified: production build loads the shell offline on `/`, `/login` and deep URLs; queue outcomes (201, 422, 409, 500, network error, other user's entries) with a mocked `fetch`; Assign Vials end to end with the network failing (queued once, "Saved offline"). Nothing was sent to production.
-- **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
-- **Backend:** latest round adopted is **Round 35** (audit-log server filters and paging, `facilityName` on the session user, approval `decisionReason`/`decidedAt`, `statusCounts` unit). Everything still needed from the backend is in the root **`BACKEND_REQUESTS.md`** (11 items; #1 is blocking).
-- **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
+### Recently built (2026-10-19)
+- **Stock Register overhaul:** entry types consolidated to three labels (Received / Record / Stock Correction); new Balance column (per-vaccine running balance, red when negative); new Stock Correction column (signed +N / −N, green/red) for `ADJUST_STOCK` rows only; `ADJUST_STOCK` rows no longer bleed into the Received/Used columns. FilterChips and CSV export updated to match.
+- **`STOCK_REGISTER_BACKEND.md`:** new file specifying the dedicated `GET /api/stock-register` endpoint the backend needs to build so the balance is authoritative and includes stock-request receipts.
 
 ### Recently built (2026-10-18)
 - **Shell:** ☰ menu button toggles the sidebar rail on desktop (remembered) and the drawer on phones; emoji bell; notification panel with type icons, Today/Earlier groups and click-through.
@@ -43,7 +46,7 @@
 | Issue | Where | Notes |
 |---|---|---|
 | Per-facility vaccine Save / Reset fails | Super admin › Vaccines (facility view) | Endpoint missing: `BACKEND_REQUESTS.md` #1 |
-| Stock Register shows negative balances | Facility supervisor › Stock Register | The balance ignores `STOCK_REQUEST_RECEIVED` and `STOCK_ASSIGN`, so stock that arrives through requests is never added. Frontend fix needed (decide how request receipts and worker assignments enter the ledger). |
+| Stock Register balance excludes request receipts | Facility supervisor › Stock Register | The balance ignores `STOCK_REQUEST_RECEIVED` and `STOCK_ASSIGN` (computed client-side from audit log). Blocked on `STOCK_REGISTER_BACKEND.md` — once the backend endpoint lands, the frontend switches to it and the balance matches the dashboard. |
 | Offline only works if the app is already open | Auth, Assign Vials, Day End | A cold start offline lands on login (the session restore needs the network), and the forms' vaccine / worker / holdings lists live in memory only, so a reload offline leaves them empty. Fixing it needs a persisted query cache (new dependency) and a stored session; decide whether the pilot needs it. |
 | Push delivery unverified; waiting on the backend | Notifications | Payload shape, `url` values and dead-subscription handling: `BACKEND_OFFLINE_PUSH.md` Q3–Q4 and R1 (test push). |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
@@ -76,6 +79,6 @@
 
 ## Next steps
 
-1. Send `BACKEND_REQUESTS.md` (requests + answers to `FRONTEND_PENDING.md`) to the backend developer.
-2. Fix the Stock Register balance (Amna).
+1. Send `BACKEND_REQUESTS.md`, `BACKEND_OFFLINE_PUSH.md` and `STOCK_REGISTER_BACKEND.md` to the backend developer.
+2. Once `GET /api/stock-register` lands: add `getStockRegister()` to `api.js`, swap `StockRegister.jsx` off the three audit-log calls, remove the client-side balance computation.
 3. QA the merged app in production across all 7 roles, light and dark, with a test account you own for one full write flow (request → sent → received → approved).

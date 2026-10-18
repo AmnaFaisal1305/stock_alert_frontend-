@@ -6,11 +6,16 @@ export const OPEN_STAGES     = new Set(['awaiting_both', 'awaiting_sent', 'await
 export const SENT_STAGES     = new Set(['awaiting_received', 'figures_differ', 'ready_for_approval', 'completed', 'partially_fulfilled'])
 export const RECEIVED_STAGES = new Set(['completed', 'partially_fulfilled'])
 
+// API may return `status` or `stage` depending on the record; normalise both.
+const stageOf = (r) => r.status ?? r.stage
+
 export const REQUEST_FILTERS = [
-  { value: 'all',       label: 'All',       test: () => true },
-  { value: 'awaiting',  label: 'In progress', test: (r) => !TERMINAL.has(r.stage) },
-  { value: 'completed', label: 'Completed', test: (r) => r.stage === 'completed' || r.stage === 'partially_fulfilled' },
-  { value: 'closed',    label: 'Cancelled / declined', test: (r) => r.stage === 'cancelled' || r.stage === 'declined' },
+  { value: 'all',                 label: 'All',                test: () => true },
+  { value: 'awaiting',            label: 'In progress',        test: (r) => !TERMINAL.has(stageOf(r)) },
+  { value: 'partially_fulfilled', label: 'Partially fulfilled', test: (r) => stageOf(r) === 'partially_fulfilled' },
+  { value: 'completed',           label: 'Completed',          test: (r) => stageOf(r) === 'completed' },
+  { value: 'cancelled',           label: 'Cancelled',          test: (r) => stageOf(r) === 'cancelled' },
+  { value: 'declined',            label: 'Declined',           test: (r) => stageOf(r) === 'declined' },
 ]
 
 export const PIPELINE = ['Requested', 'Sent', 'Received']
