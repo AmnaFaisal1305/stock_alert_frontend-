@@ -15,15 +15,10 @@ import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { FacilityAlert, StockMatrix } from '../../components/facilities/FacilityOverview'
 import AttentionStrip from '../../components/shared/AttentionStrip'
-import { facilityStatus, districtStatus, STATUS_RANK } from '../../lib/status'
+import { facilityStatus, districtStatus, STATUS_RANK, statusConfig } from '../../lib/status'
 import { plural } from '../../lib/format'
 
-const SERIES = [
-  { key: 'critical', label: 'Critical' },
-  { key: 'low',      label: 'Low' },
-  { key: 'adequate', label: 'Normal' },
-  { key: 'no_data',  label: 'Not updated' },
-]
+const SERIES = ['critical', 'low', 'adequate', 'no_data'].map((key) => ({ key, label: statusConfig(key).label }))
 
 function BarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -92,10 +87,7 @@ const districtColumns = [
   { key: 'name', label: 'District', render: (d) => <Link to={`/super-admin/districts/${d.id}`} onClick={(e) => e.stopPropagation()} className="font-medium hover:text-primary hover:underline">{d.name}</Link> },
   { key: 'status', label: 'Status', render: (d) => <StatusBadge status={d.status} /> },
   { key: 'facilities', label: 'Facilities', align: 'right', render: (d) => <span className="tabular-nums">{d.facilityCount}</span> },
-  { key: 'critical', label: 'Critical', align: 'right', render: (d) => num(d.counts.critical, 'critical') },
-  { key: 'low', label: 'Low', align: 'right', render: (d) => num(d.counts.low, 'low') },
-  { key: 'adequate', label: 'Normal', align: 'right', render: (d) => num(d.counts.adequate) },
-  { key: 'no_data', label: 'Not updated', align: 'right', render: (d) => num(d.counts.no_data) },
+  ...SERIES.map((s) => ({ key: s.key, label: s.label, align: 'right', render: (d) => num(d.counts[s.key], s.key) })),
 ]
 
 export default function SuperAdminDashboard() {
@@ -166,7 +158,7 @@ export default function SuperAdminDashboard() {
           <AttentionStrip
             items={[
               { icon: AlertTriangle, accent: 'critical', count: fCount('critical'), label: `${fCount('critical') === 1 ? 'facility is' : 'facilities are'} critically low`, to: '/super-admin/facilities?status=critical' },
-              { icon: CircleDashed, accent: 'no_data', count: fCount('no_data'), label: `${fCount('no_data') === 1 ? 'facility has' : 'facilities have'} no stock recorded`, to: '/super-admin/facilities?status=no_data' },
+              { icon: CircleDashed, accent: 'no_data', count: fCount('no_data'), label: `${fCount('no_data') === 1 ? 'facility has' : 'facilities have'} stock not updated`, to: '/super-admin/facilities?status=no_data' },
               { icon: UserX, accent: 5, count: unstaffed, label: `active ${unstaffed === 1 ? 'district' : 'districts'} without a supervisor`, to: '/super-admin/districts' },
             ]}
           />
@@ -177,7 +169,7 @@ export default function SuperAdminDashboard() {
             <StatCard label="Critical facilities" icon={AlertTriangle} accent="critical" value={fCount('critical')} tone={fCount('critical') ? 'critical' : undefined} subtitle={fCount('critical') ? 'Restock now' : 'None critical'} />
             <StatCard
               icon={HeartPulse}
-              label="Facilities healthy"
+              label="Facilities at normal stock"
               value={`${healthPct}%`}
               tone={healthPct >= 80 ? 'adequate' : healthPct >= 50 ? 'low' : 'critical'}
               subtitle={`${healthy} of ${facilities.length} at normal stock`}
@@ -195,9 +187,7 @@ export default function SuperAdminDashboard() {
                 onChange={setFilter}
                 options={[
                   { value: 'all', label: 'All', count: districts.length },
-                  { value: 'critical', label: 'Critical', status: 'critical', count: dCount('critical') },
-                  { value: 'low', label: 'Low', status: 'low', count: dCount('low') },
-                  { value: 'adequate', label: 'Normal', status: 'adequate', count: dCount('adequate') },
+                  ...['critical', 'low', 'adequate'].map((s) => ({ value: s, label: statusConfig(s).label, status: s, count: dCount(s) })),
                 ]}
               />
             </div>

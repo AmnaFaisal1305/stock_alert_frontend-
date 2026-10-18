@@ -129,7 +129,7 @@ export default function AssignVials() {
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!workerId) { setGlobalError('Please select a worker.'); return }
+    if (!workerId) { setGlobalError('Please select a vaccinator.'); return }
     const items = vaccines
       .map(v => ({ vaccineId: v.id, vials: parseInt(vialInputs[v.id] ?? '0', 10) || 0 }))
       .filter(i => i.vials > 0)
@@ -158,7 +158,7 @@ export default function AssignVials() {
     <PageHeader
       breadcrumb="Facility Supervisor › Daily work"
       title="Assign Vials"
-      subtitle="Give a worker the vials they take out for today’s session"
+      subtitle="Give a vaccinator the vials they take out for today’s session"
       actions={
         <DatePicker
           id="occurredOn"
@@ -182,7 +182,7 @@ export default function AssignVials() {
       tone="offline"
       title="Saved offline"
       message="This assignment is queued and will sync automatically when you’re back online."
-      actionLabel="Assign to another worker"
+      actionLabel="Assign to another vaccinator"
       onAction={handleReset}
     />
   )
@@ -190,8 +190,8 @@ export default function AssignVials() {
   if (done) return (
     <ResultPanel
       title="Vials assigned"
-      message={`${selectedWorker?.name ?? 'The worker'}’s holdings now include ${plural(totalVials, 'vial')}.`}
-      actionLabel="Assign to another worker"
+      message={`${selectedWorker?.name ?? 'The vaccinator'}’s holdings now include ${plural(totalVials, 'vial')}.`}
+      actionLabel="Assign to another vaccinator"
       onAction={handleReset}
     />
   )
@@ -204,9 +204,9 @@ export default function AssignVials() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
           <Card className="lg:sticky lg:top-0">
-            <CardHeader title="1. Worker" className="mb-3" />
+            <CardHeader title="1. Vaccinator" className="mb-3" />
             {workers.length === 0
-              ? <p className="text-sm text-text-muted">No active workers. Add one under Workers first.</p>
+              ? <p className="text-sm text-text-muted">No active vaccinators. Ask your Super Admin to add one.</p>
               : <WorkerPicker workers={workers} value={workerId} onChange={(id) => { setWorkerId(id); setGlobalError('') }} />}
           </Card>
 
@@ -214,7 +214,7 @@ export default function AssignVials() {
             <Card padding={false}>
               <EmptyState
                 icon={PackagePlus}
-                title="Choose a worker to begin"
+                title="Choose a vaccinator to begin"
                 message="Then set how many vials of each vaccine they take out today."
               />
             </Card>
@@ -283,7 +283,7 @@ export default function AssignVials() {
           <p className="text-sm text-text-muted">
             {selectedWorker
               ? <>Assigning <span className="font-semibold text-text tabular-nums">{plural(totalVials, 'vial')}</span> to <span className="font-medium text-text">{selectedWorker.name ?? selectedWorker.email}</span></>
-              : 'Select a worker to begin'}
+              : 'Select a vaccinator to begin'}
           </p>
           <div className="flex items-center gap-3">
             {globalError && <p role="alert" className="text-sm text-danger-dark">{globalError}</p>}
@@ -301,7 +301,7 @@ export default function AssignVials() {
           onConfirm={confirmSubmit}
           title="Check before assigning"
           rows={[
-            { label: 'Worker', value: selectedWorker?.name ?? selectedWorker?.email },
+            { label: 'Vaccinator', value: selectedWorker?.name ?? selectedWorker?.email },
             { label: 'Date', value: formatDate(occurredOn) },
           ]}
           items={review.items.map(it => ({ name: displayVaccineName(vaccines.find(v => v.id === it.vaccineId)?.name), value: plural(it.vials, 'vial') }))}

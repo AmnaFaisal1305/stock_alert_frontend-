@@ -51,13 +51,9 @@ export default function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const ROLE_FILTERS = [
-    { label: 'All',                  value: null },
-    { label: 'District Supervisor',  value: 'district_supervisor' },
-    { label: 'UC Supervisor',        value: 'uc_supervisor' },
-    { label: 'Facility Supervisor',  value: 'facility_supervisor' },
-    { label: 'Facility Worker',      value: 'facility_worker' },
-    { label: 'Facility Head',        value: 'facility_head' },
-    { label: 'Observer',            value: 'observer' },
+    { label: 'All', value: null },
+    ...['district_supervisor', 'uc_supervisor', 'facility_supervisor', 'facility_worker', 'facility_head', 'observer']
+      .map((r) => ({ label: ROLE_LABELS[r], value: r })),
   ]
   const roleFilter = Math.max(0, ROLE_FILTERS.findIndex((f) => (f.value ?? '') === roleParam))
 
@@ -95,15 +91,6 @@ export default function UserManagement() {
     .map((uc) => ({ value: uc.id, label: `${uc.name} (${uc.townName ?? ''})` }))
   const users = userData?.users ?? []
 
-  const ROLE_SUCCESS_LABELS = {
-    district_supervisor: 'District supervisor',
-    uc_supervisor:       'UC supervisor',
-    facility_supervisor: 'Facility supervisor',
-    facility_worker:     'Facility worker',
-    facility_head:       'Facility head',
-    observer:            'Observer',
-  }
-
   const EMPTY_FORM = { role: 'district_supervisor', firstName: '', lastName: '', zmid: '', email: '', password: '', districtId: '', facilityId: '', ucIds: [], phone: '', cnic: '', pickDistrictId: '', pickUcId: '' }
 
   const createMutation = useMutation({
@@ -128,7 +115,7 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       const label = (opts, id) => opts.find((o) => o.value === id)?.label.replace(/ \(staffed\)$/, '')
       setCreated({
-        role: ROLE_SUCCESS_LABELS[form.role] ?? 'User',
+        role: ROLE_LABELS[form.role] ?? 'User',
         name: `${form.firstName} ${form.lastName}`.trim(),
         email: form.email,
         zmid: form.zmid,

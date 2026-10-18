@@ -15,8 +15,7 @@ import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
-
-const TYPE_LABEL = { stock_correction: 'Stock correction', threshold_change: 'Threshold change' }
+import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
 
 const thresholdText = (t) => `critical ${t.criticalDoses}d / ${t.criticalVials}v · low ${t.lowDoses}d / ${t.lowVials}v`
 
@@ -39,7 +38,7 @@ function Change({ a }) {
           Now {thresholdText(a.current)}{a.current.thresholdOverridden && ' (facility override)'}
         </p>
       )}
-      <p className="font-medium text-text">{next ? `New ${thresholdText(next)}` : 'Reset to vaccine default'}</p>
+      <p className="font-medium text-text">{next ? `New ${thresholdText(next)}` : 'Reset to default'}</p>
     </div>
   )
 }
@@ -111,7 +110,7 @@ function HistoryItem({ a }) {
         </p>
         {reason && <p className="text-xs text-text-muted">Reason: “{reason}”</p>}
       </div>
-      <StatusBadge kind="workflow" status={a.status} />
+      <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status)} />
     </li>
   )
 }

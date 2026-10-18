@@ -12,15 +12,24 @@ import { useUrlFilters } from '../../hooks/useUrlState'
 import PageHeader from '../../components/shared/PageHeader'
 import Card from '../../components/shared/Card'
 import Pagination from '../../components/shared/Pagination'
+import FilterChips from '../../components/shared/FilterChips'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
-import { formatDate, formatTime } from '../../lib/format'
+import { formatDate, formatTime, plural } from '../../lib/format'
 
 const PER_PAGE = 100
 
 const ENTRY_TYPE = { opening: 'Received', received: 'Received', used: 'Record', wasted: 'Record', correction: 'Stock Correction' }
+
+// Entry-type chips → the API's `kind` list (the server counts opening rows as received).
+const TYPE_FILTERS = [
+  { value: '',           label: 'All' },
+  { value: 'received',   label: 'Received',         kind: 'received' },
+  { value: 'record',     label: 'Record',           kind: 'used,wasted' },
+  { value: 'correction', label: 'Stock Correction', kind: 'correction' },
+]
 
 const dash = <span className="text-text-muted">—</span>
 const num  = (v, cls = '') => v != null ? <span className={`tabular-nums ${cls}`}>{v}</span> : dash
@@ -49,7 +58,7 @@ function toRow(e) {
 
 export default function StockRegister() {
   const { user } = useAuth()
-  const [url, setUrl] = useUrlFilters({ vaccine: '', from: '', to: '' })
+  const [url, setUrl] = useUrlFilters({ vaccine: '', from: '', to: '', type: '' })
   const [page, setPage] = useState(1)
   // cursors[i] is the `before` value that loads page i + 1; only pages already reached are known.
   const [cursors, setCursors] = useState([null])
@@ -59,7 +68,7 @@ export default function StockRegister() {
     setCursors([null])
   }
 
-  const params = { vaccineId: url.vaccine, from: url.from, to: url.to }
+  const params = { vaccineId: url.vaccine, from: url.from, to: url.to, kind: TYPE_FILTERS.find((t) => t.value === url.type)?.kind }
   const before = cursors[page - 1]
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
@@ -77,11 +86,16 @@ export default function StockRegister() {
 
   const rows = useMemo(() => (regQ.data?.entries ?? []).map(toRow), [regQ.data])
 
-  // No total from the API: the page count grows as pages are reached.
+  // `total` and `kind` ship together (BACKEND_REQUESTS §1). Until then the page count grows
+  // as pages are reached and the entry-type chips stay hidden.
+  const total = regQ.data?.total
+  const serverCounts = total !== undefined
   const nextCursor = regQ.isPlaceholderData ? null : regQ.data?.nextCursor
-  const totalPages = cursors.length + (page === cursors.length && nextCursor ? 1 : 0)
+  const reached = cursors.length + (page === cursors.length && nextCursor ? 1 : 0)
+  const totalPages = serverCounts ? Math.ceil(total / PER_PAGE) : reached
+  const maxPage = Math.min(totalPages, reached)
   const goTo = (p) => {
-    if (p > totalPages) return
+    if (p > maxPage) return
     if (p === cursors.length + 1) setCursors((c) => [...c, nextCursor])
     setPage(p)
   }
@@ -101,10 +115,10 @@ export default function StockRegister() {
     { label: 'Date',             value: (r) => `${formatDate(r.date)} ${formatTime(r.date)}` },
     { label: 'Vaccine',          value: (r) => r.vaccineName },
     { label: 'Entry Type',       value: (r) => r.entryType },
-    { label: 'Worker',           value: (r) => r.workerName },
+    { label: 'Vaccinator',           value: (r) => r.workerName },
     { label: 'Manufacturer',     value: (r) => r.manufacturer },
     { label: 'Batch',            value: (r) => r.batchNo },
-    { label: 'Doses/vial',       value: (r) => r.dosesPerVial },
+    { label: 'Doses per vial',       value: (r) => r.dosesPerVial },
     { label: 'Expiry',           value: (r) => r.expiryDate },
     { label: 'Received',         value: (r) => r.received },
     { label: 'Used',             value: (r) => r.used },
@@ -113,7 +127,7 @@ export default function StockRegister() {
     { label: 'Balance',          value: (r) => r.balance },
   ]
 
-  const hasFilters = !!(url.vaccine || url.from || url.to)
+  const hasFilters = !!(url.vaccine || url.from || url.to || url.type)
   const isLoading  = loadingVaccines || regQ.isLoading
 
   return (
@@ -141,11 +155,18 @@ export default function StockRegister() {
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <DatePicker id="register-to" label="To" value={url.to} min={url.from || undefined} onChange={(e) => set({ to: e.target.value })} />
         </div>
-        {hasFilters && <Button variant="ghost" onClick={() => set({ vaccine: '', from: '', to: '' })}>Clear</Button>}
-        <div className="ml-auto">
+        {hasFilters && <Button variant="ghost" onClick={() => set({ vaccine: '', from: '', to: '', type: '' })}>Clear</Button>}
+        <div className="ml-auto flex items-end gap-3">
+          {serverCounts && <p className="text-sm text-text-muted tabular-nums pb-2">{plural(total, 'entry', 'entries')}</p>}
           <ExportButton name="stock-register" columns={exportColumns} getRows={exportRows} disabled={rows.length === 0} />
         </div>
       </div>
+
+      {serverCounts && (
+        <div className="mb-4">
+          <FilterChips label="Entry type" options={TYPE_FILTERS} value={url.type} onChange={(type) => set({ type })} />
+        </div>
+      )}
 
       {regQ.isError ? (
         <ErrorState title="Couldn't load the register" error={regQ.error} onRetry={regQ.refetch} />
@@ -165,10 +186,10 @@ export default function StockRegister() {
                     <th scope="col" className="px-4 py-3 text-left">Date</th>
                     <th scope="col" className="px-4 py-3 text-left">Vaccine</th>
                     <th scope="col" className="px-4 py-3 text-left">Entry Type</th>
-                    <th scope="col" className="px-4 py-3 text-left">Worker</th>
+                    <th scope="col" className="px-4 py-3 text-left">Vaccinator</th>
                     <th scope="col" className="px-4 py-3 text-left">Manufacturer</th>
                     <th scope="col" className="px-4 py-3 text-left">Batch</th>
-                    <th scope="col" className="px-4 py-3 text-right">Doses/vial</th>
+                    <th scope="col" className="px-4 py-3 text-right">Doses per vial</th>
                     <th scope="col" className="px-4 py-3 text-left">Expiry</th>
                     <th scope="col" className="px-4 py-3 text-right">Received</th>
                     <th scope="col" className="px-4 py-3 text-right">Used</th>
@@ -220,7 +241,7 @@ export default function StockRegister() {
               </table>
             </div>
           </Card>
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={goTo} />
+          <Pagination currentPage={page} totalPages={totalPages} maxPage={maxPage} onPageChange={goTo} />
         </div>
       )}
     </div>

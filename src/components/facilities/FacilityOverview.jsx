@@ -107,11 +107,11 @@ export function StockMatrix({ rows, base, groupByDistrict = false }) {
 }
 
 const KPIS = [
-  { status: 'critical', label: 'Critical',    icon: AlertCircle,  context: (n) => (n ? 'Restock now' : 'None critical') },
-  { status: 'low',      label: 'Low',         icon: TrendingDown, context: (n) => (n ? 'Plan a delivery' : 'None low') },
-  { status: 'adequate', label: 'Normal',      icon: CheckCircle2, context: () => 'Stock is healthy' },
-  { status: 'no_data',  label: 'Not updated', icon: HelpCircle,   context: (n) => (n ? 'No stock recorded yet' : 'All reporting') },
-]
+  { status: 'critical', icon: AlertCircle,  context: (n) => (n ? 'Restock now' : 'None critical') },
+  { status: 'low',      icon: TrendingDown, context: (n) => (n ? 'Plan a stock request' : 'None low') },
+  { status: 'adequate', icon: CheckCircle2, context: () => 'At or above threshold' },
+  { status: 'no_data',  icon: HelpCircle,   context: (n) => (n ? 'No stock recorded yet' : 'All reporting') },
+].map((k) => ({ ...k, label: statusConfig(k.status).label }))
 
 const WEEK = 7 * 86_400_000
 

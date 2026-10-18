@@ -16,14 +16,13 @@ import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
-
-const TYPE_LABEL = { stock_correction: 'Stock correction', threshold_change: 'Threshold change' }
+import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
 
 function FormMessage({ error, done }) {
   if (error) return <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{error}</p>
   if (done) return (
     <p role="status" className="flex items-center gap-2 text-sm text-success-dark bg-success-bg rounded-control px-3.5 py-2.5">
-      <CheckCircle2 size={16} strokeWidth={1.75} /> Sent to the facility head for approval.
+      <CheckCircle2 size={16} strokeWidth={1.75} /> Sent to the Facility Head for approval.
     </p>
   )
   return null
@@ -36,12 +35,12 @@ function RequestItem({ a, onCancel, cancelling }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium text-text">{displayVaccineName(a.vaccineName)}</p>
-          <StatusBadge kind="workflow" status={a.status} />
+          <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status)} />
         </div>
         <p className="text-xs text-text-muted mt-1">
           {TYPE_LABEL[a.type] ?? a.type}
           {a.createdAt && <> · {formatDate(a.createdAt, { withYear: false })}</>}
-          {a.decidedAt && a.status !== 'pending' && <> · {a.status} {formatDate(a.decidedAt, { withYear: false })}</>}
+          {a.decidedAt && a.status !== 'pending' && <> · {approvalStatusLabel(a.status)} {formatDate(a.decidedAt, { withYear: false })}</>}
           {' · '}
           {a.type === 'stock_correction' && <span className="text-text tabular-nums">store → {a.payload?.storeVials} vials</span>}
           {a.type === 'threshold_change' && (t
@@ -115,7 +114,7 @@ export default function Approvals() {
     },
     onError: (err) => {
       setReview(null)
-      setCorrError(err.status === 409 ? 'A correction is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed'))
+      setCorrError(err.status === 409 ? 'A correction is already pending for this vaccine. Withdraw it first or wait for the Facility Head’s decision.' : (err.message || 'Submission failed'))
     },
   })
 
@@ -141,7 +140,7 @@ export default function Approvals() {
     },
     onError: (err) => {
       setReview(null)
-      setThrError(err.status === 409 ? 'A threshold change is already pending for this vaccine. Withdraw it first or wait for the head’s decision.' : (err.message || 'Submission failed'))
+      setThrError(err.status === 409 ? 'A threshold change is already pending for this vaccine. Withdraw it first or wait for the Facility Head’s decision.' : (err.message || 'Submission failed'))
     },
   })
 
@@ -178,7 +177,7 @@ export default function Approvals() {
       <PageHeader
         breadcrumb="Facility Supervisor › Daily work"
         title="Approvals"
-        subtitle="Request a stock correction or threshold change. The facility head approves it, then it applies automatically."
+        subtitle="Request a stock correction or threshold change. The Facility Head approves it, then it applies automatically."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5 items-start">
@@ -193,7 +192,7 @@ export default function Approvals() {
 
           {tab === 'stock_correction' ? (
             <div className="flex flex-col gap-4 max-w-xl">
-              <p className="text-sm text-text-muted">Set the correct store total in vials (vials not held by any worker), for example after a physical count.</p>
+              <p className="text-sm text-text-muted">Set the correct store total in vials (vials not held by any vaccinator), for example after a physical count.</p>
               <Select
                 id="corr-vaccine"
                 label="Vaccine"
@@ -284,7 +283,7 @@ export default function Approvals() {
 
         <Card padding={false} className="lg:sticky lg:top-0">
           <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-surface-border flex flex-col gap-3">
-            <CardHeader title="My requests" description="What you’ve sent to the facility head" />
+            <CardHeader title="My requests" description="What you’ve sent to the Facility Head" />
             <Tabs
               size="sm"
               label="Request list"
@@ -298,7 +297,7 @@ export default function Approvals() {
           ) : listItems.length === 0 ? (
             <EmptyState
               title={listView === 'pending' ? 'Nothing waiting' : 'No decisions yet'}
-              message={listView === 'pending' ? 'Requests you send appear here until the head decides.' : 'Approved, rejected and withdrawn requests appear here.'}
+              message={listView === 'pending' ? 'Requests you send appear here until the Facility Head decides.' : 'Approved, rejected and withdrawn requests appear here.'}
             />
           ) : (
             <ul className="divide-y divide-surface-border max-h-[60vh] overflow-y-auto">
@@ -321,7 +320,7 @@ export default function Approvals() {
         onConfirm={() => corrMutation.mutate()}
         isPending={corrMutation.isPending}
         title="Send stock correction?"
-        intro="The facility head reviews it. The store total changes only once they approve."
+        intro="The Facility Head reviews it. The store total changes only once they approve."
         rows={[
           { label: 'Vaccine', value: vaccineOptions.find(o => o.value === corrVaccineId)?.label },
           { label: 'New store total', value: `${corrStoreVials} vials` },
@@ -336,13 +335,13 @@ export default function Approvals() {
         onConfirm={() => thrMutation.mutate()}
         isPending={thrMutation.isPending}
         title="Send threshold change?"
-        intro="The facility head reviews it. The new thresholds apply once they approve."
+        intro="The Facility Head reviews it. The new thresholds apply once they approve."
         rows={(() => {
           const row = vaccines.find(r => r.vaccineId === thrVaccineId)
           return [
             { label: 'Vaccine', value: vaccineOptions.find(o => o.value === thrVaccineId)?.label },
             row && { label: 'Now', value: `critical ${row.criticalDoses}d / ${row.criticalVials}v · low ${row.lowDoses}d / ${row.lowVials}v` },
-            { label: 'New', value: thrReset ? 'Vaccine defaults' : `critical ${thrValues.criticalDoses}d / ${thrValues.criticalVials}v · low ${thrValues.lowDoses}d / ${thrValues.lowVials}v` },
+            { label: 'New', value: thrReset ? 'Default thresholds' : `critical ${thrValues.criticalDoses}d / ${thrValues.criticalVials}v · low ${thrValues.lowDoses}d / ${thrValues.lowVials}v` },
             thrNote.trim() && { label: 'Reason', value: thrNote.trim() },
           ]
         })()}
@@ -354,7 +353,7 @@ export default function Approvals() {
         onClose={() => setWithdrawing(null)}
         onConfirm={() => cancelMutation.mutate(withdrawing.id)}
         title="Withdraw this request?"
-        message={withdrawing ? `${TYPE_LABEL[withdrawing.type] ?? 'Request'} for ${displayVaccineName(withdrawing.vaccineName)} will be withdrawn. The facility head won’t see it any more.` : ''}
+        message={withdrawing ? `${TYPE_LABEL[withdrawing.type] ?? 'Request'} for ${displayVaccineName(withdrawing.vaccineName)} will be withdrawn. The Facility Head won’t see it any more.` : ''}
         confirmLabel="Withdraw"
         isPending={cancelMutation.isPending}
         error={cancelMutation.isError ? cancelMutation.error.message : null}

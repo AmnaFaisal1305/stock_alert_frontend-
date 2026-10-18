@@ -13,10 +13,10 @@ import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 
-const STATUS_ORDER = ['critical', 'low', 'adequate', 'no_data']
+const STATUS_ORDER = Object.keys(STATUS_RANK)
 
 function quantityText(row) {
-  if (row.quantity === null) return <span className="text-text-muted">Not recorded</span>
+  if (row.quantity === null) return <span className="text-text-muted">{statusConfig('no_data').label}</span>
   if (row.quantity === 0) return <span className="text-danger-dark font-medium">Out of stock</span>
   return <>{row.quantity}<span className="text-xs text-text-muted ml-1">doses</span></>
 }

@@ -84,7 +84,7 @@ export const NAV = {
         { to: '/facility/audit-log',      label: 'Audit Log',      icon: ScrollText },
         { to: '/facility/analytics',      label: 'Analytics',      icon: BarChart3 },
       ] },
-      { label: 'Team', items: [{ to: '/facility/workers', label: 'Workers', icon: Users }] },
+      { label: 'Team', items: [{ to: '/facility/workers', label: 'Vaccinators', icon: Users }] },
     ],
   },
   facility_head: {
@@ -118,9 +118,19 @@ export const ROLE_LABELS = {
   district_supervisor: 'District Supervisor',
   uc_supervisor:       'UC Supervisor',
   facility_supervisor: 'Facility Supervisor',
-  facility_worker:     'Facility Worker',
+  facility_worker:     'Vaccinator',
   facility_head:       'Facility Head',
   observer:            'Observer',
+}
+
+export const ROLE_LABELS_PLURAL = {
+  super_admin:         'Super Admins',
+  district_supervisor: 'District Supervisors',
+  uc_supervisor:       'UC Supervisors',
+  facility_supervisor: 'Facility Supervisors',
+  facility_worker:     'Vaccinators',
+  facility_head:       'Facility Heads',
+  observer:            'Observers',
 }
 
 // Category colour (StatCard ACCENT key) and icon per role, for role tags and user cards.

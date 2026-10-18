@@ -70,8 +70,8 @@ function ApproveAction({ req }) {
         onClose={() => setConfirming(false)}
         onConfirm={() => approveMutation.mutate()}
         isPending={approveMutation.isPending}
-        title="Approve this delivery?"
-        intro="Approving signs off this delivery. It can’t be undone."
+        title="Approve this stock request?"
+        intro="Approving signs off this stock request. It can’t be undone."
         items={(req.items ?? []).map((it) => ({
           name: displayVaccineName(it.vaccineName),
           value: `${it.receivedVials ?? 0} received of ${it.outstandingVials ?? it.requestedVials}`,
@@ -99,7 +99,7 @@ export default function FacilityHeadStockRequests() {
       <PageHeader
         breadcrumb="Facility Head › Daily work"
         title="Stock Requests"
-        subtitle={ready ? `${ready} ready for your approval` : 'Approve deliveries once sent and received figures agree'}
+        subtitle={ready ? `${ready} ready for your approval` : 'Approve stock requests once sent and received figures agree'}
       />
       <RequestList
         requests={requests}

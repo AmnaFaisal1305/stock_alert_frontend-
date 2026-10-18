@@ -1,5 +1,7 @@
 // Audit-log vocabulary and parsing shared by every role's Audit Log (components/audit/AuditLogView).
 import { displayVaccineName } from './vaccineNames'
+import { ROLE_LABELS } from './navigation'
+import { approvalTypeLabel } from './status'
 
 export const ACTION_LABELS = {
   LOGOUT:                    'Logged out',
@@ -35,16 +37,17 @@ export const ACTION_LABELS = {
   DEACTIVATE_UC:             'UC deactivated',
   ACTIVATE_UC:               'UC activated',
   APPROVAL_REQUEST:          'Approval requested',
-  APPROVAL_APPROVE:          'Approval approved',
-  APPROVAL_REJECT:           'Approval rejected',
-  APPROVAL_DECLINE:          'Approval rejected',
-  APPROVAL_CANCEL:           'Approval withdrawn',
+  APPROVAL_APPROVE:          'Change approved',
+  APPROVAL_REJECT:           'Change rejected',
+  APPROVAL_DECLINE:          'Change rejected',
+  APPROVAL_CANCEL:           'Change withdrawn',
+  EDIT_FACILITY_VACCINE:     'Facility thresholds changed',
   STOCK_REQUEST_CREATE:      'Stock request raised',
   STOCK_REQUEST_SENT:        'Stock sent',
   STOCK_REQUEST_RECEIVED:    'Stock received',
   STOCK_REQUEST_APPROVE:     'Stock request approved',
   STOCK_REQUEST_CANCEL:      'Stock request cancelled',
-  STOCK_REQUEST_CLOSE_SHORT: 'Request closed short',
+  STOCK_REQUEST_CLOSE_SHORT: 'Request closed as partially fulfilled',
   STOCK_REQUEST_DECLINE:     'Stock request declined',
 }
 
@@ -119,7 +122,7 @@ export function parseEntry(entry, ctx) {
     }
 
     case 'CREATE_USER':
-      return { ...out, detail: [d.role?.replace(/_/g, ' '), d.email].filter(Boolean).join(' · ') || null }
+      return { ...out, detail: [ROLE_LABELS[d.role] ?? d.role?.replace(/_/g, ' '), d.email].filter(Boolean).join(' · ') || null }
     case 'ACTIVATE_USER':
     case 'DEACTIVATE_USER':
     case 'RESET_PASSWORD':
@@ -143,9 +146,10 @@ export function parseEntry(entry, ctx) {
         ? { ...out, ...fromItems(d.items, (it) => it.fulfilledVials ?? it.requestedVials ?? 0, null), detail: quote(d.note) }
         : { ...out, detail: quote(d.note) }
     case 'STOCK_REQUEST_CANCEL': {
-      const original = ctx.createByEntityId[entry.entityId]
+      // Older cancel rows carry no items; fall back to the create row if it is on this page.
+      const items = d.items?.length ? d.items : ctx.createByEntityId[entry.entityId]?.items
       const reason = d.reason || 'No reason given'
-      return original?.items?.length ? { ...out, ...fromItems(original.items, 'requestedVials', null), detail: reason } : { ...out, detail: reason }
+      return items?.length ? { ...out, ...fromItems(items, 'requestedVials', null), detail: reason } : { ...out, detail: reason }
     }
     case 'STOCK_REQUEST_CLOSE_SHORT':
     case 'STOCK_REQUEST_DECLINE':
@@ -158,7 +162,7 @@ export function parseEntry(entry, ctx) {
     case 'APPROVAL_REJECT':
     case 'APPROVAL_DECLINE':
     case 'APPROVAL_CANCEL': {
-      const parts = [d.type?.replace(/_/g, ' ')]
+      const parts = [d.type ? approvalTypeLabel(d.type) : null]
       if (d.payload?.storeVials != null) parts.push(`store → ${d.payload.storeVials} vials`)
       else if (d.payload?.oldValue != null && d.payload?.newValue != null) parts.push(`${d.payload.oldValue} → ${d.payload.newValue}`)
       if (d.decisionReason) parts.push(quote(d.decisionReason))

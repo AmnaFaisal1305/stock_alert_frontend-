@@ -82,12 +82,12 @@ src/
     AuthContext.jsx    — single auth state, login/logout, sessionStorage
   lib/
     api.js             — ALL fetch calls; never call fetch directly in pages
-    status.js          — stock + workflow status vocabulary, Tailwind classes, rollup helpers
+    status.js          — stock + workflow status vocabulary, approval types/labels, Tailwind classes, rollup helpers
     format.js          — formatDate/formatTime/timeAgo/plural, local-date helpers (never toISOString for dates)
-    navigation.js      — NAV per role, ROLE_LABELS, scopeLabel(), role section routes
+    navigation.js      — NAV per role, ROLE_LABELS / ROLE_LABELS_PLURAL, scopeLabel(), role section routes
     stockRequests.js   — request stages, filters, pipeline helpers
     auditLog.js        — action labels, entry parser, filters for the shared Audit Log
-    vaccineNames.js    — displayVaccineName(): legacy "Vaccine 01–13" → display names; real names pass through
+    vaccineNames.js    — displayVaccineName(): legacy "Vaccine 01–16" → display names; real names pass through
     csv.js             — CSV export (toCsv, downloadCsv)
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
@@ -141,6 +141,7 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 - Overriding a Button's colour with `className` (it loses to the variant) — use `variant="ghost-danger"` for Reject/Decline/Deactivate
 - `new Date().toISOString().split('T')[0]` for "today" — it is the UTC date, a day behind in Pakistan until 05:00; use `localDateStr()` / `toLocalDateStr()` from `lib/format`
 - Hardcoded API base URLs — route through `src/lib/api.js`
+- Hardcoded role, status, approval-type or audit-action labels — use `ROLE_LABELS`/`ROLE_LABELS_PLURAL`, `statusConfig().label`, `workflowStatusConfig()`, `approvalTypeLabel()`, `ACTION_LABELS`. One word per backend value: Vaccinator (`facility_worker`), Facility Head, Normal (`adequate`), Not updated (`no_data`), Partially fulfilled, Stock request (never "delivery"), Withdrawn (cancelled approval), Custom / Reset to default (facility thresholds). Show the unit (vials / doses) on every count
 - Duplicate `ROLE_DEFAULTS` — defined in `App.jsx` and `AuthContext.jsx` intentionally
 - Image files with spaces or parentheses in `public/images/`
 - Importing `docx` in application code — it belongs only in `scripts/`

@@ -19,16 +19,17 @@ import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { ROLE_LABELS } from '../../lib/navigation'
+import { statusConfig } from '../../lib/status'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { formatDate } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
 
 const KPIS = [
-  { key: 'critical', label: 'Critical',    icon: AlertCircle },
-  { key: 'low',      label: 'Low',         icon: TrendingDown },
-  { key: 'adequate', label: 'Normal',      icon: CheckCircle2 },
-  { key: 'no_data',  label: 'Not updated', icon: HelpCircle },
-]
+  { key: 'critical', icon: AlertCircle },
+  { key: 'low',      icon: TrendingDown },
+  { key: 'adequate', icon: CheckCircle2 },
+  { key: 'no_data',  icon: HelpCircle },
+].map((k) => ({ ...k, label: statusConfig(k.key).label }))
 
 const muted = (text) => <span className="text-text-muted">{text}</span>
 
@@ -54,7 +55,7 @@ const columns = [
         <span className="tabular-nums whitespace-nowrap">
           {t.doses} <span className="text-xs text-text-muted">doses</span>
           {t.vials != null && <span className="block text-xs text-text-muted">{t.vials} vials</span>}
-          {v.thresholdOverridden && <span className="block text-xs text-text-muted">Facility override</span>}
+          {v.thresholdOverridden && <span className="block text-xs text-text-muted">Custom</span>}
         </span>
       )
     },
@@ -76,9 +77,9 @@ const gridCard = (v) => {
       meta={[
         { label: 'In stock', value: v.quantity == null ? '—' : `${v.quantity} doses` },
         { label: 'Low threshold', value: t.doses > 0 ? `${t.doses} doses${t.vials != null ? ` · ${t.vials} vials` : ''}` : 'Not set' },
-        v.thresholdOverridden && { label: 'Threshold', value: 'Facility override' },
+        v.thresholdOverridden && { label: 'Threshold', value: 'Custom' },
       ]}
-      footnote={v.recordedAt ? `Recorded ${formatDate(v.recordedAt)}` : 'Never recorded'}
+      footnote={v.recordedAt ? `Recorded ${formatDate(v.recordedAt)}` : 'Not updated yet'}
     />
   )
 }
@@ -180,7 +181,7 @@ export default function FacilityDetail() {
                       <div className="min-w-0">
                         <p className="font-medium text-text truncate" dir="auto">{displayVaccineName(v.vaccineName)}</p>
                         <p className="text-xs text-text-muted tabular-nums">
-                          {v.quantity ?? '—'} doses · {v.recordedAt ? formatDate(v.recordedAt) : 'never recorded'}
+                          {v.quantity ?? '—'} doses · {v.recordedAt ? formatDate(v.recordedAt) : 'not updated yet'}
                         </p>
                       </div>
                       <StatusBadge status={v.status} />

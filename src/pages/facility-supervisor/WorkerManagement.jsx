@@ -36,7 +36,7 @@ export default function WorkerManagement() {
 
   const columns = [
     {
-      key: 'name', label: 'Worker',
+      key: 'name', label: 'Vaccinator',
       render: (w) => (
         <div className={w.isActive ? '' : 'opacity-60'}>
           <p className="font-medium text-text">{w.name ?? w.email}</p>
@@ -54,13 +54,13 @@ export default function WorkerManagement() {
     <div>
       <PageHeader
         breadcrumb="Facility Supervisor › Team"
-        title="Workers"
-        subtitle={workers.length ? `${plural(workers.length, 'worker')} · ${activeCount} active` : 'Vaccinators at your facility'}
+        title="Vaccinators"
+        subtitle={workers.length ? `${plural(workers.length, 'vaccinator')} · ${activeCount} active` : 'Vaccinators at your facility'}
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
             <ExportButton
-              name="workers"
+              name="vaccinators"
               rows={workers}
               columns={[
                 { label: 'Name', value: (w) => w.name },
@@ -76,7 +76,7 @@ export default function WorkerManagement() {
       />
 
       {isError ? (
-        <ErrorState title="Couldn’t load workers" error={error} onRetry={refetch} />
+        <ErrorState title="Couldn’t load vaccinators" error={error} onRetry={refetch} />
       ) : (
         <Table
           columns={columns}
@@ -84,7 +84,7 @@ export default function WorkerManagement() {
           loading={isLoading}
           view={view}
           gridCard={gridCard}
-          emptyMessage="No workers yet."
+          emptyMessage="No vaccinators yet."
           mobileCard={(w) => (
             <div className="px-4 py-3.5 flex items-start justify-between gap-3">
               <div className={`min-w-0 ${w.isActive ? '' : 'opacity-60'}`}>

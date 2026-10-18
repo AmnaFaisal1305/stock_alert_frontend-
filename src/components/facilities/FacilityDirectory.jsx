@@ -93,7 +93,7 @@ export default function FacilityDirectory({ base, query }) {
               { label: 'Facility', value: (f) => f.name },
               { label: 'Union council', value: (f) => f.ucName },
               { label: 'Town', value: (f) => f.townName },
-              { label: 'Supervisor', value: (f) => f.facilitySupervisorName },
+              { label: 'Facility Supervisor', value: (f) => f.facilitySupervisorName },
               { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
               { label: 'Last activity', value: (f) => f.lastActivityAt },
               { label: 'Active', value: (f) => (f.isActive === false ? 'No' : 'Yes') },

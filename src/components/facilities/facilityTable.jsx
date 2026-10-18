@@ -5,15 +5,12 @@ import { Building2, Eye } from 'lucide-react'
 import StatusBadge from '../shared/StatusBadge'
 import EntityCard from '../shared/EntityCard'
 import RowActions from '../ui/RowActions'
-import { facilityStatus, STATUS_RANK } from '../../lib/status'
+import { facilityStatus, STATUS_RANK, statusConfig } from '../../lib/status'
 import { timeAgo } from '../../lib/format'
 
 export const STATUS_FILTERS = [
   { value: 'all',      label: 'All' },
-  { value: 'critical', label: 'Critical', status: 'critical' },
-  { value: 'low',      label: 'Low',      status: 'low' },
-  { value: 'adequate', label: 'Normal',   status: 'adequate' },
-  { value: 'no_data',  label: 'Not updated', status: 'no_data' },
+  ...['critical', 'low', 'adequate', 'no_data'].map((s) => ({ value: s, label: statusConfig(s).label, status: s })),
 ]
 
 // facilityId → critical | low | adequate | no_data, from GET /api/dashboard.
@@ -47,7 +44,7 @@ export function facilityColumns(statusOf, base) {
         </div>
       ),
     },
-    { key: 'supervisor', label: 'Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
+    { key: 'supervisor', label: 'Facility Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
     { key: 'activity', label: 'Last activity', render: (f) => <span className="text-text-muted whitespace-nowrap">{lastActivity(f)}</span> },
     { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
   ]
@@ -63,7 +60,7 @@ export function FacilityGridCard({ f, status, base }) {
       subtitle={[f.ucName, f.townName].filter(Boolean).join(' · ')}
       badge={<StatusBadge status={status} />}
       meta={[
-        { label: 'Supervisor', value: f.facilitySupervisorName ?? 'Unstaffed' },
+        { label: 'Facility Supervisor', value: f.facilitySupervisorName ?? 'Unstaffed' },
         { label: 'Last activity', value: lastActivity(f) },
       ]}
       actions={<RowActions actions={[{ icon: Eye, label: `View ${f.name}`, to }]} />}

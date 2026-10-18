@@ -221,7 +221,7 @@ function RequestActions({ req, onReceived }) {
           {canReceive && <Button onClick={() => setShowReceive(true)}>Record received</Button>}
           {canCancel && (
             <Button variant="ghost-danger" onClick={() => setCancelConfirm(true)}>
-              {isCloseShort ? 'Close short' : 'Cancel request'}
+              {isCloseShort ? 'Close as partially fulfilled' : 'Cancel request'}
             </Button>
           )}
         </div>
@@ -248,7 +248,7 @@ function RequestActions({ req, onReceived }) {
           )}
           <div className="flex gap-2">
             <Button variant="danger" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending || (reasonRequired && !cancelReason.trim())}>
-              {cancelMutation.isPending ? 'Submitting…' : isCloseShort ? 'Close short' : 'Cancel request'}
+              {cancelMutation.isPending ? 'Submitting…' : isCloseShort ? 'Close as partially fulfilled' : 'Cancel request'}
             </Button>
             <Button variant="secondary" onClick={() => setCancelConfirm(false)}>Keep it</Button>
           </div>
@@ -318,7 +318,7 @@ export default function RecordStock() {
         <SummaryDialog
           open
           onClose={() => setSent(null)}
-          title="Request sent"
+          title="Request raised"
           message="Your UC supervisor has it. You’ll record what arrives here."
           items={sent.items.map(it => ({ name: vaccineLabel(vaccineData?.vaccines ?? [], it.vaccineId), value: plural(it.requestedVials, 'vial') }))}
           total={plural(sent.items.reduce((s, it) => s + it.requestedVials, 0), 'vial')}
@@ -330,7 +330,7 @@ export default function RecordStock() {
           open
           onClose={() => setReceived(null)}
           title="Stock received"
-          message="Saved. The vials are added to your store."
+          message="Saved. The vials are added to your store once the Facility Head approves."
           items={received.payload.items.map(it => ({ name: displayVaccineName(received.req.items?.find(x => x.vaccineId === it.vaccineId)?.vaccineName ?? '—'), value: plural(it.receivedVials, 'vial') }))}
           total={plural(received.payload.items.reduce((s, it) => s + it.receivedVials, 0), 'vial')}
         />

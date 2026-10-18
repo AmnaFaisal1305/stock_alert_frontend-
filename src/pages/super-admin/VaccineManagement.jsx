@@ -39,7 +39,7 @@ function VaccineForm({ initial, onSubmit, isPending, error, submitLabel }) {
         value={form.name} onChange={(e) => set('name', e.target.value)} required
       />
       <Input
-        id="dpv" label="Doses per Vial *" type="number" min="1" step="1"
+        id="dpv" label="Doses per vial *" type="number" min="1" step="1"
         placeholder="e.g. 10" value={form.dosesPerVial}
         onChange={(e) => set('dosesPerVial', e.target.value)} required
       />
@@ -92,7 +92,7 @@ function FacilityVaccineForm({ facilityName, onSubmit, onReset, isPending, isRes
       {error && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{error}</p>}
       <div className="flex justify-between gap-3 pt-2">
         <Button type="button" variant="ghost" disabled={isResetting} onClick={onReset}>
-          {isResetting ? 'Resetting…' : 'Reset to Global'}
+          {isResetting ? 'Resetting…' : 'Reset to default'}
         </Button>
         <Button type="submit" disabled={isPending}>{isPending ? 'Saving…' : 'Save'}</Button>
       </div>
@@ -300,7 +300,7 @@ export default function VaccineManagement() {
   const num = (n) => <span className="tabular-nums">{n ?? '—'}</span>
   const columns = [
     { key: 'name', label: 'Vaccine', render: nameCell },
-    { key: 'dpv', label: 'Doses / vial', align: 'right', render: (v) => num(v.dosesPerVial) },
+    { key: 'dpv', label: 'Doses per vial', align: 'right', render: (v) => num(v.dosesPerVial) },
     { key: 'cd', label: 'Critical doses', align: 'right', render: (v) => num(v.criticalDoses) },
     { key: 'ld', label: 'Low doses', align: 'right', render: (v) => num(v.lowDoses) },
     { key: 'cv', label: 'Critical vials', align: 'right', render: (v) => num(v.criticalVials) },
@@ -401,7 +401,7 @@ export default function VaccineManagement() {
                 { label: 'Low doses', value: (v) => v.lowDoses },
                 { label: 'Critical vials', value: (v) => v.criticalVials },
                 { label: 'Low vials', value: (v) => v.lowVials },
-                ...(scopeName ? [{ label: 'Facility override', value: (v) => (v.thresholdOverridden ? 'Yes' : 'No') }] : []),
+                ...(scopeName ? [{ label: 'Custom', value: (v) => (v.thresholdOverridden ? 'Yes' : 'No') }] : []),
               ]}
             />
           </div>
@@ -416,7 +416,7 @@ export default function VaccineManagement() {
               <div className="px-4 py-3.5 flex flex-col gap-2">
                 {nameCell(v)}
                 <p className="text-xs text-text-muted tabular-nums">
-                  {v.dosesPerVial} doses/vial · critical {v.criticalDoses}d / {v.criticalVials}v · low {v.lowDoses}d / {v.lowVials}v
+                  {v.dosesPerVial} doses per vial · critical {v.criticalDoses}d / {v.criticalVials}v · low {v.lowDoses}d / {v.lowVials}v
                 </p>
                 {actions(v)}
               </div>
@@ -425,7 +425,7 @@ export default function VaccineManagement() {
           {vaccines.length > 0 && (
             <p className="text-xs text-text-muted">
               {selectedFacilityId
-                ? 'Edits here override the global values for this facility only. “Custom” marks an override; use Reset to Global in the edit dialog to remove it.'
+                ? 'Edits here override the global values for this facility only. “Custom” marks an override; use Reset to default in the edit dialog to remove it.'
                 : 'Changing thresholds or doses per vial applies to every facility without an override immediately. A vaccine with recorded stock history can’t be deleted.'}
             </p>
           )}

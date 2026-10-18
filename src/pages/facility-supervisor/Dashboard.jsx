@@ -22,11 +22,11 @@ import { timeAgo, plural, localDateStr } from '../../lib/format'
 const STATUS_ICON = { critical: AlertTriangle, low: TrendingDown, adequate: CheckCircle2, no_data: CircleDashed }
 
 const KPI_ORDER = [
-  { status: 'critical', label: 'Critical',     context: (n) => (n ? 'Needs immediate action' : 'None right now') },
-  { status: 'low',      label: 'Low stock',    context: (n) => (n ? 'Plan restocking soon' : 'None right now') },
-  { status: 'adequate', label: 'Normal',       context: () => 'At or above threshold' },
-  { status: 'no_data',  label: 'Not updated',  context: (n) => (n ? 'No stock recorded yet' : 'All vaccines reporting') },
-]
+  { status: 'critical', context: (n) => (n ? 'Needs immediate action' : 'None right now') },
+  { status: 'low',      context: (n) => (n ? 'Plan restocking soon' : 'None right now') },
+  { status: 'adequate', context: () => 'At or above threshold' },
+  { status: 'no_data',  context: (n) => (n ? 'No stock recorded yet' : 'All vaccines reporting') },
+].map((k) => ({ ...k, label: statusConfig(k.status).label }))
 
 // Change in vaccine lines since summary.previous; neutral wording, status colour stays for status.
 function deltaText(now, before) {
@@ -107,14 +107,14 @@ export default function FacilityDashboard() {
     const pending = approvalsQ.data?.approvals?.length ?? 0
     return isSupervisor
       ? [
-          { icon: PackageCheck, accent: 4, count: stage('awaiting_received'), label: 'deliveries to record as received', to: '/facility/record-stock' },
+          { icon: PackageCheck, accent: 4, count: stage('awaiting_received'), label: 'stock requests to record as received', to: '/facility/record-stock' },
           { icon: AlertTriangle, accent: 'low', count: stage('figures_differ'), label: 'requests where sent and received differ', to: '/facility/record-stock' },
           { icon: Clock, accent: 'low', count: stale, label: 'requests open for over 3 days', to: '/facility/record-stock' },
-          { icon: ClipboardList, accent: 2, count: pending, label: 'approval requests waiting for the head', to: '/facility/approvals' },
+          { icon: ClipboardList, accent: 2, count: pending, label: 'approval requests waiting for the Facility Head', to: '/facility/approvals' },
         ]
       : [
           { icon: ClipboardCheck, accent: 'low', count: pending, label: 'approvals waiting for you', to: '/head/approvals' },
-          { icon: PackageCheck, accent: 4, count: stage('ready_for_approval'), label: 'deliveries ready to sign off', to: '/head/stock-requests' },
+          { icon: PackageCheck, accent: 4, count: stage('ready_for_approval'), label: 'stock requests ready to sign off', to: '/head/stock-requests' },
           { icon: Clock, accent: 'low', count: stale, label: 'requests open for over 3 days', to: '/head/stock-requests' },
         ]
   }, [requestsQ.data, approvalsQ.data, isSupervisor])
@@ -177,9 +177,9 @@ export default function FacilityDashboard() {
         subtitle={<>{districtName ? `${districtName} District · ` : ''}{dataUpdatedAt ? <RefreshedAgo at={dataUpdatedAt} /> : 'Loading…'}</>}
         actions={isSupervisor && (
           <>
-            <Link to="/facility/workers" className={buttonClasses({ variant: 'secondary' })}>Workers</Link>
+            <Link to="/facility/workers" className={buttonClasses({ variant: 'secondary' })}>Vaccinators</Link>
             <Link to="/facility/approvals" className={buttonClasses({ variant: 'secondary' })}>Thresholds</Link>
-            <Link to="/facility/record-stock" className={buttonClasses()}>Record delivery</Link>
+            <Link to="/facility/record-stock" className={buttonClasses()}>Stock Requests</Link>
           </>
         )}
       />
@@ -238,7 +238,7 @@ export default function FacilityDashboard() {
                   </div>
                   <div className="flex items-center justify-between gap-3 mt-1.5">
                     <StatusBadge status={r.status} />
-                    <p className="text-xs text-text-muted">{r.recordedAt ? `Recorded ${timeAgo(r.recordedAt)}` : 'Never recorded'}</p>
+                    <p className="text-xs text-text-muted">{r.recordedAt ? `Recorded ${timeAgo(r.recordedAt)}` : 'Not updated yet'}</p>
                   </div>
                 </div>
               )}

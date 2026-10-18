@@ -15,7 +15,7 @@ export const STATUS_CONFIG = {
     gaugeHex: '#2F9E66',
   },
   no_data: {
-    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-chip', label: 'Stock Not Updated',
+    dot: 'bg-secondary', text: 'text-text-muted', bg: 'bg-surface-chip', label: 'Not updated',
     gaugeHex: '#9AA39C',
   },
 }
@@ -72,7 +72,8 @@ const TONE = {
 }
 
 export const WORKFLOW_STATUS = {
-  awaiting_both:       { tone: 'warning', label: 'Awaiting sent & received' },
+  submitted:           { tone: 'warning', label: 'Open' },
+  awaiting_both:      { tone: 'warning', label: 'Awaiting sent & received' },
   awaiting_sent:       { tone: 'warning', label: 'Awaiting sent' },
   awaiting_received:   { tone: 'info',    label: 'Awaiting received' },
   figures_differ:      { tone: 'danger',  label: 'Figures differ' },
@@ -85,6 +86,14 @@ export const WORKFLOW_STATUS = {
   approved:            { tone: 'success', label: 'Approved' },
   rejected:            { tone: 'danger',  label: 'Rejected' },
 }
+
+export const APPROVAL_TYPES = {
+  stock_correction: 'Stock correction',
+  threshold_change: 'Threshold change',
+}
+export const approvalTypeLabel = (type) => APPROVAL_TYPES[type] ?? String(type ?? '').replace(/_/g, ' ')
+// A cancelled approval was withdrawn by its requester (the button says Withdraw).
+export const approvalStatusLabel = (status) => (status === 'cancelled' ? 'Withdrawn' : workflowStatusConfig(status).label)
 
 export function workflowStatusConfig(status) {
   const s = WORKFLOW_STATUS[status]

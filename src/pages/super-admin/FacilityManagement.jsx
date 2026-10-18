@@ -223,7 +223,7 @@ export default function SuperAdminFacilityManagement() {
       badge={<Badge type={row.isActive ? 'active' : 'inactive'} />}
       meta={[
         { label: 'Stock', value: <StatusBadge status={statusOf(row)} /> },
-        { label: 'Supervisor', value: row.facilitySupervisorName ?? 'Unstaffed' },
+        { label: 'Facility Supervisor', value: row.facilitySupervisorName ?? 'Unstaffed' },
       ]}
       footnote={activeNote(row)}
       actions={actions(row, { withView: true })}
@@ -244,7 +244,7 @@ export default function SuperAdminFacilityManagement() {
         </div>
       ),
     },
-    { key: 'supervisor', label: 'Supervisor', render: (row) => row.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
+    { key: 'supervisor', label: 'Facility Supervisor', render: (row) => row.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
     { key: 'stock', label: 'Stock', render: (row) => <StatusBadge status={statusOf(row)} /> },
     {
       key: 'isActive', label: 'Account',
@@ -287,7 +287,7 @@ export default function SuperAdminFacilityManagement() {
                     { label: 'Facility', value: (f) => f.name },
                     { label: 'District', value: (f) => districtMap[f.districtId] ?? f.districtName },
                     { label: 'Union council', value: (f) => f.ucName },
-                    { label: 'Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
+                    { label: 'Facility Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
                     { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
                     { label: 'Account', value: (f) => (f.isActive ? 'Active' : 'Inactive') },
                     { label: 'Last activity', value: (f) => (f.lastActivityAt ? formatDate(f.lastActivityAt) : '') },

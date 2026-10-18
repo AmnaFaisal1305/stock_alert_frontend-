@@ -12,6 +12,7 @@ import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { displayVaccineName } from '../../lib/vaccineNames'
 import { localDateStr, toLocalDateStr, formatDate } from '../../lib/format'
 import { ROLE_LABELS } from '../../lib/navigation'
+import { approvalTypeLabel } from '../../lib/status'
 import { OPEN_STAGES, vaccineSummary } from '../../lib/stockRequests'
 import { useAuth } from '../../context/AuthContext'
 import { useChartTheme } from '../../hooks/useChartTheme'
@@ -338,7 +339,7 @@ export default function Analytics() {
       .map((r) => ({
         month:     fmtMonth(r.month),
         Completed: r.completed || 0,
-        Partial:   r.partially_fulfilled || 0,
+        'Partially fulfilled': r.partially_fulfilled || 0,
         Open:      r.submitted || 0,
         Declined:  r.declined || 0,
       }))
@@ -349,7 +350,7 @@ export default function Analytics() {
     for (const row of requests) tt[row.status] = (tt[row.status] || 0) + row.count
     return [
       { name: 'Completed', value: tt.completed,           key: 'completed' },
-      { name: 'Partial',   value: tt.partially_fulfilled, key: 'partial'   },
+      { name: 'Partially fulfilled', value: tt.partially_fulfilled, key: 'partial'   },
       { name: 'Open',      value: tt.submitted,           key: 'open'      },
       { name: 'Declined',  value: tt.declined,            key: 'declined'  },
       { name: 'Cancelled', value: tt.cancelled,           key: 'cancelled' },
@@ -363,7 +364,7 @@ export default function Analytics() {
     if (!row) return []
     return [
       { name: 'Completed', value: row.completed || 0,           key: 'completed' },
-      { name: 'Partial',   value: row.partially_fulfilled || 0, key: 'partial'   },
+      { name: 'Partially fulfilled', value: row.partially_fulfilled || 0, key: 'partial'   },
       { name: 'Open',      value: row.submitted || 0,           key: 'open'      },
       { name: 'Declined',  value: row.declined || 0,            key: 'declined'  },
       { name: 'Cancelled', value: row.cancelled || 0,           key: 'cancelled' },
@@ -457,7 +458,7 @@ export default function Analytics() {
   // ── Column definitions ────────────────────────────────────────────────────
   const stockSummaryColumns = [
     { key: 'vaccineName',  label: 'Vaccine',                             render: (r) => <span className="font-medium">{r.vaccineName}</span> },
-    { key: 'received',     label: 'Received (opening + new)',            align: 'right', render: (r) => r.received || muted('—') },
+    { key: 'received',     label: 'Received (vials, opening + new)',            align: 'right', render: (r) => r.received || muted('—') },
     { key: 'dosesGiven',   label: 'Doses Given (to patients)',           align: 'right', render: (r) => r.dosesGiven || muted('—') },
     { key: 'wasted',       label: 'Wasted (discarded vials)',            align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
     { key: 'wasteRate',    label: 'Waste % (wasted ÷ received)',        align: 'right',
@@ -467,21 +468,21 @@ export default function Analytics() {
         return <span className={cls}>{r.wasteRate}%</span>
       }
     },
-    { key: 'adjustments',  label: 'Adjustments (net corrections)', align: 'right',
+    { key: 'adjustments',  label: 'Adjustments (net vials)', align: 'right',
       render: (r) => {
         if (r.adjustments === 0) return muted('—')
         return <span className={`font-medium ${r.adjustments > 0 ? 'text-success-dark' : 'text-danger-dark'}`}>{r.adjustments > 0 ? `+${r.adjustments}` : `−${Math.abs(r.adjustments)}`}</span>
       }
     },
-    { key: 'inStore',      label: 'In Store (cold chain store)',        align: 'right', render: (r) => r.inStore      || muted('—') },
-    { key: 'withWorkers',  label: 'With Workers (assigned, not used)', align: 'right', render: (r) => r.withWorkers  || muted('—') },
-    { key: 'stockLeft',    label: 'Stock Left (in store + workers)',   align: 'right', render: (r) => <span className="font-medium">{r.stockLeft || 0}</span> },
+    { key: 'inStore',      label: 'In Store (vials in cold chain store)',        align: 'right', render: (r) => r.inStore      || muted('—') },
+    { key: 'withWorkers',  label: 'With Vaccinators (vials assigned, not used)', align: 'right', render: (r) => r.withWorkers  || muted('—') },
+    { key: 'stockLeft',    label: 'Stock Left (doses, in store + vaccinators)',   align: 'right', render: (r) => <span className="font-medium">{r.stockLeft || 0}</span> },
   ]
 
   const requestColumns = [
     { key: 'month', label: 'Month', render: (r) => <span className="font-medium">{fmtMonth(r.month)}</span> },
     { key: 'completed', label: 'Completed', align: 'right', render: (r) => toned(r.completed, 'text-success-dark') },
-    { key: 'partially_fulfilled', label: 'Partial', align: 'right', render: (r) => toned(r.partially_fulfilled, 'text-warning-dark') },
+    { key: 'partially_fulfilled', label: 'Partially fulfilled', align: 'right', render: (r) => toned(r.partially_fulfilled, 'text-warning-dark') },
     { key: 'submitted', label: 'Open', align: 'right', render: (r) => r.submitted || muted(0) },
     { key: 'cancelled', label: 'Cancelled', align: 'right', render: (r) => muted(r.cancelled || 0) },
     { key: 'declined', label: 'Declined', align: 'right', render: (r) => toned(r.declined, 'text-danger-dark') },
@@ -489,7 +490,7 @@ export default function Analytics() {
 
   const approvalsColumns = [
     { key: 'facilityName', label: 'Facility', render: (r) => <span className="font-medium">{r.facilityName}</span> },
-    { key: 'type', label: 'Type', render: (r) => (r.type === 'stock_correction' ? 'Stock correction' : 'Threshold change') },
+    { key: 'type', label: 'Type', render: (r) => approvalTypeLabel(r.type) },
     { key: 'count', label: 'Pending', align: 'right', render: (r) => toned(r.count, 'text-warning-dark') },
   ]
 
@@ -702,7 +703,7 @@ export default function Analytics() {
                   title="Requests by month"
                   subtitle="Status of requests raised each month"
                   className="lg:col-span-2"
-                  legend={[{ label: 'Completed', color: C.completed }, { label: 'Partial', color: C.partial }, { label: 'Open', color: C.open }, { label: 'Declined', color: C.declined }]}
+                  legend={[{ label: 'Completed', color: C.completed }, { label: 'Partially fulfilled', color: C.partial }, { label: 'Open', color: C.open }, { label: 'Declined', color: C.declined }]}
                 >
                   {requestChartData.length === 0 ? <EmptyChart message="No requests in this period" /> : (
                     <ResponsiveContainer width="100%" height={260}>
@@ -712,7 +713,7 @@ export default function Analytics() {
                         <YAxis tick={t.tick} tickLine={false} axisLine={false} allowDecimals={false} width={32} />
                         <ReTooltip content={<ChartTooltip />} cursor={cursor} />
                         <Bar dataKey="Completed" stackId="a" fill={C.completed} maxBarSize={30} isAnimationActive={false} />
-                        <Bar dataKey="Partial"   stackId="a" fill={C.partial}   maxBarSize={30} isAnimationActive={false} />
+                        <Bar dataKey="Partially fulfilled"   stackId="a" fill={C.partial}   maxBarSize={30} isAnimationActive={false} />
                         <Bar dataKey="Open"      stackId="a" fill={C.open}      maxBarSize={30} isAnimationActive={false} />
                         <Bar dataKey="Declined"  stackId="a" fill={C.declined}  radius={[3, 3, 0, 0]} maxBarSize={30} isAnimationActive={false} />
                       </BarChart>
@@ -810,7 +811,7 @@ export default function Analytics() {
           {activeTab === 'approvals' && (
             <div className="flex flex-col gap-5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <StatCard label="Pending" icon={Clock} accent={totalPending > 0 ? 'low' : 5} value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for a facility head' : 'Nothing waiting'} />
+                <StatCard label="Pending" icon={Clock} accent={totalPending > 0 ? 'low' : 5} value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for the Facility Head' : 'Nothing waiting'} />
                 <StatCard label="Stock corrections" icon={ClipboardCheck} accent={1} value={approvalTotals.corrections} subtitle="Pending" />
                 <StatCard label="Threshold changes" icon={SlidersHorizontal} accent={2} value={approvalTotals.thresholds} subtitle="Pending" />
               </div>

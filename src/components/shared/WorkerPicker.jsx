@@ -9,10 +9,10 @@ export default function WorkerPicker({ workers, value, onChange, meta }) {
   return (
     <div className="flex flex-col gap-3">
       {workers.length > 5 && (
-        <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search workers…" className="sm:w-full" />
+        <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search vaccinators…" className="sm:w-full" />
       )}
-      <div role="radiogroup" aria-label="Worker" className="flex flex-col gap-1">
-        {shown.length === 0 && <p className="text-sm text-text-muted px-1 py-2">No workers match “{q}”.</p>}
+      <div role="radiogroup" aria-label="Vaccinator" className="flex flex-col gap-1">
+        {shown.length === 0 && <p className="text-sm text-text-muted px-1 py-2">No vaccinators match “{q}”.</p>}
         {shown.map((w) => {
           const label = w.name ?? w.email
           const active = w.id === value
@@ -32,7 +32,7 @@ export default function WorkerPicker({ workers, value, onChange, meta }) {
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-text truncate capitalize">{label}</span>
-                <span className="block text-xs text-text-muted truncate">{meta?.(w) ?? 'Facility worker'}</span>
+                <span className="block text-xs text-text-muted truncate">{meta?.(w) ?? 'Vaccinator'}</span>
               </span>
             </button>
           )

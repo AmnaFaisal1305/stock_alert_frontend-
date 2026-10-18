@@ -6,6 +6,22 @@
 
 ## Where things stand
 
+### Naming pass (2026-10-18)
+- **One label per backend value**, from the lib helpers. No backend or DB value changed. The table is in `BACKEND_REQUESTS.md` §4, and the rule is in `CLAUDE.md` › Avoid these patterns.
+  - `facility_worker` → **Vaccinator** (sidebar "Vaccinators", Audit tab, pickers, columns).
+  - `no_data` → **Not updated**.
+  - Bare "Supervisor" columns → Facility / UC / District Supervisor.
+  - "delivery" → stock request; the "Request sent" dialog → "Request raised".
+  - "Partial" / "Close short" → Partially fulfilled.
+  - Cancelled approvals → **Withdrawn**.
+  - "Approval approved" → Change approved; `EDIT_FACILITY_VACCINE` labelled.
+  - "Facility override" / "Reset to Global" → Custom / Reset to default.
+  - Doses per vial is spelled one way; Analytics columns carry their units.
+- **New helpers:** `ROLE_LABELS_PLURAL` (navigation.js); `APPROVAL_TYPES`, `approvalTypeLabel()`, `approvalStatusLabel()` and `submitted → Open` (status.js). The KPI and status lists on the dashboards now read `statusConfig().label` instead of hardcoded copies.
+- **Kept on purpose:** URLs (`/worker/*`, `/facility/workers`, `/facility/record-stock`), Form B's government wording ("Medical Officer / In-charge", "Requisition"), and the Stock Register entry types.
+- **Checked in the browser** (read-only), as the facility supervisor and the observer: dashboards, Approvals history (Withdrawn), Assign Vials, Audit Log, Users role chips, Facilities.
+  - **Not checked:** dark mode, the Head / UC / district / worker screens.
+
 - **Branch:** `main` holds everything and is pushed. The last feature commit is `d0cf06c` (Rounds 38–39). No open branches.
 - **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`):
   - Everything they list through Round 39 is built.
@@ -46,7 +62,7 @@
   - Phone width in light mode.
   - The Assign Vials calendar allows 11–18 Oct.
   - **Not checked:** the "expire soon" chip with a real 5-day-old queued entry; dark mode on the register.
-- **Known quirk:** going back a page can lower the page count ("of 4" becomes "of 3"), because only the pages already reached are counted. Without a `total` from the API, this is accepted.
+- **Known quirk:** going back a page can lower the page count ("of 4" becomes "of 3"), because only the pages already reached are counted. This is fixed once the API sends `total` (`BACKEND_REQUESTS.md` §1).
 
 ### Verified against production, bulk status, housekeeping (2026-10-19)
 All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call.
@@ -147,8 +163,9 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 | Issue | Where | Notes |
 |---|---|---|
-| New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
-| Audit Log: cancelled-request rows may lack vaccines | Audit Log | With server paging, the matching "request raised" row is often on another page. "Request #" still shows the full chain. |
+| New-tab 401 | Auth | **Cause found:** the session cookie is cross-site (`vercel.app` is a public suffix), so browsers that block third-party cookies drop it. No frontend race. Fix = same-site proxy, waiting on `BACKEND_REQUESTS.md` §2 (no cookie `Domain`, trust proxy for the IP limit). Then: add `{ "source": "/api/(.*)", "destination": "https://smart-stock-alert-be.vercel.app/api/$1" }` **before** the SPA rewrite in `vercel.json`, and set `VITE_API_URL` to empty in the Vercel project env (`.env.production` is gitignored). Test on a preview first: sign in, new tab, `/session` 200, then again with third-party cookies blocked. |
+| Audit Log: cancelled-request rows may lack vaccines | Audit Log | Frontend reads `details.items` on `STOCK_REQUEST_CANCEL` when present (falls back to the create row on the page). Waiting on `BACKEND_REQUESTS.md` §3; older rows stay as they are. |
+| Stock Register page count / entry-type filter | Stock Register | Built: chips (All / Received / Record / Stock Correction → `kind`) and a fixed "of N" from `total`. Both appear only once the response has `total` (`BACKEND_REQUESTS.md` §1). Checked with a faked `total`. |
 | Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
 
 ### Not yet tested
@@ -181,8 +198,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 **Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
-1. **Tell the backend developer** that Rounds 38–39 are adopted; `BACKEND_REQUESTS.md` has nothing open. When their next round arrives, drop the docs into `docs/`, adopt them, then delete them again.
-2. **Stock Register:** if the client misses filtering by entry type, ask the backend for a `kind` param. If the shrinking page count bothers anyone, ask for a `total`.
+1. **Send `BACKEND_REQUESTS.md` §1–§4 to the backend developer:** `kind` + `total`, cookie and proxy readiness, cancel-row items, wording and the two questions. When their round arrives, drop the docs into `docs/`, adopt them, then delete them again.
+2. **After §2 is confirmed:** deploy the same-site proxy (see the Open issues row), test on a preview, then on production. After the vaccine-name answer, delete whichever map is dead (`vaccineNames.js` or the English groups in `AssignVials.jsx`).
 3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone:
    - Push: use "Send test".
    - Offline: an airplane-mode cold start, then Assign + Day End, then reconnect. This also covers the no-token replay through `CSRF_INVALID`, which has not been re-run since Round 39.

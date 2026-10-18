@@ -211,7 +211,7 @@ export default function DistrictManagement() {
         badge={<Badge type={row.isActive ? 'active' : 'inactive'} />}
         meta={[
           { label: 'Stock', value: <StatusBadge status={status} /> },
-          { label: 'Supervisor', value: row.supervisorName ?? '—' },
+          { label: 'District Supervisor', value: row.supervisorName ?? '—' },
           { label: 'Email', value: row.supervisorEmail ?? '—' },
         ]}
         actions={rowActions(row, { withView: true })}
@@ -259,7 +259,7 @@ export default function DistrictManagement() {
                       { label: 'District', value: (d) => d.name },
                       { label: 'Province', value: (d) => d.province ?? 'Sindh' },
                       { label: 'Stock status', value: (d) => statusConfig(districtStatusMap.get(d.id) ?? 'no_data').label },
-                      { label: 'Supervisor', value: (d) => d.supervisorName },
+                      { label: 'District Supervisor', value: (d) => d.supervisorName },
                       { label: 'Supervisor email', value: (d) => d.supervisorEmail },
                       { label: 'Active', value: (d) => (d.isActive ? 'Active' : 'Inactive') },
                       { label: 'Added', value: (d) => formatDate(d.createdAt) },
@@ -282,7 +282,7 @@ export default function DistrictManagement() {
           <Card padding={false}>
             <div className={`hidden sm:grid ${ROW_GRID} gap-6 px-5 py-3 border-b border-surface-border text-xs font-medium text-text-muted`}>
               <span>District</span>
-              <span>Supervisor</span>
+              <span>District Supervisor</span>
               <span>Supervisor email</span>
               <span className="sr-only">Actions</span>
             </div>

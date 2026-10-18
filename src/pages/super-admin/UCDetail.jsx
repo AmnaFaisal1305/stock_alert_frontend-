@@ -21,11 +21,11 @@ import { facilityStatus, statusConfig } from '../../lib/status'
 import { plural } from '../../lib/format'
 
 const KPIS = [
-  { status: 'critical', label: 'Critical',    context: 'Restock now',           icon: AlertTriangle },
-  { status: 'low',      label: 'Low',         context: 'Plan a delivery',       icon: TrendingDown },
-  { status: 'adequate', label: 'Normal',      context: 'Stock is healthy',      icon: CheckCircle2 },
-  { status: 'no_data',  label: 'Not updated', context: 'No stock recorded yet', icon: HelpCircle },
-]
+  { status: 'critical', context: 'Restock now',           icon: AlertTriangle },
+  { status: 'low',      context: 'Plan a stock request',  icon: TrendingDown },
+  { status: 'adequate', context: 'At or above threshold', icon: CheckCircle2 },
+  { status: 'no_data',  context: 'No stock recorded yet', icon: HelpCircle },
+].map((k) => ({ ...k, label: statusConfig(k.status).label }))
 
 // Per-facility vaccine-line counts, e.g. "2 critical · 1 low · 9 normal".
 function VaccineCounts({ sc = {} }) {
@@ -91,7 +91,7 @@ export default function UCDetail() {
       key: 'name', label: 'Facility',
       render: (f) => <Link to={`/super-admin/facilities/${f.id}`} className="font-medium text-text hover:text-primary hover:underline">{f.name}</Link>,
     },
-    { key: 'supervisor', label: 'Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
+    { key: 'supervisor', label: 'Facility Supervisor', render: (f) => f.facilitySupervisorName ?? <span className="text-text-muted">Unstaffed</span> },
     { key: 'vaccines', label: 'Vaccines', render: (f) => <VaccineCounts sc={f.statusCounts} /> },
     { key: 'status', label: 'Stock', render: (f) => <StatusBadge status={statusOf(f)} /> },
   ]
@@ -152,7 +152,7 @@ export default function UCDetail() {
                 { label: 'Union council', value: () => uc.name },
                 { label: 'Town', value: () => uc.townName },
                 { label: 'District', value: () => uc.districtName },
-                { label: 'Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
+                { label: 'Facility Supervisor', value: (f) => f.facilitySupervisorName ?? 'Unstaffed' },
                 { label: 'Stock status', value: (f) => statusConfig(statusOf(f)).label },
                 { label: 'Critical vaccines', value: (f) => f.statusCounts?.critical ?? 0 },
                 { label: 'Low vaccines', value: (f) => f.statusCounts?.low ?? 0 },

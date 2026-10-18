@@ -19,22 +19,17 @@ import Pagination from '../shared/Pagination'
 import SearchInput from '../shared/SearchInput'
 import StatusBadge from '../shared/StatusBadge'
 import ErrorState from '../shared/ErrorState'
-import { ROLE_LABELS } from '../../lib/navigation'
+import { ROLE_LABELS, ROLE_LABELS_PLURAL } from '../../lib/navigation'
 import { formatDate, formatTime, plural } from '../../lib/format'
 import { actionLabel, actionOptionsFor, buildContext, parseEntry, isRequestEvent } from '../../lib/auditLog'
 
 const PER_PAGE = 15
 
 // params: what the tab sends to the API; countKey: its badge in countsByActorRole (none = sum).
-const roleTab = (role, label) => ({ value: role, label, params: { actorRole: role }, countKey: role })
-const ROLE_TAB = {
-  super_admin:         roleTab('super_admin', 'Super admin'),
-  district_supervisor: roleTab('district_supervisor', 'District supervisors'),
-  uc_supervisor:       roleTab('uc_supervisor', 'UC supervisors'),
-  facility_head:       roleTab('facility_head', 'Facility heads'),
-  facility_supervisor: roleTab('facility_supervisor', 'Facility supervisors'),
-  facility_worker:     roleTab('facility_worker', 'Facility worker'),
-}
+const roleTab = (role, label = ROLE_LABELS_PLURAL[role]) => ({ value: role, label, params: { actorRole: role }, countKey: role })
+const ROLE_TAB = Object.fromEntries(
+  ['super_admin', 'district_supervisor', 'uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => [r, roleTab(r)]),
+)
 const ADMIN_TABS = ['super_admin', 'district_supervisor', 'uc_supervisor', 'facility_head', 'facility_supervisor', 'facility_worker'].map((r) => ROLE_TAB[r])
 
 // tabs: what each role can browse; scope: an extra Select shown on the listed tabs;
@@ -56,14 +51,14 @@ const ROLE_CONFIG = {
       // A supervisor's scope holds only their own rows and their workers', so the role filter
       // equals "mine" and keeps both badges correct (countsByActorRole ignores actorRole only).
       { ...roleTab('facility_supervisor', 'My actions'), value: 'mine', hideWho: true },
-      { ...roleTab('facility_worker', 'Workers'), value: 'workers' },
+      { ...roleTab('facility_worker'), value: 'workers' },
     ],
     scope: 'worker',
   },
 }
 
 const SUBTITLE = {
-  facility_supervisor: 'What you and your workers recorded',
+  facility_supervisor: 'What you and your vaccinators recorded',
   facility_head: 'Activity at your facility',
   uc_supervisor: 'Activity in your union councils',
   district_supervisor: 'Activity across your district',
@@ -254,8 +249,8 @@ export default function AuditLogView() {
               <div className="w-full sm:w-56">
                 <Select
                   id="audit-scope"
-                  label={config.scope === 'worker' ? 'Worker' : 'Facility'}
-                  options={[{ value: '', label: config.scope === 'worker' ? 'All workers' : 'All facilities' }, ...scopeOptions]}
+                  label={config.scope === 'worker' ? 'Vaccinator' : 'Facility'}
+                  options={[{ value: '', label: config.scope === 'worker' ? 'All vaccinators' : 'All facilities' }, ...scopeOptions]}
                   value={filters.scope}
                   onChange={(e) => set({ scope: e.target.value })}
                 />

@@ -73,7 +73,7 @@ function UCExpandedPanel({ ucId }) {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-text truncate">{f.name}</p>
                 <p className="text-xs text-text-muted truncate tabular-nums">
-                  {f.facilitySupervisorName ?? 'Unstaffed'} · {lines.length ? lines.join(' · ') : 'no stock recorded'}
+                  {f.facilitySupervisorName ?? 'Unstaffed'} · {lines.length ? lines.join(' · ') : 'stock not updated'}
                 </p>
               </div>
               <StatusBadge status={fStatus} />
@@ -393,7 +393,7 @@ function UCsTab({ readOnly }) {
       meta={[
         { label: 'Town', value: uc.townName ?? '—' },
         { label: 'District', value: uc.districtName ?? '—' },
-        { label: 'Supervisor', value: uc.ucSupervisorName ?? 'Not assigned' },
+        { label: 'UC Supervisor', value: uc.ucSupervisorName ?? 'Not assigned' },
       ]}
       actions={ucActions(uc, { withView: true })}
     />

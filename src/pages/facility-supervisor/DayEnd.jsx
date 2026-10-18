@@ -99,8 +99,8 @@ export default function DayEnd() {
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!workerId) { setGlobalError('Please select a worker.'); return }
-    if (assignedVaccines.length === 0) { setGlobalError('Selected worker has no holdings to record.'); return }
+    if (!workerId) { setGlobalError('Please select a vaccinator.'); return }
+    if (assignedVaccines.length === 0) { setGlobalError('Selected vaccinator has no holdings to record.'); return }
     const errs = validateRows()
     if (Object.keys(errs).length) { setRowErrors(errs); return }
     const items = assignedVaccines.map(v => {
@@ -136,7 +136,7 @@ export default function DayEnd() {
     <PageHeader
       breadcrumb="Facility Supervisor › Daily work"
       title="Day End"
-      subtitle="Account for every vial a worker took out: used, returned or wasted"
+      subtitle="Account for every vial a vaccinator took out: used, returned or wasted"
       actions={
         <DatePicker
           id="occurredOn"
@@ -160,7 +160,7 @@ export default function DayEnd() {
       tone="offline"
       title="Saved offline"
       message="This day end is queued and will sync automatically when you’re back online."
-      actionLabel="Record another worker"
+      actionLabel="Record another vaccinator"
       onAction={handleReset}
     />
   )
@@ -168,8 +168,8 @@ export default function DayEnd() {
   if (done) return (
     <ResultPanel
       title="Day end recorded"
-      message={`${selectedWorker?.name ?? 'The worker'}’s holdings are updated and today’s ledger is closed.`}
-      actionLabel="Record another worker"
+      message={`${selectedWorker?.name ?? 'The vaccinator'}’s holdings are updated and today’s ledger is closed.`}
+      actionLabel="Record another vaccinator"
       onAction={handleReset}
     />
   )
@@ -183,9 +183,9 @@ export default function DayEnd() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
           <Card className="lg:sticky lg:top-0">
-            <CardHeader title="1. Worker" className="mb-3" />
+            <CardHeader title="1. Vaccinator" className="mb-3" />
             {workers.length === 0
-              ? <p className="text-sm text-text-muted">No active workers.</p>
+              ? <p className="text-sm text-text-muted">No active vaccinators.</p>
               : <WorkerPicker workers={workers} value={workerId} onChange={(id) => { setWorkerId(id); setInputs({}); setRowErrors({}); setGlobalError('') }} />}
           </Card>
 
@@ -193,7 +193,7 @@ export default function DayEnd() {
             <Card padding={false}>
               <EmptyState
                 icon={ClipboardList}
-                title="Choose a worker to begin"
+                title="Choose a vaccinator to begin"
                 message="Their vaccines appear here so you can enter used, returned and wasted vials."
               />
             </Card>
@@ -202,12 +202,12 @@ export default function DayEnd() {
               <div className="px-4 sm:px-5 py-4 border-b border-surface-border">
                 <CardHeader
                   title={`2. Usage for ${selectedWorker?.name ?? selectedWorker?.email}`}
-                  description="Each row must add up to the vials the worker held."
+                  description="Each row must add up to the vials the vaccinator held."
                 />
               </div>
 
               {assignedVaccines.length === 0 ? (
-                <EmptyState title="No vials assigned to this worker" message="Assign vials first; then come back at the end of the session." />
+                <EmptyState title="No vials assigned to this vaccinator" message="Assign vials first; then come back at the end of the session." />
               ) : (
                 <>
                   <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_5rem_repeat(3,5.5rem)_6rem] gap-3 px-5 py-2.5 border-b border-surface-border text-xs font-medium text-text-muted">
@@ -287,7 +287,7 @@ export default function DayEnd() {
           onConfirm={confirmSubmit}
           title="Check day end before recording"
           rows={[
-            { label: 'Worker', value: selectedWorker?.name ?? selectedWorker?.email },
+            { label: 'Vaccinator', value: selectedWorker?.name ?? selectedWorker?.email },
             { label: 'Date', value: formatDate(occurredOn) },
           ]}
           items={review.items.map(it => ({

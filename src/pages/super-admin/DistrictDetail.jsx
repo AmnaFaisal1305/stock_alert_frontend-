@@ -123,8 +123,8 @@ export default function DistrictDetail() {
             {/* statusCounts counts facility × vaccine lines, not facilities (Round 35). */}
             <StatCard label="Critical" icon={AlertTriangle} accent="critical" value={sc.critical ?? 0} tone={sc.critical ? 'critical' : undefined} subtitle="Vaccine lines to restock now" />
             <StatCard label="Low" icon={TrendingDown} accent="low" value={sc.low ?? 0} tone={sc.low ? 'low' : undefined} subtitle="Vaccine lines to plan for" />
-            <StatCard label="Normal" icon={CheckCircle2} accent="adequate" value={sc.adequate ?? 0} subtitle="Vaccine lines in good stock" />
-            <StatCard label="Not updated" icon={CircleDashed} accent="no_data" value={sc.no_data ?? 0} subtitle="Vaccine lines never recorded" />
+            <StatCard label="Normal" icon={CheckCircle2} accent="adequate" value={sc.adequate ?? 0} subtitle="Vaccine lines at or above threshold" />
+            <StatCard label="Not updated" icon={CircleDashed} accent="no_data" value={sc.no_data ?? 0} subtitle="Vaccine lines with no stock recorded" />
           </div>
 
           {towns.length === 0
