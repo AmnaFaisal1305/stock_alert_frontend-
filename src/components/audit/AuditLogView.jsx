@@ -158,10 +158,6 @@ function ExpandedPanel({ row }) {
       {d.payload?.storeVials != null && (
         <span><span className="font-medium text-text">Requested store vials</span> {d.payload.storeVials}</span>
       )}
-      <span className="sm:col-span-2 pt-2 border-t border-surface-border font-mono break-all text-text-muted">
-        <span className="font-medium text-text not-italic mr-1">ID</span>
-        {row.entityId ?? row.id}
-      </span>
     </div>
   )
 }
