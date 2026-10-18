@@ -47,8 +47,8 @@ export const isNetworkError = (err) => !err?.status
 
 export const pendingCount = () => getQueue().filter((i) => i.status === 'pending').length
 export const failedCount  = () => getQueue().filter((i) => i.status === 'error').length
-// The server refuses occurredOn older than 3 days, so these must sync within about a day.
-export const expiringCount = () => getQueue().filter((i) => i.status === 'pending' && i.payload?.occurredOn && i.payload.occurredOn <= localDateStr(-2)).length
+// The server refuses occurredOn older than 7 days (Round 38), so warn with 2 days to spare.
+export const expiringCount = () => getQueue().filter((i) => i.status === 'pending' && i.payload?.occurredOn && i.payload.occurredOn <= localDateStr(-5)).length
 export const failedItems  = () => getQueue().filter((i) => i.status === 'error')
 
 export function discardFailed() {

@@ -78,7 +78,7 @@ function SyncStatus() {
       <span
         className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-warning-bg text-warning-dark text-xs font-medium"
         role="status"
-        title={expiring > 0 ? 'Entries dated more than 3 days ago are refused. Connect to send them.' : undefined}
+        title={expiring > 0 ? 'Entries dated more than 7 days ago are refused. Connect to send them.' : undefined}
       >
         <WifiOff size={13} strokeWidth={2} aria-hidden="true" />
         Offline{pending > 0 && ` · ${pending} pending`}{expiring > 0 && ` · ${expiring} expire soon`}

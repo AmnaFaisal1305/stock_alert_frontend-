@@ -59,7 +59,7 @@ function groupVaccines(vaccines) {
 }
 
 const todayStr   = () => localDateStr()
-const minDateStr = () => localDateStr(-3)
+const minDateStr = () => localDateStr(-7)
 
 const stepBtn = 'w-11 h-11 rounded-control border border-surface-border bg-surface text-text hover:bg-surface-chip grid place-items-center'
 

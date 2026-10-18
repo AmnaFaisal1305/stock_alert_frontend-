@@ -169,6 +169,7 @@ export default function App() {
                 <Route path="/head/approvals"      element={<FacilityHeadApprovals />} />
                 <Route path="/head/stock-requests" element={<FacilityHeadStockReqs />} />
                 <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
+                <Route path="/head/stock-register" element={<StockRegister />} />
                 <Route path="/head/analytics"      element={<Analytics />} />
                 <Route path="/head/sheet"          element={<FormBSheet />} />
                 <Route path="/head/guide"          element={<DashboardGuide />} />

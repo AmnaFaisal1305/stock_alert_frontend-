@@ -98,7 +98,7 @@ export const NAV = {
         { to: '/head/stock-requests', label: 'Stock Requests', icon: Truck },
       ] },
       { label: 'Team', items: [{ to: '/head/users', label: 'Users', icon: Users }] },
-      records('/head'),
+      { label: 'Records', items: [{ to: '/head/stock-register', label: 'Stock Register', icon: BookOpen }, ...records('/head').items] },
     ],
   },
   facility_worker: {

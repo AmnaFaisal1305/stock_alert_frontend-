@@ -16,7 +16,7 @@ import { displayVaccineName } from '../../lib/vaccineNames'
 import { localDateStr, formatDate, plural } from '../../lib/format'
 
 const todayStr   = () => localDateStr()
-const minDateStr = () => localDateStr(-3)
+const minDateStr = () => localDateStr(-7)
 
 const ZERO = { used: '', returned: '', wasted: '' }
 const FIELDS = [['used', 'Used'], ['returned', 'Returned'], ['wasted', 'Wasted']]

@@ -44,10 +44,9 @@ async function request(method, path, body, { skipAuthRedirect = false, _csrfRetr
       err = { error: res.statusText }
     }
 
-    // Another tab logged in → new CSRF token issued, or the app started offline with no token
-    // (the server answers a missing header with a generic 403). Refresh and retry once.
-    const csrfProblem = !_csrfToken || (typeof err.error === 'string' && err.error.toLowerCase().includes('csrf'))
-    if (res.status === 403 && method !== 'GET' && !_csrfRetried && csrfProblem) {
+    // Another tab logged in → new CSRF token issued, or the app started offline with no token.
+    // Missing or stale token is 403 CSRF_INVALID (Round 39): refresh and retry once.
+    if (res.status === 403 && err.code === 'CSRF_INVALID' && method !== 'GET' && !_csrfRetried) {
       try {
         const session = await request('GET', '/api/auth/session', undefined, { skipAuthRedirect: true })
         if (session?.csrfToken) setCsrfToken(session.csrfToken)
@@ -365,6 +364,14 @@ export async function declineStockRequest(id, reason) {
 // actorRole, actorId, action, facilityId, entityId, from, to (Karachi days, inclusive).
 export async function getAuditLog(params = {}) {
   return request('GET', `/api/audit-log${buildQs(params)}`)
+}
+
+// ── Stock Register (Round 38) ─────────────────────────────────────────────────
+
+// params: vaccineId, from, to (Pakistan days, inclusive), limit (≤ 500), before (previous nextCursor).
+// facility_supervisor / facility_head only; balanceVials is the server's running total.
+export async function getStockRegister(params = {}) {
+  return request('GET', `/api/stock-register${buildQs(params)}`)
 }
 
 // ── Analytics (Sprint 6) ──────────────────────────────────────────────────────

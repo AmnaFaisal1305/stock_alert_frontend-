@@ -1,17 +1,48 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-19 (Rounds 36–37 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
+**Current state as of 2026-10-18 (Rounds 36–38 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
 
 ---
 
 ## Where things stand
 
 - **Branch:** `main` holds everything and is pushed (`f209e03`). No open branches.
-- **Backend docs received 2026-10-19** (`docs/FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`; gitignored copies). Rounds 36–37 reconciled and adopted, see below.
+- **Backend docs** (`FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`, `api-reference.md`, `functionality.md`): Rounds 36–39 adopted, see below. The local copies were deleted once adopted; ask the backend developer for current ones.
 - **Backend's `FRONTEND_PENDING.md` (2026-10-18):** evaluated against the code and answered at the end of `BACKEND_REQUESTS.md`, then deleted. Everything it listed is now built.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
-- **Backend:** latest round adopted is **Round 37**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (it absorbed `STOCK_REGISTER_BACKEND.md` and `BACKEND_OFFLINE_PUSH.md`; done items removed). Open: #1 Stock Register (`GET /api/stock-register`), #2 offline back-dating window and session expiry.
+- **Backend:** latest round adopted is **Round 39**. **`BACKEND_REQUESTS.md` is the single doc for the backend** (done items removed), and nothing is open in it.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). Since 2026-10-18 it allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green still mean status only.
+
+### Round 39 adopted (2026-10-19)
+- **The CSRF retry keys on `code === 'CSRF_INVALID'`.** `api.js` `request()` refreshes `/session` and retries once. The old fallback is gone: retrying on any 403 to a write sent without a token, or on "csrf" in the message.
+- **Checked live by curl:**
+  - A signed-in logout with no header, and one with a wrong header, both returned `403 {"error":"Invalid or missing CSRF token","code":"CSRF_INVALID"}`.
+  - The test session was then logged out properly.
+- **Not re-run:** the offline replay with no token in memory. It uses this same path and depends only on the `code` now.
+
+### Round 38 adopted (2026-10-18)
+- **Stock Register on `GET /api/stock-register`** (`getStockRegister()`). The balance is the server's `balanceVials`, and the client-side balance is gone.
+  - Shown in doses (`vials × dosesPerVial`).
+  - Vaccine and From/To filters go to the API and are kept in the URL.
+  - Cursor pages of 100. The API gives no total, so the page count grows as pages are reached.
+  - The CSV export loops every page.
+  - Columns: Returned removed (the API doesn't list assign/return rows), Worker added (used/wasted rows).
+  - The entry-type chips were removed: the API has no `kind` filter, and page-only chips would mislead.
+- **The Facility Head has the register too:** `/head/stock-register`, under Records in the sidebar.
+- **Offline window 3 → 7 days:**
+  - The Assign Vials and Day End date pickers allow 7 days back.
+  - The top bar's "N expire soon" now counts pending entries 5 or more days old.
+  - The supervisor's session now lasts 7 days idle. No code change was needed, since a `401` only pauses the queue.
+- **Checked in the browser** (RHC Latifabad, read-only):
+  - Every vaccine's newest register balance × doses/vial equals the dashboard `quantity` (BCG 270).
+  - The `TEST-BATCH-1` receipt shows its batch, expiry and manufacturer.
+  - The vaccine and date filters reach the API.
+  - Paging with `before` works (forced to 5 per page in the browser, since the facility has only 94 rows).
+  - The CSV export looped 3 pages for 20 BCG rows.
+  - As the Head: the sidebar link, the "Facility Head › Records" breadcrumb, and `/facility/stock-register` redirecting home.
+  - Phone width in light mode.
+  - The Assign Vials calendar allows 11–18 Oct.
+  - **Not checked:** the "expire soon" chip with a real 5-day-old queued entry.
 
 ### Verified against production, bulk status, housekeeping (2026-10-19)
 All on the RHC Latifabad demo accounts, and each result was confirmed by a read-only API call.
@@ -52,10 +83,10 @@ All on the RHC Latifabad demo accounts, and each result was confirmed by a read-
 Facility supervisors can open the app with no signal and record Assign Vials and Day End. Requests and approvals stay online-only.
 - **Login:** `AuthContext` keeps the signed-in profile in `localStorage` (`sst_offline_user`, the profile only; the cookie is HttpOnly). If `/session` gets no response or a `5xx`, the app reopens as that user without a CSRF token.
 - **Signing out with no signal:** sets `sst_logout_pending`, and the next start ends the server session before showing the login page. Before this, the still-valid cookie signed the user straight back in.
-- **CSRF after an offline start:** `api.js` refreshes `/session` and retries once on a 403 to a write sent without a token, because the server answers a missing header with a generic 403 (`BACKEND_REQUESTS.md` #3). This is what lets the queue send after an offline start.
+- **CSRF after an offline start:** a write sent with no token gets `403 CSRF_INVALID`. `api.js` then refreshes `/session` and retries once (Round 39). This is what lets the queue send after an offline start.
 - **Saved lists:** `main.jsx` saves `vaccines`, `users`, `holdings` and `dashboard` to `localStorage` (`sst_query_cache`) using TanStack's own `dehydrate` / `hydrate`, so no new package. It keeps a query's data even after a failed refetch. Login, logout and a real `401` clear it.
 - **Queued entries count in the holdings:** `lib/queuedHoldings.js` `applyQueued()` (self-check: `node scripts/check-offline-holdings.mjs`), so an offline Day End shows the vials an offline Assign handed out. Holdings come back as worker rows only; no store row is invented.
-- **Expiry warning:** the top bar's offline chip says "N expire soon" for pending entries dated 2 or more days back (the server refuses more than 3).
+- **Expiry warning:** the top bar's offline chip says "N expire soon" for pending entries dated 5 or more days back (the server refuses more than 7 since Round 38).
 - **Font:** the Figtree font is precached, so the cold start keeps the brand font.
 - **Checked on the production build** (preview on port 5173):
   - A cold start offline as the supervisor shows the worker list.
@@ -116,14 +147,12 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 | Issue | Where | Notes |
 |---|---|---|
-| Stock Register balance excludes request receipts | Facility supervisor › Stock Register | Still built from the old `STOCK_ENTRY`/`ADJUST_STOCK` + `STOCK_DAY_END` rows; the first two are no longer written. **Checked live:** the supervisor's audit log returns no `STOCK_REQUEST_APPROVE` / `APPROVAL_APPROVE` rows (the Head's actions), so Round 36's suggestion can't work for this screen, and the approve rows carry no batch fields. Evidence and the ask are in `BACKEND_REQUESTS.md` #1. |
-| Offline: back-dating and session expiry | Assign Vials, Day End | The server refuses entries dated more than 3 days back, and a session idle for 8 h needs a sign-in before the queue sends. Asked in `BACKEND_REQUESTS.md` #2. |
 | New-tab 401 (backend A2) | Auth | Backend can't reproduce. If it recurs, capture the `/api/auth/session` request: status, `Cookie` header sent, browser, third-party cookie setting. |
 | Audit Log: cancelled-request rows may lack vaccines | Audit Log | With server paging, the matching "request raised" row is often on another page. "Request #" still shows the full chain. |
 | Real-phone push and offline unverified | PWA | Backend side is answered and "Send test" exists, but no push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored, written 2026-10-19) on Android and an iPhone with the app on the home screen. **Needs the public production URL** (the domain the backend has as `FRONTEND_URL`); every `*.vercel.app` URL for this project is behind Vercel login. |
 
 ### Not yet tested
-- After the merge with Amna: her Stock Register and the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser.
+- After the merge with Amna: the Cancelled / Declined / Partially fulfilled tabs were checked only by `npm run build`, not in a browser. (Her Stock Register was rewritten for Round 38 and is checked.)
 - The redesigned login: layout checked in light, dark and phone width, but no sign-in was submitted and Google's button was not seen (no `VITE_GOOGLE_CLIENT_ID` in dev).
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels all downloads; CSV content was checked in-page).
 - Push delivery to a real device, and the offline flow on a real phone with a flaky connection (see the Open issues row; the offline replay to production is verified on desktop).
@@ -150,8 +179,8 @@ Facility supervisors can open the app with no signal and record Assign Vials and
 
 **Start of next session:** `git pull`, run `npm install`, and ask for the public production URL (needed for step 3). Nothing is half-done in the working tree.
 
-1. **Send `BACKEND_REQUESTS.md`** to the backend developer (Stock Register endpoint, offline window questions).
-2. **Stock Register:** once #1 is answered, switch `StockRegister.jsx` to the confirmed source (one audit-log call with the action list, or `getStockRegister()`).
+1. **Tell the backend developer** that Rounds 38–39 are adopted; `BACKEND_REQUESTS.md` has nothing open.
+2. **Stock Register:** if the client misses filtering by entry type, ask the backend for a `kind` param.
 3. **Run `docs/phone-test-checklist.md`** on Android and an iPhone: push ("Send test") and offline (airplane-mode cold start, Assign + Day End, reconnect).
-4. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's Stock Register and request tabs, route-guard redirects, and the "N not sent" dialog. (One full write flow is already verified on the demo accounts.)
+4. **QA the merged app** across all 7 roles, light and dark: the redesigned login (a real sign-in, the Google button), Amna's request tabs, route-guard redirects, and the "N not sent" dialog. (One full write flow is already verified on the demo accounts.)
 5. **Dev-only advisories** (postcss, nanoid … in build tools): only with a planned Vite/tooling upgrade, as the fix is breaking.
