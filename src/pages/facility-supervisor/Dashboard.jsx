@@ -17,6 +17,7 @@ import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import Button, { buttonClasses } from '../../components/ui/Button'
 import { STATUS_RANK, statusConfig } from '../../lib/status'
 import { timeAgo, plural, localDateStr } from '../../lib/format'
+import AuditLogWidget from '../../components/audit/AuditLogWidget'
 
 const STATUS_ICON = { critical: AlertTriangle, low: TrendingDown, adequate: CheckCircle2, no_data: CircleDashed }
 
@@ -243,6 +244,8 @@ export default function FacilityDashboard() {
               )}
             />
           </section>
+
+          <AuditLogWidget auditLogPath={isSupervisor ? '/facility/audit-log' : '/head/audit-log'} />
         </>
       )}
     </div>

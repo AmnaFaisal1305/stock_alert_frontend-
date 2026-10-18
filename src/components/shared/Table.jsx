@@ -1,15 +1,21 @@
+import { Fragment } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { SkeletonRows } from './SkeletonCard'
 
 // columns: [{ key, label, render?, align?: 'right' | 'left', className? }]
 // Below sm, rows render as `mobileCard(row)` if given, otherwise as label/value stacks.
 // view="grid" with gridCard(row) renders a responsive card grid instead (entity lists).
+// groups: [{ label, summary, rows }] — renders day-group headers between tbody sections.
+// expandedRow(row) + isExpanded(row) — adds an expand chevron; caller toggles via onRowClick.
 export default function Table({
   columns, rows, emptyMessage = 'No records found.', rowClassName, rowKey, mobileCard,
   loading = false, onRowClick, view = 'list', gridCard,
+  groups, expandedRow, isExpanded, canExpand,
 }) {
   const getKey = (row, i) => (rowKey ? rowKey(row) : (row.id ?? row.vaccineId ?? i))
   const alignCls = (col) => (col.align === 'right' ? 'text-right' : 'text-left')
   const cell = (col, row) => (col.render ? col.render(row) : row[col.key])
+  const colSpan = columns.length + (expandedRow ? 1 : 0)
 
   if (view === 'grid' && gridCard) {
     if (loading) {
@@ -47,11 +53,44 @@ export default function Table({
     )
   }
 
+  // Shared row renderer used by both flat and grouped desktop tables.
+  function DesktopRow({ row, i }) {
+    const key = getKey(row, i)
+    const expanded = isExpanded?.(row)
+    return (
+      <Fragment key={key}>
+        <tr
+          onClick={onRowClick ? () => onRowClick(row) : undefined}
+          className={`transition-colors hover:bg-surface-alt ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName ? rowClassName(row) : ''}`}
+        >
+          {columns.map((col) => (
+            <td key={col.key} className={`px-5 py-3.5 align-middle text-text ${alignCls(col)} ${col.className ?? ''}`}>
+              {cell(col, row)}
+            </td>
+          ))}
+          {expandedRow && (!canExpand || canExpand(row)) && (
+            <td className="px-3 py-3.5 align-middle text-text-muted w-8">
+              <ChevronDown size={14} strokeWidth={2} className={`transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`} />
+            </td>
+          )}
+          {expandedRow && canExpand && !canExpand(row) && <td className="w-8" />}
+        </tr>
+        {expanded && expandedRow && (
+          <tr>
+            <td colSpan={colSpan} className="px-5 py-4 bg-surface-alt border-b border-surface-border text-sm">
+              {expandedRow(row)}
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    )
+  }
+
   return (
     <div className="rounded-card border border-surface-border bg-surface overflow-hidden">
       {loading ? (
         <SkeletonRows rows={5} />
-      ) : rows.length === 0 ? (
+      ) : (groups ? groups.every((g) => !g.rows.length) : rows.length === 0) ? (
         <p className="px-6 py-12 text-center text-sm text-text-muted">{emptyMessage}</p>
       ) : (
         <>
@@ -64,28 +103,31 @@ export default function Table({
                       {col.label}
                     </th>
                   ))}
+                  {expandedRow && <th className="w-8" />}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-border">
-                {rows.map((row, i) => (
-                  <tr
-                    key={getKey(row, i)}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={`transition-colors hover:bg-surface-alt ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName ? rowClassName(row) : ''}`}
-                  >
-                    {columns.map((col) => (
-                      <td key={col.key} className={`px-5 py-3.5 align-middle text-text ${alignCls(col)} ${col.className ?? ''}`}>
-                        {cell(col, row)}
+              {groups ? (
+                groups.map((group) => (
+                  <tbody key={group.label} className="divide-y divide-surface-border">
+                    <tr className="bg-surface-alt sticky top-0 z-10">
+                      <td colSpan={colSpan} className="px-5 py-2 text-xs font-semibold text-text-muted border-b border-surface-border">
+                        {group.label}
+                        {group.summary && <span className="font-normal ml-2">· {group.summary}</span>}
                       </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
+                    </tr>
+                    {group.rows.map((row, i) => <DesktopRow key={getKey(row, i)} row={row} i={i} />)}
+                  </tbody>
+                ))
+              ) : (
+                <tbody className="divide-y divide-surface-border">
+                  {rows.map((row, i) => <DesktopRow key={getKey(row, i)} row={row} i={i} />)}
+                </tbody>
+              )}
             </table>
           </div>
 
           <ul className="sm:hidden divide-y divide-surface-border">
-            {rows.map((row, i) => (
+            {(groups ? groups.flatMap((g) => g.rows) : rows).map((row, i) => (
               <li
                 key={getKey(row, i)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}

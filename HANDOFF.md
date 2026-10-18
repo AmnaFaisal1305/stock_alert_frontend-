@@ -15,6 +15,53 @@
   - **Not checked:** the "of N" paging on real data (95 rows is one page; it was checked with a faked `total`), and a new Round 40 cancel row (this needs a write).
 - **Proxy:** the backend kept `SameSite=None` on purpose and trusts one proxy hop. The IP check passed (the rewrite passes the real client IP), the backend **approved going live**, and `ip` is gone from `/api/health` again. Going live is on our side: see the Open issues row.
 
+### Audit Log — rich facility supervisor view (2026-10-18, session 17)
+
+Every tab whose `actorRole` is `facility_supervisor` now shows an enriched view with category chips, one-sentence summaries, worker name, store impact, flags, day grouping, expandable rows, a request thread modal, an attention strip, category filter chips, and a hide-session toggle. The enrichment is entirely client-side; no new API calls.
+
+**What was added / changed:**
+
+| File | Change |
+|---|---|
+| `src/lib/auditLog.js` | `getCategory(action)` → `'Stock movement' \| 'Request' \| 'Approval' \| 'Day end' \| 'Forms' \| 'Session'`; `computeFlags(entry, ctx)` → flag array; `formatAuditEntry(entry, ctx)` → rich display object; `buildContext()` extended with `entriesByEntityId` (Map) and `dayEndsByWorkerDate` (Set) for cross-page flag logic |
+| `src/hooks/useAllAuditPages.js` | New hook — follows `nextCursor` up to `cap` pages (default 10 × 15 = 150 rows); cached under `['audit-log-all', params]`; used for flags, the attention strip, the thread modal, and CSV export |
+| `src/components/shared/Table.jsx` | New `groups` prop (day-grouped `<tbody>` sections with sticky headers); new `expandedRow(row)` + `isExpanded(row)` props (chevron + expanded panel row) |
+| `src/components/audit/AuditLogView.jsx` | Rich columns when `activeTab.params?.actorRole === 'facility_supervisor'`; day groups; expandable `ExpandedPanel`; `RequestThreadModal` (co-located, uses `useAllAuditPages({ entityId })`); `AuditAttentionStrip` (inline, uses `onClick` not route links); category `FilterChips`; hide-session toggle; enhanced CSV (one row per vaccine item, all pages); rich mobile cards |
+| `src/components/audit/AuditLogWidget.jsx` | New — compact dashboard widget: last 5 non-session events as one-line summaries, top 3 flag items as clickable bullets; uses its own `getAuditLog` query |
+| `src/pages/facility-supervisor/Dashboard.jsx` | `<AuditLogWidget>` appended below the stock table; `isSupervisor` gates the `auditLogPath` prop |
+| `src/lib/auditLog.test.js` | 11 Vitest unit tests for `formatAuditEntry` (all passing) |
+| `src/lib/auditLogHelpers.js` | Deleted — was untracked, never imported |
+
+**Rich view trigger:** `activeTab.params?.actorRole === 'facility_supervisor'`. Covers: Facility Supervisor "My actions" tab, Super Admin / Observer "Facility Supervisors" tab, District / UC / Facility Head "Facility Supervisors" tab. The Vaccinators tab is untouched.
+
+**Flags computed client-side:**
+
+| Flag | Rule |
+|---|---|
+| `short_delivery` | Received vials < requested vials per vaccine (needs CREATE entry in loaded set) |
+| `expiry_soon` | `expiryDate` ≤ received date on `STOCK_REQUEST_RECEIVED` |
+| `pending_stale` | `APPROVAL_REQUEST` with `status=pending`, age > 24 h (amber) or > 72 h (red) |
+| `awaiting_received` | `status=awaiting_both` + a RECEIVED entry exists for same `entityId` + age > 24 h |
+| `backdated` | `details.occurredOn` date ≠ `toLocalDateStr(createdAt)` |
+| `post_dayend_assign` | `STOCK_ASSIGN` where `occurredOn` date already has a `STOCK_DAY_END` for the same `workerId` in the loaded set |
+
+All flags are skipped when the required entries are not in the loaded set (no guessing).
+
+**storeImpact (physical store movement only):**
+- `+N` → `STOCK_REQUEST_RECEIVED`, `STOCK_RECEIVE`
+- `−N` → `STOCK_ASSIGN`
+- null for everything else (requests, approvals, day end, session)
+
+**Known limitations:**
+- `entry.status` is the entity's *current* state, not state-at-event-time. "Now: Completed" can appear on a CREATED row if the request already closed.
+- "Short by N" and `awaiting_received` require cross-page entries to be in the loaded set (same date/filter window). If the CREATE row is on a different page and past the 10-page cap, the flag is silently skipped.
+- No LOGIN events in the API — session tab shows only LOGOUT.
+- `post_dayend_assign` needs `details.workerId` and `details.occurredOn` on the assign entry. Older entries without these are skipped.
+
+**Aligned with the naming pass and Round 40 when merged (2026-10-19):** the rich view's text follows the one-label-per-value rule: "Vaccinator" (column, "Unknown vaccinator"), "Partially fulfilled" instead of "Closed short", approval types from `approvalTypeLabel()`, and "Withdrawn" for a withdrawn approval's status badges. Summaries for cancel, decline and close-short read `details.items` first (Round 40) and fall back to the create row. The dashboard widget now loads the user list, so vaccinators show by name instead of "Unknown". `npm test` runs her 11 tests plus 4 for these changes (15 pass). Checked in the browser as Sadia: the rich table, the attention strip, the widget.
+
+**Not checked in the browser by Amna** (no live credentials available during her session). The build passes clean.
+
 ### Naming pass (2026-10-18)
 - **One label per backend value**, from the lib helpers. No backend or DB value changed. The rule is in `CLAUDE.md` › Avoid these patterns.
   - `facility_worker` → **Vaccinator** (sidebar "Vaccinators", Audit tab, pickers, columns).
