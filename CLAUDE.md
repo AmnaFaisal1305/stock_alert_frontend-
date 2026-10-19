@@ -224,7 +224,7 @@ Sub-panels (e.g. `DistrictExpandedPanel`) are co-located in the same file as the
 
 `StockRegister.jsx` (routes `/facility/stock-register` and `/head/stock-register`) reads `GET /api/stock-register` via `getStockRegister()` (Round 38). The balance is the server's `balanceVials`, which matches the dashboard; never recompute it. The API answers in vials, and the screen shows doses (`vials × dosesPerVial`). Vaccine, date and entry-type filters go to the API (`kind`, Round 40) and live in the URL (`type`; "Record" sends `used,wasted`). Pages use `nextCursor` → `before`, the page count is `ceil(total / 100)` from the response's `total`, and the CSV export loops every page. The query key sits under `['audit-log', 'register', …]` so the existing stock-mutation invalidations refresh it. Assign/return rows are not listed.
 
-The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/action/date/scope go to the API, pages use `nextCursor` → `before`, tab badges come from `counts=true` (`countsByActorRole`).
+The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/action/date/scope go to the API, pages use `nextCursor` → `before`, tab badges come from `counts=true` (`countsByActorRole`). The API returns 100 rows when `limit` is omitted (Round 41), so anything needing every row (CSV export) uses `getAllAuditLog()`.
 
 ### UI component layers
 

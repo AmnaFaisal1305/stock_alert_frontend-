@@ -6,7 +6,7 @@
 import { Fragment, useState, useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { X, AlertTriangle } from 'lucide-react'
-import { getAuditLog, getVaccines, getUsers, getFacilities } from '../../lib/api'
+import { getAuditLog, getAllAuditLog, getVaccines, getUsers, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import Select from '../ui/Select'
 import DatePicker from '../ui/DatePicker'
@@ -659,9 +659,9 @@ export default function AuditLogView() {
   ]
 
   // Rich export: expands multi-vaccine rows into one row per vaccine item.
-  function richExportRows() {
-    const exportCtx = allCtx ?? ctx
-    const all = allPagesQ.data?.length ? allPagesQ.data : pageRows
+  async function richExportRows() {
+    const all = await getAllAuditLog(params)
+    const exportCtx = buildContext(all, vaccineData?.vaccines, userData?.users)
     const expanded = []
     for (const l of all) {
       const $f = formatAuditEntry(l, exportCtx)
@@ -676,7 +676,7 @@ export default function AuditLogView() {
   }
 
   async function standardExportRows() {
-    const all = (await getAuditLog(params)).auditLog ?? []
+    const all = await getAllAuditLog(params)
     const exportCtx = buildContext(all, vaccineData?.vaccines, userData?.users)
     return all.map((l) => ({ ...l, $p: parseEntry(l, exportCtx) }))
   }

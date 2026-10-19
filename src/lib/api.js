@@ -56,7 +56,8 @@ async function request(method, path, body, { skipAuthRedirect = false, _csrfRetr
       return request(method, path, body, { skipAuthRedirect, _csrfRetried: true })
     }
 
-    const error = new Error(err.error ?? 'Request failed')
+    const message = err.error ?? 'Request failed'
+    const error = new Error(err.requestId ? `${message}. Reference: ${err.requestId}` : message)
     error.status = res.status
     error.fields = err.fields ?? null
     error.body = err
@@ -368,6 +369,18 @@ export async function declineStockRequest(id, reason) {
 // actorRole, actorId, action, facilityId, entityId, from, to (Karachi days, inclusive).
 export async function getAuditLog(params = {}) {
   return request('GET', `/api/audit-log${buildQs(params)}`)
+}
+
+// Every row the filters match: the API pages at 100 by default (Round 41), so follow nextCursor at 500.
+export async function getAllAuditLog(params = {}) {
+  const rows = []
+  let before
+  do {
+    const res = await getAuditLog({ ...params, limit: 500, before })
+    rows.push(...(res.auditLog ?? []))
+    before = res.nextCursor
+  } while (before)
+  return rows
 }
 
 // ── Stock Register (Round 38) ─────────────────────────────────────────────────

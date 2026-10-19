@@ -1,10 +1,16 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-19 (Rounds 36–40 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
+**Current state as of 2026-10-20 (Rounds 36–41 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, what is open, and what bites. History is in git (`git log`); the older session-by-session handoff was retired in this cleanup.
 
 ---
 
 ## Where things stand
+
+### Round 41 adopted (2026-10-20)
+- **`GET /api/audit-log` without `limit` now returns 100 rows, not the whole log.** The only caller that relied on that was the Audit Log CSV export (it would have silently lost older rows). New `getAllAuditLog(params)` in `api.js` follows `nextCursor` at `limit=500`; both export paths (standard and rich) use it, so the rich export is no longer capped at the 150 rows of `useAllAuditPages`. Every other call already passes `limit`.
+- **500 errors show their reference.** `request()` appends `. Reference: <requestId>` to the message, so every toast and `ErrorState` carries it.
+- **Tests:** 2 new in `api.test.js` (cursor loop, requestId); `npm test` runs 44.
+- **Not checked in a browser:** the export against real data (compare the CSV row count with `counts=true` `total`), and the 7-role QA pass. The three backend docs were deleted from `docs/` once adopted.
 
 ### Round 40 adopted (2026-10-19)
 - **Stock Register:** the API takes `?kind=` (`received`, `used`, `wasted`, `correction`; `received` also matches `opening`) and returns `total`. The entry-type chips (All / Received / Record / Stock Correction) are always on, "Record" sends `kind=used,wasted`, and the page count is `ceil(total / 100)`, so it no longer shrinks going back. The count sits beside Export.
