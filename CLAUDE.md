@@ -15,11 +15,11 @@ Understand the existing project before changing it. Make the **smallest complete
 ```bash
 npm run dev      # start dev server (port 5173, or 5174 if in use)
 npm run build    # production build — run this to catch import errors
-npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, query strings, push with no service worker)
+npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker)
 npm run preview  # preview the production build locally
 ```
 
-No linter is configured, and the only tests cover three `src/lib` files (`auditLog.js`, `api.js` query strings, `push.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
+No linter is configured, and the only tests cover three `src/lib` files (`auditLog.js`, `api.js`, `push.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
 
 The dev server calls the live backend. `.env.local` (or `.env`) must set `VITE_API_URL=https://smart-stock-alert-be.vercel.app`; without it, calls go to the dev server's own origin and every `/api` request is a 404. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. In **Vercel Production the variable is unset**: `vercel.json` proxies `/api/*` to the backend so the session cookie is first-party (fixes the new-tab 401), and `api.js` defaults `BASE_URL` to `''`. **Never commit `.env` — it is gitignored and contains dev credentials.**
 
@@ -89,16 +89,21 @@ src/
     stockRequests.js   — request stages, filters, pipeline helpers
     auditLog.js        — action labels, entry parser, filters for the shared Audit Log
     csv.js             — CSV export (toCsv, downloadCsv)
+    reports.js         — analytics Excel/PDF reports (Monthly, Vaccinator-wise)
+    offlineQueue.js    — Assign Vials / Day End offline queue (per user, replayed by useOfflineSync)
+    queuedHoldings.js  — applyQueued(): counts queued entries in holdings (self-check: scripts/check-offline-holdings.mjs)
+    push.js            — web push subscribe/unsubscribe (READY_TIMEOUT_MS guards a missing service worker)
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
-    useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters)
+    useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
+    useAllAuditPages.js (follows nextCursor, capped, for the rich Audit Log's flags and thread)
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
     shared/            — composites: Table, Card, StatCard, StatusBadge, FilterChips, PageHeader, EmptyState, ErrorState, ...
     facilities/        — facility table/board/directory shared by the UC and district pages
     stock-requests/    — RequestList shared by the facility, UC and head Stock Requests pages
-    audit/             — AuditLogView: the one Audit Log for every role
-    ui/                — primitives: Button, Input, Textarea, Select, Tabs, Modal, Toast, Badge
+    audit/             — AuditLogView (the one Audit Log for every role), AuditLogWidget (facility dashboard)
+    ui/                — primitives: Button, Input, Textarea, Select, Tabs, Modal, Toast, Badge, ExportButton, ...
     ErrorBoundary.jsx
   pages/
     login/             — LoginPage, ForgotPassword, ResetPassword, HeroCarousel
@@ -111,8 +116,8 @@ src/
     shared/            — FacilityDetail, Analytics, DashboardGuide, FormBSheet (role-aware, several routes)
 public/
   images/              — static assets; kebab-case filenames only, no spaces
-docs/                  — local only (gitignored): design_refrences/ mockups, screenshots/, test-accounts.md
-scripts/               — standalone doc-generation scripts (not part of the build)
+docs/                  — local only (gitignored): design_refrences/ mockups, screenshots/, test-accounts.md, phone-test-checklist.md
+scripts/               — check-offline-holdings.mjs (node self-check, not part of the build)
 ```
 
 ### Naming conventions
@@ -144,7 +149,6 @@ scripts/               — standalone doc-generation scripts (not part of the bu
 - Hardcoded role, status, approval-type or audit-action labels — use `ROLE_LABELS`/`ROLE_LABELS_PLURAL`, `statusConfig().label`, `workflowStatusConfig()`, `approvalTypeLabel()`, `ACTION_LABELS`. One word per backend value: Vaccinator (`facility_worker`), Facility Head, Normal (`adequate`), Not updated (`no_data`), Partially fulfilled, Stock request (never "delivery"), Withdrawn (cancelled approval), Custom / Reset to default (facility thresholds). Show the unit (vials / doses) on every count
 - Duplicate `ROLE_DEFAULTS` — defined in `App.jsx` and `AuthContext.jsx` intentionally
 - Image files with spaces or parentheses in `public/images/`
-- Importing `docx` in application code — it belongs only in `scripts/`
 
 ### Protecting existing functionality
 - Never delete files, environment configs, or dependencies without verifying they are unused.
