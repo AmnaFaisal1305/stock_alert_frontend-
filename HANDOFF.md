@@ -10,7 +10,14 @@
 - **`GET /api/audit-log` without `limit` now returns 100 rows, not the whole log.** The only caller that relied on that was the Audit Log CSV export (it would have silently lost older rows). New `getAllAuditLog(params)` in `api.js` follows `nextCursor` at `limit=500`; both export paths (standard and rich) use it, so the rich export is no longer capped at the 150 rows of `useAllAuditPages`. Every other call already passes `limit`.
 - **500 errors show their reference.** `request()` appends `. Reference: <requestId>` to the message, so every toast and `ErrorState` carries it.
 - **Tests:** 2 new in `api.test.js` (cursor loop, requestId); `npm test` runs 44.
-- **Not checked in a browser:** the export against real data (compare the CSV row count with `counts=true` `total`), and the 7-role QA pass. The three backend docs were deleted from `docs/` once adopted.
+- **Checked in the browser (2026-10-20, dev server against production, read-only):**
+  - As the observer, `getAuditLog({})` returns 100 rows while `counts=true` says 326; `getAllAuditLog({})` returns all 326.
+  - Exporting the Facility Supervisors tab (148 entries) gave 213 CSV rows (one per vaccine item), 144 distinct events by timestamp/actor/action/ref, past the 100-row default. The Super Admins tab (91) matched its badge.
+  - A mocked 500 with `requestId` gives "Internal server error. Reference: req-test-123".
+  - **Smoke pass, light desktop:** every sidebar route for observer, district, UC, facility supervisor, Head and vaccinator loaded with no error state, "undefined"/"NaN" text or horizontal overflow. The alerts seen were stock-status strips.
+  - Dark mode at phone width: only the vaccinator holdings screen was viewed.
+- **Not checked:** super admin account (the observer covers the same screens read-only), dark mode on the other roles, phone width beyond the vaccinator screen, the redesigned login's Google button, and writes. The checks made about 7 `LOGOUT` rows in the production audit log (test sign-outs).
+- The three backend docs were deleted from `docs/` once adopted.
 
 ### Round 40 adopted (2026-10-19)
 - **Stock Register:** the API takes `?kind=` (`received`, `used`, `wasted`, `correction`; `received` also matches `opening`) and returns `total`. The entry-type chips (All / Received / Record / Stock Correction) are always on, "Record" sends `kind=used,wasted`, and the page count is `ceil(total / 100)`, so it no longer shrinks going back. The count sits beside Export.
