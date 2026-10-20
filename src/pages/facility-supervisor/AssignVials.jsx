@@ -260,7 +260,7 @@ export default function AssignVials() {
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-text leading-tight">{v.name}</p>
                               {subtitle && <p className="text-xs text-text-muted mt-0.5 tabular-nums">{subtitle}</p>}
-                              {workerHolders.length > 0 && (
+                              {workerHolders.length > 0 && err && (
                                 <p className="text-xs text-warning-dark mt-0.5">
                                   {workerHolders.map(e => `${e.name} (${e.remaining} vials)`).join(', ')} · No day-end recorded
                                 </p>
