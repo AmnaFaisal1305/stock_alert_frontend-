@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useRef, useState, useSyncExternalStore, useMemo } from 'react'
 import { Minus, Plus, PackagePlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
@@ -109,6 +109,18 @@ export default function AssignVials() {
       .filter(h => h.facilityId === user?.facilityId && !h.workerId)
       .map(h => [h.vaccineId, h.remaining])
   )
+  const workerHoldingsMap = useMemo(() => {
+    const map = new Map()
+    const workerMap = new Map(workers.map(w => [w.id, w.name ?? w.email]))
+    for (const h of (holdingsData?.holdings ?? [])) {
+      if (h.facilityId !== user?.facilityId || !h.workerId || h.remaining <= 0) continue
+      const name = workerMap.get(h.workerId) ?? 'Worker'
+      if (!map.has(h.vaccineId)) map.set(h.vaccineId, [])
+      map.get(h.vaccineId).push({ name, remaining: h.remaining })
+    }
+    return map
+  }, [holdingsData, workers, user?.facilityId])
+
   const selectedWorker = workers.find(w => w.id === workerId)
 
   function step(vaccineId, delta) {
@@ -233,10 +245,11 @@ export default function AssignVials() {
                     </h3>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                       {groupVaccines.map(v => {
-                        const val       = parseInt(vialInputs[v.id] ?? '0', 10) || 0
-                        const available = storeMap.get(v.id)
-                        const err       = rowErrors[v.id]
-                        const subtitle  = [VACCINE_SUBTITLES[v.name], available != null ? `Store ${available}` : null].filter(Boolean).join(' · ')
+                        const val          = parseInt(vialInputs[v.id] ?? '0', 10) || 0
+                        const available    = storeMap.get(v.id)
+                        const err          = rowErrors[v.id]
+                        const subtitle     = [VACCINE_SUBTITLES[v.name], available != null ? `Store ${available}` : null].filter(Boolean).join(' · ')
+                        const workerHolders = workerHoldingsMap.get(v.id) ?? []
                         return (
                           <div
                             key={v.id}
@@ -247,6 +260,11 @@ export default function AssignVials() {
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-text leading-tight">{v.name}</p>
                               {subtitle && <p className="text-xs text-text-muted mt-0.5 tabular-nums">{subtitle}</p>}
+                              {workerHolders.length > 0 && (
+                                <p className="text-xs text-warning-dark mt-0.5">
+                                  {workerHolders.map(e => `${e.name} (${e.remaining} vials)`).join(', ')} · No day-end recorded
+                                </p>
+                              )}
                               {err && <p className="text-xs text-danger-dark mt-0.5">{err}</p>}
                             </div>
                             {/* Stepper: intentional raw controls — 44px touch targets inside a tight tile */}
