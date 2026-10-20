@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
-import { WifiOff, Sun, Moon, Menu, RefreshCw, AlertTriangle } from 'lucide-react'
+import { WifiOff, Sun, Moon, Menu, RefreshCw, RotateCw, AlertTriangle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
@@ -160,6 +160,11 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
       {user && (
         <div className="flex items-center gap-1.5 sm:gap-2">
           <SyncStatus />
+
+          {/* The installed PWA has no browser reload control. */}
+          <button onClick={() => window.location.reload()} className={`${iconBtn} lg:hidden`} aria-label="Refresh" title="Refresh">
+            <RotateCw size={18} strokeWidth={1.75} />
+          </button>
 
           <button
             onClick={toggle}

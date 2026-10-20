@@ -8,11 +8,14 @@
 
 - **Backend:** every round through **41** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend, and nothing is open in it. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
+- **EPI Form B is hidden** (2026-10-20, client request): no sidebar link, and `/…/sheet` redirects to the dashboard. `FormBSheet.jsx` and its API calls are kept; restore the import and the four routes in `App.jsx` and the links in `lib/navigation.js` to bring it back.
+- **Guides** (`DashboardGuide.jsx`) come in English and Urdu (toggle saved in `localStorage` as `sst_guide_lang`). The Urdu was machine-written and needs a native speaker's review. Keep both languages in step with `NAV`.
 - **Production:** https://smart-stock-alert.vercel.app (public, no Vercel login). Every push to `main` deploys it. `main` is the only branch.
 - **Tests:** `npm test` runs 44 Vitest tests (`auditLog.js`, `api.js`, `push.js`). `npm run build` is clean.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). It allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green mean status only.
 
 ### Last verified (2026-10-20, dev server against production, read-only)
+- **Minor changes (Form B hidden, phone login, bilingual guides, refresh button):** no Form B link in the observer, district, UC, facility supervisor, Head and vaccinator sidebars; `/…/sheet` redirects to the dashboard for each of them that had it. Login at 340 px dark and 390 px light has no horizontal scroll; the Google button sizes to the column (`renderButton` width = container, 200–400) and uses `filled_black` in dark mode. Every role's guide renders in English and Urdu (RTL) and lists exactly its sidebar pages. The top bar's Refresh icon (below `lg` only) reloads the page; the guide language survives it.
 - **Round 41:** without `limit` the audit log returns 100 rows (the observer's log has 326). `getAllAuditLog()` returns all 326, and the Audit Log CSV export now covers every page (148-entry tab → 213 rows, one per vaccine item). A mocked `500` with `requestId` shows "Internal server error. Reference: …".
 - **Smoke pass, light desktop:** every sidebar route for the observer, district, UC and facility supervisors, the Head and the vaccinator loaded with no error state, no "undefined"/"NaN" and no horizontal overflow. The vaccinator screen was also checked dark at phone width.
 - Not covered: the super admin login itself, dark mode and phone width on the other roles, writes.
@@ -76,11 +79,14 @@ Test logins: `docs/test-accounts.md` (gitignored, ask Ahmed if missing).
 | Issue | Where | Notes |
 |---|---|---|
 | Real-phone push and offline unverified | PWA | No push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored) on Android and an iPhone with the app on the home screen. |
+| Urdu guide text unreviewed | `DashboardGuide.jsx` | Written by the developer's assistant, not a native speaker. Have it reviewed and correct the `ur` entries. |
+| Refresh drops unsent typing | Top bar | Refresh is a full reload: values typed but not submitted on Assign Vials / Day End are lost (queued offline entries are kept). |
 
 ### Not yet tested
 - Super admin signed in (the observer covered the same screens read-only).
 - Dark mode and phone width on every role except the vaccinator.
-- The redesigned login: a real sign-in was done, but not Google's button (no `VITE_GOOGLE_CLIENT_ID` in dev).
+- The redesigned login: a real sign-in was done. Google's button was rendered in dev (production client ID passed as an env var, not saved), but not the personalised "Sign in as …" variant or a Google sign-in itself.
+- The Refresh button and Urdu guide inside the installed PWA on a real phone.
 - The Cancelled / Declined / Partially fulfilled request tabs, the "N not sent" dialog, and the "expire soon" chip with a real 5-day-old entry.
 - A new Round 40 closing row (cancel / decline / close-short) showing its own vaccines.
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels downloads; CSV content is checked in-page).

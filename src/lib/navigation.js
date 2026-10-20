@@ -1,18 +1,18 @@
 import {
   LayoutDashboard, Map, MapPin, Building2, Users, ScrollText, Syringe, PackagePlus,
-  ClipboardCheck, Truck, BookOpen, Sunset, BarChart3, FileSpreadsheet, LifeBuoy, Activity,
+  ClipboardCheck, Truck, BookOpen, Sunset, BarChart3, LifeBuoy, Activity,
   ShieldCheck, Eye, BadgeCheck,
 } from 'lucide-react'
 
 // Single source for sidebar items, section groups, per-role CTA and scope label.
 // Group `items` with `depth` render as an indented tree (admin geography).
 
-const records = (base, { sheet = true } = {}) => ({
+// EPI Form B is hidden for now (link removed, /…/sheet redirects in App.jsx); FormBSheet.jsx is kept.
+const records = (base) => ({
   label: 'Records',
   items: [
     { to: `${base}/audit-log`, label: 'Audit Log', icon: ScrollText },
     { to: `${base}/analytics`, label: 'Analytics', icon: BarChart3 },
-    ...(sheet ? [{ to: `${base}/sheet`, label: 'EPI Form B', icon: FileSpreadsheet }] : []),
   ],
 })
 
@@ -49,7 +49,7 @@ export const NAV = {
         { to: '/district/facilities', label: 'Facilities', icon: Building2 },
       ] },
       { label: 'Team', items: [{ to: '/district/users', label: 'Users', icon: Users }] },
-      records('/district', { sheet: false }),
+      records('/district'),
     ],
   },
   uc_supervisor: {
@@ -80,7 +80,6 @@ export const NAV = {
       ] },
       { label: 'Records', items: [
         { to: '/facility/stock-register', label: 'Stock Register', icon: BookOpen },
-        { to: '/facility/sheet',          label: 'EPI Form B',     icon: FileSpreadsheet },
         { to: '/facility/audit-log',      label: 'Audit Log',      icon: ScrollText },
         { to: '/facility/analytics',      label: 'Analytics',      icon: BarChart3 },
       ] },
