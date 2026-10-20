@@ -132,11 +132,13 @@ export default function StockRegister() {
 
   return (
     <div>
-      <PageHeader
-        breadcrumb={`${ROLE_LABELS[user.role]} › Records`}
-        title="Stock Register"
-        subtitle="Every movement of the facility’s stock: received, used, returned, wasted and corrected. Figures in doses."
-      />
+      <div className="sticky -top-5 sm:-top-6 z-20 bg-surface-alt -mt-5 pt-5 sm:-mt-6 sm:pt-6">
+        <PageHeader
+          breadcrumb={`${ROLE_LABELS[user.role]} › Records`}
+          title="Stock Register"
+          subtitle="Every movement of the facility’s stock: received, used, returned, wasted and corrected. Figures in doses."
+        />
+      </div>
 
       <div className="flex flex-wrap items-end gap-x-3 gap-y-3 mb-4">
         <div className="w-full sm:w-64">
@@ -178,23 +180,23 @@ export default function StockRegister() {
         <div className="flex flex-col gap-3">
           <Card padding={false}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1360px] text-sm">
+              <table className="w-full min-w-[760px] text-xs">
                 <thead>
                   <tr className="border-b border-surface-border text-xs font-medium text-text-muted">
-                    <th scope="col" className="px-4 py-3 text-left">Date</th>
-                    <th scope="col" className="px-4 py-3 text-left">Vaccine</th>
-                    <th scope="col" className="px-4 py-3 text-left">Entry Type</th>
-                    <th scope="col" className="px-4 py-3 text-left">Vaccinator</th>
-                    <th scope="col" className="px-4 py-3 text-left">Manufacturer</th>
-                    <th scope="col" className="px-4 py-3 text-left">Batch</th>
-                    <th scope="col" className="px-4 py-3 text-right">Doses per vial</th>
-                    <th scope="col" className="px-4 py-3 text-left">Expiry</th>
-                    <th scope="col" className="px-4 py-3 text-right">Received</th>
-                    <th scope="col" className="px-4 py-3 text-right">Used</th>
-                    <th scope="col" className="px-4 py-3 text-right">Wasted</th>
-                    <th scope="col" className="px-4 py-3 text-right">Returned</th>
-                    <th scope="col" className="px-4 py-3 text-right">Stock Correction</th>
-                    <th scope="col" className="px-4 py-3 text-right">Balance</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Date</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Vaccine</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Entry Type</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Vaccinator</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Manufacturer</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Batch</th>
+                    <th scope="col" className="px-1 py-1.5 text-left">Expiry</th>
+                    <th scope="col" className="px-1 py-1.5 text-right whitespace-nowrap">Doses per vial</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Received</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Used</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Wasted</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Returned</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Stock Correction</th>
+                    <th scope="col" className="px-1 py-1.5 text-right">Balance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-border">
@@ -203,35 +205,35 @@ export default function StockRegister() {
                     const corrNeg = row.correction != null && row.correction < 0
                     return (
                       <tr key={row.id} className="hover:bg-surface-alt transition-colors">
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-1 py-1.5 whitespace-nowrap">
                           <span className="text-text">{formatDate(row.date)}</span>
                           <span className="block text-xs text-text-muted">{formatTime(row.date)}</span>
                         </td>
-                        <td className="px-4 py-3 font-medium text-text whitespace-nowrap" dir="auto">{row.vaccineName || dash}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-1 py-1.5 font-medium text-text" dir="auto">{row.vaccineName || dash}</td>
+                        <td className="px-1 py-1.5 whitespace-nowrap">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             row.entryType === 'Received'         ? 'bg-success-bg text-success-dark' :
                             row.entryType === 'Stock Correction' ? 'bg-warning-bg text-warning-dark' :
                                                                    'bg-surface-chip text-text'
                           }`}>{row.entryType}</span>
                         </td>
-                        <td className="px-4 py-3 text-text whitespace-nowrap">{row.workerName ?? dash}</td>
-                        <td className="px-4 py-3 text-text">{row.manufacturer ?? dash}</td>
-                        <td className="px-4 py-3 text-text whitespace-nowrap">{row.batchNo ?? dash}</td>
-                        <td className="px-4 py-3 text-right">{row.dosesPerVial ?? dash}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.expiryDate ? formatDate(row.expiryDate) : dash}</td>
-                        <td className="px-4 py-3 text-right text-success-dark">{num(row.received)}</td>
-                        <td className="px-4 py-3 text-right text-danger-dark">{num(row.used)}</td>
-                        <td className="px-4 py-3 text-right text-warning-dark">{num(row.wasted)}</td>
-                        <td className="px-4 py-3 text-right text-text">{num(row.returned)}</td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-1 py-1.5 text-text">{row.workerName ?? dash}</td>
+                        <td className="px-1 py-1.5 text-text">{row.manufacturer ?? dash}</td>
+                        <td className="px-1 py-1.5 text-text">{row.batchNo ?? dash}</td>
+                        <td className="px-1 py-1.5 whitespace-nowrap">{row.expiryDate ? formatDate(row.expiryDate) : dash}</td>
+                        <td className="px-1 py-1.5 text-right">{row.dosesPerVial ?? dash}</td>
+                        <td className="px-1 py-1.5 text-right text-success-dark">{num(row.received)}</td>
+                        <td className="px-1 py-1.5 text-right text-danger-dark">{num(row.used)}</td>
+                        <td className="px-1 py-1.5 text-right text-warning-dark">{num(row.wasted)}</td>
+                        <td className="px-1 py-1.5 text-right text-text">{num(row.returned)}</td>
+                        <td className="px-1 py-1.5 text-right">
                           {row.correction != null
                             ? <span className={`tabular-nums font-medium ${corrPos ? 'text-success-dark' : corrNeg ? 'text-danger-dark' : 'text-text'}`}>
                                 {corrPos ? `+${row.correction}` : row.correction}
                               </span>
                             : dash}
                         </td>
-                        <td className={`px-4 py-3 text-right font-medium tabular-nums ${row.balance < 0 ? 'text-danger-dark' : 'text-text'}`}>
+                        <td className={`px-1 py-1.5 text-right font-medium tabular-nums ${row.balance < 0 ? 'text-danger-dark' : 'text-text'}`}>
                           {row.balance ?? dash}
                         </td>
                       </tr>
