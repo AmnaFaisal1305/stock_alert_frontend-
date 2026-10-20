@@ -42,13 +42,12 @@ export default function StockEntry() {
     const inHand = rows.filter((r) => r.remaining > 0).sort((a, b) => b.remaining - a.remaining)
     return {
       inHand,
-      usedUp: rows.filter((r) => r.remaining === 0),
       totalRemaining: inHand.reduce((sum, r) => sum + r.remaining, 0),
     }
   }, [data, user?.id])
 
   const updated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
-  const hasRows = inHand.length + usedUp.length > 0
+  const hasRows = inHand.length > 0
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -86,16 +85,6 @@ export default function StockEntry() {
             </Card>
           )}
 
-          {usedUp.length > 0 && (
-            <section aria-labelledby="used-up">
-              <h2 id="used-up" className="text-sm font-medium text-text-muted mb-2 px-1">Used up</h2>
-              <Card padding={false}>
-                <ul className="divide-y divide-surface-border">
-                  {usedUp.map((r) => <HoldingRow key={r.vaccineId} r={r} />)}
-                </ul>
-              </Card>
-            </section>
-          )}
 
           <p className="text-xs text-text-muted text-center">Counts are in vials and refresh every 30 seconds.</p>
         </div>

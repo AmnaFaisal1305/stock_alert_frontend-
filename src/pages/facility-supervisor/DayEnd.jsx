@@ -75,7 +75,7 @@ export default function DayEnd() {
     )
   }, [workerId, holdingsData, queued])
 
-  const assignedVaccines = vaccines.filter(v => holdingsByVaccine[v.id] != null)
+  const assignedVaccines = vaccines.filter(v => holdingsByVaccine[v.id]?.remaining > 0)
 
   function getRow(vaccineId) { return inputs[vaccineId] ?? ZERO }
   const rowSum = (vaccineId) => { const r = getRow(vaccineId); return num(r.used) + num(r.returned) + num(r.wasted) }
@@ -206,7 +206,7 @@ export default function DayEnd() {
               </div>
 
               {assignedVaccines.length === 0 ? (
-                <EmptyState title="No vials assigned to this vaccinator" message="Assign vials first; then come back at the end of the session." />
+                <EmptyState title="No vaccines assigned yet" message="Assign vials first; then come back at the end of the session." />
               ) : (
                 <>
                   <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_5rem_repeat(3,5.5rem)_6rem] gap-3 px-5 py-2.5 border-b border-surface-border text-xs font-medium text-text-muted">
@@ -228,7 +228,7 @@ export default function DayEnd() {
                         <li key={v.id} className={`px-4 sm:px-5 py-3 ${err ? 'bg-danger-bg/40' : ''}`}>
                           <div className="grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_5rem_repeat(3,5.5rem)_6rem] gap-x-3 gap-y-2 items-center">
                             <p className="col-span-2 sm:col-span-1 text-sm font-medium text-text">{v.name}</p>
-                            <p className="text-right text-sm tabular-nums text-text">{h.remaining}<span className="text-xs text-text-muted ml-1">held</span></p>
+                            <p className="text-right text-sm tabular-nums text-text">{h.remaining > 0 ? <>{h.remaining}<span className="text-xs text-text-muted ml-1">held</span></> : <span className="text-text-muted">—</span>}</p>
                             {FIELDS.map(([field, label]) => (
                               <label key={field} className="flex flex-col gap-1">
                                 <span className="sm:hidden text-xs text-text-muted">{label}</span>
