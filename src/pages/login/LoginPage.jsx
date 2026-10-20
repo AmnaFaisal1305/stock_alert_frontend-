@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../hooks/useTheme'
 import * as api from '../../lib/api'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
@@ -92,6 +93,8 @@ export default function LoginPage() {
   const [error,           setError]           = useState('')
   const [googleAvailable, setGoogleAvailable] = useState(!!GOOGLE_CLIENT_ID)
   const [googleError,     setGoogleError]     = useState('')
+  const [gsiReady,        setGsiReady]        = useState(false)
+  const { resolved } = useTheme()
 
   async function handleGoogleCredential({ credential }) {
     setGoogleError('')
@@ -118,10 +121,7 @@ export default function LoginPage() {
     if (!GOOGLE_CLIENT_ID) return
     function initGSI() {
       window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential })
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-signin-btn'),
-        { theme: 'outline', size: 'large', width: 380 }
-      )
+      setGsiReady(true)
     }
     if (window.google?.accounts?.id) { initGSI(); return }
     if (document.getElementById('gsi-script')) return
@@ -132,6 +132,18 @@ export default function LoginPage() {
     script.onload = initGSI
     document.head.appendChild(script)
   }, [])
+
+  // Google draws the button at a fixed pixel width (200–400), so fit it to the column and match the theme.
+  useEffect(() => {
+    const el = document.getElementById('google-signin-btn')
+    if (!gsiReady || !el) return
+    el.innerHTML = ''
+    window.google.accounts.id.renderButton(el, {
+      theme: resolved === 'dark' ? 'filled_black' : 'outline',
+      size: 'large',
+      width: Math.max(200, Math.min(400, el.clientWidth)),
+    })
+  }, [gsiReady, resolved, googleAvailable])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -156,7 +168,7 @@ export default function LoginPage() {
           id="email"
           label="Email"
           type="email"
-          placeholder="you@domain.com"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-11"
@@ -169,6 +181,7 @@ export default function LoginPage() {
             id="password"
             label="Password"
             type="password"
+            placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="h-11"

@@ -55,7 +55,8 @@ const FacilityHeadStockReqs  = lazy(() => import('./pages/facility-head/StockReq
 const UCSupervisorStockReqs  = lazy(() => import('./pages/uc-supervisor/StockRequests'))
 const Analytics              = lazy(() => import('./pages/shared/Analytics'))
 const DashboardGuide         = lazy(() => import('./pages/shared/DashboardGuide'))
-const FormBSheet             = lazy(() => import('./pages/shared/FormBSheet'))
+// EPI Form B is hidden; restore this import and the four /…/sheet routes to bring it back.
+// const FormBSheet          = lazy(() => import('./pages/shared/FormBSheet'))
 
 // ── Page skeleton shown while a lazy chunk loads ──────────────────────────────
 function PageLoader() {
@@ -88,9 +89,10 @@ const PREFIX_ROLES = {
 
 function AuthLayout() {
   const { user, isAuthenticated, bootstrapping } = useAuth()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   if (bootstrapping) return <PageLoader />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  // Remember the target so an emailed or pushed deep link survives the sign-in.
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: pathname + search }} />
   const allowed = PREFIX_ROLES[pathname.split('/')[1]]
   if (allowed && !allowed.includes(user.role)) return <Navigate to={ROLE_DEFAULTS[user.role] ?? '/login'} replace />
   return <Layout><Outlet /></Layout>
@@ -98,8 +100,10 @@ function AuthLayout() {
 
 function LoginRoute() {
   const { isAuthenticated, defaultRoute, bootstrapping } = useAuth()
+  const { state } = useLocation()
   if (bootstrapping) return <PageLoader />
-  if (isAuthenticated) return <Navigate to={defaultRoute} replace />
+  // AuthLayout sends a wrong-role target on to that user's own dashboard.
+  if (isAuthenticated) return <Navigate to={state?.from ?? defaultRoute} replace />
   return <LoginPage />
 }
 
@@ -140,7 +144,7 @@ export default function App() {
                 <Route path="/super-admin/vaccines"         element={<SuperAdminVaccines />} />
                 <Route path="/super-admin/audit-log"        element={<SuperAdminAuditLog />} />
                 <Route path="/super-admin/analytics"       element={<Analytics />} />
-                <Route path="/super-admin/sheet"           element={<FormBSheet />} />
+                <Route path="/super-admin/sheet"           element={<Navigate to="/super-admin/dashboard" replace />} />
                 <Route path="/super-admin/guide"           element={<DashboardGuide />} />
 
                 <Route path="/district/dashboard"      element={<DistrictDashboard />} />
@@ -161,7 +165,7 @@ export default function App() {
                 <Route path="/facility/day-end"      element={<DayEnd />} />
                 <Route path="/facility/audit-log"    element={<FacilityAuditLog />} />
                 <Route path="/facility/analytics"    element={<Analytics />} />
-                <Route path="/facility/sheet"        element={<FormBSheet />} />
+                <Route path="/facility/sheet"        element={<Navigate to="/facility/dashboard" replace />} />
                 <Route path="/facility/guide"        element={<DashboardGuide />} />
 
                 <Route path="/head/dashboard"      element={<FacilityHeadDashboard />} />
@@ -171,7 +175,7 @@ export default function App() {
                 <Route path="/head/audit-log"      element={<FacilityHeadAuditLog />} />
                 <Route path="/head/stock-register" element={<StockRegister />} />
                 <Route path="/head/analytics"      element={<Analytics />} />
-                <Route path="/head/sheet"          element={<FormBSheet />} />
+                <Route path="/head/sheet"          element={<Navigate to="/head/dashboard" replace />} />
                 <Route path="/head/guide"          element={<DashboardGuide />} />
 
                 <Route path="/uc/dashboard"          element={<UCSupervisorDashboard />} />
@@ -181,7 +185,7 @@ export default function App() {
                 <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
                 <Route path="/uc/analytics"          element={<Analytics />} />
-                <Route path="/uc/sheet"              element={<FormBSheet />} />
+                <Route path="/uc/sheet"              element={<Navigate to="/uc/dashboard" replace />} />
                 <Route path="/uc/guide"              element={<DashboardGuide />} />
 
                 <Route path="/worker/stock-entry" element={<StockEntry />} />

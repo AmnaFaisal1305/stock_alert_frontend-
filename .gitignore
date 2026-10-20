@@ -24,12 +24,12 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Tool & Claude configuration
-.claude/
-.impeccable/
+# Tool config: the shared skills (.claude/skills) and design sidecar (.impeccable) are tracked;
+# per-machine files are not.
+.claude/settings.local.json
+.impeccable/*.local.json
+.impeccable/hook.cache.json
+__pycache__/
 
 # Documentation (internal dev docs, not part of the app)
 docs/
-
-# Local reference files (mockups, screenshots)
-reference/
