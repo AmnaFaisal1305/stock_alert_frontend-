@@ -88,9 +88,10 @@ const PREFIX_ROLES = {
 
 function AuthLayout() {
   const { user, isAuthenticated, bootstrapping } = useAuth()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   if (bootstrapping) return <PageLoader />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  // Remember the target so an emailed or pushed deep link survives the sign-in.
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: pathname + search }} />
   const allowed = PREFIX_ROLES[pathname.split('/')[1]]
   if (allowed && !allowed.includes(user.role)) return <Navigate to={ROLE_DEFAULTS[user.role] ?? '/login'} replace />
   return <Layout><Outlet /></Layout>
@@ -98,8 +99,10 @@ function AuthLayout() {
 
 function LoginRoute() {
   const { isAuthenticated, defaultRoute, bootstrapping } = useAuth()
+  const { state } = useLocation()
   if (bootstrapping) return <PageLoader />
-  if (isAuthenticated) return <Navigate to={defaultRoute} replace />
+  // AuthLayout sends a wrong-role target on to that user's own dashboard.
+  if (isAuthenticated) return <Navigate to={state?.from ?? defaultRoute} replace />
   return <LoginPage />
 }
 
