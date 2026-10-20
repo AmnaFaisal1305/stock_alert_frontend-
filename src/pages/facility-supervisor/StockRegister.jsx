@@ -20,13 +20,15 @@ import { formatDate, formatTime, plural } from '../../lib/format'
 
 const PER_PAGE = 100
 
-const ENTRY_TYPE = { opening: 'Received', received: 'Received', used: 'Record', wasted: 'Record', correction: 'Stock Correction' }
+const ENTRY_TYPE = { opening: 'Received', received: 'Received', used: 'Used', wasted: 'Wasted', returned: 'Returned', correction: 'Stock Correction' }
 
 // Entry-type chips → the API's `kind` list (the server counts opening rows as received).
 const TYPE_FILTERS = [
   { value: '',           label: 'All' },
   { value: 'received',   label: 'Received',         kind: 'received' },
-  { value: 'record',     label: 'Record',           kind: 'used,wasted' },
+  { value: 'used',       label: 'Used',             kind: 'used' },
+  { value: 'wasted',     label: 'Wasted',           kind: 'wasted' },
+  { value: 'returned',   label: 'Returned',         kind: 'returned' },
   { value: 'correction', label: 'Stock Correction', kind: 'correction' },
 ]
 
@@ -50,6 +52,7 @@ function toRow(e) {
     received:     doses(e.vials?.in),
     used:         doses(e.vials?.used),
     wasted:       doses(e.vials?.wasted),
+    returned:     doses(e.vials?.returned),
     correction:   doses(e.vials?.correction),
     balance:      doses(e.balanceVials),
   }
@@ -119,6 +122,7 @@ export default function StockRegister() {
     { label: 'Received',         value: (r) => r.received },
     { label: 'Used',             value: (r) => r.used },
     { label: 'Wasted',           value: (r) => r.wasted },
+    { label: 'Returned',         value: (r) => r.returned },
     { label: 'Stock Correction', value: (r) => r.correction != null ? (r.correction > 0 ? `+${r.correction}` : String(r.correction)) : '' },
     { label: 'Balance',          value: (r) => r.balance },
   ]
@@ -131,7 +135,7 @@ export default function StockRegister() {
       <PageHeader
         breadcrumb={`${ROLE_LABELS[user.role]} › Records`}
         title="Stock Register"
-        subtitle="Every movement of the facility’s stock: received, used, wasted and corrected. Figures in doses."
+        subtitle="Every movement of the facility’s stock: received, used, returned, wasted and corrected. Figures in doses."
       />
 
       <div className="flex flex-wrap items-end gap-x-3 gap-y-3 mb-4">
@@ -169,12 +173,12 @@ export default function StockRegister() {
       ) : rows.length === 0 ? (
         hasFilters
           ? <EmptyState framed icon={BookOpen} title="No movements match these filters" message="Try another vaccine or date range." />
-          : <EmptyState framed icon={BookOpen} title="No stock movements recorded yet" message="Entries appear here as stock is received, used, wasted or corrected." />
+          : <EmptyState framed icon={BookOpen} title="No stock movements recorded yet" message="Entries appear here as stock is received, used, returned, wasted or corrected." />
       ) : (
         <div className="flex flex-col gap-3">
           <Card padding={false}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1240px] text-sm">
+              <table className="w-full min-w-[1360px] text-sm">
                 <thead>
                   <tr className="border-b border-surface-border text-xs font-medium text-text-muted">
                     <th scope="col" className="px-4 py-3 text-left">Date</th>
@@ -188,6 +192,7 @@ export default function StockRegister() {
                     <th scope="col" className="px-4 py-3 text-right">Received</th>
                     <th scope="col" className="px-4 py-3 text-right">Used</th>
                     <th scope="col" className="px-4 py-3 text-right">Wasted</th>
+                    <th scope="col" className="px-4 py-3 text-right">Returned</th>
                     <th scope="col" className="px-4 py-3 text-right">Stock Correction</th>
                     <th scope="col" className="px-4 py-3 text-right">Balance</th>
                   </tr>
@@ -218,6 +223,7 @@ export default function StockRegister() {
                         <td className="px-4 py-3 text-right text-success-dark">{num(row.received)}</td>
                         <td className="px-4 py-3 text-right text-danger-dark">{num(row.used)}</td>
                         <td className="px-4 py-3 text-right text-warning-dark">{num(row.wasted)}</td>
+                        <td className="px-4 py-3 text-right text-text">{num(row.returned)}</td>
                         <td className="px-4 py-3 text-right">
                           {row.correction != null
                             ? <span className={`tabular-nums font-medium ${corrPos ? 'text-success-dark' : corrNeg ? 'text-danger-dark' : 'text-text'}`}>
@@ -238,6 +244,7 @@ export default function StockRegister() {
           <Pagination currentPage={page} totalPages={totalPages} maxPage={maxPage} onPageChange={goTo} />
         </div>
       )}
+
     </div>
   )
 }
