@@ -1,12 +1,12 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-20 (backend Round 41 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, how the less obvious pieces work, what is open, and what bites. The round-by-round history is in git (`git log -- HANDOFF.md`).
+**Current state as of 2026-10-21 (backend Round 43 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, how the less obvious pieces work, what is open, and what bites. The round-by-round history is in git (`git log -- HANDOFF.md`).
 
 ---
 
 ## Where things stand
 
-- **Backend:** every round through **41** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend, and nothing is open in it. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
+- **Backend:** every round through **43** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend, and nothing is open in it. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
 - **EPI Form B is hidden** (2026-10-20, client request): no sidebar link, and `/…/sheet` redirects to the dashboard. `FormBSheet.jsx` and its API calls are kept; restore the import and the four routes in `App.jsx` and the links in `lib/navigation.js` to bring it back.
 - **Guides** (`DashboardGuide.jsx`) come in English and Urdu (toggle saved in `localStorage` as `sst_guide_lang`). The Urdu was machine-written and needs a native speaker's review. Keep both languages in step with `NAV`.
@@ -14,7 +14,11 @@
 - **Tests:** `npm test` runs 44 Vitest tests (`auditLog.js`, `api.js`, `push.js`). `npm run build` is clean.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). It allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green mean status only.
 
-### Last verified (2026-10-20, dev server against production, read-only)
+### Last verified (2026-10-21, production)
+- **Stock Register (Round 43 + layout):** entry-type badges now show distinct **Used / Wasted / Returned / Received / Stock Correction** labels (was a single "Record" badge for day-end rows). Returned filter chip and Returned column are live and show real Round 43 `kind: returned` rows. Table fits the viewport without horizontal scroll at normal zoom; the Stock Register heading stays pinned under the top bar while scrolling. "Doses per vial" column sits after Expiry with a non-wrapping header.
+- Not covered: column-header behaviour below `min-w-[760px]` (sub-phone widths), Stock Register on the Facility Head role.
+
+### Previously verified (2026-10-20, dev server against production, read-only)
 - **Minor changes (Form B hidden, phone login, bilingual guides, refresh button):** no Form B link in the observer, district, UC, facility supervisor, Head and vaccinator sidebars; `/…/sheet` redirects to the dashboard for each of them that had it. Login at 340 px dark and 390 px light has no horizontal scroll; the Google button sizes to the column (`renderButton` width = container, 200–400) and uses `filled_black` in dark mode. Every role's guide renders in English and Urdu (RTL) and lists exactly its sidebar pages. The top bar's Refresh icon (below `lg` only) reloads the page; the guide language survives it.
 - **Round 41:** without `limit` the audit log returns 100 rows (the observer's log has 326). `getAllAuditLog()` returns all 326, and the Audit Log CSV export now covers every page (148-entry tab → 213 rows, one per vaccine item). A mocked `500` with `requestId` shows "Internal server error. Reference: …".
 - **Smoke pass, light desktop:** every sidebar route for the observer, district, UC and facility supervisors, the Head and the vaccinator loaded with no error state, no "undefined"/"NaN" and no horizontal overflow. The vaccinator screen was also checked dark at phone width.
