@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, LabelList, Cell,
 } from 'recharts'
-import { FileSpreadsheet, FileText, BarChart2, ChevronDown, X, PackageCheck, Syringe, Trash2, Percent, Clock, ClipboardCheck, SlidersHorizontal } from 'lucide-react'
+import { FileSpreadsheet, FileText, BarChart2, ChevronDown, X, PackageCheck, Syringe, Trash2, Boxes, Clock, ClipboardCheck, SlidersHorizontal } from 'lucide-react'
 import {
   getAnalytics, getDistricts, getUnionCouncils, getFacilities, getStockRequests,
 } from '../../lib/api'
@@ -127,6 +127,24 @@ function EmptyChart({ message = 'No data for this period' }) {
   return <EmptyState icon={BarChart2} title={message} />
 }
 
+function UsageRankList({ title, rows }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-text mb-3">{title}</h3>
+      <ol className="flex flex-col gap-2.5">
+        {rows.map((r, i) => (
+          <li key={r.name} className="flex items-center gap-3">
+            <span className="w-5 h-5 flex-shrink-0 grid place-items-center rounded-full bg-surface-chip text-xs font-medium text-text-muted tabular-nums">{i + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-text" title={r.name}>{r.name}</span>
+            <span className="flex-shrink-0 text-sm font-medium text-text tabular-nums">{r.doses.toLocaleString()}<span className="font-normal text-text-muted"> doses</span></span>
+            <span className="flex-shrink-0 w-20 text-right text-xs text-text-muted tabular-nums">{r.vials.toLocaleString()} vials</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'stockSummary', label: 'Stock Summary'  },
@@ -201,8 +219,9 @@ export default function Analytics() {
   // Non-status series take the categorical palette; request statuses take status hues.
   const C = {
     received:   t.series[0],
-    dosesGiven: t.series[1],
+    used:       t.series[1],
     wasted:     t.series[2],
+    available:  t.series[3],
     remaining:  t.series[0],
     correction: t.series[0],
     threshold:  t.series[1],
@@ -237,19 +256,10 @@ export default function Analytics() {
   }, [movement])
 
   const totals = useMemo(() => ({
-    received:  vaccineMovement.reduce((s, v) => s + v.opening + v.received, 0),
-    dosesGiven: vaccineMovement.reduce((s, v) => s + v.usedDoses, 0),
+    received:  vaccineMovement.reduce((s, v) => s + v.received, 0),
+    used:      vaccineMovement.reduce((s, v) => s + v.used, 0),
     wasted:    vaccineMovement.reduce((s, v) => s + v.wasted, 0),
   }), [vaccineMovement])
-
-  const wastageRate = totals.received > 0
-    ? +((totals.wasted / totals.received) * 100).toFixed(1)
-    : 0
-
-  const wastageTone = wastageRate === 0 ? undefined
-    : wastageRate < 3 ? 'adequate'
-    : wastageRate < 7 ? 'low'
-    : 'critical'
 
   // ── Remaining stock rollup (extended: store + workers) ────────────────────
   const remainingByVaccine = useMemo(() => {
@@ -265,6 +275,11 @@ export default function Analytics() {
       .sort((a, b) => b.doses - a.doses)
       .map((v) => ({ ...v, shortName: abbrev(v.name, 18), fullName: v.name }))
   }, [remaining])
+
+  const availableVials = useMemo(
+    () => remainingByVaccine.reduce((s, v) => s + v.inStore + v.withWorkers, 0),
+    [remainingByVaccine],
+  )
 
   const remainingMap = useMemo(() => {
     const m = {}
@@ -294,14 +309,28 @@ export default function Analytics() {
 
   // ── Chart data ────────────────────────────────────────────────────────────
   const stockFlowChartData = useMemo(() =>
-    vaccineMovement.map((v) => ({
-      name:          abbrev(v.vaccineName),
-      fullName:      v.vaccineName,
-      Received:      v.opening + v.received,
-      'Doses Given': v.usedDoses,
-      Wasted:        v.wasted,
-    }))
+    vaccineMovement.map((v) => {
+      const rem = remainingMap[v.vaccineName]
+      return {
+        name:      abbrev(v.vaccineName),
+        fullName:  v.vaccineName,
+        Received:  v.received,
+        Used:      v.used,
+        Wasted:    v.wasted,
+        Available: rem ? rem.inStore + rem.withWorkers : 0,
+      }
+    })
+  , [vaccineMovement, remainingMap])
+
+  // Antigen usage ranking (by doses administered; vials shown alongside).
+  const usageRanked = useMemo(() =>
+    vaccineMovement
+      .map((v) => ({ name: v.vaccineName, doses: v.usedDoses, vials: v.used }))
+      .sort((a, b) => b.doses - a.doses || b.vials - a.vials)
   , [vaccineMovement])
+
+  const topUsed    = usageRanked.slice(0, 3)
+  const bottomUsed = usageRanked.length > 3 ? usageRanked.slice(-3).reverse() : []
 
   const wastageRateData = useMemo(() =>
     vaccineMovement
@@ -594,11 +623,21 @@ export default function Analytics() {
             <div className="flex flex-col gap-5">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <StatCard label="Received" icon={PackageCheck} accent={1} value={totals.received} subtitle="Vials received (incl. opening)" />
-                <StatCard label="Doses Given" icon={Syringe} accent={2} value={totals.dosesGiven} subtitle="Doses administered" />
-                <StatCard label="Wasted" icon={Trash2} accent={3} value={totals.wasted} subtitle="Vials discarded" />
-                <StatCard label="Waste %" icon={Percent} accent={wastageTone ?? 5} value={`${wastageRate}%`} tone={wastageTone} subtitle="Of all vials received" />
+                <StatCard label="Vials Received" icon={PackageCheck} accent={1} value={totals.received} subtitle="Received from UC (excl. opening)" />
+                <StatCard label="Vials Used" icon={Syringe} accent={2} value={totals.used} subtitle="Administered to patients" />
+                <StatCard label="Vials Wasted" icon={Trash2} accent={3} value={totals.wasted} subtitle="Discarded in administration" />
+                <StatCard label="Vials Available" icon={Boxes} accent={5} value={availableVials} subtitle="Current stock on hand" />
               </div>
+
+              {/* Most / Least used antigen */}
+              {topUsed.length > 0 && (
+                <Card>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                    <UsageRankList title="Most used (Top 3)" rows={topUsed} />
+                    {bottomUsed.length > 0 && <UsageRankList title="Least used (Bottom 3)" rows={bottomUsed} />}
+                  </div>
+                </Card>
+              )}
 
               {/* Chart 1 — Wastage Rate by Vaccine */}
               <ChartCard
@@ -626,8 +665,8 @@ export default function Analytics() {
               {/* Chart 2 — Stock Flow by Vaccine */}
               <ChartCard
                 title="Stock Flow by Vaccine"
-                subtitle="Vials received, doses given and vials wasted per vaccine"
-                legend={[{ label: 'Received', color: C.received }, { label: 'Doses Given', color: C.dosesGiven }, { label: 'Wasted', color: C.wasted }]}
+                subtitle="Vials received, used, wasted and available per vaccine"
+                legend={[{ label: 'Received', color: C.received }, { label: 'Used', color: C.used }, { label: 'Wasted', color: C.wasted }, { label: 'Available', color: C.available }]}
               >
                 {stockFlowChartData.length === 0 ? <EmptyChart /> : (
                   <ResponsiveContainer width="100%" height={295}>
@@ -636,9 +675,10 @@ export default function Analytics() {
                       <XAxis dataKey="name" tick={t.tick} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} interval={0} />
                       <YAxis tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} width={38} />
                       <ReTooltip content={<ChartTooltip nameKey="fullName" />} cursor={cursor} />
-                      <Bar dataKey="Received"     fill={C.received}   radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
-                      <Bar dataKey="Doses Given"  fill={C.dosesGiven} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
-                      <Bar dataKey="Wasted"       fill={C.wasted}     radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Received"  fill={C.received}  radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Used"      fill={C.used}      radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Wasted"    fill={C.wasted}    radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                      <Bar dataKey="Available" fill={C.available} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
