@@ -6,7 +6,7 @@
 
 ## Where things stand
 
-- **Backend:** every round through **43** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend. Open: §1 period balances (opening/closing vials) and §2 `vaccineId` on `GET /api/analytics`. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
+- **Backend:** every round through **43** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend. Open: §1 period balances (stock at start/end of a period) and §2 `vaccineId` on `GET /api/analytics`. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
 - **EPI Form B is hidden** (2026-10-20, client request): no sidebar link, and `/…/sheet` redirects to the dashboard. `FormBSheet.jsx` and its API calls are kept; restore the import and the four routes in `App.jsx` and the links in `lib/navigation.js` to bring it back.
 - **Guides** (`DashboardGuide.jsx`) come in English and Urdu (toggle saved in `localStorage` as `sst_guide_lang`). The Urdu was machine-written and needs a native speaker's review. Keep both languages in step with `NAV`.

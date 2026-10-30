@@ -69,7 +69,7 @@ A generic inventory tool has none of these: the EPI vocabulary and Form B, the U
 ## Evidence on Hand
 
 - **Partner logos:** the login card at `public/images/login-hero.jpeg`.
-- **Data:** production holds **demo data only** until go-live. At go-live the demo districts are wiped and replaced with the real locations, accounts and opening balances.
+- **Data:** production holds **demo data only** until go-live. At go-live the demo districts are wiped and replaced with the real locations and accounts. The pilot starts from zero stock: there is no opening balance; all stock enters through stock requests.
 - **Absences:** no real usage figures, outcomes, testimonials or case studies exist yet. Never invent them.
 
 ## Product Principles

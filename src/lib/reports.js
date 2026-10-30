@@ -54,7 +54,6 @@ export function buildVaccinatorRows(movement) {
 const MONTHLY_COLUMNS = [
   { key: 'month',     label: 'Month' },
   { key: 'vaccine',   label: 'Vaccine' },
-  { key: 'opening',   label: 'Opening (vials)' },
   { key: 'received',  label: 'Received (vials)' },
   { key: 'assigned',  label: 'Assigned (vials)' },
   { key: 'used',      label: 'Used (vials)' },

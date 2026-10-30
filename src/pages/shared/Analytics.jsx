@@ -213,14 +213,14 @@ function UsageRankList({ title, rows, selected, onSelect }) {
 }
 
 // One line that shows the five cards balance: in = out + on hand.
-function BalanceLine({ totals, available, openingBal, balanced, hasPeriodBalances, to }) {
+function BalanceLine({ totals, available, startBal, balanced, hasPeriodBalances, to }) {
   const term = (v, label) => <span className="whitespace-nowrap"><span className="font-medium text-text tabular-nums">{n(v)}</span> {label}</span>
   return (
     <div className={`flex items-start gap-2.5 rounded-control px-3.5 py-2.5 text-xs ${balanced ? 'bg-surface-alt text-text-muted' : 'bg-info-bg text-info-dark'}`}>
       {balanced ? <Scale size={14} strokeWidth={1.75} className="flex-shrink-0 mt-px" aria-hidden="true" /> : <Info size={14} strokeWidth={1.75} className="flex-shrink-0 mt-px" aria-hidden="true" />}
       {balanced ? (
         <p className="leading-relaxed">
-          {openingBal > 0 && <>{term(openingBal, 'on hand at start')} + </>}
+          {startBal > 0 && <>{term(startBal, 'on hand at start')} + </>}
           {term(totals.received, 'received')} + {term(totals.added, 'added')} − {term(totals.deleted, 'deleted')}
           {' = '}
           {term(totals.used, 'used')} + {term(totals.wasted, 'wasted')} + {term(available, hasPeriodBalances ? 'on hand at end' : 'available')}
@@ -276,7 +276,6 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
         const key   = dim === 'facility' ? r.facilityId : dim === 'month' ? r.month : r.workerId
         const label = dim === 'facility' ? r.facilityName : dim === 'month' ? fmtMonth(r.month) : (r.workerName ?? '—')
         const vals = metric === 'correction' ? { Added: r.adjustmentIncrease, Deleted: r.adjustmentDecrease }
-          : metric === 'received' ? { [series[0].key]: (r.received ?? 0) + (r.opening ?? 0) }
           : { [series[0].key]: r[metric] }
         bump(key, label, vals)
       }
@@ -468,12 +467,12 @@ export default function Analytics() {
     const row = (id, name) => (acc[id] ??= {
       id, vaccineName: name,
       received: 0, used: 0, wasted: 0, added: 0, deleted: 0, usedDoses: 0,
-      inStore: 0, withWorkers: 0, doses: 0, openingBal: 0, closingBal: null,
+      inStore: 0, withWorkers: 0, doses: 0, startBal: 0, endBal: null,
     })
     for (const r of movement) {
       const v = row(r.vaccineId, r.vaccineName)
-      // `opening` is the one-time initial stock load, counted as received (BACKEND_REQUESTS.md §1).
-      v.received  += (r.received ?? 0) + (r.opening ?? 0)
+      // The pilot starts from zero stock, so there is no opening load: received is from the UC only.
+      v.received  += r.received ?? 0
       v.used      += r.used ?? 0
       v.wasted    += r.wasted ?? 0
       v.added     += r.adjustmentIncrease ?? 0
@@ -488,12 +487,12 @@ export default function Analytics() {
     }
     for (const b of balances ?? []) {
       const v = row(b.vaccineId, b.vaccineName)
-      v.openingBal += b.openingVials ?? 0
-      v.closingBal  = (v.closingBal ?? 0) + (b.closingVials ?? 0)
+      v.startBal += b.startVials ?? 0
+      v.endBal    = (v.endBal ?? 0) + (b.endVials ?? 0)
     }
     return Object.values(acc)
       .map((v) => {
-        const available = v.closingBal ?? v.inStore + v.withWorkers
+        const available = v.endBal ?? v.inStore + v.withWorkers
         const wasteRate = v.received > 0 ? +((v.wasted / v.received) * 100).toFixed(1) : 0
         return { ...v, available, wasteRate }
       })
@@ -513,10 +512,10 @@ export default function Analytics() {
     const sum = (k) => selectedRows.reduce((s, v) => s + v[k], 0)
     return {
       received: sum('received'), used: sum('used'), wasted: sum('wasted'),
-      added: sum('added'), deleted: sum('deleted'), available: sum('available'), openingBal: sum('openingBal'),
+      added: sum('added'), deleted: sum('deleted'), available: sum('available'), startBal: sum('startBal'),
     }
   }, [selectedRows])
-  const balanced = totals.openingBal + totals.received + totals.added - totals.deleted
+  const balanced = totals.startBal + totals.received + totals.added - totals.deleted
     === totals.used + totals.wasted + totals.available
   const multiFacility = new Set([...movement, ...remaining].map((r) => r.facilityId)).size > 1
 
@@ -885,7 +884,7 @@ export default function Analytics() {
               {/* Stat cards: received ± correction = used + wasted + available */}
               <div className="flex flex-col gap-3" data-tour="analytics-cards">
                 <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
-                  <StatCard label="Vials Received" icon={PackageCheck} accent={1} value={n(totals.received)} subtitle="From UC + opening stock" onClick={() => toggleDrill('received')} active={drill === 'received'} />
+                  <StatCard label="Vials Received" icon={PackageCheck} accent={1} value={n(totals.received)} subtitle="Received from UC" onClick={() => toggleDrill('received')} active={drill === 'received'} />
                   <StatCard
                     label="Stock Correction" icon={ArrowLeftRight} accent={4}
                     value={<><span>{totals.added ? `+${n(totals.added)}` : 0}</span><span className="text-text-muted mx-1.5 text-2xl leading-none">/</span><span>{totals.deleted ? `−${n(totals.deleted)}` : 0}</span></>}
@@ -899,7 +898,7 @@ export default function Analytics() {
                   </div>
                 </div>
                 {(totals.received > 0 || totals.available > 0) && (
-                  <BalanceLine totals={totals} available={totals.available} openingBal={totals.openingBal} balanced={balanced} hasPeriodBalances={!!balances} to={to} />
+                  <BalanceLine totals={totals} available={totals.available} startBal={totals.startBal} balanced={balanced} hasPeriodBalances={!!balances} to={to} />
                 )}
               </div>
 

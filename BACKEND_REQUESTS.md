@@ -13,22 +13,24 @@ Add new requests below as numbered sections. All new parameters should be option
 
 **Why.** The Analytics Stock Summary is getting a fifth card, Stock Correction (Add / Delete), so that its figures reconcile:
 
-`opening balance + received + correction add − correction delete − used − wasted = closing balance`
+`stock at start of period + received + correction add − correction delete − used − wasted = stock at end of period`
+
+The pilot starts from zero stock (no opening balance is ever loaded), so "stock at start" is only the stock carried in from before `from`: zero for a period starting at go-live, non-zero for any later period.
 
 Checked against production on 2026-10-30 (the Observer, default period 2025-11-01 → 2026-10-30): 0 + 1361 + 4 − 9 − 954 − 103 = **299**, which equals the current `remaining` total. It balances only because the default period covers all data and ends today. The frontend can't make it balance for any other period:
 - `remaining` is the **current** balance and ignores `to`, so a period that ends in the past has no closing figure.
-- `movement` holds only entries inside the period, so a period that starts after the first entry has no opening figure.
+- `movement` holds only entries inside the period, so a period that starts after the first entry has no figure for the stock already on hand.
 
 **Ask.** Add a `balances` array, combined with the role scope and the Round 36 location filters, like the other sections:
 
 ```json
 "balances": [{ "facilityId": "uuid", "vaccineId": "uuid", "vaccineName": "string",
-               "openingVials": 0, "closingVials": 0 }]
+               "startVials": 0, "endVials": 0 }]
 ```
 
-- `openingVials`: vials on hand (store + vaccinators) at the start of `from` (Pakistan date). It is the same ledger sum as Form B column B, which `GET /api/sheets/:facilityId` already computes for the 1st of a month, in vials instead of doses.
-- `closingVials`: vials on hand at the end of `to`. When `to` is today it should equal `storeVials + heldVials` from `remaining`.
-- Please also say what `movement.opening` means at facility level: the one-time initial stock load, or something else. The frontend will count it as "received" only if it is the initial load.
+- `startVials`: vials on hand (store + vaccinators) at the start of `from` (Pakistan date). It is the same ledger sum as Form B column B, which `GET /api/sheets/:facilityId` already computes for the 1st of a month, in vials instead of doses.
+- `endVials`: vials on hand at the end of `to`. When `to` is today it should equal `storeVials + heldVials` from `remaining`.
+- `movement.opening` is no longer used by the frontend: the pilot loads no opening stock (confirmed by the client, 2026-10-30).
 
 ## 2. Analytics: `vaccineId` filter (`GET /api/analytics`)
 
