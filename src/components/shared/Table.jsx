@@ -2,7 +2,8 @@ import { Fragment } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { SkeletonRows } from './SkeletonCard'
 
-// columns: [{ key, label, render?, align?: 'right' | 'left', className? }]
+// columns: [{ key, label, render?, align?: 'right' | 'left', className?, group? }]
+// Adjacent columns sharing `group` get one spanning header above their own labels.
 // Below sm, rows render as `mobileCard(row)` if given, otherwise as label/value stacks.
 // view="grid" with gridCard(row) renders a responsive card grid instead (entity lists).
 // groups: [{ label, summary, rows }] — renders day-group headers between tbody sections.
@@ -16,6 +17,7 @@ export default function Table({
   const alignCls = (col) => (col.align === 'right' ? 'text-right' : 'text-left')
   const cell = (col, row) => (col.render ? col.render(row) : row[col.key])
   const colSpan = columns.length + (expandedRow ? 1 : 0)
+  const grouped = columns.some((c) => c.group)
 
   if (view === 'grid' && gridCard) {
     if (loading) {
@@ -97,14 +99,33 @@ export default function Table({
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-surface-border">
-                  {columns.map((col) => (
-                    <th key={col.key} scope="col" className={`px-5 py-3 text-xs font-medium text-text-muted whitespace-nowrap ${alignCls(col)}`}>
-                      {col.label}
-                    </th>
-                  ))}
-                  {expandedRow && <th className="w-8" />}
-                </tr>
+                {grouped ? (
+                  <>
+                    <tr>
+                      {columns.map((col, i) => {
+                        if (!col.group) return <th key={col.key} scope="col" rowSpan={2} className={`px-5 py-3 text-xs font-medium text-text-muted whitespace-nowrap align-bottom border-b border-surface-border ${alignCls(col)}`}>{col.label}</th>
+                        if (columns[i - 1]?.group === col.group) return null
+                        const span = columns.filter((c) => c.group === col.group).length
+                        return <th key={`g-${col.group}`} scope="colgroup" colSpan={span} className="px-5 pt-3 pb-1.5 text-xs font-medium text-text-muted whitespace-nowrap text-center border-b border-surface-border">{col.group}</th>
+                      })}
+                      {expandedRow && <th rowSpan={2} className="w-8 border-b border-surface-border" />}
+                    </tr>
+                    <tr className="border-b border-surface-border">
+                      {columns.filter((c) => c.group).map((col) => (
+                        <th key={col.key} scope="col" className={`px-5 pt-1.5 pb-3 text-xs font-medium text-text-muted whitespace-nowrap ${alignCls(col)}`}>{col.label}</th>
+                      ))}
+                    </tr>
+                  </>
+                ) : (
+                  <tr className="border-b border-surface-border">
+                    {columns.map((col) => (
+                      <th key={col.key} scope="col" className={`px-5 py-3 text-xs font-medium text-text-muted whitespace-nowrap ${alignCls(col)}`}>
+                        {col.label}
+                      </th>
+                    ))}
+                    {expandedRow && <th className="w-8" />}
+                  </tr>
+                )}
               </thead>
               {groups ? (
                 groups.map((group) => (
@@ -137,7 +158,7 @@ export default function Table({
                   <dl className="px-4 py-3.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                     {columns.map((col) => (
                       <div key={col.key} className="contents">
-                        <dt className="text-text-muted text-xs self-center">{col.label}</dt>
+                        <dt className="text-text-muted text-xs self-center">{col.group ? `${col.group} · ${col.label}` : col.label}</dt>
                         <dd className="text-text text-right min-w-0 break-words">{cell(col, row)}</dd>
                       </div>
                     ))}

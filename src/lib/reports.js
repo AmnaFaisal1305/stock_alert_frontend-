@@ -51,8 +51,6 @@ export function buildVaccinatorRows(movement) {
   )
 }
 
-const netAdj = (r) => r.adjustmentIncrease - r.adjustmentDecrease
-
 const MONTHLY_COLUMNS = [
   { key: 'month',     label: 'Month' },
   { key: 'vaccine',   label: 'Vaccine' },
@@ -63,7 +61,8 @@ const MONTHLY_COLUMNS = [
   { key: 'usedDoses', label: 'Used (doses)' },
   { key: 'returned',  label: 'Returned (vials)' },
   { key: 'wasted',    label: 'Wasted (vials)' },
-  { key: 'adj',       label: 'Adj. (net vials)', get: netAdj },
+  { key: 'adjustmentIncrease', label: 'Stock correction: add (vials)' },
+  { key: 'adjustmentDecrease', label: 'Stock correction: delete (vials)' },
 ]
 
 const VACCINATOR_COLUMNS = [
@@ -79,11 +78,12 @@ const VACCINATOR_COLUMNS = [
 const cell = (col, row) => (col.get ? col.get(row) : row[col.key])
 const aoa = (cols, rows) => [cols.map((c) => c.label), ...rows.map((r) => cols.map((c) => cell(c, r)))]
 
-function fileBase(from, to) {
-  return `stock-report_${from || 'start'}_to_${to || 'today'}`
+function fileBase(from, to, vaccineName) {
+  const v = vaccineName ? `_${vaccineName.replace(/[^\w-]+/g, '-')}` : ''
+  return `stock-report${v}_${from || 'start'}_to_${to || 'today'}`
 }
 
-export async function exportAnalyticsExcel({ movement, from, to }) {
+export async function exportAnalyticsExcel({ movement, from, to, vaccineName }) {
   const XLSX = await import('xlsx')
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(
@@ -92,14 +92,14 @@ export async function exportAnalyticsExcel({ movement, from, to }) {
   XLSX.utils.book_append_sheet(
     wb, XLSX.utils.aoa_to_sheet(aoa(VACCINATOR_COLUMNS, buildVaccinatorRows(movement))), 'Vaccinator-wise',
   )
-  XLSX.writeFile(wb, `${fileBase(from, to)}.xlsx`)
+  XLSX.writeFile(wb, `${fileBase(from, to, vaccineName)}.xlsx`)
 }
 
-export async function exportAnalyticsPdf({ movement, from, to }) {
+export async function exportAnalyticsPdf({ movement, from, to, vaccineName }) {
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'landscape' })
-  const title = `Stock Report  ${from || 'start'} → ${to || 'today'}`
+  const title = `Stock Report${vaccineName ? ` · ${vaccineName}` : ''}  ${from || 'start'} → ${to || 'today'}`
 
   doc.setFontSize(13)
   doc.text(title, 14, 14)
@@ -126,5 +126,5 @@ export async function exportAnalyticsPdf({ movement, from, to }) {
     headStyles: { fillColor: [0, 98, 65] },
   })
 
-  doc.save(`${fileBase(from, to)}.pdf`)
+  doc.save(`${fileBase(from, to, vaccineName)}.pdf`)
 }
