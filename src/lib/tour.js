@@ -187,6 +187,7 @@ function pageSteps(user, pathname, lang) {
 
 // ── Running ───────────────────────────────────────────────────────────────────
 let active = null
+let leaving = false // set by stopTour: the tour is ending because the route changed
 
 function run(kind, user, pathname, startAt = 0) {
   const lang = getLang()
@@ -235,12 +236,17 @@ function run(kind, user, pathname, startAt = 0) {
     },
     onDestroyed: () => {
       if (active === d) active = null
+      const leftPage = leaving
+      leaving = false
       if (switching) return
       if (kind === 'welcome') {
+        // Seen even if left by tapping a link (the nav step invites that); the new page's
+        // own tour then comes from TourRunner, so only chain when still on this page.
         const seen = readSeen(user)
         writeSeen(user, { ...seen, welcome: true })
-        if (!seen.pages?.[pathname]) setTimeout(() => run('page', user, pathname), 250)
-      } else {
+        if (!leftPage && !seen.pages?.[pathname]) setTimeout(() => run('page', user, pathname), 250)
+      } else if (!leftPage) {
+        // A page tour abandoned by navigating away shows again on the next visit.
         markPage(user, pathname)
       }
     },
@@ -281,5 +287,7 @@ export async function maybeRunTour(user, pathname, signal) {
 
 // Route changed while a tour was open (e.g. the user tapped a sidebar link): end it quietly.
 export function stopTour() {
-  if (active?.isActive()) active.destroy()
+  if (!active?.isActive()) return
+  leaving = true
+  active.destroy()
 }

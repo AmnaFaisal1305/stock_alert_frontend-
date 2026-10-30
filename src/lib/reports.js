@@ -5,7 +5,6 @@
 
 // All movement figures are in vials except `usedDoses` (doses). See the backend API reference → /api/analytics.
 function sumInto(target, row) {
-  target.opening            += row.opening            ?? 0
   target.received           += row.received           ?? 0
   target.assigned           += row.assigned           ?? 0
   target.used               += row.used               ?? 0
@@ -18,7 +17,7 @@ function sumInto(target, row) {
 
 function emptyBucket() {
   return {
-    opening: 0, received: 0, assigned: 0, used: 0, returned: 0,
+    received: 0, assigned: 0, used: 0, returned: 0,
     wasted: 0, adjustmentIncrease: 0, adjustmentDecrease: 0, usedDoses: 0,
   }
 }

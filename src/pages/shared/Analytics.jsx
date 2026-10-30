@@ -304,7 +304,7 @@ const METRICS = {
 }
 
 // Drill-down: where a card's figure comes from, by facility, month or vaccinator.
-function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t, C, onClose }) {
+function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiFacility, t, C, onClose }) {
   const dims = useMemo(() => {
     if (metric === 'available') return ['facility']
     const d = []
@@ -320,7 +320,7 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
   const series = metric === 'correction'
     ? [{ key: 'Added', color: C.added }, { key: 'Deleted', color: C.deleted }]
     : metric === 'available'
-      ? [{ key: 'In store', color: C.available }, { key: 'With vaccinators', color: C.used }]
+      ? (balances ? [{ key: 'On hand at end', color: C.available }] : [{ key: 'In store', color: C.available }, { key: 'With vaccinators', color: C.used }])
       : [{ key: METRICS[metric].label.replace('Vials ', '').replace(/^./, (c) => c.toUpperCase()), color: C[metric] }]
 
   const rows = useMemo(() => {
@@ -329,7 +329,10 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
       acc[key] ??= { key, name: label, ...Object.fromEntries(series.map((s) => [s.key, 0])) }
       for (const [k, v] of Object.entries(vals)) acc[key][k] += v ?? 0
     }
-    if (metric === 'available') {
+    if (metric === 'available' && balances) {
+      // Same source as the card: stock at the end of the period, not today's.
+      for (const b of balances) bump(b.facilityId, b.facilityName ?? '—', { 'On hand at end': b.endVials })
+    } else if (metric === 'available') {
       for (const r of remaining) bump(r.facilityId, r.facilityName, { 'In store': r.storeVials, 'With vaccinators': r.heldVials })
     } else {
       for (const r of movement) {
@@ -347,7 +350,7 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
       ? list.sort((a, b) => a.key.localeCompare(b.key))
       : list.sort((a, b) => total(b) - total(a)).slice(0, 12)
     return list.map((r) => ({ ...r, shortName: abbrev(r.name, 20) }))
-  }, [metric, dim, movement, remaining]) // eslint-disable-line react-hooks/exhaustive-deps -- series keys follow metric
+  }, [metric, dim, movement, remaining, balances]) // eslint-disable-line react-hooks/exhaustive-deps -- series keys follow metric
 
   const dimLabel = { facility: 'By facility', month: 'By month', vaccinator: 'By vaccinator' }
   const scope = vaccineName ? `${vaccineName} · ` : ''
@@ -435,9 +438,12 @@ export default function Analytics() {
 
   // Location and vaccine live in the URL (shareable, survive refresh).
   const [filters, setFilters] = useUrlFilters(FILTER_DEFAULTS)
-  const reqDistrict   = filters.district || null
-  const reqUc         = filters.uc || null
-  const reqFacilityId = filters.facility || null
+  // Only roles with the location selects read them, so a shared link can't narrow another
+  // role's figures invisibly; a UC needs its district, a facility its UC.
+  const canFilterLocation = ['super_admin', 'observer', 'district_supervisor'].includes(user?.role)
+  const reqDistrict   = (canFilterLocation && filters.district) || null
+  const reqUc         = (reqDistrict && filters.uc) || null
+  const reqFacilityId = (reqUc && filters.facility) || null
   const vaccineId     = filters.vaccine || null
 
   // Requests tab state
@@ -461,7 +467,6 @@ export default function Analytics() {
 
   // Location cascade: narrows every section via the analytics query. Only roles above a UC can
   // list districts/UCs (others get 403), and their scope is already one UC or facility.
-  const canFilterLocation = ['super_admin', 'observer', 'district_supervisor'].includes(user?.role)
   const { data: reqDistrictsData } = useQuery({
     queryKey: ['districts'],
     queryFn:  getDistricts,
@@ -498,6 +503,7 @@ export default function Analytics() {
   // Until the API takes vaccineId (BACKEND_REQUESTS.md §2), the vaccine filter is applied here.
   const vMovement  = useMemo(() => (vaccineId ? movement.filter((r) => r.vaccineId === vaccineId) : movement), [movement, vaccineId])
   const vRemaining = useMemo(() => (vaccineId ? remaining.filter((r) => r.vaccineId === vaccineId) : remaining), [remaining, vaccineId])
+  const vBalances  = useMemo(() => (balances && vaccineId ? balances.filter((b) => b.vaccineId === vaccineId) : balances), [balances, vaccineId])
 
   // Non-status series take the categorical palette; request statuses take status hues.
   const C = {
@@ -554,8 +560,11 @@ export default function Analytics() {
     return Object.values(acc)
       .map((v) => {
         const available = v.endBal ?? v.inStore + v.withWorkers
-        const wasteRate = v.received > 0 ? +((v.wasted / v.received) * 100).toFixed(1) : 0
-        return { ...v, available, wasteRate }
+        // Waste as a share of what could be wasted: stock carried in plus stock received.
+        // null when there was none, so carried-in waste never reads as a clean 0%.
+        const wasteBase = v.startBal + v.received
+        const wasteRate = wasteBase > 0 ? +((v.wasted / wasteBase) * 100).toFixed(1) : (v.wasted > 0 ? null : 0)
+        return { ...v, available, wasteBase, wasteRate }
       })
       .sort((a, b) => a.vaccineName.localeCompare(b.vaccineName))
   }, [movement, remaining, balances])
@@ -615,8 +624,8 @@ export default function Analytics() {
 
   const wastageRateData = useMemo(() =>
     vaccineRows
-      .filter((v) => v.received > 0)
-      .map((v) => ({ id: v.id, name: abbrev(v.vaccineName, 18), fullName: v.vaccineName, rate: v.wasteRate, wasted: v.wasted, received: v.received }))
+      .filter((v) => v.wasteBase > 0)
+      .map((v) => ({ id: v.id, name: abbrev(v.vaccineName, 18), fullName: v.vaccineName, rate: v.wasteRate, wasted: v.wasted, received: v.wasteBase }))
       .sort((a, b) => b.rate - a.rate)
   , [vaccineRows])
 
@@ -811,13 +820,14 @@ export default function Analytics() {
     { key: 'wasted',      label: 'Vials Wasted',   align: 'right', render: (r) => toned(r.wasted, 'text-warning-dark') },
     { key: 'wasteRate',   label: 'Wasted %',       align: 'right',
       render: (r) => {
+        if (r.wasteRate == null) return muted('—')
         if (r.wasteRate === 0) return muted('0%')
         const cls = r.wasteRate >= 7 ? 'text-danger-dark font-medium' : r.wasteRate >= 3 ? 'text-warning-dark font-medium' : 'text-success-dark font-medium'
         return <span className={cls}>{r.wasteRate}%</span>
       },
     },
-    { key: 'added',   group: 'Stock Correction', label: 'Add',    align: 'right', render: (r) => signed(r.added, '+') },
-    { key: 'deleted', group: 'Stock Correction', label: 'Delete', align: 'right', render: (r) => signed(r.deleted, '−') },
+    { key: 'added',   group: 'Stock Correction (vials)', label: 'Add',    align: 'right', render: (r) => signed(r.added, '+') },
+    { key: 'deleted', group: 'Stock Correction (vials)', label: 'Delete', align: 'right', render: (r) => signed(r.deleted, '−') },
   ]
 
   const requestColumns = [
@@ -956,6 +966,7 @@ export default function Analytics() {
                   <StatCard
                     label="Stock Correction" icon={ArrowLeftRight} accent={4}
                     value={<><span>{totals.added ? `+${n(totals.added)}` : 0}</span><span className="text-text-muted mx-1.5 text-2xl leading-none">/</span><span>{totals.deleted ? `−${n(totals.deleted)}` : 0}</span></>}
+                    unit="vials"
                     subtitle="Approved corrections"
                     onClick={() => toggleDrill('correction')} active={drill === 'correction'}
                   />
@@ -976,6 +987,7 @@ export default function Analytics() {
                   metric={drill}
                   movement={vMovement}
                   remaining={vRemaining}
+                  balances={vBalances}
                   vaccineName={selectedVaccineName}
                   multiFacility={multiFacility}
                   t={t}

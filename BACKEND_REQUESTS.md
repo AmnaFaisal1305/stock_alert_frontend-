@@ -24,13 +24,19 @@ Checked against production on 2026-10-30 (the Observer, default period 2025-11-0
 **Ask.** Add a `balances` array, combined with the role scope and the Round 36 location filters, like the other sections:
 
 ```json
-"balances": [{ "facilityId": "uuid", "vaccineId": "uuid", "vaccineName": "string",
+"balances": [{ "facilityId": "uuid", "facilityName": "string", "vaccineId": "uuid", "vaccineName": "string",
                "startVials": 0, "endVials": 0 }]
 ```
 
-- `startVials`: vials on hand (store + vaccinators) at the start of `from` (Pakistan date). It is the same ledger sum as Form B column B, which `GET /api/sheets/:facilityId` already computes for the 1st of a month, in vials instead of doses.
-- `endVials`: vials on hand at the end of `to`. When `to` is today it should equal `storeVials + heldVials` from `remaining`.
-- `movement.opening` is no longer used by the frontend: the pilot loads no opening stock (confirmed by the client, 2026-10-30).
+- `startVials`: vials on hand (store + vaccinators) at the start of `from` (Pakistan date), i.e. the **facility total** of your stock-math table, in vials, over entries with `occurredOn` **before** `from`:
+  `opening + received + returned + adjustment_increase − adjustment_decrease − used − wasted`
+  - `returned` here is the legacy store-side entry type only. **Do not add `worker_returned`** (the day-end return that `movement.returned` reports): like `assigned`, it moves vials inside the facility and doesn't change its total. Adding it would inflate every balance (167 vials on production today).
+  - This is Form B column B's sum (in vials instead of doses), so the two must agree for a period starting on the 1st of a month.
+- `endVials`: the same sum over entries with `occurredOn` **up to and including** `to`. When `to` is today it must equal `storeVials + heldVials` from `remaining`.
+- Corrections count on their `occurredOn`, the same date `movement` buckets them by, so `startVials + movement totals = endVials` for every vaccine.
+- Entries can be back-dated up to 7 days, so a past period's `startVials` / `endVials` may still change for up to a week. That's expected; no snapshotting needed.
+
+**Go-live: no opening balance.** The client confirmed (2026-10-30) that the pilot starts from zero stock; all stock enters through stock requests. Please don't run the go-live `opening` script, or have it load nothing. The frontend no longer reads `movement.opening`.
 
 ## 2. Analytics: `vaccineId` filter (`GET /api/analytics`)
 

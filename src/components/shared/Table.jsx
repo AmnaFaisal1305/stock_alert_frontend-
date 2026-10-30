@@ -105,7 +105,8 @@ export default function Table({
                       {columns.map((col, i) => {
                         if (!col.group) return <th key={col.key} scope="col" rowSpan={2} className={`px-5 py-3 text-xs font-medium text-text-muted whitespace-nowrap align-bottom border-b border-surface-border ${alignCls(col)}`}>{col.label}</th>
                         if (columns[i - 1]?.group === col.group) return null
-                        const span = columns.filter((c) => c.group === col.group).length
+                        let span = 1
+                        while (columns[i + span]?.group === col.group) span++
                         return <th key={`g-${col.group}`} scope="colgroup" colSpan={span} className="px-5 pt-3 pb-1.5 text-xs font-medium text-text-muted whitespace-nowrap text-center border-b border-surface-border">{col.group}</th>
                       })}
                       {expandedRow && <th rowSpan={2} className="w-8 border-b border-surface-border" />}
