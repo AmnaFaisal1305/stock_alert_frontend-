@@ -214,7 +214,7 @@ export default function AssignVials() {
       {header}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
-          <Card className="lg:sticky lg:top-0">
+          <Card className="lg:sticky lg:top-0" data-tour="step-worker">
             <CardHeader title="1. Vaccinator" className="mb-3" />
             {workers.length === 0
               ? <p className="text-sm text-text-muted">No active vaccinators. Ask your Super Admin to add one.</p>
@@ -222,7 +222,7 @@ export default function AssignVials() {
           </Card>
 
           {!workerId ? (
-            <Card padding={false}>
+            <Card padding={false} data-tour="step-vials">
               <EmptyState
                 icon={PackagePlus}
                 title="Choose a vaccinator to begin"
@@ -230,7 +230,7 @@ export default function AssignVials() {
               />
             </Card>
           ) : (
-            <Card padding={false}>
+            <Card padding={false} data-tour="step-vials">
               <div className="px-4 sm:px-5 py-4 border-b border-surface-border">
                 <CardHeader
                   title={`2. Vials for ${selectedWorker?.name ?? selectedWorker?.email}`}

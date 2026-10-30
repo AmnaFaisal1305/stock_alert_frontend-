@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { BellRing, Download, X } from 'lucide-react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import Button from '../ui/Button'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { isPushSupported, enablePush } from '../../lib/push'
+import { useAuth } from '../../context/AuthContext'
 
 const NOTIF_KEY   = 'sst_notif_card'
 const INSTALL_KEY = 'sst_install_card'
@@ -72,6 +74,24 @@ function PromptBanner() {
   )
 }
 
+// First-run tours (lib/tour.js, loaded on demand): welcome once per user on this device, then
+// each page's tour the first time it is opened. A route change ends any open tour.
+function TourRunner() {
+  const { user } = useAuth()
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!user) return
+    const ctrl = new AbortController()
+    import('../../lib/tour').then((m) => {
+      if (ctrl.signal.aborted) return
+      m.stopTour()
+      m.maybeRunTour(user, pathname, ctrl.signal)
+    }).catch(() => { /* offline before the chunk was cached: no tour */ })
+    return () => ctrl.abort()
+  }, [user, pathname])
+  return null
+}
+
 const COLLAPSE_KEY = 'sst_sidebar_collapsed'
 
 export default function Layout({ children }) {
@@ -99,6 +119,7 @@ export default function Layout({ children }) {
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 pt-5 sm:pt-6 pb-10">
           <PromptBanner />
           {children}
+          <TourRunner />
         </main>
       </div>
     </div>

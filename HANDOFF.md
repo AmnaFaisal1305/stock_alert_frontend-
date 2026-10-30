@@ -1,15 +1,17 @@
 # Frontend Handoff — Smart Stock Alert
 
-**Current state as of 2026-10-21 (backend Round 43 adopted).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, how the less obvious pieces work, what is open, and what bites. The round-by-round history is in git (`git log -- HANDOFF.md`).
+**Current state as of 2026-10-30 (backend Round 43 adopted; two analytics requests open).** Read `CLAUDE.md` first: it holds the conventions, architecture, component layers and API constraints. This file covers only what `CLAUDE.md` doesn't: where the project stands, how the less obvious pieces work, what is open, and what bites. The round-by-round history is in git (`git log -- HANDOFF.md`).
 
 ---
 
 ## Where things stand
 
-- **Backend:** every round through **43** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend, and nothing is open in it. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
+- **Backend:** every round through **43** is adopted. `BACKEND_REQUESTS.md` is the one doc for the backend. Open: §1 period balances (opening/closing vials) and §2 `vaccineId` on `GET /api/analytics`. The backend's docs (`api-reference.md`, `FRONTEND_HANDOFF.md`, `FRONTEND_PENDING.md`) are dropped into `docs/` when a round arrives and deleted once adopted; ask the backend developer for current copies.
 - **Client requirements §1–§9:** all built (dashboards per role, stock requests, approvals, Assign Vials / Day End ledger, analytics with Excel/PDF, dashboard guides, EPI Form B, PWA with push and offline queue).
 - **EPI Form B is hidden** (2026-10-20, client request): no sidebar link, and `/…/sheet` redirects to the dashboard. `FormBSheet.jsx` and its API calls are kept; restore the import and the four routes in `App.jsx` and the links in `lib/navigation.js` to bring it back.
 - **Guides** (`DashboardGuide.jsx`) come in English and Urdu (toggle saved in `localStorage` as `sst_guide_lang`). The Urdu was machine-written and needs a native speaker's review. Keep both languages in step with `NAV`.
+- **Guided tour** (`lib/tour.js`, driver.js, 2026-10-30): on a user's first sign-in on a device, a short welcome tour of the shell, then each page's tour the first time it's opened. Page intros come from the Guide's `modules` text; extra steps for Dashboard, Assign Vials, Day End and Analytics, plus generic ones (search, filters, tabs, view, export) found by selector. Missing or off-screen targets are skipped (phones, Observer). Seen-state: `localStorage` `sst_tour_v1:<userId>` (per device, client's choice). Language follows `sst_guide_lang`, switchable inside the popover. Guide → "Take the tour" resets it. Its Urdu needs the same review.
+- **Analytics** (2026-10-30): filters in rows with "All …" options and a Vaccine filter (URL `?vaccine=`, client-side until §2), a Stock Correction card (+add / −delete) and a balance line, table columns Received Vials / Vials Used / Vials Wasted / Wasted % / Stock Correction Add·Delete, click-a-vaccine filtering, legend toggles, card drill-downs. The balance line only balances when the period ends today and starts before the first entry; §1 fixes other periods (the page already reads `balances` when present).
 - **Production:** https://smart-stock-alert.vercel.app (public, no Vercel login). Every push to `main` deploys it. `main` is the only branch.
 - **Tests:** `npm test` runs 44 Vitest tests (`auditLog.js`, `api.js`, `push.js`). `npm run build` is clean.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). It allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green mean status only.
@@ -87,6 +89,7 @@ Test logins: `docs/test-accounts.md` (gitignored, ask Ahmed if missing).
 | Refresh drops unsent typing | Top bar | Refresh is a full reload: values typed but not submitted on Assign Vials / Day End are lost (queued offline entries are kept). |
 
 ### Not yet tested
+- Tour: District and UC supervisors and the super admin (Observer, Facility Supervisor, Head and Vaccinator were walked through on 2026-10-30), the Analytics drill-down on a single-facility role, Excel/PDF with a vaccine selected.
 - Super admin signed in (the observer covered the same screens read-only).
 - Dark mode and phone width on every role except the vaccinator.
 - The redesigned login: a real sign-in was done. Google's button was rendered in dev (production client ID passed as an env var, not saved), but not the personalised "Sign in as …" variant or a Google sign-in itself.

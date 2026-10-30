@@ -13,7 +13,7 @@ export default function PageHeader({ breadcrumb, title, subtitle, actions, size 
           <h1 className={`font-light tracking-tight leading-[1.1] text-text text-balance ${titleCls}`}>{title}</h1>
           {subtitle && <p className="text-text-muted mt-1.5 text-sm">{subtitle}</p>}
         </div>
-        {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
+        {actions && <div className="flex items-center gap-2 flex-wrap" data-tour="page-actions">{actions}</div>}
       </div>
       {children}
     </div>

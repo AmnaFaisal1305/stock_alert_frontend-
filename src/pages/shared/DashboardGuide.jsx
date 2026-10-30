@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Compass } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
 import Tabs from '../../components/ui/Tabs'
+import Button from '../../components/ui/Button'
+import { navFor } from '../../lib/navigation'
 
 // Each role's guide in English and Urdu. Page names stay in English so they match the sidebar.
 // Keep both languages in step with NAV (lib/navigation.js) when a page is added or removed.
@@ -14,7 +18,8 @@ const REGISTER = {
   ur: 'اسٹور میں آنے اور جانے والا ہر وائل، چلتے بیلنس کے ساتھ۔',
 }
 
-const GUIDE = {
+// Also the page intros of the guided tour (lib/tour.js).
+export const GUIDE = {
   super_admin: {
     en: {
       label: 'Super Admin',
@@ -392,8 +397,8 @@ const GUIDE = {
 }
 
 const UI = {
-  en: { breadcrumb: 'Help › Guide', title: (l) => `${l} guide`, responsibilities: 'Your responsibilities', workflow: 'Your workflow', modules: 'Pages in your sidebar' },
-  ur: { breadcrumb: 'مدد › رہنمائی', title: (l) => `${l} کے لیے رہنمائی`, responsibilities: 'آپ کی ذمہ داریاں', workflow: 'کام کا طریقہ', modules: 'سائیڈ بار کے صفحات' },
+  en: { tour: 'Take the tour', breadcrumb: 'Help › Guide', title: (l) => `${l} guide`, responsibilities: 'Your responsibilities', workflow: 'Your workflow', modules: 'Pages in your sidebar' },
+  ur: { tour: 'ٹور شروع کریں', breadcrumb: 'مدد › رہنمائی', title: (l) => `${l} کے لیے رہنمائی`, responsibilities: 'آپ کی ذمہ داریاں', workflow: 'کام کا طریقہ', modules: 'سائیڈ بار کے صفحات' },
 }
 
 const LANG_KEY = 'sst_guide_lang'
@@ -411,6 +416,7 @@ function Section({ title, children }) {
 // Read-mode page: one column at a readable measure, plain headings, no icon tiles.
 export default function DashboardGuide() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [lang, setLang] = useState(() => {
     try { return localStorage.getItem(LANG_KEY) === 'ur' ? 'ur' : 'en' } catch { return 'en' }
   })
@@ -422,13 +428,25 @@ export default function DashboardGuide() {
     try { localStorage.setItem(LANG_KEY, next) } catch { /* private mode */ }
   }
 
+  // Replays the welcome tour and every page's tour, starting from the role's first page.
+  async function takeTour() {
+    const { resetTour } = await import('../../lib/tour')
+    resetTour(user)
+    navigate(navFor(user?.role).groups[0]?.items[0]?.to ?? '/')
+  }
+
   return (
     <div className={`max-w-prose ${lang === 'ur' ? '[&_p]:leading-loose [&_li]:leading-loose [&_dd]:leading-loose' : ''}`} lang={lang} dir={lang === 'ur' ? 'rtl' : 'ltr'}>
       <PageHeader
         breadcrumb={t.breadcrumb}
         title={t.title(g.label)}
         subtitle={g.tagline}
-        actions={<Tabs tabs={LANGS} value={lang} onChange={changeLang} size="sm" label="Language / زبان" />}
+        actions={
+          <>
+            <Tabs tabs={LANGS} value={lang} onChange={changeLang} size="sm" label="Language / زبان" />
+            <Button size="sm" onClick={takeTour}><Compass size={14} strokeWidth={1.75} /> {t.tour}</Button>
+          </>
+        }
       />
 
       <p className="text-base text-text leading-relaxed">{g.purpose}</p>

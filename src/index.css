@@ -171,3 +171,100 @@
     display: none;
   }
 }
+
+/* Guided tour (lib/tour.js): driver.js popover in the app's tokens. Double class beats
+   driver.css, which loads later with the tour chunk. */
+.driver-popover.sst-tour {
+  font-family: inherit;
+  background-color: rgb(var(--card));
+  color: rgb(var(--ink));
+  border-radius: 18px;
+  padding: 20px;
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - 32px));
+  box-shadow: 0 8px 24px rgb(28 33 30 / 0.18), 0 0 0 1px rgb(var(--line));
+}
+.driver-popover.sst-tour .driver-popover-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding-inline-end: 24px;
+}
+.driver-popover.sst-tour .driver-popover-description {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgb(var(--mut));
+}
+.driver-popover.sst-tour[dir="rtl"] .driver-popover-title,
+.driver-popover.sst-tour[dir="rtl"] .driver-popover-description {
+  line-height: 1.9;
+}
+.driver-popover.sst-tour .driver-popover-close-btn {
+  inset-inline-end: 8px;
+  right: auto;
+  top: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: rgb(var(--mut));
+}
+.driver-popover.sst-tour[dir="ltr"] .driver-popover-close-btn { right: 8px; }
+.driver-popover.sst-tour[dir="rtl"] .driver-popover-close-btn { left: 8px; }
+.driver-popover.sst-tour .driver-popover-close-btn:hover,
+.driver-popover.sst-tour .driver-popover-close-btn:focus-visible {
+  color: rgb(var(--ink));
+  background-color: rgb(var(--bg));
+}
+.driver-popover.sst-tour .driver-popover-footer {
+  margin-top: 18px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.driver-popover.sst-tour .driver-popover-progress-text {
+  font-size: 12px;
+  color: rgb(var(--mut));
+  font-variant-numeric: tabular-nums;
+}
+.driver-popover.sst-tour .driver-popover-navigation-btns { gap: 8px; }
+.driver-popover.sst-tour .driver-popover-navigation-btns button + button { margin-left: 0; }
+.driver-popover.sst-tour .driver-popover-footer-btn,
+.driver-popover.sst-tour .sst-tour-lang {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgb(var(--line));
+  background-color: rgb(var(--card));
+  color: rgb(var(--ink));
+  text-shadow: none;
+  transition: background-color 150ms, border-color 150ms;
+}
+.driver-popover.sst-tour .driver-popover-footer-btn:hover,
+.driver-popover.sst-tour .sst-tour-lang:hover { background-color: rgb(var(--bg)); }
+.driver-popover.sst-tour .driver-popover-next-btn {
+  background-color: rgb(var(--pri));
+  border-color: rgb(var(--pri));
+  color: #fff;
+}
+.driver-popover.sst-tour .driver-popover-next-btn:hover { background-color: rgb(var(--pri-light)); }
+.driver-popover.sst-tour .sst-tour-lang { color: rgb(var(--pri-ink)); border-color: transparent; padding: 0 10px; }
+.driver-popover.sst-tour .driver-popover-footer-btn:focus-visible,
+.driver-popover.sst-tour .sst-tour-lang:focus-visible {
+  outline: 2px solid rgb(var(--pri-ink));
+  outline-offset: 2px;
+}
+.driver-popover.sst-tour .driver-popover-arrow { border-color: rgb(var(--card)); }
+.driver-popover.sst-tour .driver-popover-arrow-side-left { border-top-color: transparent; border-bottom-color: transparent; border-right-color: transparent; }
+.driver-popover.sst-tour .driver-popover-arrow-side-right { border-top-color: transparent; border-bottom-color: transparent; border-left-color: transparent; }
+.driver-popover.sst-tour .driver-popover-arrow-side-top { border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent; }
+.driver-popover.sst-tour .driver-popover-arrow-side-bottom { border-top-color: transparent; border-left-color: transparent; border-right-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .driver-fade .driver-overlay, .driver-fade .driver-popover { animation: none; }
+}
+.driver-popover.sst-tour .driver-popover-btn-disabled { display: none; }

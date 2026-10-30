@@ -93,6 +93,7 @@ src/
     offlineQueue.js    — Assign Vials / Day End offline queue (per user, replayed by useOfflineSync)
     queuedHoldings.js  — applyQueued(): counts queued entries in holdings (self-check: scripts/check-offline-holdings.mjs)
     push.js            — web push subscribe/unsubscribe (READY_TIMEOUT_MS guards a missing service worker)
+    tour.js            — guided tour (driver.js, lazy): welcome once per user per device, then each page's tour; page intros from GUIDE in DashboardGuide.jsx
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
     useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
