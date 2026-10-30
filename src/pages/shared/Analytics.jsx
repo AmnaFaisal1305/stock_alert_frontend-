@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, LabelList, Cell,
+  ResponsiveContainer, LabelList, Cell, PieChart, Pie,
 } from 'recharts'
 import {
   FileSpreadsheet, FileText, BarChart2, ChevronDown, X, PackageCheck, Syringe, Trash2, Boxes,
@@ -231,6 +231,67 @@ function BalanceLine({ totals, available, startBal, balanced, hasPeriodBalances,
         </p>
       )}
     </div>
+  )
+}
+
+// Share of all wasted vials by vaccine (parts of one whole, so a pie fits; the rate chart
+// beside it answers "which vaccine wastes most of what it gets"). Top 4 + Other: five category hues.
+function WasteShareCard({ rows, total, selected, onSelect }) {
+  const [hover, setHover] = useState(null)
+  const pct = (v) => (total > 0 ? Math.round((v / total) * 100) : 0)
+  const dim = (r, i) => (selected ? (r.id === selected ? 1 : 0.25) : hover != null && hover !== i ? 0.45 : 1)
+  const pick = (r) => r?.id && onSelect(r.id)
+  return (
+    <Card>
+      <CardHeader title="Share of wasted vials" description="Which vaccines the wasted vials come from" />
+      {total === 0 ? <div className="mt-4"><EmptyChart message="No vials wasted in this period" /></div> : (
+        <>
+          <div className="relative mt-3 h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={rows} dataKey="wasted" nameKey="name" innerRadius="62%" outerRadius="92%"
+                  paddingAngle={rows.length > 1 ? 1.5 : 0} stroke="none" {...ANIM}
+                  onMouseEnter={(_, i) => setHover(i)} onMouseLeave={() => setHover(null)}
+                  onClick={(d) => pick(d?.payload ?? d)}
+                  className="cursor-pointer"
+                >
+                  {rows.map((r, i) => <Cell key={r.key} fill={r.color} fillOpacity={dim(r, i)} />)}
+                </Pie>
+                <ReTooltip content={<ChartTooltip nameKey="name" />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 grid place-items-center pointer-events-none" aria-hidden="true">
+              <div className="text-center">
+                <p className="text-[26px] font-light leading-none tabular-nums text-text">{n(total)}</p>
+                <p className="text-xs text-text-muted mt-1">vials wasted</p>
+              </div>
+            </div>
+          </div>
+          <ul className="mt-3 flex flex-col">
+            {rows.map((r, i) => (
+              <li key={r.key}>
+                <button
+                  type="button"
+                  disabled={!r.id}
+                  aria-pressed={r.id ? selected === r.id : undefined}
+                  onClick={() => pick(r)}
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
+                  title={r.title}
+                  className={`w-full flex items-center gap-2.5 py-1.5 px-1.5 -mx-1.5 rounded-control text-left text-sm transition-[background-color,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${r.id ? 'hover:bg-surface-alt' : 'cursor-default'} ${selected && r.id === selected ? 'bg-primary-bg' : ''} ${dim(r, i) < 1 ? 'opacity-60' : ''}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: r.color }} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-text">{r.name}</span>
+                  <span className="tabular-nums text-text">{n(r.wasted)}<span className="text-text-muted text-xs"> vials</span></span>
+                  <span className="w-10 text-right tabular-nums text-text-muted text-xs">{pct(r.wasted)}%</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
   )
 }
 
@@ -559,6 +620,16 @@ export default function Analytics() {
       .sort((a, b) => b.rate - a.rate)
   , [vaccineRows])
 
+  const wasteShare = useMemo(() => {
+    const ranked = vaccineRows.filter((v) => v.wasted > 0).sort((a, b) => b.wasted - a.wasted)
+    const top = ranked.length > 5 ? ranked.slice(0, 4) : ranked
+    const rest = ranked.slice(top.length)
+    const out = top.map((v, i) => ({ key: v.id, id: v.id, name: v.vaccineName, title: v.vaccineName, wasted: v.wasted, color: t.series[i] }))
+    if (rest.length) out.push({ key: 'other', id: null, name: `Other (${rest.length})`, title: rest.map((v) => v.vaccineName).join(', '), wasted: rest.reduce((sum, v) => sum + v.wasted, 0), color: t.series[4] })
+    return out
+  }, [vaccineRows, t.series])
+  const wasteShareTotal = wasteShare.reduce((sum, r) => sum + r.wasted, 0)
+
   function wastageBarColor(rate) {
     if (rate >= 7) return t.status('critical')
     if (rate >= 3) return t.status('low')
@@ -747,9 +818,6 @@ export default function Analytics() {
     },
     { key: 'added',   group: 'Stock Correction', label: 'Add',    align: 'right', render: (r) => signed(r.added, '+') },
     { key: 'deleted', group: 'Stock Correction', label: 'Delete', align: 'right', render: (r) => signed(r.deleted, '−') },
-    { key: 'inStore',     label: 'In Store (vials)',         align: 'right', render: (r) => (r.inStore ? n(r.inStore) : muted('—')) },
-    { key: 'withWorkers', label: 'With Vaccinators (vials)', align: 'right', render: (r) => (r.withWorkers ? n(r.withWorkers) : muted('—')) },
-    { key: 'doses',       label: 'Stock Left (doses)',       align: 'right', render: (r) => <span className="font-medium">{n(r.doses)}</span> },
   ]
 
   const requestColumns = [
@@ -926,30 +994,34 @@ export default function Analytics() {
                 </Card>
               )}
 
-              {/* Chart 1 — Wastage Rate by Vaccine */}
-              <ChartCard
-                title="Wastage Rate by Vaccine"
-                subtitle="Wasted vials as a % of vials received: green under 3%, amber 3–7%, red 7% or more. Click a bar to filter by vaccine."
-              >
-                {wastageRateData.length === 0 ? <EmptyChart /> : (
-                  <div className="cursor-pointer" data-tour="analytics-chart">
-                    <ResponsiveContainer width="100%" height={Math.max(160, wastageRateData.length * 44)}>
-                      <BarChart layout="vertical" data={wastageRateData} margin={{ top: 4, right: 60, left: 4, bottom: 4 }} {...wasteHoverHandlers} onClick={clickBar(wastageRateData)}>
-                        <CartesianGrid horizontal={false} stroke={t.grid} />
-                        <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                        <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
-                        <ReTooltip content={<WastageTooltip nameKey="fullName" hint={clickHint} />} cursor={cursor} />
-                        <Bar dataKey="rate" name="Wasted %" radius={[0, 3, 3, 0]} maxBarSize={22} {...ANIM}>
-                          {wastageRateData.map((d, i) => (
-                            <Cell key={d.id} fill={wastageBarColor(d.rate)} fillOpacity={fade(i, d.id, wasteHover)} />
-                          ))}
-                          <LabelList dataKey="rate" position="right" formatter={(v) => `${v}%`} style={{ fontSize: 11, fill: t.tickStrong }} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </ChartCard>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                {/* Chart 1 — Wastage Rate by Vaccine */}
+                <ChartCard
+                className="lg:col-span-2"
+                  title="Wastage Rate by Vaccine"
+                  subtitle="Wasted vials as a % of vials received: green under 3%, amber 3–7%, red 7% or more. Click a bar to filter by vaccine."
+                >
+                  {wastageRateData.length === 0 ? <EmptyChart /> : (
+                    <div className="cursor-pointer" data-tour="analytics-chart">
+                      <ResponsiveContainer width="100%" height={Math.max(160, wastageRateData.length * 44)}>
+                        <BarChart layout="vertical" data={wastageRateData} margin={{ top: 4, right: 60, left: 4, bottom: 4 }} {...wasteHoverHandlers} onClick={clickBar(wastageRateData)}>
+                          <CartesianGrid horizontal={false} stroke={t.grid} />
+                          <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                          <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
+                          <ReTooltip content={<WastageTooltip nameKey="fullName" hint={clickHint} />} cursor={cursor} />
+                          <Bar dataKey="rate" name="Wasted %" radius={[0, 3, 3, 0]} maxBarSize={22} {...ANIM}>
+                            {wastageRateData.map((d, i) => (
+                              <Cell key={d.id} fill={wastageBarColor(d.rate)} fillOpacity={fade(i, d.id, wasteHover)} />
+                            ))}
+                            <LabelList dataKey="rate" position="right" formatter={(v) => `${v}%`} style={{ fontSize: 11, fill: t.tickStrong }} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </ChartCard>
+                <WasteShareCard rows={wasteShare} total={wasteShareTotal} selected={vaccineId} onSelect={toggleVaccine} />
+              </div>
 
               {/* Chart 2 — Stock Flow by Vaccine */}
               <ChartCard
