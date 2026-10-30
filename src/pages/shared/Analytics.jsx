@@ -262,7 +262,7 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
       ? [{ key: 'In store', color: C.available }, { key: 'With vaccinators', color: C.used }]
       : [{ key: METRICS[metric].label.replace('Vials ', '').replace(/^./, (c) => c.toUpperCase()), color: C[metric] }]
 
-  const rows = (() => {
+  const rows = useMemo(() => {
     const acc = {}
     const bump = (key, label, vals) => {
       acc[key] ??= { key, name: label, ...Object.fromEntries(series.map((s) => [s.key, 0])) }
@@ -287,7 +287,7 @@ function DrillPanel({ metric, movement, remaining, vaccineName, multiFacility, t
       ? list.sort((a, b) => a.key.localeCompare(b.key))
       : list.sort((a, b) => total(b) - total(a)).slice(0, 12)
     return list.map((r) => ({ ...r, shortName: abbrev(r.name, 20) }))
-  })()
+  }, [metric, dim, movement, remaining]) // eslint-disable-line react-hooks/exhaustive-deps -- series keys follow metric
 
   const dimLabel = { facility: 'By facility', month: 'By month', vaccinator: 'By vaccinator' }
   const scope = vaccineName ? `${vaccineName} · ` : ''

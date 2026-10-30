@@ -88,7 +88,8 @@ function TourRunner() {
       m.maybeRunTour(user, pathname, ctrl.signal)
     }).catch(() => { /* offline before the chunk was cached: no tour */ })
     return () => ctrl.abort()
-  }, [user, pathname])
+    // Not `user`: /session replaces the object, which would close a tour that just opened.
+  }, [user?.id, user?.role, pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
