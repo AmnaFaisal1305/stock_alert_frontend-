@@ -7,16 +7,16 @@ import PageHeader from '../../components/shared/PageHeader'
 import RequestList from '../../components/stock-requests/RequestList'
 import { ReviewPanel, SummaryDialog } from '../../components/ui/ReviewDialog'
 import { plural } from '../../lib/format'
+import { isOpenRequest, hasFigures, hasSent } from '../../lib/stockRequests'
 
-const CAN_SEND    = new Set(['awaiting_both', 'awaiting_sent'])
-const CAN_DECLINE = new Set(['awaiting_both'])
+const TO_SEND = new Set(['awaiting_both', 'awaiting_sent'])
 
 function RecordSentForm({ req, onClose, onSent }) {
   const qc = useQueryClient()
   const [items, setItems] = useState(() =>
     (req.items ?? [])
       .filter((it) => (it.outstandingVials ?? it.requestedVials) > 0)
-      .map((it) => ({ vaccineId: it.vaccineId, vaccineName: it.vaccineName, wanted: it.outstandingVials ?? it.requestedVials, sentVials: '' }))
+      .map((it) => ({ vaccineId: it.vaccineId, vaccineName: it.vaccineName, wanted: it.outstandingVials ?? it.requestedVials, sentVials: it.sentVials != null ? String(it.sentVials) : '' }))
   )
   const [note, setNote] = useState('')
   const [review, setReview] = useState(null)
@@ -128,15 +128,16 @@ function DeclineForm({ req, onClose }) {
 
 function RequestActions({ req, onSent }) {
   const [mode, setMode] = useState(null)
-  const canSend = CAN_SEND.has(req.stage)
-  const canDecline = CAN_DECLINE.has(req.stage)
-  if (!canSend && !canDecline) return null
+  if (!isOpenRequest(req)) return null
+  // Decline only before anyone has recorded figures and before any round was approved.
+  const canDecline = req.status === 'submitted' && !hasFigures(req)
+  const correcting = hasSent(req)
 
   if (mode === 'sent') return <RecordSentForm req={req} onClose={() => setMode(null)} onSent={onSent} />
   if (mode === 'decline') return <DeclineForm req={req} onClose={() => setMode(null)} />
   return (
     <div className="flex gap-2 flex-wrap">
-      {canSend && <Button onClick={() => setMode('sent')}>Record sent</Button>}
+      <Button variant={correcting ? 'secondary' : 'primary'} onClick={() => setMode('sent')}>{correcting ? 'Correct sent' : 'Record sent'}</Button>
       {canDecline && <Button variant="ghost-danger" onClick={() => setMode('decline')}>Decline</Button>}
     </div>
   )
@@ -151,7 +152,7 @@ export default function UCStockRequests() {
   })
 
   const requests = data?.stockRequests ?? []
-  const toSend = requests.filter((r) => CAN_SEND.has(r.stage)).length
+  const toSend = requests.filter((r) => TO_SEND.has(r.stage)).length
 
   return (
     <div>

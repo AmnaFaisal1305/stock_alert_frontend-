@@ -1,29 +1,33 @@
-// Stock-request stage logic shared by the facility supervisor, UC supervisor and facility head pages.
+// Stock-request logic shared by the facility supervisor, UC supervisor and facility head pages.
+// `status` is stored; `stage` is computed per read. A request is open while `closedAt` is null,
+// which includes an open `partially_fulfilled` one waiting for its next delivery round.
 
-export const TERMINAL        = new Set(['completed', 'partially_fulfilled', 'cancelled', 'declined'])
-export const OPEN_STAGES     = new Set(['awaiting_both', 'awaiting_sent', 'awaiting_received', 'figures_differ'])
-export const SENT_STAGES     = new Set(['awaiting_received', 'figures_differ', 'ready_for_approval', 'completed', 'partially_fulfilled'])
-export const RECEIVED_STAGES = new Set(['completed', 'partially_fulfilled'])
+export const isOpenRequest = (r) => r.closedAt == null
 
-// API may return `status` or `stage` depending on the record; normalise both.
-const stageOf = (r) => r.status ?? r.stage
+// null = that side hasn't recorded yet; 0 is a real figure.
+export const hasFigures = (r) => (r.items ?? []).some((it) => it.sentVials != null || it.receivedVials != null)
+export const hasSent     = (r) => (r.items ?? []).length > 0 && r.items.every((it) => it.sentVials != null)
+export const hasReceived = (r) => (r.items ?? []).length > 0 && r.items.every((it) => it.receivedVials != null)
 
 export const REQUEST_FILTERS = [
-  { value: 'all',                 label: 'All',                test: () => true },
-  { value: 'awaiting',            label: 'In progress',        test: (r) => !TERMINAL.has(stageOf(r)) },
-  { value: 'partially_fulfilled', label: 'Partially fulfilled', test: (r) => stageOf(r) === 'partially_fulfilled' },
-  { value: 'completed',           label: 'Completed',          test: (r) => stageOf(r) === 'completed' },
-  { value: 'cancelled',           label: 'Cancelled',          test: (r) => stageOf(r) === 'cancelled' },
-  { value: 'declined',            label: 'Declined',           test: (r) => stageOf(r) === 'declined' },
+  { value: 'all',                 label: 'All',                 test: () => true },
+  { value: 'awaiting',            label: 'In progress',         test: isOpenRequest },
+  { value: 'partially_fulfilled', label: 'Partially fulfilled', test: (r) => r.status === 'partially_fulfilled' },
+  { value: 'completed',           label: 'Completed',           test: (r) => r.status === 'completed' },
+  { value: 'cancelled',           label: 'Cancelled',           test: (r) => r.status === 'cancelled' },
+  { value: 'declined',            label: 'Declined',            test: (r) => r.status === 'declined' },
 ]
 
-export const PIPELINE = ['Requested', 'Sent', 'Received']
-
-// 1 = requested, 2 = sent, 3 = received. Cancelled/declined requests have no pipeline.
-export function pipelineStep(stage) {
-  if (RECEIVED_STAGES.has(stage)) return 3
-  if (SENT_STAGES.has(stage)) return 2
-  return 1
+// Sent and received can be recorded in either order, so each step is worked out on its own.
+// The figures belong to the current round; they're cleared after a partial approval.
+export function pipelineSteps(r) {
+  const closed = !isOpenRequest(r)
+  return [
+    { label: 'Requested', done: true },
+    { label: 'Sent',      done: hasSent(r) || closed },
+    { label: 'Received',  done: hasReceived(r) || closed },
+    { label: 'Approved',  done: closed },
+  ]
 }
 
 export function vaccineSummary(items = []) {

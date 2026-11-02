@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, AlertTriangle, ArrowRight, Syringe, TrendingDown, CheckCircle2, CircleDashed, PackageCheck, Clock, ClipboardList, ClipboardCheck } from 'lucide-react'
 import { getDashboard, getVaccines, getStockRequests, getApprovals } from '../../lib/api'
-import { OPEN_STAGES } from '../../lib/stockRequests'
+import { isOpenRequest } from '../../lib/stockRequests'
 import AttentionStrip from '../../components/shared/AttentionStrip'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
@@ -103,7 +103,7 @@ export default function FacilityDashboard() {
   const attention = useMemo(() => {
     const reqs = requestsQ.data?.stockRequests ?? []
     const stage = (s) => reqs.filter((r) => r.stage === s).length
-    const stale = reqs.filter((r) => OPEN_STAGES.has(r.stage) && Date.now() - new Date(r.createdAt) > 3 * 86_400_000).length
+    const stale = reqs.filter((r) => isOpenRequest(r) && Date.now() - new Date(r.createdAt) > 3 * 86_400_000).length
     const pending = approvalsQ.data?.approvals?.length ?? 0
     return isSupervisor
       ? [

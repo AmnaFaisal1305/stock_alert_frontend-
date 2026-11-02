@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getStockRequests, createStockRequest, recordReceived, cancelStockRequest, getVaccines,
+  getStockRequests, createStockRequest, recordReceived, cancelStockRequest, getDashboard,
 } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -15,9 +15,8 @@ import Toast from '../../components/ui/Toast'
 import PageHeader from '../../components/shared/PageHeader'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import RequestList from '../../components/stock-requests/RequestList'
-import { OPEN_STAGES } from '../../lib/stockRequests'
+import { isOpenRequest, hasFigures, hasReceived } from '../../lib/stockRequests'
 
-const CAN_RECEIVE = new Set(['awaiting_both', 'awaiting_received'])
 const vaccineLabel = (vaccines, id) => (vaccines.find(v => v.id === id)?.name ?? '—')
 
 // ── Raise request ──────────────────────────────────────────────────────────────
@@ -85,7 +84,11 @@ function RecordReceivedForm({ req, onClose, onSubmit, isPending }) {
   const [items, setItems] = useState(() =>
     (req.items ?? [])
       .filter(it => (it.outstandingVials ?? it.requestedVials) > 0)
-      .map(it => ({ vaccineId: it.vaccineId, vaccineName: it.vaccineName, sentVials: it.sentVials, receivedVials: '', batchNo: '', expiryDate: '', manufacturer: '' }))
+      .map(it => ({
+        vaccineId: it.vaccineId, vaccineName: it.vaccineName, sentVials: it.sentVials,
+        receivedVials: it.receivedVials != null ? String(it.receivedVials) : '',
+        batchNo: it.batchNo ?? '', expiryDate: it.expiryDate ?? '', manufacturer: it.manufacturer ?? '',
+      }))
   )
   const [note,  setNote]  = useState('')
   const [error, setError] = useState(null)
@@ -182,10 +185,9 @@ function RequestActions({ req, onReceived }) {
   const [cancelReason,  setCancelReason]  = useState('')
   const [mutError,      setMutError]      = useState('')
 
-  const isOpen         = OPEN_STAGES.has(req.stage)
-  const isCloseShort   = req.status === 'partially_fulfilled' && !req.closedAt
-  const hasFigures     = req.items?.some(it => (it.sentVials ?? 0) > 0 || (it.receivedVials ?? 0) > 0)
-  const reasonRequired = isCloseShort || hasFigures
+  const isOpen         = isOpenRequest(req)
+  const isCloseShort   = isOpen && req.status === 'partially_fulfilled'
+  const reasonRequired = isCloseShort || hasFigures(req)
 
   const receiveMutation = useMutation({
     mutationFn: (payload) => recordReceived(req.id, payload),
@@ -208,21 +210,18 @@ function RequestActions({ req, onReceived }) {
     onError: (err) => setMutError(err.message || 'Failed to cancel request. Please try again.'),
   })
 
-  const canReceive = CAN_RECEIVE.has(req.stage)
-  const canCancel  = isOpen || isCloseShort
-  if (!canReceive && !canCancel) return null
+  if (!isOpen) return null
+  const correcting = hasReceived(req)
 
   return (
     <div className="flex flex-col gap-3">
       {mutError && <p role="alert" className="text-sm text-danger-dark">{mutError}</p>}
       {!showReceive && !cancelConfirm && (
         <div className="flex gap-2 flex-wrap">
-          {canReceive && <Button onClick={() => setShowReceive(true)}>Record received</Button>}
-          {canCancel && (
-            <Button variant="ghost-danger" onClick={() => setCancelConfirm(true)}>
-              {isCloseShort ? 'Close as partially fulfilled' : 'Cancel request'}
-            </Button>
-          )}
+          <Button variant={correcting ? 'secondary' : 'primary'} onClick={() => setShowReceive(true)}>{correcting ? 'Correct received' : 'Record received'}</Button>
+          <Button variant="ghost-danger" onClick={() => setCancelConfirm(true)}>
+            {isCloseShort ? 'Close as partially fulfilled' : 'Cancel request'}
+          </Button>
         </div>
       )}
 
@@ -271,11 +270,15 @@ export default function RecordStock() {
     refetchInterval: 30_000,
   })
 
-  const { data: vaccineData, isLoading: loadingVaccines } = useQuery({
-    queryKey: ['vaccines'],
-    queryFn:  getVaccines,
+  // Only vaccines stocked at this facility can be requested (the API rejects the rest).
+  const { data: dashData, isLoading: loadingVaccines } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn:  getDashboard,
     enabled:  showRaise,
   })
+  const vaccines = dashData
+    ? [...new Map(dashData.facilities.map(r => [r.vaccineId, { id: r.vaccineId, name: r.vaccineName }])).values()]
+    : []
 
   const createMutation = useMutation({
     mutationFn: (payload) => createStockRequest(payload),
@@ -310,7 +313,7 @@ export default function RecordStock() {
       <Modal open={showRaise} onClose={() => setShowRaise(false)} title="Raise stock request">
         {loadingVaccines
           ? <SkeletonRows rows={4} />
-          : <RaiseForm vaccines={vaccineData?.vaccines ?? []} onCancel={() => setShowRaise(false)} onSubmit={(p) => createMutation.mutate(p)} isPending={createMutation.isPending} />}
+          : <RaiseForm vaccines={vaccines} onCancel={() => setShowRaise(false)} onSubmit={(p) => createMutation.mutate(p)} isPending={createMutation.isPending} />}
       </Modal>
 
       {sent && (
@@ -319,7 +322,7 @@ export default function RecordStock() {
           onClose={() => setSent(null)}
           title="Request raised"
           message="Your UC supervisor has it. You’ll record what arrives here."
-          items={sent.items.map(it => ({ name: vaccineLabel(vaccineData?.vaccines ?? [], it.vaccineId), value: plural(it.requestedVials, 'vial') }))}
+          items={sent.items.map(it => ({ name: vaccineLabel(vaccines, it.vaccineId), value: plural(it.requestedVials, 'vial') }))}
           total={plural(sent.items.reduce((s, it) => s + it.requestedVials, 0), 'vial')}
         />
       )}

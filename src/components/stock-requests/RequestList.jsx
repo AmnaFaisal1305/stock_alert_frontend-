@@ -7,22 +7,20 @@ import { ACCENT } from '../shared/StatCard'
 import EmptyState from '../shared/EmptyState'
 import ErrorState from '../shared/ErrorState'
 import { SkeletonRows } from '../shared/SkeletonCard'
-import { REQUEST_FILTERS, PIPELINE, pipelineStep, vaccineSummary, totalVials } from '../../lib/stockRequests'
+import { REQUEST_FILTERS, pipelineSteps, isOpenRequest, vaccineSummary, totalVials } from '../../lib/stockRequests'
 import { formatDate } from '../../lib/format'
 import { workflowStatusConfig } from '../../lib/status'
 import { useUrlState } from '../../hooks/useUrlState'
 import ExportButton from '../ui/ExportButton'
 
-function Pipeline({ stage }) {
-  if (stage === 'cancelled' || stage === 'declined') return null
-  const step = pipelineStep(stage)
+function Pipeline({ req }) {
+  if (req.status === 'cancelled' || req.status === 'declined') return null
   return (
-    <ol className="flex items-center gap-2 text-xs" aria-label={`Step ${step} of 3`}>
-      {PIPELINE.map((label, i) => {
-        const done = step > i
+    <ol className="flex flex-wrap items-center gap-2 text-xs" aria-label="Progress">
+      {pipelineSteps(req).map(({ label, done }, i) => {
         return (
           <li key={label} className="flex items-center gap-2">
-            {i > 0 && <span className={`h-px w-6 ${step > i ? 'bg-primary' : 'bg-surface-border'}`} aria-hidden="true" />}
+            {i > 0 && <span className={`h-px w-6 ${done ? 'bg-primary' : 'bg-surface-border'}`} aria-hidden="true" />}
             <span className={`inline-flex items-center gap-1.5 ${done ? 'text-text font-medium' : 'text-text-muted'}`}>
               <span className={`w-2 h-2 rounded-full ${done ? 'bg-primary' : 'border border-text-muted'}`} aria-hidden="true" />
               {label}
@@ -57,13 +55,31 @@ export function RequestItemsTable({ items = [] }) {
                 <td className="px-3.5 py-2 text-right">{it.requestedVials}</td>
                 {showFulfilled && <td className="px-3.5 py-2 text-right">{it.fulfilledVials ?? 0}<span className="text-text-muted"> · {it.outstandingVials ?? 0} left</span></td>}
                 <td className="px-3.5 py-2 text-right">{it.sentVials ?? <span className="text-text-muted">—</span>}</td>
-                <td className={`px-3.5 py-2 text-right ${differs ? 'text-danger-dark font-medium' : ''}`}>{it.receivedVials ?? <span className="text-text-muted">—</span>}</td>
+                <td className={`px-3.5 py-2 text-right ${differs ? 'text-danger-dark font-medium' : ''}`}>
+                  {it.receivedVials ?? <span className="text-text-muted">—</span>}
+                  {it.batchNo && <span className="block text-xs font-normal text-text-muted">Batch {it.batchNo}{it.expiryDate && <> · exp {formatDate(it.expiryDate)}</>}</span>}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
     </div>
+  )
+}
+
+const closedLabel = (req) => (req.status === 'partially_fulfilled' ? 'Closed short' : workflowStatusConfig(req.status).label)
+
+// A partially fulfilled request keeps that badge for its whole life; while open, the stage says what's next.
+function RequestBadges({ req }) {
+  if (req.status !== 'partially_fulfilled') return <StatusBadge kind="workflow" status={req.stage} />
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <StatusBadge kind="workflow" status="partially_fulfilled" />
+      {isOpenRequest(req)
+        ? <StatusBadge kind="workflow" status={req.stage} />
+        : <span className="text-xs text-text-muted">Closed short</span>}
+    </span>
   )
 }
 
@@ -92,15 +108,28 @@ function RequestRow({ req, showFacility, renderActions }) {
               {req.note && <span className="hidden md:inline"> · “{req.note}”</span>}
             </p>
           </div>
-          <StatusBadge kind="workflow" status={req.stage} />
+          <RequestBadges req={req} />
         </div>
         <ChevronDown size={16} strokeWidth={1.75} className={`text-text-muted flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {open && (
         <div id={id} className="px-4 sm:px-5 pb-4 flex flex-col gap-3">
-          <Pipeline stage={req.stage} />
+          <Pipeline req={req} />
+          {req.stage === 'figures_differ' && (
+            <p className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">
+              Sent and received differ (highlighted). The Facility Supervisor or UC Supervisor must correct their figures before the Facility Head can approve.
+            </p>
+          )}
           <RequestItemsTable items={req.items} />
+          {(req.sentNote || req.receivedNote) && (
+            <p className="text-xs text-text-muted">
+              {req.sentNote && <>Sent note: “{req.sentNote}”</>}
+              {req.sentNote && req.receivedNote && ' · '}
+              {req.receivedNote && <>Received note: “{req.receivedNote}”</>}
+            </p>
+          )}
           {req.shortfallNote && <p className="text-sm text-warning-dark bg-warning-bg rounded-control px-3.5 py-2.5">Shortfall note: “{req.shortfallNote}”</p>}
+          {req.closeReason && <p className="text-sm text-text-muted bg-surface-chip rounded-control px-3.5 py-2.5">{closedLabel(req)} reason: “{req.closeReason}”</p>}
           {renderActions?.(req)}
         </div>
       )}
@@ -130,7 +159,9 @@ export default function RequestList({ requests, isLoading, isError, error, onRet
             { label: 'Requested vials', value: (r) => totalVials(r.items) },
             { label: 'Sent vials', value: (r) => totalVials(r.items, 'sentVials') },
             { label: 'Received vials', value: (r) => totalVials(r.items, 'receivedVials') },
+            { label: 'Status', value: (r) => workflowStatusConfig(r.status).label + (r.status === 'partially_fulfilled' && !isOpenRequest(r) ? ' (closed short)' : '') },
             { label: 'Stage', value: (r) => workflowStatusConfig(r.stage).label },
+            { label: 'Close reason', value: (r) => r.closeReason },
             { label: 'Note', value: (r) => r.note },
           ]}
         />

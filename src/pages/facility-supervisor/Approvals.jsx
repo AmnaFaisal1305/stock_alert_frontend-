@@ -34,12 +34,12 @@ function RequestItem({ a, onCancel, cancelling }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium text-text">{a.vaccineName}</p>
-          <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status)} />
+          <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status, a.decisionReason)} />
         </div>
         <p className="text-xs text-text-muted mt-1">
           {TYPE_LABEL[a.type] ?? a.type}
           {a.createdAt && <> · {formatDate(a.createdAt, { withYear: false })}</>}
-          {a.decidedAt && a.status !== 'pending' && <> · {approvalStatusLabel(a.status)} {formatDate(a.decidedAt, { withYear: false })}</>}
+          {a.decidedAt && a.status !== 'pending' && <> · {approvalStatusLabel(a.status, a.decisionReason)} {formatDate(a.decidedAt, { withYear: false })}</>}
           {' · '}
           {a.type === 'stock_correction' && <span className="text-text tabular-nums">store → {a.payload?.storeVials} vials</span>}
           {a.type === 'threshold_change' && (t
@@ -48,6 +48,7 @@ function RequestItem({ a, onCancel, cancelling }) {
         </p>
         {a.note && <p className="text-xs text-text-muted mt-1">“{a.note}”</p>}
         {a.status === 'rejected' && a.decisionReason && <p className="text-xs text-danger-dark mt-1">Rejected: {a.decisionReason}</p>}
+        {a.status === 'cancelled' && a.decisionReason && <p className="text-xs text-text-muted mt-1">Cancelled: {a.decisionReason}</p>}
       </div>
       {onCancel && (
         <Button variant="ghost" size="sm" onClick={() => onCancel(a.id)} disabled={cancelling} aria-label={`Withdraw ${TYPE_LABEL[a.type]} for ${a.vaccineName}`}>

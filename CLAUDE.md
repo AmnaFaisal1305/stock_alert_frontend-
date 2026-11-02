@@ -15,11 +15,11 @@ Understand the existing project before changing it. Make the **smallest complete
 ```bash
 npm run dev      # start dev server (port 5173, or 5174 if in use)
 npm run build    # production build — run this to catch import errors
-npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker)
+npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker, stock-request open/filters/pipeline)
 npm run preview  # preview the production build locally
 ```
 
-No linter is configured, and the only tests cover three `src/lib` files (`auditLog.js`, `api.js`, `push.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
+No linter is configured, and the only tests cover four `src/lib` files (`auditLog.js`, `api.js`, `push.js`, `stockRequests.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
 
 The dev server calls the live backend. `.env.local` (or `.env`) must set `VITE_API_URL=https://smart-stock-alert-be.vercel.app`; without it, calls go to the dev server's own origin and every `/api` request is a 404. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. In **Vercel Production the variable is unset**: `vercel.json` proxies `/api/*` to the backend so the session cookie is first-party (fixes the new-tab 401), and `api.js` defaults `BASE_URL` to `''`. **Never commit `.env` — it is gitignored and contains dev credentials.**
 
@@ -147,7 +147,7 @@ scripts/               — check-offline-holdings.mjs (node self-check, not part
 - Overriding a Button's colour with `className` (it loses to the variant) — use `variant="ghost-danger"` for Reject/Decline/Deactivate
 - `new Date().toISOString().split('T')[0]` for "today" — it is the UTC date, a day behind in Pakistan until 05:00; use `localDateStr()` / `toLocalDateStr()` from `lib/format`
 - Hardcoded API base URLs — route through `src/lib/api.js`
-- Hardcoded role, status, approval-type or audit-action labels — use `ROLE_LABELS`/`ROLE_LABELS_PLURAL`, `statusConfig().label`, `workflowStatusConfig()`, `approvalTypeLabel()`, `ACTION_LABELS`. One word per backend value: Vaccinator (`facility_worker`), Facility Head, Normal (`adequate`), Not updated (`no_data`), Partially fulfilled, Stock request (never "delivery"), Withdrawn (cancelled approval), Custom / Reset to default (facility thresholds). Show the unit (vials / doses) on every count
+- Hardcoded role, status, approval-type or audit-action labels — use `ROLE_LABELS`/`ROLE_LABELS_PLURAL`, `statusConfig().label`, `workflowStatusConfig()`, `approvalTypeLabel()`, `ACTION_LABELS`. One word per backend value: Vaccinator (`facility_worker`), Facility Head, Normal (`adequate`), Not updated (`no_data`), Partially fulfilled, Stock request (never "delivery"), Withdrawn (cancelled approval; "Cancelled" when it has a `decisionReason`, i.e. superseded by a Super Admin), Custom / Reset to default (facility thresholds). Show the unit (vials / doses) on every count
 - Duplicate `ROLE_DEFAULTS` — defined in `App.jsx` and `AuthContext.jsx` intentionally
 - Image files with spaces or parentheses in `public/images/`
 

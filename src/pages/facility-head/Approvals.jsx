@@ -109,7 +109,7 @@ function HistoryItem({ a }) {
         </p>
         {reason && <p className="text-xs text-text-muted">Reason: “{reason}”</p>}
       </div>
-      <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status)} />
+      <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status, a.decisionReason)} />
     </li>
   )
 }
@@ -205,7 +205,9 @@ export default function FacilityHeadApprovals() {
           onConfirm={() => approveMutation.mutate(confirming.id)}
           isPending={approveMutation.isPending}
           title={`Approve ${(TYPE_LABEL[confirming.type] ?? 'change').toLowerCase()}?`}
-          intro="It is applied as soon as you approve."
+          intro={confirming.type === 'stock_correction'
+            ? `The store is set to ${confirming.payload?.storeVials} vials as soon as you approve. The change is worked out from the store total at that moment, which may differ from the figure shown here.`
+            : 'It is applied as soon as you approve.'}
           rows={[
             { label: 'Vaccine', value: confirming.vaccineName },
             { label: 'Requested by', value: confirming.requestedByName ?? 'Facility supervisor' },

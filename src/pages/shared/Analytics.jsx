@@ -15,7 +15,7 @@ import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { localDateStr, toLocalDateStr, formatDate } from '../../lib/format'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { approvalTypeLabel } from '../../lib/status'
-import { OPEN_STAGES, vaccineSummary } from '../../lib/stockRequests'
+import { isOpenRequest, vaccineSummary } from '../../lib/stockRequests'
 import { useAuth } from '../../context/AuthContext'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { useUrlFilters } from '../../hooks/useUrlState'
@@ -418,7 +418,7 @@ const TABS = [
 const DETAIL_API_PARAM = {
   completed: 'completed',
   partial:   'partially_fulfilled',
-  open:      null, // fetch all, filter client-side by OPEN_STAGES
+  open:      null, // fetch all, filter client-side by isOpenRequest
   declined:  'declined',
   cancelled: 'cancelled',
 }
@@ -739,8 +739,8 @@ export default function Analytics() {
   // Detail requests filtered by month + facility
   const detailRequests = useMemo(() => {
     let list = detailData?.stockRequests ?? []
-    if (detailStatus === 'open')    list = list.filter((r) => OPEN_STAGES.has(r.stage))
-    if (detailStatus === 'partial') list = list.filter((r) => r.stage === 'partially_fulfilled')
+    if (detailStatus === 'open')    list = list.filter(isOpenRequest)
+    if (detailStatus === 'partial') list = list.filter((r) => r.status === 'partially_fulfilled')
     if (reqFacilityName) list = list.filter((r) => r.facilityName === reqFacilityName)
     return list
   }, [detailData, detailStatus, reqFacilityName])

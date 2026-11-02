@@ -92,8 +92,10 @@ export const APPROVAL_TYPES = {
   threshold_change: 'Threshold change',
 }
 export const approvalTypeLabel = (type) => APPROVAL_TYPES[type] ?? String(type ?? '').replace(/_/g, ' ')
-// A cancelled approval was withdrawn by its requester (the button says Withdraw).
-export const approvalStatusLabel = (status) => (status === 'cancelled' ? 'Withdrawn' : workflowStatusConfig(status).label)
+// A cancelled approval was withdrawn by a supervisor (the button says Withdraw, no reason), or cancelled
+// by the system with a decisionReason (a Super Admin's threshold edit supersedes a pending change).
+export const approvalStatusLabel = (status, decisionReason) =>
+  status === 'cancelled' ? (decisionReason ? 'Cancelled' : 'Withdrawn') : workflowStatusConfig(status).label
 
 export function workflowStatusConfig(status) {
   const s = WORKFLOW_STATUS[status]
