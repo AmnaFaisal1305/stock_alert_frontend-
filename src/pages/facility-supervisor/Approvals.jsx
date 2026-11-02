@@ -15,7 +15,7 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { formatDate, batchLabel } from '../../lib/format'
+import { formatDate, batchLabel, localDateStr, plural } from '../../lib/format'
 import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel, blockedByMessage } from '../../lib/status'
 
 function FormMessage({ error, done }) {
@@ -91,7 +91,10 @@ export default function Approvals() {
   const vaccineOptions = vaccines.map(r => ({ value: r.vaccineId, label: r.vaccineName }))
 
   // A correction sets one batch's store total (Round 47). Only batches with vials left are listed.
-  const { data: batchData } = useQuery({ queryKey: ['store-batches'], queryFn: getStoreBatches })
+  // includeEmpty (Round 48): batches at 0 are listed too, so found vials of an emptied batch can be recorded.
+  const { data: batchData } = useQuery({ queryKey: ['store-batches', 'all'], queryFn: () => getStoreBatches({ includeEmpty: true }) })
+  const today = localDateStr()
+  const corrBatchText = (b) => `${batchLabel(b)}${b.expiryDate && b.expiryDate < today ? ' (expired)' : ''} · ${plural(b.storeVials, 'vial')} in store`
   const corrBatches = (batchData?.batches ?? []).filter(b => b.vaccineId === corrVaccineId)
   const corrBatch = corrBatches.length === 1 ? corrBatches[0] : corrBatches.find(b => b.batchId === corrBatchPick)
 
@@ -218,14 +221,14 @@ export default function Approvals() {
                 onChange={e => { setCorrVaccineId(e.target.value); setCorrBatchPick(''); setCorrDone(false); setCorrError(null) }}
               />
               {corrVaccineId && batchData && (corrBatches.length === 0
-                ? <p className="text-sm text-text-muted">No batch of this vaccine is in store, so there is nothing to correct.</p>
+                ? <p className="text-sm text-text-muted">No batch of this vaccine has been received at your facility yet, so there is nothing to correct.</p>
                 : corrBatches.length === 1
-                  ? <p className="text-sm text-text-muted tabular-nums">Batch {batchLabel(corrBatch)} · now {corrBatch.storeVials} vials in store</p>
+                  ? <p className="text-sm text-text-muted tabular-nums">Batch {corrBatchText(corrBatch)}</p>
                   : <Select
                       id="corr-batch"
                       label="Batch"
                       placeholder="Select batch…"
-                      options={corrBatches.map(b => ({ value: b.batchId, label: `${batchLabel(b)} · ${b.storeVials} vials in store` }))}
+                      options={corrBatches.map(b => ({ value: b.batchId, label: corrBatchText(b) }))}
                       value={corrBatchPick}
                       onChange={e => { setCorrBatchPick(e.target.value); setCorrDone(false); setCorrError(null) }}
                     />)}
@@ -352,7 +355,7 @@ export default function Approvals() {
         intro="The Facility Head reviews it. The store total changes only once they approve."
         rows={[
           { label: 'Vaccine', value: vaccineOptions.find(o => o.value === corrVaccineId)?.label },
-          { label: 'Batch', value: corrBatch ? `${batchLabel(corrBatch)} · now ${corrBatch.storeVials} vials` : '—' },
+          { label: 'Batch', value: corrBatch ? corrBatchText(corrBatch) : '—' },
           { label: 'New store total', value: `${corrStoreVials} vials` },
           { label: 'Reason', value: corrNote.trim() },
         ]}

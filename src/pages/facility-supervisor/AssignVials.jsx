@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, getStoreBatches, assignVials } from '../../lib/api'
 import { enqueue, isNetworkError, subscribe, pendingCount, OFFLINE_ENABLED, NO_CONNECTION } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
+import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -81,7 +82,7 @@ export default function AssignVials() {
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
   const { data: usersData,   isLoading: loadingUsers }   = useQuery({ queryKey: ['users'],    queryFn: getUsers })
   const { data: holdingsData }                            = useQuery({ queryKey: ['holdings'], queryFn: getHoldings })
-  const { data: batchData }                               = useQuery({ queryKey: ['store-batches'], queryFn: getStoreBatches })
+  const { data: batchData }                               = useQuery({ queryKey: ['store-batches'], queryFn: () => getStoreBatches() })
   useSyncExternalStore(subscribe, pendingCount) // re-render when an entry is queued or sent
 
   const mutation = useMutation({
@@ -166,6 +167,7 @@ export default function AssignVials() {
   }
 
   const totalVials = Object.values(vialInputs).reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
+  useUnsavedGuard(totalVials > 0 && !done && !savedOffline)
 
   function handleSubmit(e) {
     e.preventDefault()

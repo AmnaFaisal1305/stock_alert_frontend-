@@ -293,8 +293,9 @@ export async function getHoldings() {
   return request('GET', '/api/stock-entries/holdings')
 }
 
-export async function getStoreBatches() {
-  return request('GET', '/api/stock-entries/store-batches')
+// includeEmpty (Round 48) adds batches at 0 vials, expired ones too: the correction form only.
+export async function getStoreBatches({ includeEmpty } = {}) {
+  return request('GET', `/api/stock-entries/store-batches${buildQs(includeEmpty ? { includeEmpty: true } : {})}`)
 }
 
 // ── Approvals ─────────────────────────────────────────────────────────────────

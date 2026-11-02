@@ -3,6 +3,7 @@ import { ClipboardList, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, recordDayEnd } from '../../lib/api'
 import { enqueue, isNetworkError, subscribe, pendingCount, withQueued, OFFLINE_ENABLED, NO_CONNECTION } from '../../lib/offlineQueue'
+import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -82,6 +83,8 @@ export default function DayEnd() {
       .map(h => ({ ...h, key: `${h.vaccineId}:${h.batchId ?? 'none'}`, name: names.get(h.vaccineId) ?? h.vaccineName }))
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '') || (a.expiryDate ?? '').localeCompare(b.expiryDate ?? ''))
   }, [workerId, holdingsData, queued, vaccines])
+
+  useUnsavedGuard(!done && !savedOffline && Object.values(inputs).some((r) => r.used || r.returned || r.wasted))
 
   function getRow(key) { return inputs[key] ?? ZERO }
   const rowSum = (key) => { const r = getRow(key); return num(r.used) + num(r.returned) + num(r.wasted) }

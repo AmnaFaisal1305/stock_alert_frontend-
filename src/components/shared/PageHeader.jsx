@@ -1,6 +1,14 @@
+import { useAuth } from '../../context/AuthContext'
+import { ROLE_LABELS } from '../../lib/navigation'
+
 // Page header: breadcrumb · light title · subtitle · right-aligned actions. One <h1> per screen.
 // size="display" for dashboards/overviews; default for work screens (forms, lists, logs).
 export default function PageHeader({ breadcrumb, title, subtitle, actions, size = 'default', children }) {
+  // The Observer reuses the Super Admin pages, so their breadcrumbs name the viewer's own role.
+  const { user } = useAuth()
+  if (user?.role === 'observer' && breadcrumb?.startsWith(ROLE_LABELS.super_admin)) {
+    breadcrumb = ROLE_LABELS.observer + breadcrumb.slice(ROLE_LABELS.super_admin.length)
+  }
   const titleCls = size === 'display'
     ? 'text-[30px] sm:text-[36px]'
     : 'text-[26px] sm:text-[30px]'

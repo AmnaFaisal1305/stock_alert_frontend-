@@ -98,7 +98,8 @@ src/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
     useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
     useAllAuditPages.js (follows nextCursor, capped, for the rich Audit Log's flags and thread),
-    useOpenItem.js (?open=<id> from per-item links: useOpenId, useScrollIntoView)
+    useOpenItem.js (?open=<id> from per-item links: useOpenId, useScrollIntoView),
+    useUnsavedGuard.js (Assign Vials / Day End: Refresh and reload ask before dropping unsent figures)
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
     shared/            — composites: Table, Card, StatCard, StatusBadge, FilterChips, PageHeader, EmptyState, ErrorState, ...
@@ -251,7 +252,7 @@ Everything the frontend needs from the backend (new endpoints, filters, fixes) i
 
 Key constraints:
 - Stock moves through stock requests (raise → sent → received → head approval), `POST /api/stock-entries/assign` and `/day-end`; the old `POST /api/stock-entries` is gone. Received items need `batchNo`, `expiryDate`, `manufacturer` when vials > 0.
-- Stock is tracked per batch (Round 47): `/assign` items need `batchId` (from `GET /api/stock-entries/store-batches`, FS/Head only), `/day-end` has one item per held batch (`batchId: null` closes pre-batch vials), a `stock_correction` needs `batchId` (that batch's store total), and `GET /api/stock-entries/holdings` is one row per worker × vaccine × batch. `batchLabel()` in `lib/format.js` renders a batch. `GET /api/analytics` `expiry` gives current near-expiry (2 months) and expired vials per facility × vaccine
+- Stock is tracked per batch (Round 47): `/assign` items need `batchId` (from `GET /api/stock-entries/store-batches`, FS/Head only; `?includeEmpty=true` adds batches at 0, used by the correction form, Round 48), `/day-end` has one item per held batch (`batchId: null` closes pre-batch vials), a `stock_correction` needs `batchId` (that batch's store total), and `GET /api/stock-entries/holdings` is one row per worker × vaccine × batch. `batchLabel()` in `lib/format.js` renders a batch. `GET /api/analytics` `expiry` gives current near-expiry (2 months) and expired vials per facility × vaccine
 - `/assign` and `/day-end` accept `occurredOn` up to 7 days back (Round 38); a `facility_supervisor`'s session survives 7 days idle (other roles 8 h)
 - `GET /api/stock-register` — `facility_supervisor` / `facility_head` only, own facility; `vaccineId, kind (received|used|wasted|correction, comma list), from, to, limit (≤ 500, default 100), before`; the response has `{ entries, nextCursor, total }`
 - `GET /api/audit-log` — `?limit=` capped at 500 (omit it for the whole log); filters `actorRole, actorId, action, facilityId, entityId, from, to`, cursor `before`, `counts=true`

@@ -37,14 +37,14 @@ export function RequestItemsTable({ items = [] }) {
   const showFulfilled = items.some((it) => (it.fulfilledVials ?? 0) > 0)
   return (
     <div className="overflow-x-auto rounded-control border border-surface-border">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm tabular-nums">
         <thead>
           <tr className="border-b border-surface-border text-xs font-medium text-text-muted">
-            <th scope="col" className="text-left px-3.5 py-2">Vaccine</th>
-            <th scope="col" className="text-right px-3.5 py-2">Requested</th>
-            {showFulfilled && <th scope="col" className="text-right px-3.5 py-2">Fulfilled</th>}
-            <th scope="col" className="text-right px-3.5 py-2">Sent</th>
-            <th scope="col" className="text-right px-3.5 py-2">Received</th>
+            <th scope="col" className="text-left px-2.5 sm:px-3.5 py-2">Vaccine</th>
+            <th scope="col" className="text-right px-2.5 sm:px-3.5 py-2">Requested</th>
+            {showFulfilled && <th scope="col" className="text-right px-2.5 sm:px-3.5 py-2">Fulfilled</th>}
+            <th scope="col" className="text-right px-2.5 sm:px-3.5 py-2">Sent</th>
+            <th scope="col" className="text-right px-2.5 sm:px-3.5 py-2">Received</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-border">
@@ -52,13 +52,18 @@ export function RequestItemsTable({ items = [] }) {
             const differs = it.sentVials != null && it.receivedVials != null && it.sentVials !== it.receivedVials
             return (
               <tr key={it.vaccineId}>
-                <td className="px-3.5 py-2 text-text">{it.vaccineName}</td>
-                <td className="px-3.5 py-2 text-right">{it.requestedVials}</td>
-                {showFulfilled && <td className="px-3.5 py-2 text-right">{it.fulfilledVials ?? 0}<span className="text-text-muted"> · {it.outstandingVials ?? 0} left</span></td>}
-                <td className="px-3.5 py-2 text-right">{it.sentVials ?? <span className="text-text-muted">—</span>}</td>
-                <td className={`px-3.5 py-2 text-right ${differs ? 'text-danger-dark font-medium' : ''}`}>
+                <td className="px-2.5 sm:px-3.5 py-2 text-text">{it.vaccineName}</td>
+                <td className="px-2.5 sm:px-3.5 py-2 text-right">{it.requestedVials}</td>
+                {showFulfilled && <td className="px-2.5 sm:px-3.5 py-2 text-right">{it.fulfilledVials ?? 0}<span className="block sm:inline text-xs sm:text-sm text-text-muted"><span className="hidden sm:inline"> · </span>{it.outstandingVials ?? 0} left</span></td>}
+                <td className="px-2.5 sm:px-3.5 py-2 text-right">{it.sentVials ?? <span className="text-text-muted">—</span>}</td>
+                <td className={`px-2.5 sm:px-3.5 py-2 text-right ${differs ? 'text-danger-dark font-medium' : ''}`}>
                   {it.receivedVials ?? <span className="text-text-muted">—</span>}
-                  {it.batchNo && <span className="block text-xs font-normal text-text-muted">Batch {it.batchNo}{it.expiryDate && <> · exp {formatDate(it.expiryDate)}</>}</span>}
+                  {it.batchNo && (
+                    <span className="block text-xs font-normal text-text-muted">
+                      <span className="hidden sm:inline">Batch </span>{it.batchNo}
+                      {it.expiryDate && <span className="block sm:inline"><span className="hidden sm:inline"> · </span>exp {formatDate(it.expiryDate)}</span>}
+                    </span>
+                  )}
                 </td>
               </tr>
             )

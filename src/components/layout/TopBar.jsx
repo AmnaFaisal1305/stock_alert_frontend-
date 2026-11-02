@@ -7,6 +7,7 @@ import NotificationPanel from './NotificationPanel'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import { subscribe, pendingCount, failedCount, expiringCount, failedItems, discardFailed, getLastSynced, OFFLINE_ENABLED } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
+import { hasUnsavedWork, reloadDiscarding } from '../../hooks/useUnsavedGuard'
 import { scopeLabel, ROLE_LABELS } from '../../lib/navigation'
 
 function useOnline() {
@@ -118,6 +119,7 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
   const { user } = useAuth()
   const { resolved, toggle } = useTheme()
   const [open, setOpen] = useState(false)
+  const [confirmReload, setConfirmReload] = useState(false)
   const panelRef = useRef(null)
   const bellRef  = useRef(null)
 
@@ -162,7 +164,7 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
           <SyncStatus />
 
           {/* The installed PWA has no browser reload control. */}
-          <button onClick={() => window.location.reload()} className={`${iconBtn} lg:hidden`} aria-label="Refresh" title="Refresh">
+          <button onClick={() => (hasUnsavedWork() ? setConfirmReload(true) : window.location.reload())} className={`${iconBtn} lg:hidden`} aria-label="Refresh" title="Refresh">
             <RotateCw size={18} strokeWidth={1.75} />
           </button>
 
@@ -218,6 +220,14 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
           </span>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmReload}
+        onClose={() => setConfirmReload(false)}
+        onConfirm={reloadDiscarding}
+        title="Refresh and lose what you typed?"
+        message="The figures on this screen haven’t been sent yet. Refreshing clears them."
+        confirmLabel="Refresh anyway"
+      />
     </header>
   )
 }
