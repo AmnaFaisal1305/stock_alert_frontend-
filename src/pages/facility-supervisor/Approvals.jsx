@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useOpenId, useScrollIntoView } from '../../hooks/useOpenItem'
 import { X, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDashboard, getApprovals, createApproval, cancelApproval } from '../../lib/api'
+import { getDashboard, getApprovals, getStoreBatches, createApproval, cancelApproval } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -15,7 +15,7 @@ import Card, { CardHeader } from '../../components/shared/Card'
 import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { formatDate } from '../../lib/format'
+import { formatDate, batchLabel } from '../../lib/format'
 import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel, blockedByMessage } from '../../lib/status'
 
 function FormMessage({ error, done }) {
@@ -44,7 +44,7 @@ function RequestItem({ a, onCancel, cancelling, focused }) {
           {a.createdAt && <> · {formatDate(a.createdAt, { withYear: false })}</>}
           {a.decidedAt && a.status !== 'pending' && <> · {approvalStatusLabel(a.status, a.decisionReason)} {formatDate(a.decidedAt, { withYear: false })}</>}
           {' · '}
-          {a.type === 'stock_correction' && <span className="text-text tabular-nums">store → {a.payload?.storeVials} vials</span>}
+          {a.type === 'stock_correction' && <span className="text-text tabular-nums">{a.batchNo && <>batch {batchLabel(a)} · </>}store → {a.payload?.storeVials} vials</span>}
           {a.type === 'threshold_change' && (t
             ? <span className="text-text tabular-nums">critical {t.criticalDoses}d / {t.criticalVials}v · low {t.lowDoses}d / {t.lowVials}v</span>
             : <span>reset to default</span>)}
@@ -70,6 +70,7 @@ export default function Approvals() {
 
   const [corrVaccineId,  setCorrVaccineId]  = useState('')
   const [corrStoreVials, setCorrStoreVials] = useState('')
+  const [corrBatchPick,  setCorrBatchPick]  = useState('')
   const [corrNote,       setCorrNote]       = useState('')
   const [corrError,      setCorrError]      = useState(null)
   const [corrDone,       setCorrDone]       = useState(false)
@@ -88,6 +89,11 @@ export default function Approvals() {
     ? [...new Map(dashData.facilities.map(r => [r.vaccineId, r])).values()]
     : []
   const vaccineOptions = vaccines.map(r => ({ value: r.vaccineId, label: r.vaccineName }))
+
+  // A correction sets one batch's store total (Round 47). Only batches with vials left are listed.
+  const { data: batchData } = useQuery({ queryKey: ['store-batches'], queryFn: getStoreBatches })
+  const corrBatches = (batchData?.batches ?? []).filter(b => b.vaccineId === corrVaccineId)
+  const corrBatch = corrBatches.length === 1 ? corrBatches[0] : corrBatches.find(b => b.batchId === corrBatchPick)
 
   const { data: pendingData, isLoading: pendingLoading } = useQuery({
     queryKey: ['approvals', 'pending'],
@@ -111,6 +117,7 @@ export default function Approvals() {
     mutationFn: () => createApproval({
       type: 'stock_correction',
       vaccineId: corrVaccineId,
+      batchId: corrBatch?.batchId,
       storeVials: Number(corrStoreVials),
       note: corrNote,
     }),
@@ -119,7 +126,7 @@ export default function Approvals() {
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setReview(null)
       setCorrDone(true)
-      setCorrVaccineId(''); setCorrStoreVials(''); setCorrNote(''); setCorrError(null)
+      setCorrVaccineId(''); setCorrBatchPick(''); setCorrStoreVials(''); setCorrNote(''); setCorrError(null)
     },
     onError: (err) => {
       setReview(null)
@@ -175,7 +182,7 @@ export default function Approvals() {
     setThrReset(false); setThrDone(false); setThrError(null)
   }
 
-  const corrValid = corrVaccineId && corrStoreVials !== '' && Number(corrStoreVials) >= 0 && corrNote.trim().length > 0
+  const corrValid = corrVaccineId && corrBatch && corrStoreVials !== '' && Number(corrStoreVials) >= 0 && corrNote.trim().length > 0
   const thrValid  = thrVaccineId && (thrReset || Object.values(thrValues).every(v => v !== ''))
 
   const isListLoading = listView === 'pending' ? pendingLoading : historyLoading
@@ -201,18 +208,30 @@ export default function Approvals() {
 
           {tab === 'stock_correction' ? (
             <div className="flex flex-col gap-4 max-w-xl">
-              <p className="text-sm text-text-muted">Set the correct store total in vials (vials not held by any vaccinator), for example after a physical count.</p>
+              <p className="text-sm text-text-muted">Set the correct store total in vials for one batch (vials not held by any vaccinator), for example after a physical count.</p>
               <Select
                 id="corr-vaccine"
                 label="Vaccine"
                 placeholder="Select vaccine…"
                 options={vaccineOptions}
                 value={corrVaccineId}
-                onChange={e => { setCorrVaccineId(e.target.value); setCorrDone(false); setCorrError(null) }}
+                onChange={e => { setCorrVaccineId(e.target.value); setCorrBatchPick(''); setCorrDone(false); setCorrError(null) }}
               />
+              {corrVaccineId && batchData && (corrBatches.length === 0
+                ? <p className="text-sm text-text-muted">No batch of this vaccine is in store, so there is nothing to correct.</p>
+                : corrBatches.length === 1
+                  ? <p className="text-sm text-text-muted tabular-nums">Batch {batchLabel(corrBatch)} · now {corrBatch.storeVials} vials in store</p>
+                  : <Select
+                      id="corr-batch"
+                      label="Batch"
+                      placeholder="Select batch…"
+                      options={corrBatches.map(b => ({ value: b.batchId, label: `${batchLabel(b)} · ${b.storeVials} vials in store` }))}
+                      value={corrBatchPick}
+                      onChange={e => { setCorrBatchPick(e.target.value); setCorrDone(false); setCorrError(null) }}
+                    />)}
               <Input
                 id="corr-vials"
-                label="Correct store total (vials)"
+                label="Correct store total for this batch (vials)"
                 type="number"
                 min={0}
                 inputMode="numeric"
@@ -333,6 +352,7 @@ export default function Approvals() {
         intro="The Facility Head reviews it. The store total changes only once they approve."
         rows={[
           { label: 'Vaccine', value: vaccineOptions.find(o => o.value === corrVaccineId)?.label },
+          { label: 'Batch', value: corrBatch ? `${batchLabel(corrBatch)} · now ${corrBatch.storeVials} vials` : '—' },
           { label: 'New store total', value: `${corrStoreVials} vials` },
           { label: 'Reason', value: corrNote.trim() },
         ]}

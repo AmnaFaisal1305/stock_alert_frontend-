@@ -8,6 +8,7 @@ import Card from '../../components/shared/Card'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
+import { batchLabel, plural } from '../../lib/format'
 
 function HoldingRow({ r }) {
   const done = r.remaining === 0
@@ -24,6 +25,11 @@ function HoldingRow({ r }) {
       <p className="text-xs text-text-muted mt-1 tabular-nums">
         {r.assigned} assigned · {r.used} used · {r.returned} returned · {r.wasted} wasted
       </p>
+      {r.batches.map((b) => (
+        <p key={b.batchId ?? 'none'} className="text-xs text-text-muted mt-0.5 tabular-nums">
+          {b.batchNo ? `Batch ${batchLabel(b)}` : batchLabel(b)} · {plural(b.remaining, 'vial')}
+        </p>
+      ))}
     </li>
   )
 }
@@ -38,8 +44,16 @@ export default function StockEntry() {
   })
 
   const { inHand, usedUp, totalRemaining } = useMemo(() => {
-    const rows = (data?.holdings ?? []).filter((r) => r.workerId === user?.id)
-    const inHand = rows.filter((r) => r.remaining > 0).sort((a, b) => b.remaining - a.remaining)
+    // Holdings are per batch (Round 47): one row per vaccine, with its batches in hand under it.
+    const byVaccine = new Map()
+    for (const r of (data?.holdings ?? []).filter((h) => h.workerId === user?.id)) {
+      if (!byVaccine.has(r.vaccineId)) byVaccine.set(r.vaccineId, { vaccineId: r.vaccineId, vaccineName: r.vaccineName, assigned: 0, used: 0, returned: 0, wasted: 0, remaining: 0, batches: [] })
+      const v = byVaccine.get(r.vaccineId)
+      for (const k of ['assigned', 'used', 'returned', 'wasted', 'remaining']) v[k] += r[k] ?? 0
+      if (r.remaining > 0) v.batches.push(r)
+    }
+    for (const v of byVaccine.values()) v.batches.sort((a, b) => (a.expiryDate ?? '').localeCompare(b.expiryDate ?? ''))
+    const inHand = [...byVaccine.values()].filter((r) => r.remaining > 0).sort((a, b) => b.remaining - a.remaining)
     return {
       inHand,
       totalRemaining: inHand.reduce((sum, r) => sum + r.remaining, 0),

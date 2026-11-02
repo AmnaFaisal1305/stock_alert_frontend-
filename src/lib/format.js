@@ -22,6 +22,9 @@ export function formatTime(iso) {
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
+// "B123 · exp 31 Mar 2027"; vials moved before batches existed (Round 47) have no batch.
+export const batchLabel = (b) => (b?.batchNo ? `${b.batchNo} · exp ${formatDate(b.expiryDate)}` : 'No batch (older stock)')
+
 // Local calendar date (YYYY-MM-DD). toISOString() would give the UTC date, which is
 // yesterday for Pakistan users between 00:00 and 05:00.
 export const toLocalDateStr = (d) =>

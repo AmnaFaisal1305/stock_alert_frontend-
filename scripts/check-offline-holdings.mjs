@@ -24,6 +24,16 @@ rows = applyQueued([], [assign], F)
 assert.equal(find(rows, null), undefined)
 assert.equal(find(rows, W).remaining, 5)
 
+// Two batches of one vaccine stay two rows (Round 47); an assign from batch b2 only touches b2.
+const batches = [
+  { facilityId: F, workerId: W, vaccineId: V, batchId: 'b1', assigned: 4, used: 0, returned: 0, wasted: 0, remaining: 4 },
+  { facilityId: F, workerId: W, vaccineId: V, batchId: 'b2', assigned: 2, used: 0, returned: 0, wasted: 0, remaining: 2 },
+]
+rows = applyQueued(batches, [{ kind: 'assign', payload: { workerId: W, items: [{ vaccineId: V, batchId: 'b2', vials: 3 }] } }], F)
+assert.equal(rows.length, 2)
+assert.equal(rows.find((r) => r.batchId === 'b1').remaining, 4)
+assert.equal(rows.find((r) => r.batchId === 'b2').remaining, 5)
+
 // Server rows are not mutated, and an empty queue is a no-op.
 assert.equal(server[0].remaining, 20)
 assert.deepEqual(applyQueued(server, [], F), server)

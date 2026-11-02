@@ -14,7 +14,7 @@ import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorState from '../../components/shared/ErrorState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
-import { formatDate } from '../../lib/format'
+import { formatDate, batchLabel } from '../../lib/format'
 import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
 
 const thresholdText = (t) => `critical ${t.criticalDoses}d / ${t.criticalVials}v · low ${t.lowDoses}d / ${t.lowVials}v`
@@ -24,7 +24,7 @@ function Change({ a }) {
   if (a.type === 'stock_correction') {
     return (
       <p className="text-sm tabular-nums">
-        <span className="text-text-muted">Store</span>{' '}
+        <span className="text-text-muted">{a.batchNo ? `Store, batch ${batchLabel(a)}` : 'Store'}</span>{' '}
         {a.current && <><span className="text-text-muted">{a.current.storeVials} →</span>{' '}</>}
         <span className="font-medium text-text">{a.payload?.storeVials} vials</span>
       </p>

@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import {
   FileSpreadsheet, FileText, BarChart2, ChevronDown, X, PackageCheck, Syringe, Trash2, Boxes,
-  Clock, ClipboardCheck, SlidersHorizontal, ArrowLeftRight, Scale, Info,
+  Clock, ClipboardCheck, SlidersHorizontal, ArrowLeftRight, Scale, Info, CalendarClock,
 } from 'lucide-react'
 import {
   getAnalytics, getDistricts, getUnionCouncils, getFacilities, getStockRequests, getVaccines,
@@ -301,12 +301,13 @@ const METRICS = {
   used:       { label: 'Vials used',       noun: 'used' },
   wasted:     { label: 'Vials wasted',     noun: 'wasted' },
   available:  { label: 'Vials available',  noun: 'available' },
+  expiry:     { label: 'Vials near expiry', noun: 'near expiry' },
 }
 
 // Drill-down: where a card's figure comes from, by facility, month or vaccinator.
-function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiFacility, t, C, onClose }) {
+function DrillPanel({ metric, movement, remaining, balances, expiry, vaccineName, multiFacility, t, C, onClose }) {
   const dims = useMemo(() => {
-    if (metric === 'available') return ['facility']
+    if (metric === 'available' || metric === 'expiry') return ['facility']
     const d = []
     if (multiFacility) d.push('facility')
     d.push('month')
@@ -319,6 +320,8 @@ function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiF
 
   const series = metric === 'correction'
     ? [{ key: 'Added', color: C.added }, { key: 'Deleted', color: C.deleted }]
+    : metric === 'expiry'
+    ? [{ key: 'Near expiry', color: C.nearExpiry }, { key: 'Expired', color: C.expired }]
     : metric === 'available'
       ? (balances ? [{ key: 'On hand at end', color: C.available }] : [{ key: 'In store', color: C.available }, { key: 'With vaccinators', color: C.used }])
       : [{ key: METRICS[metric].label.replace('Vials ', '').replace(/^./, (c) => c.toUpperCase()), color: C[metric] }]
@@ -329,7 +332,9 @@ function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiF
       acc[key] ??= { key, name: label, ...Object.fromEntries(series.map((s) => [s.key, 0])) }
       for (const [k, v] of Object.entries(vals)) acc[key][k] += v ?? 0
     }
-    if (metric === 'available' && balances) {
+    if (metric === 'expiry') {
+      for (const r of expiry) bump(r.facilityId, r.facilityName ?? '—', { 'Near expiry': r.nearExpiryVials, Expired: r.expiredVials })
+    } else if (metric === 'available' && balances) {
       // Same source as the card: stock at the end of the period, not today's.
       for (const b of balances) bump(b.facilityId, b.facilityName ?? '—', { 'On hand at end': b.endVials })
     } else if (metric === 'available') {
@@ -350,7 +355,7 @@ function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiF
       ? list.sort((a, b) => a.key.localeCompare(b.key))
       : list.sort((a, b) => total(b) - total(a)).slice(0, 12)
     return list.map((r) => ({ ...r, shortName: abbrev(r.name, 20) }))
-  }, [metric, dim, movement, remaining, balances]) // eslint-disable-line react-hooks/exhaustive-deps -- series keys follow metric
+  }, [metric, dim, movement, remaining, balances, expiry]) // eslint-disable-line react-hooks/exhaustive-deps -- series keys follow metric
 
   const dimLabel = { facility: 'By facility', month: 'By month', vaccinator: 'By vaccinator' }
   const scope = vaccineName ? `${vaccineName} · ` : ''
@@ -371,7 +376,7 @@ function DrillPanel({ metric, movement, remaining, balances, vaccineName, multiF
         </div>
       </div>
       <div className="mt-4">
-        {rows.length === 0 ? <EmptyChart message={`Nothing ${METRICS[metric].noun} in this period`} /> : (
+        {rows.length === 0 ? <EmptyChart message={metric === 'expiry' ? 'No vials expire in the next two months' : `Nothing ${METRICS[metric].noun} in this period`} /> : (
           <ResponsiveContainer width="100%" height={vertical ? Math.max(140, rows.length * 40) : 240}>
             <BarChart
               layout={vertical ? 'vertical' : 'horizontal'}
@@ -455,6 +460,7 @@ export default function Analytics() {
   const [wasteHover, wasteHoverHandlers] = useBarHover()
   const [flowHover,  flowHoverHandlers]  = useBarHover()
   const [stockHover, stockHoverHandlers] = useBarHover()
+  const [expHover,   expHoverHandlers]   = useBarHover()
   const [reqHover,   reqHoverHandlers]   = useBarHover()
   const [flowHidden, toggleFlow] = useHiddenSeries()
   const [reqHidden,  toggleReq]  = useHiddenSeries()
@@ -507,11 +513,15 @@ export default function Analytics() {
   const pendingApprovals = sectionSrc?.pendingApprovals ?? []
   // Stock on hand at the start and end of the period (Round 44).
   const balances         = data?.balances
+  // Vials on hand now in batches expiring within two months, and already expired (Round 47).
+  // Current figures: the date range doesn't apply.
+  const expiry           = data?.expiry          ?? []
 
   // Charts compare every vaccine, so the vaccine filter for the stock figures is applied here.
   const vMovement  = useMemo(() => (vaccineId ? movement.filter((r) => r.vaccineId === vaccineId) : movement), [movement, vaccineId])
   const vRemaining = useMemo(() => (vaccineId ? remaining.filter((r) => r.vaccineId === vaccineId) : remaining), [remaining, vaccineId])
   const vBalances  = useMemo(() => (balances && vaccineId ? balances.filter((b) => b.vaccineId === vaccineId) : balances), [balances, vaccineId])
+  const vExpiry    = useMemo(() => (vaccineId ? expiry.filter((r) => r.vaccineId === vaccineId) : expiry), [expiry, vaccineId])
 
   // Non-status series take the categorical palette; request statuses take status hues.
   const C = {
@@ -519,6 +529,8 @@ export default function Analytics() {
     used:       t.series[1],
     wasted:     t.series[2],
     available:  t.series[3],
+    nearExpiry: t.series[2],
+    expired:    t.series[4],
     added:      t.series[0],
     deleted:    t.series[4],
     remaining:  t.series[0],
@@ -593,6 +605,22 @@ export default function Analytics() {
       added: sum('added'), deleted: sum('deleted'), available: sum('available'), startBal: sum('startBal'),
     }
   }, [selectedRows])
+  const expiryTotals = useMemo(() => ({
+    near:    vExpiry.reduce((s, r) => s + (r.nearExpiryVials ?? 0), 0),
+    expired: vExpiry.reduce((s, r) => s + (r.expiredVials ?? 0), 0),
+  }), [vExpiry])
+  // Vials near expiry per antigen: summed across facilities, every vaccine (the selected one is highlighted).
+  const expiryChartData = useMemo(() => {
+    const acc = {}
+    for (const r of expiry) {
+      const v = (acc[r.vaccineId] ??= { id: r.vaccineId, fullName: r.vaccineName, name: abbrev(r.vaccineName, 18), 'Near expiry': 0, Expired: 0 })
+      v['Near expiry'] += r.nearExpiryVials ?? 0
+      v.Expired        += r.expiredVials ?? 0
+    }
+    return Object.values(acc).filter((v) => v['Near expiry'] || v.Expired).sort((a, b) => b['Near expiry'] - a['Near expiry'] || b.Expired - a.Expired)
+  }, [expiry])
+  const expiryCutoff = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + 2); return formatDate(toLocalDateStr(d)) }, [])
+
   const balanced = totals.startBal + totals.received + totals.added - totals.deleted
     === totals.used + totals.wasted + totals.available
   const multiFacility = new Set([...movement, ...remaining].map((r) => r.facilityId)).size > 1
@@ -811,7 +839,7 @@ export default function Analytics() {
     setExporting(kind)
     try {
       const fn = kind === 'xlsx' ? exportAnalyticsExcel : exportAnalyticsPdf
-      await fn({ movement: vMovement, balances: vBalances, from, to, vaccineName: selectedVaccineName })
+      await fn({ movement: vMovement, balances: vBalances, expiry: vExpiry, from, to, vaccineName: selectedVaccineName })
     } catch {
       setExportError('Could not generate the report. Please try again.')
     } finally {
@@ -967,7 +995,7 @@ export default function Analytics() {
             <div className="flex flex-col gap-5">
               {/* Stat cards: received ± correction = used + wasted + available */}
               <div className="flex flex-col gap-3" data-tour="analytics-cards">
-                <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 sm:gap-4">
                   <StatCard label="Vials Received" icon={PackageCheck} accent={1} value={n(totals.received)} subtitle="Received from UC" onClick={() => toggleDrill('received')} active={drill === 'received'} />
                   <StatCard
                     label="Stock Correction" icon={ArrowLeftRight} accent={4}
@@ -978,9 +1006,12 @@ export default function Analytics() {
                   />
                   <StatCard label="Vials Used" icon={Syringe} accent={2} value={n(totals.used)} subtitle="Administered to patients" onClick={() => toggleDrill('used')} active={drill === 'used'} />
                   <StatCard label="Vials Wasted" icon={Trash2} accent={3} value={n(totals.wasted)} subtitle="Discarded in administration" onClick={() => toggleDrill('wasted')} active={drill === 'wasted'} />
-                  <div className="col-span-2 xl:col-span-1 grid">
-                    <StatCard label="Vials Available" icon={Boxes} accent={5} value={n(totals.available)} subtitle={balances ? `On hand on ${formatDate(to)}` : 'Current stock on hand'} onClick={() => toggleDrill('available')} active={drill === 'available'} />
-                  </div>
+                  <StatCard label="Vials Available" icon={Boxes} accent={5} value={n(totals.available)} subtitle={balances ? `On hand on ${formatDate(to)}` : 'Current stock on hand'} onClick={() => toggleDrill('available')} active={drill === 'available'} />
+                  <StatCard
+                    label="Vials Near Expiry" icon={CalendarClock} accent={3} value={n(expiryTotals.near)}
+                    subtitle={expiryTotals.expired > 0 ? `${n(expiryTotals.expired)} expired, still on hand` : `On hand now, expiring by ${expiryCutoff}`}
+                    onClick={() => toggleDrill('expiry')} active={drill === 'expiry'}
+                  />
                 </div>
                 {(totals.received > 0 || totals.available > 0) && (
                   <BalanceLine totals={totals} available={totals.available} startBal={totals.startBal} balanced={balanced} hasPeriodBalances={!!balances} to={to} />
@@ -994,6 +1025,7 @@ export default function Analytics() {
                   movement={vMovement}
                   remaining={vRemaining}
                   balances={vBalances}
+                  expiry={vExpiry}
                   vaccineName={selectedVaccineName}
                   multiFacility={multiFacility}
                   t={t}
@@ -1082,6 +1114,32 @@ export default function Analytics() {
                           {remainingChartData.map((d, i) => <Cell key={d.id} fillOpacity={fade(i, d.id, stockHover)} />)}
                           <LabelList dataKey="doses" position="right" style={{ fontSize: 11, fill: t.tickStrong }} formatter={fmtNum} />
                         </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </ChartCard>
+
+              {/* Chart 4 — Vials near expiry per antigen (client request, Round 47) */}
+              <ChartCard
+                title="Vials Near Expiry by Vaccine"
+                subtitle={`Vials on hand now (store and vaccinators) in batches expiring by ${expiryCutoff}, and vials already expired. Not tied to the date range. Click a bar to filter by vaccine.`}
+                legend={[{ label: 'Near expiry', color: C.nearExpiry }, { label: 'Expired', color: C.expired }]}
+              >
+                {expiryChartData.length === 0 ? <EmptyChart message="No vials expire in the next two months" /> : (
+                  <div className="cursor-pointer">
+                    <ResponsiveContainer width="100%" height={Math.max(160, expiryChartData.length * 46)}>
+                      <BarChart layout="vertical" data={expiryChartData} margin={{ top: 4, right: 56, left: 4, bottom: 4 }} barGap={2} {...expHoverHandlers} onClick={clickBar(expiryChartData)}>
+                        <CartesianGrid horizontal={false} stroke={t.grid} />
+                        <XAxis type="number" tick={t.tick} tickLine={false} axisLine={false} tickFormatter={fmtNum} allowDecimals={false} />
+                        <YAxis type="category" dataKey="name" tick={{ ...t.tick, fill: t.tickStrong }} tickLine={false} axisLine={false} width={140} />
+                        <ReTooltip content={<ChartTooltip nameKey="fullName" hint={clickHint} />} cursor={cursor} />
+                        {[['Near expiry', C.nearExpiry], ['Expired', C.expired]].map(([k, color]) => (
+                          <Bar key={k} dataKey={k} fill={color} radius={[0, 3, 3, 0]} maxBarSize={16} {...ANIM}>
+                            {expiryChartData.map((d, i) => <Cell key={d.id} fillOpacity={fade(i, d.id, expHover)} />)}
+                            <LabelList dataKey={k} position="right" style={{ fontSize: 11, fill: t.tickStrong }} formatter={(v) => (v ? fmtNum(v) : '')} />
+                          </Bar>
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

@@ -12,7 +12,7 @@ import EmptyState from '../../components/shared/EmptyState'
 import WorkerPicker from '../../components/shared/WorkerPicker'
 import ResultPanel from '../../components/shared/ResultPanel'
 import ReviewDialog from '../../components/ui/ReviewDialog'
-import { localDateStr, formatDate, plural } from '../../lib/format'
+import { localDateStr, formatDate, plural, batchLabel } from '../../lib/format'
 
 const todayStr   = () => localDateStr()
 const minDateStr = () => localDateStr(-7)
@@ -45,6 +45,7 @@ export default function DayEnd() {
     mutationFn: recordDayEnd,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: ['holdings'] })
+      queryClient.invalidateQueries({ queryKey: ['store-batches'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['audit-log'] })
       setDone(true)
@@ -57,7 +58,11 @@ export default function DayEnd() {
         enqueue('dayend', payload)
         setSavedOffline(true)
       } else if (err.status === 400 && err.body?.vaccineId) {
-        setRowErrors(prev => ({ ...prev, [err.body.vaccineId]: `Sum must equal ${err.body.remaining} remaining vials` }))
+        // The server names the vaccine, not the batch: mark that vaccine's rows.
+        const msg = err.body.remaining != null ? `Sum must equal ${err.body.remaining} remaining vials` : (err.message ?? 'Check this batch')
+        setRowErrors(prev => ({ ...prev, ...Object.fromEntries(heldRows.filter(h => h.vaccineId === err.body.vaccineId).map(h => [h.key, msg])) }))
+        setGlobalError(err.message ?? 'Check the highlighted rows.')
+        queryClient.invalidateQueries({ queryKey: ['holdings'] })
       } else {
         setGlobalError(err.message ?? 'Submission failed. Please try again.')
       }
@@ -68,32 +73,30 @@ export default function DayEnd() {
   const workers  = (usersData?.users ?? []).filter(u => u.role === 'facility_worker' && u.isActive)
   const selectedWorker = workers.find(w => w.id === workerId)
 
-  const holdingsByVaccine = useMemo(() => {
-    if (!workerId || !holdingsData) return {}
-    return Object.fromEntries(
-      withQueued(holdingsData.holdings ?? [], null)
-        .filter(h => h.workerId === workerId)
-        .map(h => [h.vaccineId, h])
-    )
-  }, [workerId, holdingsData, queued])
+  // One row per batch the vaccinator holds (Round 47), keyed vaccine:batch.
+  const heldRows = useMemo(() => {
+    if (!workerId || !holdingsData) return []
+    const names = new Map(vaccines.map(v => [v.id, v.name]))
+    return withQueued(holdingsData.holdings ?? [], null)
+      .filter(h => h.workerId === workerId && h.remaining > 0)
+      .map(h => ({ ...h, key: `${h.vaccineId}:${h.batchId ?? 'none'}`, name: names.get(h.vaccineId) ?? h.vaccineName }))
+      .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '') || (a.expiryDate ?? '').localeCompare(b.expiryDate ?? ''))
+  }, [workerId, holdingsData, queued, vaccines])
 
-  const assignedVaccines = vaccines.filter(v => holdingsByVaccine[v.id]?.remaining > 0)
+  function getRow(key) { return inputs[key] ?? ZERO }
+  const rowSum = (key) => { const r = getRow(key); return num(r.used) + num(r.returned) + num(r.wasted) }
 
-  function getRow(vaccineId) { return inputs[vaccineId] ?? ZERO }
-  const rowSum = (vaccineId) => { const r = getRow(vaccineId); return num(r.used) + num(r.returned) + num(r.wasted) }
-
-  function setField(vaccineId, field, val) {
-    setInputs(prev => ({ ...prev, [vaccineId]: { ...getRow(vaccineId), [field]: val } }))
-    setRowErrors(prev => { const n = { ...prev }; delete n[vaccineId]; return n })
+  function setField(key, field, val) {
+    setInputs(prev => ({ ...prev, [key]: { ...getRow(key), [field]: val } }))
+    setRowErrors(prev => { const n = { ...prev }; delete n[key]; return n })
     setGlobalError('')
   }
 
   function validateRows() {
     const errs = {}
-    for (const v of assignedVaccines) {
-      const h   = holdingsByVaccine[v.id]
-      const sum = rowSum(v.id)
-      if (sum !== h.remaining) errs[v.id] = `Must equal ${h.remaining} remaining (got ${sum})`
+    for (const h of heldRows) {
+      const sum = rowSum(h.key)
+      if (sum !== h.remaining) errs[h.key] = `Must equal ${h.remaining} remaining (got ${sum})`
     }
     return errs
   }
@@ -101,13 +104,14 @@ export default function DayEnd() {
   function handleSubmit(e) {
     e.preventDefault()
     if (!workerId) { setGlobalError('Please select a vaccinator.'); return }
-    if (assignedVaccines.length === 0) { setGlobalError('Selected vaccinator has no holdings to record.'); return }
+    if (heldRows.length === 0) { setGlobalError('Selected vaccinator has no holdings to record.'); return }
     const errs = validateRows()
     if (Object.keys(errs).length) { setRowErrors(errs); return }
-    const items = assignedVaccines.map(v => {
-      const row = getRow(v.id)
+    const items = heldRows.map(h => {
+      const row = getRow(h.key)
       return {
-        vaccineId:     v.id,
+        vaccineId:     h.vaccineId,
+        batchId:       h.batchId ?? null,
         usedVials:     num(row.used),
         returnedVials: num(row.returned),
         wastedVials:   num(row.wasted),
@@ -178,8 +182,8 @@ export default function DayEnd() {
     />
   )
 
-  const totals = FIELDS.map(([f, label]) => [label, assignedVaccines.reduce((s, v) => s + num(getRow(v.id)[f]), 0)])
-  const balanced = assignedVaccines.filter(v => rowSum(v.id) === holdingsByVaccine[v.id].remaining).length
+  const totals = FIELDS.map(([f, label]) => [label, heldRows.reduce((s, h) => s + num(getRow(h.key)[f]), 0)])
+  const balanced = heldRows.filter(h => rowSum(h.key) === h.remaining).length
 
   return (
     <div>
@@ -210,7 +214,7 @@ export default function DayEnd() {
                 />
               </div>
 
-              {assignedVaccines.length === 0 ? (
+              {heldRows.length === 0 ? (
                 <EmptyState title="No vaccines assigned yet" message="Assign vials first; then come back at the end of the session." />
               ) : (
                 <>
@@ -222,17 +226,20 @@ export default function DayEnd() {
                   </div>
 
                   <ul className="divide-y divide-surface-border">
-                    {assignedVaccines.map(v => {
-                      const h   = holdingsByVaccine[v.id]
-                      const row = getRow(v.id)
-                      const sum = rowSum(v.id)
-                      const err = rowErrors[v.id]
+                    {heldRows.map(h => {
+                      const v   = { id: h.key, name: h.name }
+                      const row = getRow(h.key)
+                      const sum = rowSum(h.key)
+                      const err = rowErrors[h.key]
                       const ok  = sum === h.remaining
                       const over = sum > h.remaining
                       return (
-                        <li key={v.id} className={`px-4 sm:px-5 py-3 ${err ? 'bg-danger-bg/40' : ''}`}>
+                        <li key={h.key} className={`px-4 sm:px-5 py-3 ${err ? 'bg-danger-bg/40' : ''}`}>
                           <div className="grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_5rem_repeat(3,5.5rem)_6rem] gap-x-3 gap-y-2 items-center">
-                            <p className="col-span-2 sm:col-span-1 text-sm font-medium text-text">{v.name}</p>
+                            <div className="col-span-2 sm:col-span-1 min-w-0">
+                              <p className="text-sm font-medium text-text">{h.name}</p>
+                              <p className="text-xs text-text-muted tabular-nums">{h.batchNo ? `Batch ${batchLabel(h)}` : batchLabel(h)}</p>
+                            </div>
                             <p className="text-right text-sm tabular-nums text-text">{h.remaining > 0 ? <>{h.remaining}<span className="text-xs text-text-muted ml-1">held</span></> : <span className="text-text-muted">—</span>}</p>
                             {FIELDS.map(([field, label]) => (
                               <label key={field} className="flex flex-col gap-1">
@@ -268,11 +275,11 @@ export default function DayEnd() {
           )}
         </div>
 
-        {workerId && assignedVaccines.length > 0 && (
+        {workerId && heldRows.length > 0 && (
           <div className="sticky bottom-0 z-10 mt-5 px-4 sm:px-5 py-3 bg-surface border border-surface-border rounded-card shadow-float flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-text-muted tabular-nums">
               {totals.map(([label, n]) => <span key={label} className="mr-4"><span className="font-semibold text-text">{n}</span> {label.toLowerCase()}</span>)}
-              <span>{balanced} of {assignedVaccines.length} vaccines balanced</span>
+              <span>{balanced} of {plural(heldRows.length, 'row')} balanced</span>
             </p>
             <div className="flex items-center gap-3">
               {globalError && <p role="alert" className="text-sm text-danger-dark">{globalError}</p>}
@@ -294,8 +301,8 @@ export default function DayEnd() {
             { label: 'Vaccinator', value: selectedWorker?.name ?? selectedWorker?.email },
             { label: 'Date', value: formatDate(occurredOn) },
           ]}
-          items={review.items.map(it => ({
-            name: (vaccines.find(v => v.id === it.vaccineId)?.name),
+          items={review.items.map((it, i) => ({
+            name: `${vaccines.find(v => v.id === it.vaccineId)?.name} · ${batchLabel(heldRows[i])}`,
             value: `${it.usedVials} used · ${it.returnedVials} returned · ${it.wastedVials} wasted`,
           }))}
           total={totals.map(([label, n]) => `${n} ${label.toLowerCase()}`).join(' · ')}

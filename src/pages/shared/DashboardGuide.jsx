@@ -252,8 +252,8 @@ export const GUIDE = {
         ['Request stock', 'Raise a stock request; the UC Supervisor and Facility Head are notified.'],
         ['Record received', 'When the stock arrives, enter the vials with batch number, expiry date and manufacturer.'],
         ['Facility Head approves', 'When sent and received match, the Head approves and the stock enters your store.'],
-        ['Assign Vials (morning)', 'Hand each vaccinator their vials from the store.'],
-        ['Day End (evening)', "Enter each vaccinator's used, returned and wasted vials. Together they must equal what the vaccinator held."],
+        ['Assign Vials (morning)', 'Hand each vaccinator their vials from the store. Pick the batch the vials come from.'],
+        ['Day End (evening)', "Enter each vaccinator's used, returned and wasted vials, one row per batch. Together they must equal what the vaccinator held."],
       ],
       modules: [
         ['Dashboard', "Your facility's stock status."],
@@ -282,8 +282,8 @@ export const GUIDE = {
         ['اسٹاک کی درخواست', 'اسٹاک کی درخواست کریں؛ یو سی سپروائزر اور فیسلٹی ہیڈ کو اطلاع ملتی ہے۔'],
         ['وصولی درج کریں', 'اسٹاک پہنچنے پر وائلز کو بیچ نمبر، ایکسپائری تاریخ اور مینوفیکچرر کے ساتھ درج کریں۔'],
         ['فیسلٹی ہیڈ کی منظوری', 'بھیجا گیا اور وصول شدہ برابر ہوں تو ہیڈ منظوری دیتا ہے اور اسٹاک آپ کے اسٹور میں آ جاتا ہے۔'],
-        ['Assign Vials (صبح)', 'اسٹور سے ہر ویکسینیٹر کو اس کے وائلز دیں۔'],
-        ['Day End (شام)', 'ہر ویکسینیٹر کے استعمال شدہ، واپس اور ضائع شدہ وائلز درج کریں۔ ان کا مجموعہ اس کے پاس موجود وائلز کے برابر ہونا چاہیے۔'],
+        ['Assign Vials (صبح)', 'اسٹور سے ہر ویکسینیٹر کو اس کے وائلز دیں۔ وہ بیچ منتخب کریں جس سے وائلز دیے جا رہے ہیں۔'],
+        ['Day End (شام)', 'ہر ویکسینیٹر کے استعمال شدہ، واپس اور ضائع شدہ وائلز ہر بیچ کے لیے الگ درج کریں۔ ان کا مجموعہ اس کے پاس موجود وائلز کے برابر ہونا چاہیے۔'],
       ],
       modules: [
         ['Dashboard', 'آپ کی فیسلٹی کے اسٹاک کی صورتحال۔'],

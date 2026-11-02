@@ -293,6 +293,10 @@ export async function getHoldings() {
   return request('GET', '/api/stock-entries/holdings')
 }
 
+export async function getStoreBatches() {
+  return request('GET', '/api/stock-entries/store-batches')
+}
+
 // ── Approvals ─────────────────────────────────────────────────────────────────
 
 export async function getApprovals(status) {

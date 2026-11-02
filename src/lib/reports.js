@@ -69,6 +69,34 @@ export function buildBalanceRows(balances = [], movement = []) {
   )
 }
 
+// Vials near expiry per antigen (Round 47 `expiry`, current figures): one total row per vaccine,
+// then, when several facilities are in scope, a row per facility x vaccine. Zero rows are left out.
+export function buildExpiryRows(expiry = []) {
+  const rows = expiry.filter((r) => (r.nearExpiryVials ?? 0) + (r.expiredVials ?? 0) > 0)
+  const facilities = new Set(rows.map((r) => r.facilityId))
+  const totals = {}
+  for (const r of rows) {
+    const t = (totals[r.vaccineId] ??= {
+      vaccine: r.vaccineName, facility: facilities.size > 1 ? 'All facilities' : (r.facilityName ?? '—'), near: 0, expired: 0,
+    })
+    t.near    += r.nearExpiryVials ?? 0
+    t.expired += r.expiredVials ?? 0
+  }
+  const byVaccine = Object.values(totals).sort((a, b) => b.near - a.near || a.vaccine.localeCompare(b.vaccine))
+  if (facilities.size <= 1) return byVaccine
+  const detail = rows
+    .map((r) => ({ vaccine: r.vaccineName, facility: r.facilityName ?? '—', near: r.nearExpiryVials ?? 0, expired: r.expiredVials ?? 0 }))
+    .sort((a, b) => a.vaccine.localeCompare(b.vaccine) || a.facility.localeCompare(b.facility))
+  return [...byVaccine, ...detail]
+}
+
+const EXPIRY_COLUMNS = [
+  { key: 'vaccine',  label: 'Vaccine' },
+  { key: 'facility', label: 'Facility' },
+  { key: 'near',     label: 'Near expiry, next 2 months (vials)' },
+  { key: 'expired',  label: 'Expired, still on hand (vials)' },
+]
+
 const BALANCE_COLUMNS = [
   { key: 'facility', label: 'Facility' },
   { key: 'vaccine',  label: 'Vaccine' },
@@ -112,12 +140,17 @@ function fileBase(from, to, vaccineName) {
   return `stock-report${v}_${from || 'start'}_to_${to || 'today'}`
 }
 
-export async function exportAnalyticsExcel({ movement, balances, from, to, vaccineName }) {
+export async function exportAnalyticsExcel({ movement, balances, expiry, from, to, vaccineName }) {
   const XLSX = await import('xlsx')
   const wb = XLSX.utils.book_new()
   if (balances) {
     XLSX.utils.book_append_sheet(
       wb, XLSX.utils.aoa_to_sheet(aoa(BALANCE_COLUMNS, buildBalanceRows(balances, movement))), 'Stock balance',
+    )
+  }
+  if (expiry) {
+    XLSX.utils.book_append_sheet(
+      wb, XLSX.utils.aoa_to_sheet(aoa(EXPIRY_COLUMNS, buildExpiryRows(expiry))), 'Vials near expiry',
     )
   }
   XLSX.utils.book_append_sheet(
@@ -129,7 +162,7 @@ export async function exportAnalyticsExcel({ movement, balances, from, to, vacci
   XLSX.writeFile(wb, `${fileBase(from, to, vaccineName)}.xlsx`)
 }
 
-export async function exportAnalyticsPdf({ movement, balances, from, to, vaccineName }) {
+export async function exportAnalyticsPdf({ movement, balances, expiry, from, to, vaccineName }) {
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'landscape' })
@@ -146,6 +179,18 @@ export async function exportAnalyticsPdf({ movement, balances, from, to, vaccine
       startY: y + 3,
       head: [BALANCE_COLUMNS.map((c) => c.label)],
       body: buildBalanceRows(balances, movement).map((r) => BALANCE_COLUMNS.map((c) => cell(c, r))),
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [0, 98, 65] },
+    })
+    y = (doc.lastAutoTable?.finalY ?? y) + 8
+  }
+  if (expiry) {
+    const rows = buildExpiryRows(expiry)
+    doc.text('Vials near expiry (on hand now)', 14, y)
+    autoTable(doc, {
+      startY: y + 3,
+      head: [EXPIRY_COLUMNS.map((c) => c.label)],
+      body: rows.length ? rows.map((r) => EXPIRY_COLUMNS.map((c) => cell(c, r))) : [['No vials expire in the next two months', '', '', '']],
       styles: { fontSize: 7 },
       headStyles: { fillColor: [0, 98, 65] },
     })
