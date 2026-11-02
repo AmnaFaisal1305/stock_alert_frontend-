@@ -21,7 +21,15 @@
 - **Tests:** `npm test` runs 51 Vitest tests (`auditLog.js`, `api.js`, `push.js`, `stockRequests.js`, `reports.js`). `npm run build` is clean.
 - **Design system:** `DESIGN.md` ("The Ward Ledger"). It allows a categorical palette (`--cat-1…5`) for non-status colour, KPI icon tiles and the 🔔 emoji bell. Red/amber/green mean status only.
 
-### Last verified (2026-10-21, production)
+### Last verified (2026-11-02, dev server against production, read-only)
+- **Rounds 44–46:** Analytics with a vaccine selected (Requests 12 vs 33, Approvals 0 vs 6, matching the API); balance line and Excel/PDF balance rows reconcile (29/29 rows; Sept 2026 checked via the API). `blockedBy` badge and message on requests and FS approvals (production has no blocked item, so the field was injected in the page). Edit user modal prefill and Save enabling (opened with the role faked in the browser, nothing sent). Offline Assign Vials shows the no-connection error and queues nothing. Per-item links for the FS (request + decided approval → History) and the Head (pending approval), including through sign-in.
+- **Analytics request drill-down:** every status list now matches its count (all-time and 30 days + BCG): "Open" uses `?status=submitted`, and the list is limited to the period and to the facilities in the analytics rows (so District/UC filters apply).
+- **Tours:** District and UC supervisors: welcome + every page's tour, no missing steps.
+- **Dark mode at 390 px:** every sidebar page for the Observer, District, UC, Facility Supervisor (Thatta) and Head: no error state, no "undefined"/"NaN", no horizontal page scroll. The request items table scrolls sideways inside its card at 390 px (Received column off-screen until scrolled).
+- **Request tabs (UC Thatta):** Partially fulfilled (with "Closed short", shortfall note and close reason), Cancelled and Declined, each with its reason.
+- **Offline chips (seeded entries):** "1 not sent" dialog with the server's reason, Discard clears it; "Offline · 1 pending · 1 expire soon" with a 6-day-old entry (seeded offline with an invalid payload, removed before reconnecting).
+
+### Verified earlier (2026-10-21, production)
 - **Stock Register (Round 43 + layout):** entry-type badges now show distinct **Used / Wasted / Returned / Received / Stock Correction** labels (was a single "Record" badge for day-end rows). Returned filter chip and Returned column are live and show real Round 43 `kind: returned` rows. Table fits the viewport without horizontal scroll at normal zoom; the Stock Register heading stays pinned under the top bar while scrolling. "Doses per vial" column sits after Expiry with a non-wrapping header.
 - Not covered: column-header behaviour below `min-w-[760px]` (sub-phone widths), Stock Register on the Facility Head role.
 
@@ -94,14 +102,13 @@ Test logins: `docs/test-accounts.md` (gitignored, ask Ahmed if missing).
 | Refresh drops unsent typing | Top bar | Refresh is a full reload: values typed but not submitted on Assign Vials / Day End are lost (queued offline entries are kept). |
 
 ### Not yet tested
-- Round 44–46 adoption (2026-11-02) on a deployed build: see the verification notes in the commit; writes (Edit user) were not submitted against production.
+- A real Edit user save, and the Round 44–46 screens on the deployed build.
 - Stock-request and approval writes after the 2026-11-02 workflow fixes: correcting sent/received, cancelling a `ready_for_approval` request, closing short, and a Super Admin-superseded approval's "Cancelled" label (screens and prefilled forms were checked read-only for the FS, UC Supervisor and Head).
-- Tour: District and UC supervisors and the super admin (Observer, Facility Supervisor, Head and Vaccinator were walked through on 2026-10-30), the Analytics drill-down on a single-facility role, Excel/PDF with a vaccine selected.
+- Tour: the super admin; the Urdu tour text on any role.
 - Super admin signed in (the observer covered the same screens read-only).
-- Dark mode and phone width on every role except the vaccinator.
+- Dark mode and phone width for the super admin (the Observer covers the same screens).
 - The redesigned login: a real sign-in was done. Google's button was rendered in dev (production client ID passed as an env var, not saved), but not the personalised "Sign in as …" variant or a Google sign-in itself.
 - The Refresh button and Urdu guide inside the installed PWA on a real phone.
-- The Cancelled / Declined / Partially fulfilled request tabs, the "N not sent" dialog, and the "expire soon" chip with a real 5-day-old entry.
 - A new Round 40 closing row (cancel / decline / close-short) showing its own vaccines.
 - Mobile Safari (sticky submit bars), Form B print preview, real file downloads (the headless browser cancels downloads; CSV content is checked in-page).
 

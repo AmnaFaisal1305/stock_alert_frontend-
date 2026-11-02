@@ -15,7 +15,7 @@ import { exportAnalyticsExcel, exportAnalyticsPdf } from '../../lib/reports'
 import { localDateStr, toLocalDateStr, formatDate } from '../../lib/format'
 import { ROLE_LABELS } from '../../lib/navigation'
 import { approvalTypeLabel } from '../../lib/status'
-import { isOpenRequest, vaccineSummary } from '../../lib/stockRequests'
+import { vaccineSummary } from '../../lib/stockRequests'
 import { useAuth } from '../../context/AuthContext'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { useUrlFilters } from '../../hooks/useUrlState'
@@ -418,7 +418,7 @@ const TABS = [
 const DETAIL_API_PARAM = {
   completed: 'completed',
   partial:   'partially_fulfilled',
-  open:      null, // fetch all, filter client-side by isOpenRequest
+  open:      'submitted', // the analytics "Open" count is the stored status `submitted`
   declined:  'declined',
   cancelled: 'cancelled',
 }
@@ -744,15 +744,19 @@ export default function Analytics() {
       .map((r) => ({ value: r.month, label: fmtMonth(r.month) })),
   ], [requestsByMonth])
 
-  // Detail requests filtered by month + facility
+  // The list matches the count it was opened from: same status, period, location and vaccine.
+  // The location filters reach it through the facilities in the analytics `requests` rows.
+  const requestFacilityIds = useMemo(() => new Set(requests.map((r) => r.facilityId)), [requests])
   const detailRequests = useMemo(() => {
     let list = detailData?.stockRequests ?? []
-    if (detailStatus === 'open')    list = list.filter(isOpenRequest)
     if (detailStatus === 'partial') list = list.filter((r) => r.status === 'partially_fulfilled')
-    if (reqFacilityName) list = list.filter((r) => r.facilityName === reqFacilityName)
+    list = list.filter((r) => requestFacilityIds.has(r.facilityId))
+    if (!reqMonth) {
+      list = list.filter((r) => { const d = toLocalDateStr(new Date(r.createdAt)); return (!from || d >= from) && (!to || d <= to) })
+    }
     if (vaccineId) list = list.filter((r) => (r.items ?? []).some((it) => it.vaccineId === vaccineId))
     return list
-  }, [detailData, detailStatus, reqFacilityName, vaccineId])
+  }, [detailData, detailStatus, requestFacilityIds, reqMonth, from, to, vaccineId])
 
   // Table rows filtered by selected month
   const displayedRequestsByMonth = reqMonth
