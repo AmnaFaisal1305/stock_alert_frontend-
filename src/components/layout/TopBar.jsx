@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getUnreadCount } from '../../lib/api'
 import NotificationPanel from './NotificationPanel'
 import ConfirmDialog from '../ui/ConfirmDialog'
-import { subscribe, pendingCount, failedCount, expiringCount, failedItems, discardFailed, getLastSynced } from '../../lib/offlineQueue'
+import { subscribe, pendingCount, failedCount, expiringCount, failedItems, discardFailed, getLastSynced, OFFLINE_ENABLED } from '../../lib/offlineQueue'
 import { useTheme } from '../../hooks/useTheme'
 import { scopeLabel, ROLE_LABELS } from '../../lib/navigation'
 
@@ -91,7 +91,7 @@ function SyncStatus() {
         Syncing {pending}
       </span>
     )
-  } else if (lastSynced) {
+  } else if (lastSynced && OFFLINE_ENABLED) {
     status = <span className="hidden sm:inline text-xs text-text-muted" title={new Date(lastSynced).toLocaleString()}>Synced {time(lastSynced)}</span>
   }
 

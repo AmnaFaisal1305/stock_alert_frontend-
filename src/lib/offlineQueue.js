@@ -3,6 +3,12 @@ import { assignVials, recordDayEnd } from './api'
 import { applyQueued } from './queuedHoldings'
 import { localDateStr } from './format'
 
+// Offline entry is deferred to a later phase (backend handoff, 2026-11-02): with this off, Assign
+// Vials and Day End refuse to save without a connection instead of queueing. Entries queued
+// before the switch still show in the top bar and replay. Set to true to bring it back.
+export const OFFLINE_ENABLED = false
+export const NO_CONNECTION = 'No connection. Nothing was saved. Try again when you are back online.'
+
 const QUEUE_KEY      = 'sst_offline_queue'
 const LAST_SYNC_KEY  = 'sst_last_synced'
 

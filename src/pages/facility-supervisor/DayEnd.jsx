@@ -2,7 +2,7 @@ import { useRef, useState, useMemo, useSyncExternalStore } from 'react'
 import { ClipboardList, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, recordDayEnd } from '../../lib/api'
-import { enqueue, isNetworkError, subscribe, pendingCount, withQueued } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError, subscribe, pendingCount, withQueued, OFFLINE_ENABLED, NO_CONNECTION } from '../../lib/offlineQueue'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
@@ -50,7 +50,9 @@ export default function DayEnd() {
       setDone(true)
     },
     onError(err, payload) {
-      if (isNetworkError(err)) {
+      if (isNetworkError(err) && !OFFLINE_ENABLED) {
+        setGlobalError(NO_CONNECTION)
+      } else if (isNetworkError(err)) {
         // "online" but no signal: the reply never came, so queue it; the same clientRef makes a replay safe
         enqueue('dayend', payload)
         setSavedOffline(true)
@@ -118,6 +120,9 @@ export default function DayEnd() {
   function confirmSubmit() {
     const payload = review
     setReview(null)
+    if (!navigator.onLine && !OFFLINE_ENABLED) {
+      setGlobalError(NO_CONNECTION); return
+    }
     if (!navigator.onLine) {
       enqueue('dayend', payload)
       setSavedOffline(true); return
@@ -296,7 +301,7 @@ export default function DayEnd() {
           total={totals.map(([label, n]) => `${n} ${label.toLowerCase()}`).join(' · ')}
           warnings={[
             totals[2][1] > 0 && `${plural(totals[2][1], 'vial')} will be recorded as wasted.`,
-            !navigator.onLine && 'You’re offline. This will be saved and sent when you reconnect.',
+            !navigator.onLine && (OFFLINE_ENABLED ? 'You’re offline. This will be saved and sent when you reconnect.' : 'You’re offline. Connect before you confirm; nothing is saved offline.'),
           ]}
           confirmLabel="Record day end"
         />

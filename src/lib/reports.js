@@ -50,6 +50,37 @@ export function buildVaccinatorRows(movement) {
   )
 }
 
+// Stock balance: one row per (facility × vaccine) with the period's start and end stock (Round 44
+// `balances`), so start + received + added − deleted − used − wasted = end. A pair with no
+// balance row has no ledger entries: 0 / 0.
+export function buildBalanceRows(balances = [], movement = []) {
+  const acc = {}
+  const row = (r) => (acc[`${r.facilityId}||${r.vaccineId}`] ??= {
+    facility: r.facilityName ?? '—', vaccine: r.vaccineName, start: 0, end: 0, ...emptyBucket(),
+  })
+  for (const b of balances) {
+    const t = row(b)
+    t.start += b.startVials ?? 0
+    t.end   += b.endVials ?? 0
+  }
+  for (const r of movement) sumInto(row(r), r)
+  return Object.values(acc).sort(
+    (a, b) => a.facility.localeCompare(b.facility) || a.vaccine.localeCompare(b.vaccine),
+  )
+}
+
+const BALANCE_COLUMNS = [
+  { key: 'facility', label: 'Facility' },
+  { key: 'vaccine',  label: 'Vaccine' },
+  { key: 'start',    label: 'Start of period (vials)' },
+  { key: 'received', label: 'Received (vials)' },
+  { key: 'adjustmentIncrease', label: 'Stock correction: add (vials)' },
+  { key: 'adjustmentDecrease', label: 'Stock correction: delete (vials)' },
+  { key: 'used',     label: 'Used (vials)' },
+  { key: 'wasted',   label: 'Wasted (vials)' },
+  { key: 'end',      label: 'End of period (vials)' },
+]
+
 const MONTHLY_COLUMNS = [
   { key: 'month',     label: 'Month' },
   { key: 'vaccine',   label: 'Vaccine' },
@@ -81,9 +112,14 @@ function fileBase(from, to, vaccineName) {
   return `stock-report${v}_${from || 'start'}_to_${to || 'today'}`
 }
 
-export async function exportAnalyticsExcel({ movement, from, to, vaccineName }) {
+export async function exportAnalyticsExcel({ movement, balances, from, to, vaccineName }) {
   const XLSX = await import('xlsx')
   const wb = XLSX.utils.book_new()
+  if (balances) {
+    XLSX.utils.book_append_sheet(
+      wb, XLSX.utils.aoa_to_sheet(aoa(BALANCE_COLUMNS, buildBalanceRows(balances, movement))), 'Stock balance',
+    )
+  }
   XLSX.utils.book_append_sheet(
     wb, XLSX.utils.aoa_to_sheet(aoa(MONTHLY_COLUMNS, buildMonthlyRows(movement))), 'Monthly',
   )
@@ -93,7 +129,7 @@ export async function exportAnalyticsExcel({ movement, from, to, vaccineName }) 
   XLSX.writeFile(wb, `${fileBase(from, to, vaccineName)}.xlsx`)
 }
 
-export async function exportAnalyticsPdf({ movement, from, to, vaccineName }) {
+export async function exportAnalyticsPdf({ movement, balances, from, to, vaccineName }) {
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'landscape' })
@@ -103,10 +139,22 @@ export async function exportAnalyticsPdf({ movement, from, to, vaccineName }) {
   doc.text(title, 14, 14)
 
   doc.setFontSize(10)
-  doc.text('Monthly', 14, 24)
+  let y = 24
+  if (balances) {
+    doc.text('Stock balance', 14, y)
+    autoTable(doc, {
+      startY: y + 3,
+      head: [BALANCE_COLUMNS.map((c) => c.label)],
+      body: buildBalanceRows(balances, movement).map((r) => BALANCE_COLUMNS.map((c) => cell(c, r))),
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [0, 98, 65] },
+    })
+    y = (doc.lastAutoTable?.finalY ?? y) + 8
+  }
+  doc.text('Monthly', 14, y)
   const monthly = buildMonthlyRows(movement)
   autoTable(doc, {
-    startY: 27,
+    startY: y + 3,
     head: [MONTHLY_COLUMNS.map((c) => c.label)],
     body: monthly.map((r) => MONTHLY_COLUMNS.map((c) => cell(c, r))),
     styles: { fontSize: 7 },

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getDashboard, getUsers, getFacilities, getAllAuditLog } from './api'
+import { getDashboard, getUsers, getFacilities, getAllAuditLog, updateUser } from './api'
 
 const ok = () => new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
 const queryContext = () => ({ client: {}, queryKey: ['x'], signal: new AbortController().signal })
@@ -46,5 +46,17 @@ describe('500 errors', () => {
   it('carry the requestId in the message', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'Internal server error', requestId: 'abc-123' }, 500)))
     await expect(getDashboard()).rejects.toThrow('Internal server error. Reference: abc-123')
+  })
+})
+
+describe('updateUser', () => {
+  it('PUTs only the given fields, keeping null to clear', async () => {
+    const fetchMock = vi.fn(async () => json({ user: { id: 'u1' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await updateUser('u1', { lastName: null, email: 'b@x.org' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url.endsWith('/api/users/u1')).toBe(true)
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual({ lastName: null, email: 'b@x.org' })
   })
 })

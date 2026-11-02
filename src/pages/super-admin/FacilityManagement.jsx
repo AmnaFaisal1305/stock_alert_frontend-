@@ -136,7 +136,8 @@ export default function SuperAdminFacilityManagement() {
 
   const createSupMutation = useMutation({
     mutationFn: () => createUser({
-      firstName: createSupForm.firstName, lastName: createSupForm.lastName,
+      firstName: createSupForm.firstName,
+      ...(createSupForm.lastName.trim() ? { lastName: createSupForm.lastName.trim() } : {}),
       zmid: createSupForm.zmid, email: createSupForm.email, password: createSupForm.password,
       role: 'facility_supervisor', facilityId: createSupTarget.id,
       ...(createSupForm.phone.trim() ? { phone: createSupForm.phone.trim() } : {}),
@@ -394,8 +395,8 @@ export default function SuperAdminFacilityManagement() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="fsup-fn" label="First name" placeholder="Jane"
               value={createSupForm.firstName} onChange={(e) => setCreateSupForm({ ...createSupForm, firstName: e.target.value })} required />
-            <Input id="fsup-ln" label="Last name" placeholder="Doe"
-              value={createSupForm.lastName} onChange={(e) => setCreateSupForm({ ...createSupForm, lastName: e.target.value })} required />
+            <Input id="fsup-ln" label="Last name (optional)" placeholder="Doe"
+              value={createSupForm.lastName} onChange={(e) => setCreateSupForm({ ...createSupForm, lastName: e.target.value })} />
           </div>
           <Input id="fsup-zmid" label="ZMID (organisation ID)" placeholder="e.g. Z-1001"
             value={createSupForm.zmid} onChange={(e) => setCreateSupForm({ ...createSupForm, zmid: e.target.value })} required />

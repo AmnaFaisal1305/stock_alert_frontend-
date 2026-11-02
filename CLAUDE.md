@@ -15,11 +15,11 @@ Understand the existing project before changing it. Make the **smallest complete
 ```bash
 npm run dev      # start dev server (port 5173, or 5174 if in use)
 npm run build    # production build — run this to catch import errors
-npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker, stock-request open/filters/pipeline)
+npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker, stock-request open/filters/pipeline, report balance rows)
 npm run preview  # preview the production build locally
 ```
 
-No linter is configured, and the only tests cover four `src/lib` files (`auditLog.js`, `api.js`, `push.js`, `stockRequests.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
+No linter is configured, and the only tests cover five `src/lib` files (`auditLog.js`, `api.js`, `push.js`, `stockRequests.js`, `reports.js`). After any change, run `npm run build` to verify there are no broken imports (and `npm test` if you touched those files), then check the affected screen(s) in the browser with `npm run dev`.
 
 The dev server calls the live backend. `.env.local` (or `.env`) must set `VITE_API_URL=https://smart-stock-alert-be.vercel.app`; without it, calls go to the dev server's own origin and every `/api` request is a 404. For a local backend, set `VITE_API_URL=http://localhost:3000` in `.env.local`. In **Vercel Production the variable is unset**: `vercel.json` proxies `/api/*` to the backend so the session cookie is first-party (fixes the new-tab 401), and `api.js` defaults `BASE_URL` to `''`. **Never commit `.env` — it is gitignored and contains dev credentials.**
 
@@ -90,14 +90,15 @@ src/
     auditLog.js        — action labels, entry parser, filters for the shared Audit Log
     csv.js             — CSV export (toCsv, downloadCsv)
     reports.js         — analytics Excel/PDF reports (Monthly, Vaccinator-wise)
-    offlineQueue.js    — Assign Vials / Day End offline queue (per user, replayed by useOfflineSync)
+    offlineQueue.js    — Assign Vials / Day End offline queue (per user, replayed by useOfflineSync); OFFLINE_ENABLED = false hides it for this phase
     queuedHoldings.js  — applyQueued(): counts queued entries in holdings (self-check: scripts/check-offline-holdings.mjs)
     push.js            — web push subscribe/unsubscribe (READY_TIMEOUT_MS guards a missing service worker)
     tour.js            — guided tour (driver.js, lazy): welcome once per user per device, then each page's tour; page intros from GUIDE in DashboardGuide.jsx
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
     useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
-    useAllAuditPages.js (follows nextCursor, capped, for the rich Audit Log's flags and thread)
+    useAllAuditPages.js (follows nextCursor, capped, for the rich Audit Log's flags and thread),
+    useOpenItem.js (?open=<id> from per-item links: useOpenId, useScrollIntoView)
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
     shared/            — composites: Table, Card, StatCard, StatusBadge, FilterChips, PageHeader, EmptyState, ErrorState, ...
@@ -256,7 +257,8 @@ Key constraints:
 - `GET /api/dashboard` returns `{ facilities: [...], summary: { statusCounts, byFacility, ... } }`
 - `statusCounts` counts facility × vaccine lines, never facilities; derive facility status with `facilityStatus()`
 - Vaccines are one global catalog (real names like "BCG") with optional per-facility threshold overrides (`thresholdOverridden` on `GET /api/facilities/:id`), written by `PUT /api/facilities/:facilityId/vaccines/:vaccineId` (super admin, the four thresholds only; `null`s reset). `dosesPerVial` is global only
-- User create / activate / deactivate / reset are `super_admin` only (Round 37); other roles' user screens are read-only lists
+- User create / edit (`PUT /api/users/:id`, Round 45; `lastName` optional) / activate / deactivate / reset are `super_admin` only (Round 37); other roles' user screens are read-only lists
+- Open stock requests and pending approvals carry `blockedBy` (`no_head` | `no_uc_supervisor` | null, Round 46); `GET /api/analytics` takes `vaccineId` and returns `balances` (Round 44)
 
 Use the `agent-browser` skill for browser automation tasks in this project.
 

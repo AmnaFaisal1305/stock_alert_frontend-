@@ -34,9 +34,9 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   // `url` is the app root for every type; the app maps type → the signed-in role's screen.
-  const { url, type, entityType } = event.notification.data ?? {}
+  const { url, type, entityType, entityId } = event.notification.data ?? {}
   const target = type
-    ? `/?${new URLSearchParams({ notif: type, ...(entityType ? { entityType } : {}) })}`
+    ? `/?${new URLSearchParams({ notif: type, ...(entityType ? { entityType } : {}), ...(entityId ? { entityId } : {}) })}`
     : (url ?? '/')
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

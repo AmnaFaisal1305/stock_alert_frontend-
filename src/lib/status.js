@@ -85,6 +85,17 @@ export const WORKFLOW_STATUS = {
   pending:             { tone: 'warning', label: 'Pending' },
   approved:            { tone: 'success', label: 'Approved' },
   rejected:            { tone: 'danger',  label: 'Rejected' },
+  // blockedBy (Round 46): nobody can take the next step
+  no_head:             { tone: 'warning', label: 'No Facility Head' },
+  no_uc_supervisor:    { tone: 'warning', label: 'No UC Supervisor' },
+}
+
+// Why an open request or pending approval can't move (`blockedBy`, computed by the backend).
+export function blockedByMessage(blockedBy, { approval = false } = {}) {
+  const next = approval ? 'Withdraw it' : 'Cancel the request'
+  if (blockedBy === 'no_head') return `Waiting: this facility has no Facility Head. ${next} or ask the district to assign one.`
+  if (blockedBy === 'no_uc_supervisor') return `Waiting: this facility's UC has no UC Supervisor to record what was sent. ${next} or ask the district to assign one.`
+  return null
 }
 
 export const APPROVAL_TYPES = {

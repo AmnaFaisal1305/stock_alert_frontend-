@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useOpenId, useScrollIntoView } from '../../hooks/useOpenItem'
 import { Check, X, ClipboardCheck } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApprovals, approveApproval, rejectApproval } from '../../lib/api'
@@ -42,12 +43,13 @@ function Change({ a }) {
   )
 }
 
-function PendingItem({ a, onApprove, onReject, busy }) {
+function PendingItem({ a, onApprove, onReject, busy, focused }) {
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
+  const ref = useScrollIntoView(focused)
 
   return (
-    <li className="px-4 sm:px-5 py-4 flex flex-col gap-3">
+    <li ref={ref} className={`px-4 sm:px-5 py-4 flex flex-col gap-3 ${focused ? 'bg-primary-bg' : ''}`}>
       <div className="flex flex-col sm:flex-row sm:items-start gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           <p className="text-sm font-medium text-text">
@@ -94,10 +96,11 @@ function PendingItem({ a, onApprove, onReject, busy }) {
   )
 }
 
-function HistoryItem({ a }) {
+function HistoryItem({ a, focused }) {
   const reason = a.decisionReason
+  const ref = useScrollIntoView(focused)
   return (
-    <li className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+    <li ref={ref} className={`px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 ${focused ? 'bg-primary-bg' : ''}`}>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <p className="text-sm font-medium text-text">
           {a.vaccineName} <span className="text-text-muted font-normal">· {TYPE_LABEL[a.type] ?? a.type}</span>
@@ -125,6 +128,11 @@ export default function FacilityHeadApprovals() {
 
   const pending = pendingQ.data?.approvals ?? []
   const history = (historyQ.data?.approvals ?? []).filter((a) => a.status !== 'pending')
+
+  // A link to a decided approval opens History.
+  const openId = useOpenId()
+  const openDecided = !!openId && pendingQ.isSuccess && !pending.some((a) => a.id === openId)
+  useEffect(() => { if (openDecided) setView('history') }, [openDecided])
 
   const approveMutation = useMutation({
     mutationFn: (id) => approveApproval(id),
@@ -190,9 +198,10 @@ export default function FacilityHeadApprovals() {
                       busy={busy}
                       onApprove={() => setConfirming(a)}
                       onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
+                      focused={a.id === openId}
                     />
                   ))
-                : items.map((a) => <HistoryItem key={a.id} a={a} />)}
+                : items.map((a) => <HistoryItem key={a.id} a={a} focused={a.id === openId} />)}
             </ul>
           )}
         </Card>

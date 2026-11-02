@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useOpenId, useScrollIntoView } from '../../hooks/useOpenItem'
 import { X, CheckCircle2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDashboard, getApprovals, createApproval, cancelApproval } from '../../lib/api'
@@ -15,7 +16,7 @@ import StatusBadge from '../../components/shared/StatusBadge'
 import EmptyState from '../../components/shared/EmptyState'
 import { SkeletonRows } from '../../components/shared/SkeletonCard'
 import { formatDate } from '../../lib/format'
-import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel } from '../../lib/status'
+import { APPROVAL_TYPES as TYPE_LABEL, approvalStatusLabel, blockedByMessage } from '../../lib/status'
 
 function FormMessage({ error, done }) {
   if (error) return <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{error}</p>
@@ -27,14 +28,16 @@ function FormMessage({ error, done }) {
   return null
 }
 
-function RequestItem({ a, onCancel, cancelling }) {
+function RequestItem({ a, onCancel, cancelling, focused }) {
   const t = a.payload?.thresholds
+  const ref = useScrollIntoView(focused)
   return (
-    <li className="px-4 sm:px-5 py-3.5 flex items-start gap-3">
+    <li ref={ref} className={`px-4 sm:px-5 py-3.5 flex items-start gap-3 ${focused ? 'bg-primary-bg' : ''}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium text-text">{a.vaccineName}</p>
           <StatusBadge kind="workflow" status={a.status} label={approvalStatusLabel(a.status, a.decisionReason)} />
+          {a.blockedBy && <StatusBadge kind="workflow" status={a.blockedBy} />}
         </div>
         <p className="text-xs text-text-muted mt-1">
           {TYPE_LABEL[a.type] ?? a.type}
@@ -47,6 +50,7 @@ function RequestItem({ a, onCancel, cancelling }) {
             : <span>reset to default</span>)}
         </p>
         {a.note && <p className="text-xs text-text-muted mt-1">“{a.note}”</p>}
+        {a.blockedBy && <p className="text-xs text-warning-dark bg-warning-bg rounded-control px-3 py-2 mt-2">{blockedByMessage(a.blockedBy, { approval: true })}</p>}
         {a.status === 'rejected' && a.decisionReason && <p className="text-xs text-danger-dark mt-1">Rejected: {a.decisionReason}</p>}
         {a.status === 'cancelled' && a.decisionReason && <p className="text-xs text-text-muted mt-1">Cancelled: {a.decisionReason}</p>}
       </div>
@@ -90,6 +94,11 @@ export default function Approvals() {
     queryFn:  () => getApprovals('pending'),
   })
   const pending = pendingData?.approvals ?? []
+
+  // A link to a decided approval opens History.
+  const openId = useOpenId()
+  const openDecided = !!openId && !!pendingData && !pending.some((a) => a.id === openId)
+  useEffect(() => { if (openDecided) setListView('history') }, [openDecided])
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['approvals', 'history'],
@@ -307,6 +316,7 @@ export default function Approvals() {
                   a={a}
                   onCancel={listView === 'pending' ? () => setWithdrawing(a) : null}
                   cancelling={cancelMutation.isPending}
+                  focused={a.id === openId}
                 />
               ))}
             </ul>

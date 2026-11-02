@@ -26,6 +26,8 @@ export function deriveApproveStatus(d) {
   return d.status ?? null
 }
 
+const USER_FIELD_LABELS = { firstName: 'first name', lastName: 'last name', email: 'email', zmid: 'ZMID', phone: 'phone', cnic: 'CNIC' }
+
 export const ACTION_LABELS = {
   LOGOUT:                    'Logged out',
   SHEET_SAVED:               'Form B saved',
@@ -39,6 +41,7 @@ export const ACTION_LABELS = {
   EDIT_VACCINE:              'Vaccine edited',
   DELETE_VACCINE:            'Vaccine deleted',
   CREATE_USER:               'User created',
+  UPDATE_USER:               'User edited',
   ACTIVATE_USER:             'User activated',
   DEACTIVATE_USER:           'User deactivated',
   RESET_PASSWORD:            'Password reset',
@@ -168,6 +171,13 @@ export function parseEntry(entry, ctx) {
 
     case 'CREATE_USER':
       return { ...out, detail: [ROLE_LABELS[d.role] ?? d.role?.replace(/_/g, ' '), d.email].filter(Boolean).join(' · ') || null }
+    case 'UPDATE_USER': {
+      // Round 45: each changed field as { from, to }, at the top level or under `changes`.
+      const src = d.changes ?? d
+      const fields = Object.keys(USER_FIELD_LABELS).filter((k) => src[k] && typeof src[k] === 'object' && ('from' in src[k] || 'to' in src[k]))
+      const who = d.email?.to ?? d.email ?? d.name ?? null
+      return { ...out, detail: [fields.length ? `Changed ${fields.map((k) => USER_FIELD_LABELS[k]).join(', ')}` : null, typeof who === 'string' ? who : null].filter(Boolean).join(' · ') || null }
+    }
     case 'ACTIVATE_USER':
     case 'DEACTIVATE_USER':
     case 'RESET_PASSWORD':
@@ -246,7 +256,7 @@ export function parseEntry(entry, ctx) {
 // server; legacy aliases nothing writes any more are left out.
 const FACILITY_ACTIONS = Object.keys(ACTION_LABELS).filter((a) => /^(STOCK_|APPROVAL_|ADJUST_STOCK|SHEET_SAVED|LOGOUT)/.test(a))
 // The API hides these from district and UC supervisors.
-const ADMIN_ONLY = new Set(['CREATE_VACCINE', 'EDIT_VACCINE', 'DELETE_VACCINE', 'CREATE_USER', 'ACTIVATE_USER', 'DEACTIVATE_USER', 'RESET_PASSWORD'])
+const ADMIN_ONLY = new Set(['CREATE_VACCINE', 'EDIT_VACCINE', 'DELETE_VACCINE', 'CREATE_USER', 'UPDATE_USER', 'ACTIVATE_USER', 'DEACTIVATE_USER', 'RESET_PASSWORD'])
 const LEGACY = new Set(['APPROVAL_DECLINE', 'SET_THRESHOLD', 'STOCK_RECEIVE'])
 
 export function actionOptionsFor(role) {

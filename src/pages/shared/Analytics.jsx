@@ -227,7 +227,7 @@ function BalanceLine({ totals, available, startBal, balanced, hasPeriodBalances,
         </p>
       ) : (
         <p className="leading-relaxed">
-          These figures don't add up for this period: Vials Available is today's stock{to < localDateStr() ? `, not the stock on ${formatDate(to)}` : ''}, and stock on hand before the start date isn't counted. Pick a period that starts before the first entry and ends today to see them balance.
+          These figures don't add up for this period{hasPeriodBalances ? '' : `: Vials Available is today's stock${to < localDateStr() ? `, not the stock on ${formatDate(to)}` : ''}`}. Refresh the page; if it persists, report it with the period you picked.
         </p>
       )}
     </div>
@@ -483,6 +483,13 @@ export default function Analytics() {
     enabled:  !!reqUc,
   })
   const { data: vaccinesData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
+  // Charts keep every vaccine (the selected one is highlighted), so the main query stays
+  // unfiltered; the server's vaccineId filter feeds only the Requests and Approvals tabs.
+  const { data: byVaccine } = useQuery({
+    queryKey: ['analytics', from, to, reqDistrict, reqUc, reqFacilityId, vaccineId],
+    queryFn:  () => getAnalytics({ from, to, districtId: reqDistrict, ucId: reqUc, facilityId: reqFacilityId, vaccineId }),
+    enabled:  !!vaccineId,
+  })
 
   const reqFacilityName = (reqFacilitiesData?.facilities ?? []).find((f) => f.id === reqFacilityId)?.name ?? ''
 
@@ -495,12 +502,13 @@ export default function Analytics() {
 
   const movement         = data?.movement        ?? []
   const remaining        = data?.remaining       ?? []
-  const requests         = data?.requests        ?? []
-  const pendingApprovals = data?.pendingApprovals ?? []
-  // Period balances (BACKEND_REQUESTS.md §1). Until they ship, "available" is today's stock.
+  const sectionSrc       = vaccineId ? byVaccine : data
+  const requests         = sectionSrc?.requests        ?? []
+  const pendingApprovals = sectionSrc?.pendingApprovals ?? []
+  // Stock on hand at the start and end of the period (Round 44).
   const balances         = data?.balances
 
-  // Until the API takes vaccineId (BACKEND_REQUESTS.md §2), the vaccine filter is applied here.
+  // Charts compare every vaccine, so the vaccine filter for the stock figures is applied here.
   const vMovement  = useMemo(() => (vaccineId ? movement.filter((r) => r.vaccineId === vaccineId) : movement), [movement, vaccineId])
   const vRemaining = useMemo(() => (vaccineId ? remaining.filter((r) => r.vaccineId === vaccineId) : remaining), [remaining, vaccineId])
   const vBalances  = useMemo(() => (balances && vaccineId ? balances.filter((b) => b.vaccineId === vaccineId) : balances), [balances, vaccineId])
@@ -742,8 +750,9 @@ export default function Analytics() {
     if (detailStatus === 'open')    list = list.filter(isOpenRequest)
     if (detailStatus === 'partial') list = list.filter((r) => r.status === 'partially_fulfilled')
     if (reqFacilityName) list = list.filter((r) => r.facilityName === reqFacilityName)
+    if (vaccineId) list = list.filter((r) => (r.items ?? []).some((it) => it.vaccineId === vaccineId))
     return list
-  }, [detailData, detailStatus, reqFacilityName])
+  }, [detailData, detailStatus, reqFacilityName, vaccineId])
 
   // Table rows filtered by selected month
   const displayedRequestsByMonth = reqMonth
@@ -798,7 +807,7 @@ export default function Analytics() {
     setExporting(kind)
     try {
       const fn = kind === 'xlsx' ? exportAnalyticsExcel : exportAnalyticsPdf
-      await fn({ movement: vMovement, from, to, vaccineName: selectedVaccineName })
+      await fn({ movement: vMovement, balances: vBalances, from, to, vaccineName: selectedVaccineName })
     } catch {
       setExportError('Could not generate the report. Please try again.')
     } finally {
@@ -850,13 +859,6 @@ export default function Analytics() {
   const loaded = !isLoading && !isError
   const toggleDrill = (m) => setDrill((d) => (d === m ? null : m))
 
-  // Requests and approvals carry no vaccine yet (BACKEND_REQUESTS.md §2).
-  const notByVaccine = vaccineId && (
-    <p className="flex items-center gap-2 rounded-control bg-info-bg text-info-dark px-3.5 py-2.5 text-xs">
-      <Info size={14} strokeWidth={1.75} className="flex-shrink-0" aria-hidden="true" />
-      This tab isn't split by vaccine yet, so it shows every vaccine, not only {selectedVaccineName}.
-    </p>
-  )
 
   return (
     <div>
@@ -1099,7 +1101,6 @@ export default function Analytics() {
           {/* ── Stock Requests ── */}
           {activeTab === 'requests' && (
             <div className="flex flex-col gap-5">
-              {notByVaccine}
               {/* Month filter bar */}
               <Card>
                 <div className="flex flex-wrap items-end gap-3">
@@ -1251,7 +1252,6 @@ export default function Analytics() {
           {/* ── Approvals ── */}
           {activeTab === 'approvals' && (
             <div className="flex flex-col gap-5">
-              {notByVaccine}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <StatCard label="Pending" icon={Clock} accent={totalPending > 0 ? 'low' : 5} value={totalPending} tone={totalPending > 0 ? 'low' : undefined} subtitle={totalPending > 0 ? 'Waiting for the Facility Head' : 'Nothing waiting'} />
                 <StatCard label="Stock corrections" icon={ClipboardCheck} accent={1} value={approvalTotals.corrections} subtitle="Pending" />

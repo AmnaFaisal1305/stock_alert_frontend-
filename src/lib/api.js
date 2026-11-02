@@ -129,6 +129,11 @@ export async function createUser(payload) {
   return request('POST', '/api/users', payload)
 }
 
+// Super admin only (Round 45). Send only the changed fields; lastName, phone and cnic take null to clear.
+export async function updateUser(id, fields) {
+  return request('PUT', `/api/users/${id}`, fields)
+}
+
 export async function deactivateUser(id) {
   return request('PUT', `/api/users/${id}/deactivate`, {})
 }

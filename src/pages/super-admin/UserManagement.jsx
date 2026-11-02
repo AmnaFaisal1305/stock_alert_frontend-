@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, KeyRound, MapPin, UserX, UserCheck } from 'lucide-react'
+import { Plus, KeyRound, MapPin, UserX, UserCheck, Pencil } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor, bulkUserStatus } from '../../lib/api'
+import { getUsers, getDistricts, getFacilities, getUnionCouncils, createUser, updateUser, deactivateUser, activateUser, resetPassword, assignUcSupervisor, bulkUserStatus } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { useDebounce } from '../../hooks/useDebounce'
 import Table from '../../components/shared/Table'
@@ -33,6 +33,7 @@ export default function UserManagement() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [reassignTarget, setReassignTarget] = useState(null)
   const [reassignUcIds, setReassignUcIds] = useState([])
@@ -99,7 +100,8 @@ export default function UserManagement() {
       const isUcRole = form.role === 'uc_supervisor'
       const isObserver = form.role === 'observer'
       return createUser({
-        firstName: form.firstName, lastName: form.lastName, zmid: form.zmid,
+        firstName: form.firstName, zmid: form.zmid,
+        ...(form.lastName.trim() ? { lastName: form.lastName.trim() } : {}),
         email: form.email, password: form.password, role: form.role,
         ...(isFacilityRole ? { facilityId: form.facilityId }
           : isUcRole ? { ucIds: form.ucIds }
@@ -269,6 +271,7 @@ export default function UserManagement() {
       className="justify-end"
       actions={[
         row.role === 'uc_supervisor' && { icon: MapPin, label: 'Reassign UCs', onClick: () => { setReassignTarget(row); setReassignUcIds(row.ucIds ?? []); setReassignError('') } },
+        { icon: Pencil, label: 'Edit details', onClick: () => setEditTarget(row) },
         { icon: KeyRound, label: 'Reset password', onClick: () => { setResetTarget(row); setFormError('') } },
         row.id === authUser?.id ? null
         : row.isActive
@@ -442,8 +445,8 @@ export default function UserManagement() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="sup-first-name" label="First name" placeholder="Jane"
               value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-            <Input id="sup-last-name" label="Last name" placeholder="Doe"
-              value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+            <Input id="sup-last-name" label="Last name (optional)" placeholder="Doe"
+              value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
           </div>
           <Input id="sup-zmid" label="ZMID (organisation ID)" placeholder="e.g. Z-1001"
             value={form.zmid} onChange={(e) => setForm({ ...form, zmid: e.target.value })} required />
@@ -556,6 +559,12 @@ export default function UserManagement() {
         isPending={bulkMutation.isPending}
       />
 
+      <EditUserModal
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={(u) => { setEditTarget(null); setToast({ message: `${u?.name ?? 'User'} updated.`, type: 'success' }) }}
+      />
+
       {/* Reassign UCs Modal */}
       <Modal open={!!reassignTarget} onClose={() => setReassignTarget(null)} title={`Reassign UCs for ${reassignTarget?.name ?? ''}`}>
         <div className="flex flex-col gap-4">
@@ -608,5 +617,68 @@ export default function UserManagement() {
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
+  )
+}
+
+// Round 45: the profile fields only. Role, scope and password have their own actions.
+const EDIT_FIELDS = ['firstName', 'lastName', 'email', 'zmid', 'phone', 'cnic']
+const CLEARABLE = new Set(['lastName', 'phone', 'cnic'])
+
+function EditUserModal({ target, onClose, onSaved }) {
+  const queryClient = useQueryClient()
+  const initial = (u) => ({
+    firstName: u?.firstName ?? u?.name ?? '', lastName: u?.lastName ?? '', email: u?.email ?? '',
+    zmid: u?.zmid ?? '', phone: u?.phone ?? '', cnic: u?.cnic ?? '',
+  })
+  const [form, setForm] = useState(initial(target))
+  const [error, setError] = useState('')
+  useEffect(() => { setForm(initial(target)); setError('') }, [target]) // eslint-disable-line react-hooks/exhaustive-deps -- reset per row
+
+  const before = initial(target)
+  const changes = Object.fromEntries(EDIT_FIELDS
+    .filter((k) => form[k].trim() !== before[k].trim())
+    .map((k) => [k, form[k].trim() === '' && CLEARABLE.has(k) ? null : form[k].trim()]))
+  const changed = Object.keys(changes).length > 0
+
+  const mutation = useMutation({
+    mutationFn: () => updateUser(target.id, changes),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] })
+      onSaved(data?.user)
+    },
+    onError: (err) => setError(err.message),
+  })
+
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setError('') }
+  function submit(e) {
+    e.preventDefault()
+    if (/[<>]/.test(form.firstName) || /[<>]/.test(form.lastName)) { setError('Names cannot contain < or > characters.'); return }
+    mutation.mutate()
+  }
+
+  return (
+    <Modal open={!!target} onClose={onClose} title={`Edit ${target?.name ?? 'user'}`}>
+      <form className="flex flex-col gap-4" onSubmit={submit}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input id="edit-first-name" label="First name" value={form.firstName} onChange={set('firstName')} required />
+          <Input id="edit-last-name" label="Last name (optional)" value={form.lastName} onChange={set('lastName')} />
+        </div>
+        <Input id="edit-zmid" label="ZMID (organisation ID)" value={form.zmid} onChange={set('zmid')} required />
+        <Input id="edit-email" label="Email" type="email" value={form.email} onChange={set('email')} required />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input id="edit-phone" label="Phone (optional)" value={form.phone} onChange={set('phone')} />
+          <Input id="edit-cnic" label="CNIC (optional)" value={form.cnic} onChange={set('cnic')} />
+        </div>
+        {changes.email && <p className="text-xs text-text-muted">They keep their current session and sign in with the new email next time.</p>}
+        {error && <p role="alert" className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={!changed || mutation.isPending}>
+            {mutation.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

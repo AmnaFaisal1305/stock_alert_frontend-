@@ -241,7 +241,7 @@ export const GUIDE = {
       label: 'Facility Supervisor',
       tagline: "Run your facility's stock every day: requests, the morning handout and day end.",
       purpose: "You manage your facility's store. You request stock, hand vials to vaccinators each morning and record what each one used at the end of the day. Stock only enters the store through an approved stock request.",
-      note: 'Assign Vials and Day End work without signal: entries are saved on the phone and sent when you are back online. You can date an entry up to 7 days back.',
+      note: 'Assign Vials and Day End need a connection to save. You can date an entry up to 7 days back.',
       responsibilities: [
         'Raise stock requests and record what arrived, with batch number, expiry date and manufacturer',
         'Assign vials to each vaccinator every morning',
@@ -271,7 +271,7 @@ export const GUIDE = {
       label: 'فیسلٹی سپروائزر',
       tagline: 'روزانہ اپنی فیسلٹی کا اسٹاک چلائیں: درخواستیں، صبح کی تقسیم اور دن کا اختتام۔',
       purpose: 'آپ اپنی فیسلٹی کا اسٹور سنبھالتے ہیں۔ آپ اسٹاک کی درخواست کرتے ہیں، ہر صبح ویکسینیٹرز کو وائلز دیتے ہیں اور دن کے آخر میں درج کرتے ہیں کہ ہر ایک نے کیا استعمال کیا۔ اسٹاک صرف منظور شدہ درخواست کے ذریعے اسٹور میں آتا ہے۔',
-      note: 'Assign Vials اور Day End سگنل کے بغیر بھی کام کرتے ہیں: اندراجات فون میں محفوظ ہو جاتے ہیں اور انٹرنیٹ واپس آنے پر بھیج دیے جاتے ہیں۔ آپ اندراج کی تاریخ 7 دن پیچھے تک رکھ سکتے ہیں۔',
+      note: 'Assign Vials اور Day End میں اندراج محفوظ کرنے کے لیے انٹرنیٹ ضروری ہے۔ آپ اندراج کی تاریخ 7 دن پیچھے تک رکھ سکتے ہیں۔',
       responsibilities: [
         'اسٹاک کی درخواست کرنا، اور جو پہنچا وہ بیچ نمبر، ایکسپائری تاریخ اور مینوفیکچرر کے ساتھ درج کرنا',
         'ہر صبح ہر ویکسینیٹر کو وائلز دینا',

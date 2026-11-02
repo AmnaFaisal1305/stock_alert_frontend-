@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildContext, formatAuditEntry, deriveApproveStatus } from './auditLog'
+import { buildContext, formatAuditEntry, parseEntry, deriveApproveStatus } from './auditLog'
 
 const eid = 'req-0000-0001'
 const vacId = 'vac-001'
@@ -19,6 +19,11 @@ function entry(action, details = {}, extras = {}) {
 }
 
 describe('formatAuditEntry', () => {
+  it('UPDATE_USER: names the changed fields', () => {
+    const f = parseEntry(entry('UPDATE_USER', { email: { from: 'a@x.org', to: 'b@x.org' }, phone: { from: null, to: '0300' } }), baseCtx())
+    expect(f.detail).toBe('Changed email, phone · b@x.org')
+  })
+
   it('STOCK_ASSIGN: summary, storeImpact sign/value, workerName', () => {
     const e = entry('STOCK_ASSIGN', {
       workerId, items: [{ vaccineId: vacId, vaccineName: vacName, vials: 3 }], occurredOn: '2026-10-15',

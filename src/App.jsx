@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -115,8 +115,19 @@ function RoleRedirect() {
   const pushed = user && params.get('notif')
     ? linkFor(user.role, { type: params.get('notif'), entityType: params.get('entityType') })
     : null
-  const dest = pushed ?? (user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login')
+  const id = ['stock_request', 'approval'].includes(params.get('entityType')) && params.get('entityId')
+  const dest = pushed
+    ? (id ? `${pushed}?open=${encodeURIComponent(id)}` : pushed)
+    : (user ? (ROLE_DEFAULTS[user.role] ?? '/login') : '/login')
   return <Navigate to={dest} replace />
+}
+
+// Per-item links in emails: /stock-requests/:id and /approvals/:id open that item on the
+// signed-in role's own screen (its dashboard when the role has none).
+function ItemRedirect({ entityType }) {
+  const { user } = useAuth()
+  const { id } = useParams()
+  return <Navigate to={`${linkFor(user.role, { entityType })}?open=${encodeURIComponent(id)}`} replace />
 }
 
 export default function App() {
@@ -132,6 +143,8 @@ export default function App() {
 
               <Route element={<AuthLayout />}>
                 <Route path="/" element={<RoleRedirect />} />
+                <Route path="/stock-requests/:id" element={<ItemRedirect entityType="stock_request" />} />
+                <Route path="/approvals/:id"      element={<ItemRedirect entityType="approval" />} />
 
                 <Route path="/super-admin/dashboard"        element={<SuperAdminDashboard />} />
                 <Route path="/super-admin/districts"        element={<DistrictManagement />} />

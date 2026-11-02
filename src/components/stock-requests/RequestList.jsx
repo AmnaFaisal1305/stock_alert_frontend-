@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useOpenId, useScrollIntoView } from '../../hooks/useOpenItem'
 import { ChevronDown, Truck } from 'lucide-react'
 import Card from '../shared/Card'
 import FilterChips from '../shared/FilterChips'
@@ -9,7 +10,7 @@ import ErrorState from '../shared/ErrorState'
 import { SkeletonRows } from '../shared/SkeletonCard'
 import { REQUEST_FILTERS, pipelineSteps, isOpenRequest, vaccineSummary, totalVials } from '../../lib/stockRequests'
 import { formatDate } from '../../lib/format'
-import { workflowStatusConfig } from '../../lib/status'
+import { workflowStatusConfig, blockedByMessage } from '../../lib/status'
 import { useUrlState } from '../../hooks/useUrlState'
 import ExportButton from '../ui/ExportButton'
 
@@ -72,22 +73,30 @@ const closedLabel = (req) => (req.status === 'partially_fulfilled' ? 'Closed sho
 
 // A partially fulfilled request keeps that badge for its whole life; while open, the stage says what's next.
 function RequestBadges({ req }) {
-  if (req.status !== 'partially_fulfilled') return <StatusBadge kind="workflow" status={req.stage} />
+  const blocked = req.blockedBy && <StatusBadge kind="workflow" status={req.blockedBy} />
+  if (req.status !== 'partially_fulfilled') {
+    return blocked
+      ? <span className="flex flex-wrap items-center gap-1.5"><StatusBadge kind="workflow" status={req.stage} />{blocked}</span>
+      : <StatusBadge kind="workflow" status={req.stage} />
+  }
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       <StatusBadge kind="workflow" status="partially_fulfilled" />
       {isOpenRequest(req)
         ? <StatusBadge kind="workflow" status={req.stage} />
         : <span className="text-xs text-text-muted">Closed short</span>}
+      {blocked}
     </span>
   )
 }
 
-function RequestRow({ req, showFacility, renderActions }) {
-  const [open, setOpen] = useState(false)
+function RequestRow({ req, showFacility, renderActions, focused }) {
+  const [open, setOpen] = useState(focused)
+  const ref = useScrollIntoView(focused)
+  useEffect(() => { if (focused) setOpen(true) }, [focused])
   const id = `req-${req.id}`
   return (
-    <li>
+    <li ref={ref} className={focused ? 'bg-primary-bg' : undefined}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -115,6 +124,9 @@ function RequestRow({ req, showFacility, renderActions }) {
       {open && (
         <div id={id} className="px-4 sm:px-5 pb-4 flex flex-col gap-3">
           <Pipeline req={req} />
+          {req.blockedBy && (
+            <p className="text-sm text-warning-dark bg-warning-bg rounded-control px-3.5 py-2.5">{blockedByMessage(req.blockedBy)}</p>
+          )}
           {req.stage === 'figures_differ' && (
             <p className="text-sm text-danger-dark bg-danger-bg rounded-control px-3.5 py-2.5">
               Sent and received differ (highlighted). The Facility Supervisor or UC Supervisor must correct their figures before the Facility Head can approve.
@@ -140,6 +152,10 @@ function RequestRow({ req, showFacility, renderActions }) {
 // Filter chips + collapsible list. Each page passes its own role-specific actions.
 export default function RequestList({ requests, isLoading, isError, error, onRetry, renderActions, showFacility = false, emptyHint }) {
   const [filter, setFilter] = useUrlState('stage', 'all')
+  // ?open=<id> (per-item links from emails and pushes): show that request whatever the filter.
+  const openId = useOpenId()
+  const found = !!openId && requests.some((r) => r.id === openId)
+  useEffect(() => { if (found) setFilter('all') }, [found]) // eslint-disable-line react-hooks/exhaustive-deps -- once per link
   const options = REQUEST_FILTERS.map((f) => ({ value: f.value, label: f.label, count: requests.filter(f.test).length }))
   const shown = requests.filter((REQUEST_FILTERS.find((f) => f.value === filter) ?? REQUEST_FILTERS[0]).test)
 
@@ -161,6 +177,7 @@ export default function RequestList({ requests, isLoading, isError, error, onRet
             { label: 'Received vials', value: (r) => totalVials(r.items, 'receivedVials') },
             { label: 'Status', value: (r) => workflowStatusConfig(r.status).label + (r.status === 'partially_fulfilled' && !isOpenRequest(r) ? ' (closed short)' : '') },
             { label: 'Stage', value: (r) => workflowStatusConfig(r.stage).label },
+            { label: 'Waiting on', value: (r) => (r.blockedBy ? workflowStatusConfig(r.blockedBy).label : '') },
             { label: 'Close reason', value: (r) => r.closeReason },
             { label: 'Note', value: (r) => r.note },
           ]}
@@ -173,7 +190,7 @@ export default function RequestList({ requests, isLoading, isError, error, onRet
           <EmptyState icon={Truck} title={filter === 'all' ? 'No stock requests yet' : 'No requests in this view'} message={filter === 'all' ? emptyHint : undefined} />
         ) : (
           <ul className="divide-y divide-surface-border">
-            {shown.map((req) => <RequestRow key={req.id} req={req} showFacility={showFacility} renderActions={renderActions} />)}
+            {shown.map((req) => <RequestRow key={req.id} req={req} showFacility={showFacility} renderActions={renderActions} focused={req.id === openId} />)}
           </ul>
         )}
       </Card>

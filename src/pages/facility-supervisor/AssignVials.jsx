@@ -2,7 +2,7 @@ import { useRef, useState, useSyncExternalStore, useMemo } from 'react'
 import { Minus, Plus, PackagePlus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVaccines, getUsers, getHoldings, assignVials } from '../../lib/api'
-import { enqueue, isNetworkError, subscribe, pendingCount, withQueued } from '../../lib/offlineQueue'
+import { enqueue, isNetworkError, subscribe, pendingCount, withQueued, OFFLINE_ENABLED, NO_CONNECTION } from '../../lib/offlineQueue'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import DatePicker from '../../components/ui/DatePicker'
@@ -90,7 +90,9 @@ export default function AssignVials() {
       setDone(true)
     },
     onError(err, payload) {
-      if (isNetworkError(err)) {
+      if (isNetworkError(err) && !OFFLINE_ENABLED) {
+        setGlobalError(NO_CONNECTION)
+      } else if (isNetworkError(err)) {
         // "online" but no signal: the reply never came, so queue it; the same clientRef makes a replay safe
         enqueue('assign', payload)
         setSavedOffline(true)
@@ -152,6 +154,9 @@ export default function AssignVials() {
   function confirmSubmit() {
     const payload = review
     setReview(null)
+    if (!navigator.onLine && !OFFLINE_ENABLED) {
+      setGlobalError(NO_CONNECTION); return
+    }
     if (!navigator.onLine) {
       enqueue('assign', payload)
       setSavedOffline(true); return
@@ -327,7 +332,7 @@ export default function AssignVials() {
             ...review.items
               .filter(it => storeMap.has(it.vaccineId) && it.vials > storeMap.get(it.vaccineId))
               .map(it => `${(vaccines.find(v => v.id === it.vaccineId)?.name)}: only ${storeMap.get(it.vaccineId)} vials in store.`),
-            !navigator.onLine && 'You’re offline. This will be saved and sent when you reconnect.',
+            !navigator.onLine && (OFFLINE_ENABLED ? 'You’re offline. This will be saved and sent when you reconnect.' : 'You’re offline. Connect before you confirm; nothing is saved offline.'),
           ]}
           confirmLabel="Assign vials"
         />
