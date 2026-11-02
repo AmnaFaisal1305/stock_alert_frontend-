@@ -97,9 +97,12 @@ Test logins: `docs/test-accounts.md` (gitignored, ask Ahmed if missing).
 
 | Issue | Where | Notes |
 |---|---|---|
-| Real-phone push and offline unverified | PWA | No push has been seen on a device. Run `docs/phone-test-checklist.md` (gitignored) on Android and an iPhone with the app on the home screen. |
+| Real-phone push unverified | PWA | No push has been seen on a device. Run the push part of `docs/phone-test-checklist.md` (gitignored) on Android and an iPhone with the app on the home screen. Offline entry is hidden for this phase, so skip its offline steps. |
 | Urdu guide text unreviewed | `DashboardGuide.jsx` | Written by the developer's assistant, not a native speaker. Have it reviewed and correct the `ur` entries. |
 | Refresh drops unsent typing | Top bar | Refresh is a full reload: values typed but not submitted on Assign Vials / Day End are lost (queued offline entries are kept). |
+| Items table cut at phone width | `RequestItemsTable` | At 390 px the Received column sits off-screen until the table is scrolled sideways inside its card. |
+| Observer breadcrumb | Super Admin dashboard | The Observer's dashboard breadcrumb reads "Super Admin › Dashboard"; its other pages say "Observer". |
+| Email buttons open the general screen | Backend | The per-item routes (`/stock-requests/:id`, `/approvals/:id`) are live and sent to the backend in `BACKEND_REQUESTS.md`; the email buttons switch once the backend adds the id. |
 
 ### Not yet tested
 - A real Edit user save, and the Round 44–46 screens on the deployed build.
@@ -134,8 +137,9 @@ Test logins: `docs/test-accounts.md` (gitignored, ask Ahmed if missing).
 
 ## Next steps
 
-1. **Run `docs/phone-test-checklist.md`** on Android and an iPhone: push via "Send test"; an airplane-mode cold start, Assign + Day End, reconnect; the "expire soon" chip.
-2. **Finish the QA pass:** super admin signed in, dark mode and phone width per role, the request tabs, the Google button.
-3. **Watch for the first new closing row** in the Audit Log; it should show its vaccines without the create row on the page.
-4. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
-5. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
+1. **Run the push part of `docs/phone-test-checklist.md`** on Android and an iPhone ("Send test"; a tapped push opens its item).
+2. **Finish the QA pass:** super admin signed in (password from Ahmed), a real Edit user save, the stock-request/approval writes listed above (each is real production data), a Google sign-in, and the Round 44–46 screens on the deployed build.
+3. **Before go-live:** the Kemari pilot data replaces the demo (demo logins stop working), the facility starts at zero stock, and the catalog changes (Pentavalent, MR, TD become one vaccine each). Decide with the client whether offline entry comes back (`OFFLINE_ENABLED`).
+4. **Watch for the first new closing row** in the Audit Log; it should show its vaccines without the create row on the page.
+5. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
+6. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
