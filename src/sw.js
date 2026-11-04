@@ -1,5 +1,6 @@
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
+import { CacheFirst } from 'workbox-strategies'
 
 // Precache the app shell (Workbox injects the manifest at build time)
 const manifest = self.__WB_MANIFEST
@@ -10,6 +11,16 @@ precacheAndRoute(manifest)
 if (manifest.some((e) => e.url === 'index.html')) {
   registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//] }))
 }
+
+// Heavy export-only chunks (xlsx, jspdf, html2canvas) are excluded from precache to keep
+// install size down. Cache them on first use so they work offline after the user exports once.
+registerRoute(
+  ({ request, url }) =>
+    request.destination === 'script' &&
+    /\/(xlsx|jspdf|html2canvas)[^/]*\.js$/.test(url.pathname),
+  // content-hashed filenames never go stale — no expiration needed
+  new CacheFirst({ cacheName: 'export-chunks' }),
+)
 
 // API routes with credentials:include cannot be cached cross-origin by the Cache API.
 // NetworkFirst was a no-op that added CORS risk in strict environments — removed.

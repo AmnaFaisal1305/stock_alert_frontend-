@@ -87,8 +87,11 @@ export default function HeroCarousel({ images }) {
               src={src}
               alt=""
               aria-hidden="true"
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchpriority={i === 0 ? 'high' : 'low'}
               className={[
-                'w-full h-full object-cover will-change-transform',
+                'w-full h-full object-cover',
+                isActive ? 'will-change-transform' : '',
                 isActive && shouldZoom ? 'animate-ken-burns' : '',
               ].join(' ')}
               style={{ objectPosition: IMAGE_POSITIONS[i] ?? 'center' }}

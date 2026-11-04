@@ -22,11 +22,12 @@ export default function UCSupervisorDashboard() {
     queryKey: ['dashboard'],
     queryFn:  getDashboard,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
   const facilitiesQ = useFacilityList()
   const facilities = facilitiesQ.data?.facilities ?? []
-  const { data: reqData } = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000 })
+  const { data: reqData } = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000, refetchIntervalInBackground: false })
   const reqs = reqData?.stockRequests ?? []
   const attention = [
     { icon: Truck, accent: 4, count: reqs.filter((r) => SEND_STAGES.has(r.stage)).length, label: 'requests waiting for you to send stock', to: '/uc/stock-requests' },

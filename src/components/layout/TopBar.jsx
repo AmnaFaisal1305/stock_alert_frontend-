@@ -130,6 +130,7 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
     queryKey: ['unread-count'],
     queryFn: getUnreadCount,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     enabled: showBell,
   })
   const unreadCount = countData?.count ?? 0

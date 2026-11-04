@@ -88,6 +88,7 @@ export default function FacilityHeadStockRequests() {
     queryKey: ['stock-requests'],
     queryFn:  () => getStockRequests(),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
   const requests = data?.stockRequests ?? []

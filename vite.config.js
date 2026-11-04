@@ -27,6 +27,10 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // xlsx, jspdf, html2canvas are only needed on Export — keep them out of the
+        // install-time precache (saves ~1.1 MB for field workers on slow connections).
+        // sw.js adds a CacheFirst runtime route so they still work offline after first use.
+        globIgnores: ['**/xlsx-*.js', '**/jspdf*.js', '**/html2canvas*.js'],
       },
       devOptions: {
         enabled: true,
@@ -39,7 +43,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react':  ['react', 'react-dom'],
+          'vendor-react':  ['react', 'react-dom', 'react-dom/client'],
           'vendor-router': ['react-router-dom'],
           'vendor-query':  ['@tanstack/react-query'],
           'vendor-icons':  ['lucide-react'],

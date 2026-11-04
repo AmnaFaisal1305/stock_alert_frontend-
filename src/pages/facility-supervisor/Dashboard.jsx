@@ -86,6 +86,7 @@ export default function FacilityDashboard() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
   // statusCounts counts facility × vaccine lines, the same unit as these KPI tiles.
@@ -97,7 +98,7 @@ export default function FacilityDashboard() {
   })
   const previous = compareData?.summary?.previous?.statusCounts
   const { data: vaccineData } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
-  const requestsQ = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000 })
+  const requestsQ = useQuery({ queryKey: ['stock-requests'], queryFn: () => getStockRequests(), refetchInterval: 30_000, refetchIntervalInBackground: false })
   const approvalsQ = useQuery({ queryKey: ['approvals', 'pending'], queryFn: () => getApprovals('pending') })
 
   const attention = useMemo(() => {

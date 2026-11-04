@@ -24,6 +24,7 @@ export default function DistrictDashboard() {
     queryFn:  () => getDashboard(scope),
     placeholderData: (prev) => prev,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
   const facilitiesQ = useFacilityList()

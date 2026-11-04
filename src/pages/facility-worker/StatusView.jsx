@@ -28,6 +28,7 @@ export default function WorkerStatusView() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
 

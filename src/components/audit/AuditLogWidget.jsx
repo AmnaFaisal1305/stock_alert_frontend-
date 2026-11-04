@@ -20,6 +20,7 @@ export default function AuditLogWidget({ auditLogPath = '/facility/audit-log', s
     queryFn: () => getAuditLog({ actorRole: 'facility_supervisor', limit: 15 }),
     staleTime: 60_000,
     refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
   })
 
   // Without the user list, every vaccinator in a summary reads "Unknown vaccinator".

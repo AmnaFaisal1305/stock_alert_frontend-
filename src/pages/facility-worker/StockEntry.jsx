@@ -41,6 +41,7 @@ export default function StockEntry() {
     queryKey: ['holdings'],
     queryFn:  getHoldings,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
   const { inHand, usedUp, totalRemaining } = useMemo(() => {

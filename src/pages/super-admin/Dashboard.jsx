@@ -98,6 +98,7 @@ export default function SuperAdminDashboard() {
     queryKey: ['dashboard'],
     queryFn: getDashboard,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
   const { data: districtData } = useQuery({ queryKey: ['districts'], queryFn: getDistricts })

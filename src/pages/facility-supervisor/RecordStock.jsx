@@ -269,6 +269,7 @@ export default function RecordStock() {
     queryKey: ['stock-requests'],
     queryFn:  () => getStockRequests(),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
   // Only vaccines stocked at this facility can be requested (the API rejects the rest).
