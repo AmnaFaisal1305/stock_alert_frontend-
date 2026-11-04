@@ -343,15 +343,20 @@ function buildSummary(entry, ctx) {
       if (create?.items?.length && d.items?.length) {
         const requested = create.items.reduce((s, it) => s + (it.requestedVials ?? 0), 0)
         const shorts = []
-        for (const cit of create.items) {
-          const rit = d.items.find((i) => i.vaccineId === cit.vaccineId)
-          const diff = (cit.requestedVials ?? 0) - (rit?.receivedVials ?? 0)
-          if (diff > 0) {
-            const nm = cit.vaccineName || (vn(cit.vaccineId) ?? 'vaccine')
-            shorts.push(`${nm} short by ${diff}`)
+        if (entry.status !== 'completed') {
+          for (const cit of create.items) {
+            const rit = d.items.find((i) => i.vaccineId === cit.vaccineId)
+            const diff = (cit.requestedVials ?? 0) - (rit?.receivedVials ?? 0)
+            if (diff > 0) {
+              const nm = cit.vaccineName || (vn(cit.vaccineId) ?? 'vaccine')
+              shorts.push(`${nm} short by ${diff}`)
+            }
           }
         }
-        const base = `Received ${received} of ${requested} vials`
+        const bd = d.items.map((it) => `${vaccineName(it)} ${it.receivedVials ?? 0}`).join(', ')
+        const base = d.items.length === 1
+          ? `Received ${received} of ${requested} ${vaccineName(d.items[0])} vials`
+          : `Received ${bd} — ${received} of ${requested} vials asked`
         return shorts.length ? `${base} · ${shorts.join(', ')}` : base
       }
       return `Received ${received} vials`
@@ -483,9 +488,10 @@ export function computeFlags(entry, ctx) {
   const H72 = 3 * H24
 
   if (entry.action === 'STOCK_REQUEST_RECEIVED') {
-    // Short delivery: per-vaccine comparison against CREATE entry
+    // Short delivery: skip entirely if the request is already completed — head approved it, so
+    // any per-entry shortfall is historical noise. Only flag on open/partially_fulfilled requests.
     const create = ctx.createByEntityId?.[entry.entityId]
-    if (create?.items?.length && d.items?.length) {
+    if (entry.status !== 'completed' && create?.items?.length && d.items?.length) {
       for (const cit of create.items) {
         const rit = d.items.find((i) => i.vaccineId === cit.vaccineId)
         const diff = (cit.requestedVials ?? 0) - (rit?.receivedVials ?? 0)

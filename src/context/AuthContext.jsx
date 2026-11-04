@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import * as api from '../lib/api'
 import { disablePushForLogout } from '../lib/push'
+import { stopTour } from '../lib/tourBridge'
 
 const AuthContext = createContext(null)
 
@@ -99,6 +100,7 @@ export function AuthProvider({ children }) {
       if (e.key === 'sst_logout_ts') {
         // Another tab logged out — clear this tab too
         if (!user) return
+        stopTour()
         queryClient.clear()
         api.setCsrfToken(null)
         sessionStorage.removeItem(SESSION_KEY)
@@ -128,6 +130,7 @@ export function AuthProvider({ children }) {
   // as whoever owns the current cookie (fixes cross-tab switching + logout loops).
   useEffect(() => {
     const handle = () => {
+      stopTour()
       queryClient.clear()
       api.setCsrfToken(null)
       // Clear the auth signal so the next login re-fires the storage event in other tabs
@@ -155,6 +158,7 @@ export function AuthProvider({ children }) {
   }, [queryClient])
 
   const logout = useCallback(async () => {
+    stopTour()
     await disablePushForLogout()
     try {
       await api.logout()

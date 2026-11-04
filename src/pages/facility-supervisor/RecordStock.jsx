@@ -195,6 +195,7 @@ function RequestActions({ req, onReceived }) {
       qc.invalidateQueries({ queryKey: ['stock-requests'] })
       qc.invalidateQueries({ queryKey: ['audit-log'] })
       setShowReceive(false)
+      setMutError('')
       onReceived(req, payload)
     },
     onError: (err) => setMutError(err.message || 'Failed to record received. Please try again.'),

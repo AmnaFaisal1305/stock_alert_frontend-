@@ -124,7 +124,7 @@ export default function TopBar({ onMenuClick, navCollapsed, navOpen }) {
   const bellRef  = useRef(null)
 
   const initial = user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'
-  const showBell = user?.role !== 'facility_worker'
+  const showBell = user?.role !== 'facility_worker' && user?.role !== 'observer'
 
   const { data: countData } = useQuery({
     queryKey: ['unread-count'],

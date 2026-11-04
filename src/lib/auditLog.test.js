@@ -55,15 +55,30 @@ describe('formatAuditEntry', () => {
     const createEntry = entry('STOCK_REQUEST_CREATE', {
       items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10 }],
     }, { entityId: eid })
-    const ctx = baseCtx({ logs: [createEntry] })
     const received = entry('STOCK_REQUEST_RECEIVED', {
       items: [{ vaccineId: vacId, vaccineName: vacName, receivedVials: 7 }],
     }, { entityId: eid })
+    const ctx = baseCtx({ logs: [createEntry] })
     const f = formatAuditEntry(received, ctx)
     expect(f.summary).toContain('7 of 10')
     expect(f.summary).toContain('short by 3')
     expect(f.flags.some((fl) => fl.type === 'short_delivery')).toBe(true)
+    expect(f.flags.find((fl) => fl.type === 'short_delivery').label).toContain('short by 3')
     expect(f.storeImpact).toEqual({ sign: '+', value: 7 })
+  })
+
+  it('STOCK_REQUEST_RECEIVED — no short_delivery flag or summary text when request is completed', () => {
+    const createEntry = entry('STOCK_REQUEST_CREATE', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, requestedVials: 10 }],
+    }, { entityId: eid })
+    const received = entry('STOCK_REQUEST_RECEIVED', {
+      items: [{ vaccineId: vacId, vaccineName: vacName, receivedVials: 1 }],
+    }, { entityId: eid, status: 'completed' })
+    const ctx = baseCtx({ logs: [createEntry, received] })
+    const f = formatAuditEntry(received, ctx)
+    expect(f.flags.some((fl) => fl.type === 'short_delivery')).toBe(false)
+    expect(f.summary).not.toContain('short by')
+    expect(f.summary).toContain('1 of 10')
   })
 
   it('STOCK_REQUEST_RECEIVED without CREATE — no short_delivery flag', () => {

@@ -1,4 +1,4 @@
-// Read-only, searchable staff table for the UC and district Users pages.
+﻿// Read-only, searchable staff table for the UC, district and facility-head Users pages.
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getUsers } from '../../lib/api'
@@ -6,6 +6,7 @@ import Badge from '../ui/Badge'
 import PageHeader from './PageHeader'
 import Table from './Table'
 import SearchInput from './SearchInput'
+import FilterChips from './FilterChips'
 import ErrorState from './ErrorState'
 import EntityCard from './EntityCard'
 import RoleTag from './RoleTag'
@@ -14,7 +15,7 @@ import ExportButton from '../ui/ExportButton'
 import { ROLE_LABELS, ROLE_ACCENT, ROLE_ICON } from '../../lib/navigation'
 import { plural, timeAgo } from '../../lib/format'
 import { useViewMode } from '../../hooks/useViewMode'
-import { useUrlState } from '../../hooks/useUrlState'
+import { useUrlFilters } from '../../hooks/useUrlState'
 
 const dash = <span className="text-text-muted">—</span>
 // UC supervisors carry ucNames (several UCs); facility staff carry one ucName.
@@ -55,18 +56,30 @@ const gridCard = (u) => (
 )
 
 export default function UserDirectory({ breadcrumb, scope }) {
-  const [search, setSearch] = useUrlState('q')
+  const [{ q: search, role: roleFilter }, setFilters] = useUrlFilters({ q: '', role: '' })
   const [view, setView] = useViewMode(`users-${scope}`)
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['users'], queryFn: getUsers, staleTime: 30_000 })
 
   const users = data?.users ?? []
   const active = users.filter((u) => u.isActive).length
 
+  // Build role chips from whatever roles are present in the data.
+  const roleChips = useMemo(() => {
+    const present = [...new Set(users.map((u) => u.role))]
+    return [
+      { label: 'All', value: '' },
+      ...present.map((r) => ({ label: ROLE_LABELS[r] ?? r, value: r })),
+    ]
+  }, [users])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return users
-    return users.filter((u) => [u.name, u.email, u.facilityName, ucOf(u)].some((v) => v?.toLowerCase().includes(q)))
-  }, [users, search])
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false
+      if (!q) return true
+      return [u.name, u.email, u.facilityName, ucOf(u)].some((v) => v?.toLowerCase().includes(q))
+    })
+  }, [users, search, roleFilter])
 
   return (
     <div>
@@ -80,25 +93,35 @@ export default function UserDirectory({ breadcrumb, scope }) {
       ) : (
         <div className="flex flex-col gap-4">
           {users.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, facility or UC…" />
+            <>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <SearchInput value={search} onChange={(e) => setFilters({ q: e.target.value })} placeholder="Search name, email, facility or UC…" />
+                </div>
+                <ViewToggle value={view} onChange={setView} />
+                <ExportButton
+                  name="users"
+                  rows={filtered}
+                  columns={[
+                    { label: 'Name', value: (u) => u.name },
+                    { label: 'Email', value: (u) => u.email },
+                    { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
+                    { label: 'Facility', value: (u) => u.facilityName },
+                    { label: 'Union council', value: ucOf },
+                    { label: 'Last login', value: (u) => u.lastLoginAt ?? '' },
+                    { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
+                  ]}
+                />
               </div>
-              <ViewToggle value={view} onChange={setView} />
-              <ExportButton
-                name="users"
-                rows={filtered}
-                columns={[
-                  { label: 'Name', value: (u) => u.name },
-                  { label: 'Email', value: (u) => u.email },
-                  { label: 'Role', value: (u) => ROLE_LABELS[u.role] ?? u.role },
-                  { label: 'Facility', value: (u) => u.facilityName },
-                  { label: 'Union council', value: ucOf },
-                  { label: 'Last login', value: (u) => u.lastLoginAt ?? '' },
-                  { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
-                ]}
-              />
-            </div>
+              {roleChips.length > 2 && (
+                <FilterChips
+                  options={roleChips.map((c) => ({ ...c, count: users.filter((u) => !c.value || u.role === c.value).length }))}
+                  value={roleFilter}
+                  onChange={(v) => setFilters({ role: v })}
+                  label="Filter by role"
+                />
+              )}
+            </>
           )}
           <Table
             columns={columns}
@@ -106,7 +129,7 @@ export default function UserDirectory({ breadcrumb, scope }) {
             loading={isLoading}
             view={view}
             gridCard={gridCard}
-            emptyMessage={search ? `No users match “${search}”.` : `No users in your ${scope} yet.`}
+            emptyMessage={search || roleFilter ? `No users match this filter.` : `No users in your ${scope} yet.`}
             mobileCard={(u) => (
               <div className="px-4 py-3.5 flex items-start justify-between gap-3">
                 <div className={`min-w-0 ${u.isActive ? '' : 'opacity-60'}`}>

@@ -186,7 +186,14 @@ export default function Approvals() {
   }
 
   const corrValid = corrVaccineId && corrBatch && corrStoreVials !== '' && Number(corrStoreVials) >= 0 && corrNote.trim().length > 0
-  const thrValid  = thrVaccineId && (thrReset || Object.values(thrValues).every(v => v !== ''))
+
+  const thrVaccineRow = vaccines.find(r => r.vaccineId === thrVaccineId)
+  const thrUnchanged  = !thrReset && !!thrVaccineRow &&
+    Number(thrValues.criticalDoses) === thrVaccineRow.criticalDoses &&
+    Number(thrValues.lowDoses)      === thrVaccineRow.lowDoses &&
+    Number(thrValues.criticalVials) === thrVaccineRow.criticalVials &&
+    Number(thrValues.lowVials)      === thrVaccineRow.lowVials
+  const thrValid = thrVaccineId && (thrReset || Object.values(thrValues).every(v => v !== '')) && !thrUnchanged
 
   const isListLoading = listView === 'pending' ? pendingLoading : historyLoading
   const listItems     = listView === 'pending' ? pending : history
@@ -302,6 +309,7 @@ export default function Approvals() {
                 onChange={e => setThrNote(e.target.value)}
                 placeholder="Why does this facility need different thresholds?"
               />
+              {thrUnchanged && <p className="text-sm text-warning-dark bg-warning-bg rounded-control px-3.5 py-2.5">These values match the current thresholds — change at least one before sending.</p>}
               <FormMessage error={thrError} done={thrDone} />
               <div>
                 <Button onClick={() => setReview('thr')} disabled={!thrValid || thrMutation.isPending}>

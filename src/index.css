@@ -254,6 +254,7 @@
 }
 .driver-popover.sst-tour .driver-popover-next-btn:hover { background-color: rgb(var(--pri-light)); }
 .driver-popover.sst-tour .sst-tour-lang { color: rgb(var(--pri-ink)); border-color: transparent; padding: 0 10px; }
+.driver-popover.sst-tour .sst-tour-skip-all { color: rgb(var(--text-muted)); border-color: transparent; padding: 0 10px; font-size: 11px; }
 .driver-popover.sst-tour .driver-popover-footer-btn:focus-visible,
 .driver-popover.sst-tour .sst-tour-lang:focus-visible {
   outline: 2px solid rgb(var(--pri-ink));

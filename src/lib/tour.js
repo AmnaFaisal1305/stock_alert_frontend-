@@ -8,6 +8,7 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { GUIDE } from '../pages/shared/DashboardGuide'
 import { navFor } from './navigation'
+import { registerStop } from './tourBridge'
 
 const LANG_KEY = 'sst_guide_lang' // shared with the Guide page
 const seenKey  = (user) => `sst_tour_v1:${user.id ?? user.email}`
@@ -33,8 +34,8 @@ export function resetTour(user) {
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const UI = {
-  en: { next: 'Next', prev: 'Back', done: 'Done', switchTo: 'اردو', switchLabel: 'Show this tour in Urdu', close: 'Skip tour' },
-  ur: { next: 'اگلا', prev: 'پچھلا', done: 'ختم', switchTo: 'English', switchLabel: 'Show this tour in English', close: 'ٹور چھوڑیں' },
+  en: { next: 'Next', prev: 'Back', done: 'Done', switchTo: 'اردو', switchLabel: 'Show this tour in Urdu', close: 'Skip tour', skipAll: "Don't show tours", skipAllLabel: 'Disable tours on all pages' },
+  ur: { next: 'اگلا', prev: 'پچھلا', done: 'ختم', switchTo: 'English', switchLabel: 'Show this tour in English', close: 'ٹور چھوڑیں', skipAll: 'ٹور نہ دکھائیں', skipAllLabel: 'تمام صفحات پر ٹور بند کریں' },
 }
 
 const WELCOME = {
@@ -233,6 +234,16 @@ function run(kind, user, pathname, startAt = 0) {
         run(kind, user, pathname, at)
       })
       popover.footer.prepend(btn)
+      const skipBtn = document.createElement('button')
+      skipBtn.type = 'button'
+      skipBtn.className = 'sst-tour-skip-all'
+      skipBtn.textContent = t.skipAll
+      skipBtn.setAttribute('aria-label', t.skipAllLabel)
+      skipBtn.addEventListener('click', () => {
+        writeSeen(user, { ...readSeen(user), disabled: true })
+        drv.destroy()
+      })
+      popover.footer.prepend(skipBtn)
     },
     onDestroyed: () => {
       if (active === d) active = null
@@ -278,6 +289,7 @@ function whenSettled(signal) {
 export async function maybeRunTour(user, pathname, signal) {
   if (!user || active?.isActive()) return
   const seen = readSeen(user)
+  if (seen.disabled) return
   if (seen.welcome && seen.pages?.[pathname]) return
   await whenSettled(signal)
   await new Promise((r) => setTimeout(r, 350))
@@ -291,3 +303,4 @@ export function stopTour() {
   leaving = true
   active.destroy()
 }
+registerStop(stopTour)
