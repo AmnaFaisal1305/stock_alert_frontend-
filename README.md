@@ -18,12 +18,7 @@ npm install
 npm run dev                  # http://localhost:5173
 ```
 
-Create `.env.local` in the project root first:
-
-```
-VITE_API_URL=https://smart-stock-alert-be.vercel.app
-VITE_GOOGLE_CLIENT_ID=        # optional: shows the Google sign-in button
-```
+Create `.env.local` in the project root first, using the environment file provided separately. It sets `VITE_API_URL` (the backend) and `VITE_GOOGLE_CLIENT_ID` (optional; shows the Google sign-in button).
 
 - The dev server must run on **port 5173**: the backend's CORS allowlist only accepts that origin.
 - The dev server talks to the live backend and its database, so anything created while testing is real data.
