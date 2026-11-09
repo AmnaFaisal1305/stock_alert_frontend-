@@ -165,12 +165,24 @@ Logins: the pilot logins are at the end of the backend's `docs/users.md` (ask Ah
 
 ## Next steps
 
-1. **Run the Round 47 writes once** (assign from a chosen batch, the day end for it, a correction, ideally one on a batch at 0 to try Round 48's `includeEmpty`), then delete `docs/FRONTEND_HANDOFF.md` and `docs/api-reference.md`. A safe first call: assign more vials than a batch holds; the server refuses it and nothing is saved.
-2. **Check the deployed build** (https://smart-stock-alert.vercel.app) for Rounds 44–48 and the three small fixes, read-only. Include the 2026-11-04 perf commit: an Excel/PDF export still works (its chunks now load on demand), and dashboards still refresh.
-3. **Push works on a phone** (2026-11-09). Still worth a look: a tapped push opening its item, push on an iPhone home-screen app if only Android was tried, and the Refresh warning in the installed PWA.
-4. **Finish the QA pass:** super admin signed in (password from Ahmed), a real Edit user save, the stock-request/approval writes listed above (each is real production data), a Google sign-in, and a real email button opening its item (Round 48).
-5. **Pilot:** sign in as a pilot Facility Supervisor and confirm Assign Vials shows no "Other" group (the vaccine names match `VACCINE_GROUPS`). Offline mode and EPI Form B stay hidden until a later phase (backend, 2026-11-09).
-6. **Watch for the first new closing row** in the Audit Log; it should show its vaccines without the create row on the page.
-7. **Backend status (2026-11-09):** the backend's pending list was answered (all adopted, push works, no approval-by-id endpoint needed, install link shared). Nothing is waiting on either side.
-8. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
-9. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
+Status 2026-11-09: no code is open on the frontend, nothing is open on the backend. What remains is checks on real phones and real pilot data.
+
+**Waiting on the backend**
+1. Confirm the production vaccine names match `VACCINE_GROUPS` exactly (asked 2026-11-09): BCG, OPV (Polio), Rota, IPV, Pneumococcal, Pentavalent, MR, TCV, TD, HPV, HBV (Birth Dose).
+
+**Before the first user training (Ahmed, real phones)**
+2. Sign in as a pilot Facility Supervisor and confirm Assign Vials shows no "Other" group.
+3. On one Android and one iPhone, open `/install` from WhatsApp and check the steps match what the phone shows; install the app.
+4. In a phone browser (not the installed app), close every tab of the site, reopen it, and check Sign out shows at the bottom of the menu (the 2026-11-09 drawer fix).
+5. Push works on a phone (2026-11-09). If only Android was tried: "Turn on alerts" on an iPhone from the installed app. Also worth a look: a tapped push opening its item, and the Refresh warning in the installed PWA.
+
+**After the training (not urgent)**
+6. **Urdu review:** the Guide, tour and `/install` Urdu was machine-written; have a native speaker correct the `ur` entries.
+7. **Watch the first real pilot writes:** batch assigns, day ends, corrections, short deliveries and cancellations (see "Not yet tested"). A `500` shows "Reference: …"; pass it to the backend. Watch the first new closing row in the Audit Log: it should show its vaccines without the create row on the page.
+8. **Flows not yet tried:** Super Admin signed in (and its tour), a real Edit user save, a Google sign-in, a real email button opening its item (Round 48).
+9. **Old backend docs:** delete `docs/FRONTEND_HANDOFF.md` and `docs/api-reference.md` once the batch flows have run cleanly with pilot data.
+10. **With the client, later phase:** whether offline mode (`OFFLINE_ENABLED`) and EPI Form B come back. Both stay hidden.
+
+**Standing**
+11. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
+12. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
