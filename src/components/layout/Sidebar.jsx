@@ -50,7 +50,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed }) {
 
       <aside
         className={[
-          'h-screen bg-epi-dark text-white flex flex-col flex-shrink-0',
+          'h-screen h-dvh bg-epi-dark text-white flex flex-col flex-shrink-0',
           'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-[width,transform] duration-200 ease-out',
           isCollapsed ? 'w-[72px]' : 'w-[250px]',
           mobileOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full lg:translate-x-0',
@@ -110,7 +110,7 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed }) {
         </nav>
 
         {/* Footer */}
-        <div className={`border-t border-white/[0.08] py-3 flex flex-col gap-0.5 ${isCollapsed ? 'px-2.5' : 'px-3'}`}>
+        <div className={`border-t border-white/[0.08] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col gap-0.5 ${isCollapsed ? 'px-2.5' : 'px-3'}`}>
           {nav.guide && <NavItem to={nav.guide} label="Guide" icon={GuideIcon} collapsed={isCollapsed} onNavigate={onClose} />}
           <button
             onClick={logout}

@@ -36,7 +36,7 @@ export default class ErrorBoundary extends Component {
     }
     if (this.state.error) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="min-h-screen min-h-dvh flex items-center justify-center p-8">
           <div className="bg-danger-bg border border-danger/20 rounded-xl p-6 max-w-lg w-full">
             <h2 className="text-base font-semibold text-danger mb-2">Something went wrong</h2>
             <p className="text-sm text-danger/80">

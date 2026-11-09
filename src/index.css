@@ -265,6 +265,15 @@
 .driver-popover.sst-tour .driver-popover-arrow-side-right { border-top-color: transparent; border-bottom-color: transparent; border-left-color: transparent; }
 .driver-popover.sst-tour .driver-popover-arrow-side-top { border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent; }
 .driver-popover.sst-tour .driver-popover-arrow-side-bottom { border-top-color: transparent; border-left-color: transparent; border-right-color: transparent; }
+/* iOS zooms the page into any focused field under 16px (the cropped login on iPhone). */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .driver-fade .driver-overlay, .driver-fade .driver-popover { animation: none; }
 }

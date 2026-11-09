@@ -2,6 +2,11 @@ import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { CacheFirst } from 'workbox-strategies'
 
+// A new deploy takes over at once instead of waiting for every tab and the installed app to close,
+// so phones that opened an older build pick up fixes on their next visit.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+
 // Precache the app shell (Workbox injects the manifest at build time)
 const manifest = self.__WB_MANIFEST
 precacheAndRoute(manifest)

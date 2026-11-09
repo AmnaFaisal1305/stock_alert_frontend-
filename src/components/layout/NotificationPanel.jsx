@@ -1,9 +1,8 @@
 import { Bell, X, Check, BellPlus, AlertTriangle, ClipboardCheck, ClipboardX, ClipboardList, Package, Truck } from 'lucide-react'
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getNotifications, markNotificationRead, markAllRead, sendTestPush } from '../../lib/api'
-import { isPushSupported, enablePush } from '../../lib/push'
+import { getNotifications, markNotificationRead, markAllRead } from '../../lib/api'
+import { usePushState } from '../../hooks/usePushState'
 import { useAuth } from '../../context/AuthContext'
 import { linkFor } from '../../lib/navigation'
 import { ACCENT } from '../shared/StatCard'
@@ -28,37 +27,7 @@ export default function NotificationPanel({ onClose }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [pushState, setPushState] = useState(() => {
-    if (!isPushSupported()) return 'unsupported'
-    if (Notification.permission === 'granted') return 'subscribed'
-    if (Notification.permission === 'denied') return 'denied'
-    return 'idle'
-  })
-  const [pushBusy, setPushBusy] = useState(false)
-  const [testMsg, setTestMsg] = useState('')
-
-  const testMutation = useMutation({
-    mutationFn: sendTestPush,
-    onSuccess: (r) => setTestMsg(r?.sent ? `Sent to ${r.sent} device${r.sent === 1 ? '' : 's'}. Check your phone.` : 'No device accepted it.'),
-    onError: (err) => setTestMsg(
-      err.status === 404 ? 'This account has no device subscribed.'
-      : err.status === 429 ? 'Limit reached: 3 test pushes per hour.'
-      : err.status === 503 ? 'Push isn’t configured on this server.'
-      : err.message,
-    ),
-  })
-
-  async function handleEnablePush() {
-    setPushBusy(true)
-    try {
-      const result = await enablePush()
-      setPushState(result === 'ok' ? 'subscribed' : result === 'denied' ? 'denied' : 'unsupported')
-    } catch {
-      setPushState('idle') // let them try again
-    } finally {
-      setPushBusy(false)
-    }
-  }
+  const { state: pushState, busy: pushBusy, enable: handleEnablePush, testMsg, sendTest, testPending } = usePushState()
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -174,11 +143,11 @@ export default function NotificationPanel({ onClose }) {
         <div className="border-t border-surface-border px-4 py-2 flex items-center justify-between gap-3 bg-surface-alt">
           <p className="text-[11px] text-text-muted min-w-0" role="status">{testMsg || 'Push alerts are on for this device'}</p>
           <button
-            onClick={() => { setTestMsg(''); testMutation.mutate() }}
-            disabled={testMutation.isPending}
+            onClick={sendTest}
+            disabled={testPending}
             className="text-xs font-medium text-primary hover:underline flex-shrink-0 disabled:opacity-50"
           >
-            {testMutation.isPending ? 'Sending…' : 'Send test'}
+            {testPending ? 'Sending…' : 'Send test'}
           </button>
         </div>
       )}

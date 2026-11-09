@@ -4,11 +4,17 @@ import { QueryClient, QueryClientProvider, dehydrate, hydrate } from '@tanstack/
 import '@fontsource-variable/figtree'
 import './index.css'
 import App from './App.jsx'
+import { INSTALL_EVENT } from './lib/pwa'
 
 // Capture the install prompt before React hydrates — it can fire very early
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault()
   window.__pwaInstallPrompt = e
+  window.dispatchEvent(new Event(INSTALL_EVENT))
+})
+window.addEventListener('appinstalled', () => {
+  window.__pwaInstallPrompt = null
+  window.dispatchEvent(new Event(INSTALL_EVENT))
 })
 
 const ReactQueryDevtools = import.meta.env.DEV

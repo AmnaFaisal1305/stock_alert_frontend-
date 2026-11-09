@@ -9,6 +9,7 @@ import { linkFor } from './lib/navigation'
 const LoginPage             = lazy(() => import('./pages/login/LoginPage'))
 const ForgotPassword        = lazy(() => import('./pages/login/ForgotPassword'))
 const ResetPassword         = lazy(() => import('./pages/login/ResetPassword'))
+const InstallPage           = lazy(() => import('./pages/login/InstallPage'))
 
 const SuperAdminDashboard   = lazy(() => import('./pages/super-admin/Dashboard'))
 const DistrictManagement    = lazy(() => import('./pages/super-admin/DistrictManagement'))
@@ -140,6 +141,7 @@ export default function App() {
               <Route path="/login"           element={<LoginRoute />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password"  element={<ResetPassword />} />
+              <Route path="/install"         element={<InstallPage />} />
 
               <Route element={<AuthLayout />}>
                 <Route path="/" element={<RoleRedirect />} />

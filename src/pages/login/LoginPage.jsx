@@ -15,7 +15,7 @@ function BrandMark() {
   return (
     <div className="flex items-center gap-3">
       <img src="/images/logo-circle-192.png" alt="" width="44" height="44" className="w-11 h-11 rounded-full flex-shrink-0" />
-      <p className="text-sm font-medium leading-tight text-text">Stock Management &amp;<br />Alert System</p>
+      <p dir="auto" className="text-sm font-medium leading-tight text-text">Stock Management &amp;<br />Alert System</p>
     </div>
   )
 }
@@ -64,15 +64,15 @@ export function FormAlert({ children }) {
 // Form column with the brand mark; `aside` replaces the default project panel (desktop only).
 export function AuthShell({ title, subtitle, aside, children }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-[minmax(380px,5fr)_7fr] bg-surface">
-      <main className="flex flex-col min-h-screen px-6 sm:px-12 lg:px-[clamp(24px,6vw,88px)] py-10">
+    <div className="min-h-screen min-h-dvh grid lg:grid-cols-[minmax(380px,5fr)_7fr] bg-surface">
+      <main className="flex flex-col min-h-screen min-h-dvh px-6 sm:px-12 lg:px-[clamp(24px,6vw,88px)] py-10">
         <BrandMark />
         <div className="flex-1 flex flex-col justify-center w-full max-w-[440px] mx-auto py-12">
           <h1 className="text-4xl font-light tracking-tight leading-[1.1] text-text">{title}</h1>
           {subtitle && <p className="text-sm text-text-muted mt-2.5">{subtitle}</p>}
           <div className="mt-8">{children}</div>
         </div>
-        <p className="flex items-center gap-2 text-xs text-text-muted">
+        <p dir="auto" className="flex items-center gap-2 text-xs text-text-muted">
           <ShieldCheck size={15} strokeWidth={1.75} className="flex-shrink-0" aria-hidden="true" />
           Official system of the Aga Khan University Hospital network
         </p>

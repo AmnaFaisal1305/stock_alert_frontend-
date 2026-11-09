@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext'
 import PageHeader from '../../components/shared/PageHeader'
 import Tabs from '../../components/ui/Tabs'
 import Button from '../../components/ui/Button'
+import Card from '../../components/shared/Card'
+import { InstallApp, TurnOnAlerts } from '../../components/shared/AppSetup'
 import { navFor } from '../../lib/navigation'
 
 // Each role's guide in English and Urdu. Page names stay in English so they match the sidebar.
@@ -397,8 +399,8 @@ export const GUIDE = {
 }
 
 const UI = {
-  en: { tour: 'Take the tour', breadcrumb: 'Help › Guide', title: (l) => `${l} guide`, responsibilities: 'Your responsibilities', workflow: 'Your workflow', modules: 'Pages in your sidebar' },
-  ur: { tour: 'ٹور شروع کریں', breadcrumb: 'مدد › رہنمائی', title: (l) => `${l} کے لیے رہنمائی`, responsibilities: 'آپ کی ذمہ داریاں', workflow: 'کام کا طریقہ', modules: 'سائیڈ بار کے صفحات' },
+  en: { tour: 'Take the tour', breadcrumb: 'Help › Guide', title: (l) => `${l} guide`, responsibilities: 'Your responsibilities', workflow: 'Your workflow', modules: 'Pages in your sidebar', setup: 'Set up on your phone' },
+  ur: { tour: 'ٹور شروع کریں', breadcrumb: 'مدد › رہنمائی', title: (l) => `${l} کے لیے رہنمائی`, responsibilities: 'آپ کی ذمہ داریاں', workflow: 'کام کا طریقہ', modules: 'سائیڈ بار کے صفحات', setup: 'اپنے فون پر سیٹ اپ کریں' },
 }
 
 const LANG_KEY = 'sst_guide_lang'
@@ -448,6 +450,14 @@ export default function DashboardGuide() {
           </>
         }
       />
+
+      <section aria-labelledby="guide-setup" className="mb-8">
+        <h2 id="guide-setup" className="text-base font-semibold text-text mb-3">{t.setup}</h2>
+        <Card className="divide-y divide-surface-border">
+          <InstallApp lang={lang} />
+          <TurnOnAlerts lang={lang} />
+        </Card>
+      </section>
 
       <p className="text-base text-text leading-relaxed">{g.purpose}</p>
 

@@ -94,12 +94,14 @@ src/
     queuedHoldings.js  — applyQueued(): counts queued entries in holdings (self-check: scripts/check-offline-holdings.mjs)
     push.js            — web push subscribe/unsubscribe (READY_TIMEOUT_MS guards a missing service worker)
     tour.js            — guided tour (driver.js, lazy): welcome once per user per device, then each page's tour; page intros from GUIDE in DashboardGuide.jsx
+    pwa.js             — install helpers: isStandalone, platform, inAppBrowser (WhatsApp etc. can't install), promptInstall; INSTALL_EVENT fired from main.jsx
     tourBridge.js      — stopTour() for AuthContext (logout / session expiry) without statically importing driver.js; tour.js registers itself via registerStop()
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
     useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
     useAllAuditPages.js (follows nextCursor, capped, for the rich Audit Log's flags and thread),
     useOpenItem.js (?open=<id> from per-item links: useOpenId, useScrollIntoView),
+    usePushState.js (push opt-in state + Send test, shared by NotificationPanel and the Guide's alerts card),
     useUnsavedGuard.js (Assign Vials / Day End: Refresh and reload ask before dropping unsent figures)
   components/
     layout/            — Layout, Sidebar, TopBar, NotificationPanel
@@ -110,7 +112,7 @@ src/
     ui/                — primitives: Button, Input, Textarea, Select, Tabs, Modal, Toast, Badge, ExportButton, ...
     ErrorBoundary.jsx
   pages/
-    login/             — LoginPage, ForgotPassword, ResetPassword, HeroCarousel
+    login/             — LoginPage, ForgotPassword, ResetPassword, InstallPage (public /install, the link shared with users), HeroCarousel
     super-admin/       — super_admin role pages
     district-supervisor/ — district_supervisor role pages
     uc-supervisor/     — uc_supervisor role pages
@@ -239,7 +241,7 @@ The Audit Log (`AuditLogView`) filters and pages on the server (Round 35): tab/a
 | Layer | Path | Contents |
 |---|---|---|
 | Primitives | `src/components/ui/` | Button (variants: primary, secondary, danger, ghost, ghost-danger; `buttonClasses()` for links), Input, Textarea, Select, Tabs, Modal, Toast, Badge, DatePicker (calendar popover; native on touch), ConfirmDialog, ReviewDialog (+ `ReviewPanel`, `SummaryDialog`), ViewToggle, RowActions |
-| Composites | `src/components/shared/` | Card, PageHeader, Table (`view="grid"` + `gridCard`), EntityCard, StatCard (`icon` + `accent`), StatusBadge, RoleTag, AttentionStrip, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
+| Composites | `src/components/shared/` | AppSetup (`InstallApp`, `TurnOnAlerts`: Guide and /install), Card, PageHeader, Table (`view="grid"` + `gridCard`), EntityCard, StatCard (`icon` + `accent`), StatusBadge, RoleTag, AttentionStrip, FilterChips, SearchInput, Pagination, EmptyState, ErrorState, SkeletonCard/SkeletonRows, WorkerPicker, ResultPanel, UserDirectory |
 | Layout | `src/components/layout/` | Layout, Sidebar, TopBar, NotificationPanel |
 
 Entity lists use `useViewMode(pageKey)` + `ViewToggle` + `Table view/gridCard` with `EntityCard` (Grid by default), list filters live in the URL via `useUrlFilters` (`hooks/useUrlState.js`; facility lists use `?status=`), and an `ExportButton` (CSV via `lib/csv.js`). Row actions are `RowActions` icons, filtered by role. Submits on field-entry screens go through `ReviewDialog`/`ReviewPanel`; creates end in `SummaryDialog`. Non-status colour comes from the category palette (`--cat-1…5`, `ACCENT` in `StatCard.jsx`), never from status red/amber/green.

@@ -7,13 +7,10 @@ import Button from '../ui/Button'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { isPushSupported, enablePush } from '../../lib/push'
 import { useAuth } from '../../context/AuthContext'
+import { isStandalone, promptInstall } from '../../lib/pwa'
 
 const NOTIF_KEY   = 'sst_notif_card'
 const INSTALL_KEY = 'sst_install_card'
-
-function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone
-}
 
 // One inline prompt at the top of the content, never covering it: notifications first,
 // then app install. Each is dismissed for the browser session.
@@ -42,8 +39,7 @@ function PromptBanner() {
     if (prompt === 'notif') {
       await enablePush()
     } else {
-      await window.__pwaInstallPrompt?.prompt()
-      window.__pwaInstallPrompt = null
+      await promptInstall()
     }
     setBusy(false)
     dismiss()
@@ -97,6 +93,7 @@ const COLLAPSE_KEY = 'sst_sidebar_collapsed'
 
 export default function Layout({ children }) {
   useOfflineSync()
+  const { pathname } = useLocation() // the Guide has its own install/alerts section
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [collapsed, setCollapsed]         = useState(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
@@ -113,12 +110,12 @@ export default function Layout({ children }) {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-alt">
+    <div className="flex h-screen h-dvh overflow-hidden bg-surface-alt">
       <Sidebar mobileOpen={mobileNavOpen} onClose={closeNav} collapsed={collapsed} />
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen h-dvh overflow-hidden">
         <TopBar onMenuClick={onMenuClick} navCollapsed={collapsed} navOpen={mobileNavOpen} />
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-7 pt-5 sm:pt-6 pb-10">
-          <PromptBanner />
+          {!pathname.endsWith('/guide') && <PromptBanner />}
           {children}
           <TourRunner />
         </main>
