@@ -171,5 +171,6 @@ Logins: the pilot logins are at the end of the backend's `docs/users.md` (ask Ah
 4. **Finish the QA pass:** super admin signed in (password from Ahmed), a real Edit user save, the stock-request/approval writes listed above (each is real production data), a Google sign-in, and a real email button opening its item (Round 48).
 5. **Pilot:** sign in as a pilot Facility Supervisor and confirm Assign Vials shows no "Other" group (the vaccine names match `VACCINE_GROUPS`). Offline mode and EPI Form B stay hidden until a later phase (backend, 2026-11-09).
 6. **Watch for the first new closing row** in the Audit Log; it should show its vaccines without the create row on the page.
-7. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
-8. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
+7. **Backend status (2026-11-09):** the backend's pending list was answered (all adopted, push works, no approval-by-id endpoint needed, install link shared). Nothing is waiting on either side.
+8. **When the backend's next round arrives:** drop its docs into `docs/`, adopt them, update `BACKEND_REQUESTS.md` and this file, then delete the docs.
+9. **Dev-only advisories:** only with a planned Vite/tooling upgrade.
