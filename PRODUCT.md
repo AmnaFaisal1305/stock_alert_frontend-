@@ -44,20 +44,19 @@ A generic inventory tool has none of these: the EPI vocabulary and Form B, the U
 
 ## Operating Context
 
-- **Monthly cycle:** the EPI Form B per facility. Supervisor, Head and UC Supervisor fill their columns for the current or previous month.
+- **Monthly cycle:** the EPI Form B per facility (deferred to a later phase and hidden in the app).
 - **Daily cycle:** the morning vial handout to each vaccinator and the end-of-day record of used, returned and wasted vials.
 - **Restocking:** the facility raises a request; the UC Supervisor records what was sent and the facility what was received; the two must agree; then the Head approves. A short delivery stays open for further rounds.
-- **Offline:** Assign Vials and Day End work offline, including opening the app with no signal. Entries queue on the phone and sync when the signal returns. Requests and approvals need a connection.
+- **Offline:** deferred to a later phase. The offline queue for Assign Vials and Day End is built but switched off; with no signal they say nothing was saved.
 - **Notifications:** in-app and push notifications for critical stock and every handoff, and email for actions someone must take.
 
 ## Capabilities and Constraints
 
 - **Accounts:** only the Super Admin creates, activates, deactivates or resets accounts. Self-service password reset by email exists for everyone.
 - **Units and thresholds:** stock is entered in vials. Doses are shown for usage and balances. Doses per vial is global per vaccine. Thresholds are global with optional per-facility overrides.
-- **No per-batch stock:** batch, expiry and manufacturer are recorded on receipt for reference only. So there is no expiring-stock view.
-- **Back-dating:** offline entries can be dated up to 3 days back.
+- **Per-batch stock:** stock is tracked per batch (batch number, expiry, manufacturer recorded on receipt). Assign Vials picks a batch, Day End closes each held batch, and Analytics shows vials near expiry (within two months).
+- **Back-dating:** Assign Vials and Day End can be dated up to 7 days back.
 - **Exports:** CSV, plus Excel and PDF for Analytics, built in the browser.
-- **Open (backend):** a dedicated Stock Register endpoint, so the register balance includes stock received through requests (`BACKEND_REQUESTS.md`).
 
 ## Brand Commitments
 
@@ -69,7 +68,7 @@ A generic inventory tool has none of these: the EPI vocabulary and Form B, the U
 ## Evidence on Hand
 
 - **Partner logos:** the login card at `public/images/login-hero.jpeg`.
-- **Data:** production holds **demo data only** until go-live. At go-live the demo districts are wiped and replaced with the real locations and accounts. The pilot starts from zero stock: there is no opening balance; all stock enters through stock requests.
+- **Data:** production holds the **real Kemari pilot** (live since 2026-11-06; users recording stock since 2026-11-09). The pilot started from zero stock: there is no opening balance; all stock enters through stock requests.
 - **Absences:** no real usage figures, outcomes, testimonials or case studies exist yet. Never invent them.
 
 ## Product Principles

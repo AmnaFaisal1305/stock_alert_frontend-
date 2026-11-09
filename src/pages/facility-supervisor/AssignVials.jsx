@@ -18,32 +18,26 @@ import ReviewDialog from '../../components/ui/ReviewDialog'
 import Select from '../../components/ui/Select'
 import { localDateStr, plural, formatDate, batchLabel } from '../../lib/format'
 
+// Kemari pilot catalog (backend, 2026-11-09). A vaccine whose name isn't listed falls into "Other".
 const VACCINE_GROUPS = [
-  ['Birth & Oral',  ['BCG', 'OPV (Polio)', 'Rota']],
-  ['Injectables',   ['IPV', 'Pneumococcal']],
-  ['Pentavalent',   ['D (Pentavalent)', 'T (Pentavalent)', 'P (Pentavalent)', 'Hep B (Pentavalent)', 'Hib (Pentavalent)']],
-  ['MR',            ['Measles (MR)', 'Rubella (MR)']],
-  ['Other',         ['TCV', 'T (TD)', 'D (TD)', 'HPV']],
+  ['Birth & Oral',  ['BCG', 'HBV (Birth Dose)', 'OPV (Polio)', 'Rota']],
+  ['Injectables',   ['Pentavalent', 'IPV', 'Pneumococcal', 'MR', 'TCV']],
+  ['Older children & women', ['TD', 'HPV']],
 ]
 
-const GROUP_ACCENT = { 'Birth & Oral': 1, 'Injectables': 2, 'Pentavalent': 3, 'MR': 4, 'Other': 5 }
+const GROUP_ACCENT = { 'Birth & Oral': 1, 'Injectables': 2, 'Older children & women': 3, 'Other': 5 }
 
 const VACCINE_SUBTITLES = {
   'BCG':              'Tuberculosis',
+  'HBV (Birth Dose)': 'Hepatitis B at birth',
   'OPV (Polio)':      'Oral polio',
   'Rota':             'Rotavirus',
+  'Pentavalent':      'DTP · Hep B · Hib',
   'IPV':              'Inactivated polio',
   'Pneumococcal':     'PCV',
-  'D (Pentavalent)':  'Diphtheria',
-  'T (Pentavalent)':  'Tetanus',
-  'P (Pentavalent)':  'Pertussis',
-  'Hep B (Pentavalent)': 'Hepatitis B',
-  'Hib (Pentavalent)': 'Haemophilus',
-  'Measles (MR)':     'Measles',
-  'Rubella (MR)':     'Rubella',
+  'MR':               'Measles · Rubella',
   'TCV':              'Typhoid',
-  'T (TD)':           'Tetanus',
-  'D (TD)':           'Diphtheria',
+  'TD':               'Tetanus · Diphtheria',
   'HPV':              'Human papillomavirus',
 }
 
