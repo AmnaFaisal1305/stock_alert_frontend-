@@ -48,9 +48,10 @@ const Sidebar = memo(function Sidebar({ mobileOpen, onClose, collapsed }) {
         <div className="fixed inset-0 bg-[rgb(28_33_30/0.35)] z-40 lg:hidden" onClick={onClose} aria-hidden="true" />
       )}
 
+      {/* No height below lg: fixed + inset-y-0 fits the visible screen; 100vh runs behind a phone browser's toolbar. */}
       <aside
         className={[
-          'h-screen h-dvh bg-epi-dark text-white flex flex-col flex-shrink-0',
+          'lg:h-screen lg:h-dvh bg-epi-dark text-white flex flex-col flex-shrink-0',
           'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 transition-[width,transform] duration-200 ease-out',
           isCollapsed ? 'w-[72px]' : 'w-[250px]',
           mobileOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full lg:translate-x-0',
