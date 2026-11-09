@@ -13,7 +13,7 @@ Understand the existing project before changing it. Make the **smallest complete
 ## Commands
 
 ```bash
-npm run dev      # start dev server (port 5173, or 5174 if in use)
+npm run dev      # start dev server on port 5173 (Vite falls back to 5174 if busy, but the backend CORS allowlist rejects it; free 5173 instead)
 npm run build    # production build — run this to catch import errors
 npm test         # vitest unit tests (src/lib/*.test.js: Audit Log summaries and flags, api.js query strings / paging / error text, push with no service worker, stock-request open/filters/pipeline, report balance rows)
 npm run preview  # preview the production build locally
@@ -94,6 +94,7 @@ src/
     queuedHoldings.js  — applyQueued(): counts queued entries in holdings (self-check: scripts/check-offline-holdings.mjs)
     push.js            — web push subscribe/unsubscribe (READY_TIMEOUT_MS guards a missing service worker)
     tour.js            — guided tour (driver.js, lazy): welcome once per user per device, then each page's tour; page intros from GUIDE in DashboardGuide.jsx
+    tourBridge.js      — stopTour() for AuthContext (logout / session expiry) without statically importing driver.js; tour.js registers itself via registerStop()
   hooks/
     useDebounce.js, useTheme.js (follows the OS), useChartTheme.js (hex values per theme for Recharts),
     useFocusTrap.js (Modal), useOfflineSync.js, useViewMode.js (grid/list per page), useUrlState.js (useUrlFilters),
@@ -213,7 +214,7 @@ Backend statuses: `critical | low | adequate | no_data`. This file is the single
 
 ### Data fetching
 
-TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log', …]` (prefix-invalidate `['audit-log']`), `['district', id]`, `['facility', id]`, `['stock-requests']`, `['approvals', 'pending' | 'history']`, `['holdings']`, `['notifications']`, `['unread-count']`, `['analytics', from, to]`. Invalidate after mutations. Dashboard pages poll with `refetchInterval`.
+TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['facilities']`, `['districts']`, `['ucs']`, `['uc', id]`, `['audit-log', …]` (prefix-invalidate `['audit-log']`), `['district', id]`, `['facility', id]`, `['stock-requests']`, `['approvals', 'pending' | 'history']`, `['holdings']`, `['notifications']`, `['unread-count']`, `['analytics', from, to]`, `['store-batches']` (Assign Vials) / `['store-batches', 'all']` (correction form, `includeEmpty`; prefix-invalidate `['store-batches']`). Invalidate after mutations. Polling uses `refetchInterval` with `refetchIntervalInBackground: false`: dashboards 15 s, vaccinator Status View 20 s, stock requests / worker stock entry / top bar 30 s, the facility Audit Log widget 120 s.
 
 ### Shared pages
 
@@ -221,7 +222,7 @@ TanStack Query v5. Query keys: `['dashboard']`, `['users']`, `['vaccines']`, `['
 
 Every role's `AuditLog.jsx` re-exports `src/components/audit/AuditLogView.jsx`. Role differences (tabs, the facility/worker scope filter, columns) live in its `ROLE_CONFIG`; labels and entry parsing live in `src/lib/auditLog.js`. Filtering and paging run on the server (see Stock Register below).
 
-`UserDirectory` (UC and district Users), `FacilityDirectory`/`FacilityBoard` (UC and district Dashboard/Facilities) and `RequestList` are shared the same way: the page file is a thin wrapper that passes role-specific props.
+`UserDirectory` (UC, district and Facility Head Users), `FacilityDirectory`/`FacilityBoard` (UC and district Dashboard/Facilities) and `RequestList` are shared the same way: the page file is a thin wrapper that passes role-specific props.
 
 ### Expandable sub-panel pattern
 
