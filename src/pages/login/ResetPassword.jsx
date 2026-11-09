@@ -4,15 +4,7 @@ import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { resetPasswordByToken } from '../../lib/api'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import HeroCarousel from './HeroCarousel'
 import { AuthShell, FormAlert } from './LoginPage'
-
-const HERO_IMAGES = [
-  '/images/hospital-1.webp',
-  '/images/hospital-2.webp',
-  '/images/hospital-3.webp',
-  '/images/hospital-4.webp',
-]
 
 const link = 'inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-2'
 
@@ -51,7 +43,6 @@ export default function ResetPassword() {
     <AuthShell
       title="Set a new password"
       subtitle={token && !done ? 'At least 8 characters.' : undefined}
-      aside={<HeroCarousel images={HERO_IMAGES} />}
     >
       {!token && (
         <div className="flex flex-col gap-5">
