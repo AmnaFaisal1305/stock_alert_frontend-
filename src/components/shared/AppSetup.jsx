@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BellRing, CheckCircle2, Copy, Download, EllipsisVertical, Share, SquarePlus, TriangleAlert } from 'lucide-react'
+import { BellRing, CheckCircle2, Compass, Copy, Download, EllipsisVertical, Share, SquarePlus, TriangleAlert } from 'lucide-react'
 import Button from '../ui/Button'
 import { usePushState } from '../../hooks/usePushState'
 import { INSTALL_EVENT, canPrompt, inAppBrowser, isStandalone, platform, promptInstall } from '../../lib/pwa'
@@ -18,6 +18,8 @@ const T = {
     copy: 'Copy link',
     copied: 'Link copied',
     ios: [
+      // WhatsApp on iPhone opens links in its own Safari window, which has no "Add to Home Screen" and isn't detected as in-app.
+      [Compass, 'If you opened this link from WhatsApp, first tap the compass icon to open it in Safari.'],
       [Share, 'In Safari, tap the Share button (at the bottom, or in the ⋯ menu next to the address).'],
       [SquarePlus, 'Scroll down and tap “Add to Home Screen”.'],
       [null, 'Tap “Add”. The app appears on your home screen.'],
@@ -49,6 +51,7 @@ const T = {
     copy: 'لنک کاپی کریں',
     copied: 'لنک کاپی ہو گیا',
     ios: [
+      [Compass, 'اگر آپ نے یہ لنک WhatsApp سے کھولا ہے، تو پہلے کمپاس کے نشان پر ٹیپ کر کے اسے Safari میں کھولیں۔'],
       [Share, 'Safari میں Share بٹن پر ٹیپ کریں (نیچے، یا ایڈریس کے ساتھ ⋯ مینو میں)۔'],
       [SquarePlus, 'نیچے اسکرول کر کے “Add to Home Screen” پر ٹیپ کریں۔'],
       [null, '“Add” پر ٹیپ کریں۔ ایپ آپ کی ہوم اسکرین پر آ جائے گی۔'],
