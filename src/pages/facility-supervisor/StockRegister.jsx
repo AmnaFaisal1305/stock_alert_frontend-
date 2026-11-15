@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { BookOpen } from 'lucide-react'
-import { getStockRegister, getVaccines } from '../../lib/api'
+import { BookOpen, Building2 } from 'lucide-react'
+import { getStockRegister, getVaccines, getFacilities } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_LABELS } from '../../lib/navigation'
 import Select from '../../components/ui/Select'
@@ -60,7 +60,9 @@ function toRow(e) {
 
 export default function StockRegister() {
   const { user } = useAuth()
-  const [url, setUrl] = useUrlFilters({ vaccine: '', from: '', to: '', type: '' })
+  const [url, setUrl] = useUrlFilters({ facility: '', vaccine: '', from: '', to: '', type: '' })
+  // A UC Supervisor picks one of their UC's facilities (Round 49); the facility roles always get their own.
+  const isUc = user.role === 'uc_supervisor'
   const [page, setPage] = useState(1)
   // cursors[i] is the `before` value that loads page i + 1; only pages already reached are known.
   const [cursors, setCursors] = useState([null])
@@ -70,7 +72,14 @@ export default function StockRegister() {
     setCursors([null])
   }
 
-  const params = { vaccineId: url.vaccine, from: url.from, to: url.to, kind: TYPE_FILTERS.find((t) => t.value === url.type)?.kind }
+  const facQ = useQuery({ queryKey: ['facilities'], queryFn: getFacilities, enabled: isUc })
+  const facilities = useMemo(() => (facQ.data?.facilities ?? [])
+    .filter((f) => f.isActive !== false)
+    .sort((a, b) => a.name.localeCompare(b.name)), [facQ.data])
+  const facilityId = isUc ? (url.facility || (facilities.length === 1 ? facilities[0].id : '')) : undefined
+  const needsFacility = isUc && !facilityId
+
+  const params = { facilityId, vaccineId: url.vaccine, from: url.from, to: url.to, kind: TYPE_FILTERS.find((t) => t.value === url.type)?.kind }
   const before = cursors[page - 1]
 
   const { data: vaccineData, isLoading: loadingVaccines } = useQuery({ queryKey: ['vaccines'], queryFn: getVaccines })
@@ -79,6 +88,7 @@ export default function StockRegister() {
     queryKey: ['audit-log', 'register', params, before],
     queryFn: () => getStockRegister({ ...params, limit: PER_PAGE, before }),
     placeholderData: keepPreviousData,
+    enabled: !needsFacility,
   })
 
   const vaccineOptions = useMemo(() => [
@@ -128,7 +138,8 @@ export default function StockRegister() {
   ]
 
   const hasFilters = !!(url.vaccine || url.from || url.to || url.type)
-  const isLoading  = loadingVaccines || regQ.isLoading
+  const isLoading  = loadingVaccines || (isUc && facQ.isLoading) || (!needsFacility && regQ.isLoading)
+  const facilityName = facilities.find((f) => f.id === facilityId)?.name
 
   return (
     <div>
@@ -136,11 +147,24 @@ export default function StockRegister() {
         <PageHeader
           breadcrumb={`${ROLE_LABELS[user.role]} › Records`}
           title="Stock Register"
-          subtitle="Every movement of the facility’s stock: received, used, returned, wasted and corrected. Figures in doses."
+          subtitle={`Every movement of ${facilityName ?? 'the facility'}’s stock: received, used, returned, wasted and corrected. Figures in doses.`}
         />
       </div>
 
       <div className="flex flex-wrap items-end gap-x-3 gap-y-3 mb-4">
+        {isUc && (
+          <div className="w-full sm:w-64">
+            <Select
+              id="facility-select"
+              label="Facility"
+              placeholder="Choose a facility"
+              options={facilities.map((f) => ({ value: f.id, label: f.name }))}
+              value={facilityId}
+              onChange={(e) => set({ facility: e.target.value })}
+              disabled={facQ.isLoading}
+            />
+          </div>
+        )}
         <div className="w-full sm:w-64">
           <Select
             id="vaccine-select"
@@ -160,7 +184,7 @@ export default function StockRegister() {
         {hasFilters && <Button variant="ghost" onClick={() => set({ vaccine: '', from: '', to: '', type: '' })}>Clear</Button>}
         <div className="ml-auto flex items-end gap-3">
           <p className="text-sm text-text-muted tabular-nums pb-2">{plural(total, 'entry', 'entries')}</p>
-          <ExportButton name="stock-register" columns={exportColumns} getRows={exportRows} disabled={rows.length === 0} />
+          <ExportButton name={facilityName ? `stock-register-${facilityName.trim()}` : 'stock-register'} columns={exportColumns} getRows={exportRows} disabled={rows.length === 0} />
         </div>
       </div>
 
@@ -168,7 +192,13 @@ export default function StockRegister() {
         <FilterChips label="Entry type" options={TYPE_FILTERS} value={url.type} onChange={(type) => set({ type })} />
       </div>
 
-      {regQ.isError ? (
+      {facQ.isError ? (
+        <ErrorState title="Couldn't load your facilities" error={facQ.error} onRetry={facQ.refetch} />
+      ) : needsFacility && !facQ.isLoading ? (
+        facilities.length
+          ? <EmptyState framed icon={Building2} title="Choose a facility" message="Pick a facility above to see its stock register." />
+          : <EmptyState framed icon={Building2} title="No active facilities" message="Your union councils have no active facilities." />
+      ) : regQ.isError ? (
         <ErrorState title="Couldn't load the register" error={regQ.error} onRetry={regQ.refetch} />
       ) : isLoading ? (
         <Card padding={false}><SkeletonRows rows={6} /></Card>

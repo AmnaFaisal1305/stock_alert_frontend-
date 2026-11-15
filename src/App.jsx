@@ -198,6 +198,7 @@ export default function App() {
                 <Route path="/uc/facilities/:id"     element={<FacilityDetail />} />
                 <Route path="/uc/users"              element={<UCSupervisorUsers />} />
                 <Route path="/uc/stock-requests"     element={<UCSupervisorStockReqs />} />
+                <Route path="/uc/stock-register"     element={<StockRegister />} />
                 <Route path="/uc/audit-log"          element={<UCSupervisorAuditLog />} />
                 <Route path="/uc/analytics"          element={<Analytics />} />
                 <Route path="/uc/sheet"              element={<Navigate to="/uc/dashboard" replace />} />

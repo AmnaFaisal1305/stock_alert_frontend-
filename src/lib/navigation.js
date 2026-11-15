@@ -63,7 +63,7 @@ export const NAV = {
       ] },
       { label: 'Daily work', items: [{ to: '/uc/stock-requests', label: 'Stock Requests', icon: Truck }] },
       { label: 'Team', items: [{ to: '/uc/users', label: 'Users', icon: Users }] },
-      records('/uc'),
+      { label: 'Records', items: [{ to: '/uc/stock-register', label: 'Stock Register', icon: BookOpen }, ...records('/uc').items] },
     ],
   },
   facility_supervisor: {

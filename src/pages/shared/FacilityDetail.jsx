@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Syringe, AlertCircle, TrendingDown, CheckCircle2, HelpCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getFacility } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import Button from '../../components/ui/Button'
+import Button, { buttonClasses } from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import ViewToggle from '../../components/ui/ViewToggle'
 import PageHeader from '../../components/shared/PageHeader'
@@ -127,7 +127,12 @@ export default function FacilityDetail() {
             breadcrumb={`${ROLE_LABELS[user?.role] ?? 'Facility'} › Facilities`}
             title={facility.name}
             subtitle={`${facility.districtName} District${facility.facilitySupervisorName ? ` · ${facility.facilitySupervisorName}` : ''}`}
-            actions={<Badge type={facility.isActive ? 'active' : 'inactive'} />}
+            actions={<>
+              {user?.role === 'uc_supervisor' && facility.isActive && (
+                <Link to={`/uc/stock-register?facility=${facility.id}`} className={buttonClasses({ variant: 'secondary', size: 'sm' })}>View stock register</Link>
+              )}
+              <Badge type={facility.isActive ? 'active' : 'inactive'} />
+            </>}
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
