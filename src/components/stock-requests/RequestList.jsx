@@ -138,6 +138,7 @@ function RequestRow({ req, showFacility, renderActions, focused }) {
             </p>
           )}
           <RequestItemsTable items={req.items} />
+          {req.note && <p className="md:hidden text-xs text-text-muted">Request note: “{req.note}”</p>}
           {(req.sentNote || req.receivedNote) && (
             <p className="text-xs text-text-muted">
               {req.sentNote && <>Sent note: “{req.sentNote}”</>}
